@@ -6,7 +6,17 @@ function validationAttemptsAreMoreThenOne(row) {
   return attemptNumber > 1;
 }
 
+// function getNotificationFileKeys(n) {
+//   let docKeys = n.documents.L.map((el) => el.M.ref.M.key.S);
+//   let paymentKeys = n.recipients.L.map((el) =>
+//     el.M.payments.L.map((p) => p.M.pagoPaForm.M.ref.M.key.S)
+//   );
+//   return [docKeys, paymentKeys].flat(3);
+// }
+
 function getNotificationFileKeys(n) {
+  //console.log(JSON.stringify(n));
+
   let docKeys = n.documents.L.map((el) => el.M?.ref?.M.key.S);
 
   let paymentKeys = n.recipients.L.map((el) =>
@@ -51,13 +61,13 @@ async function main() {
         console.log(`    File ${fileKey} exist ? ${exists ? "yes" : "NO!"}`);
 
         if (!exists) {
-          // await awsClient.putRefusingTimeline(
-          //   iun,
-          //   notification.recipients.L.length,
-          //   fileKey,
-          //   notification.sentAt.S,
-          //   notification.senderPaId.S
-          // );
+          await awsClient.putRefusingTimeline(
+            iun,
+            notification.recipients.L.length,
+            fileKey,
+            notification.sentAt.S,
+            notification.senderPaId.S
+          );
 
           await awsClient.logFutureActions(iun);
 
