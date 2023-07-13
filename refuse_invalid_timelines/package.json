@@ -4,7 +4,7 @@
   "description": "Prova",
   "main": "index.js",
   "scripts": {
-    "generate-report": "node src/index.js",
+    "from-future-action": "node src/index.js",
     "from-progression-sensor": "node src/index_variant_nofuture_progression.js"
   },
   "license": "MIT",

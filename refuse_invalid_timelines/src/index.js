@@ -6,17 +6,7 @@ function validationAttemptsAreMoreThenOne(row) {
   return attemptNumber > 1;
 }
 
-// function getNotificationFileKeys(n) {
-//   let docKeys = n.documents.L.map((el) => el.M.ref.M.key.S);
-//   let paymentKeys = n.recipients.L.map((el) =>
-//     el.M.payments.L.map((p) => p.M.pagoPaForm.M.ref.M.key.S)
-//   );
-//   return [docKeys, paymentKeys].flat(3);
-// }
-
 function getNotificationFileKeys(n) {
-  //console.log(JSON.stringify(n));
-
   let docKeys = n.documents.L.map((el) => el.M?.ref?.M.key.S);
 
   let paymentKeys = n.recipients.L.map((el) =>
@@ -37,6 +27,10 @@ async function main() {
 
     const interestingValidations = validations.filter(
       validationAttemptsAreMoreThenOne
+    );
+
+    console.log(
+      "number of failing notifications: " + interestingValidations.length
     );
 
     const iuns = interestingValidations.map((row) => row.iun.S);
