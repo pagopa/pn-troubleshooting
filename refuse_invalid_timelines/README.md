@@ -1,7 +1,9 @@
 Script utilizzato per inserire in pn-Timelines degli eventi di notifica rifiutata in presenza di notifiche
-bloccate in validazione, partendo dalle relative entry nella tabella pn-FutureAction
+bloccate in validazione, partendo dalle relative entry nella tabella pn-FutureAction o da quelle in
+pn-ProgressionSensorData (ci sono due diversi script lanciabili).
 
-Intercetta i casi in cui mancano i file allegati alla notifica in SafeStorage (account confinfo).
+Intercetta i casi in cui mancano i file allegati alla notifica in SafeStorage (account confinfo) e per questi
+produce un elemento di timeline di rifiuto della notifica.
 
 script 1:
 Parte dalle entries delle Future Action (account core) e le rimuove una volta creati gli elementi di
