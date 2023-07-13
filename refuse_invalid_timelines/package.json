@@ -1,10 +1,11 @@
 {
   "name": "recheck_notifiche",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Prova",
   "main": "index.js",
   "scripts": {
-    "generate-report": "node src/index.js"
+    "generate-report": "node src/index.js",
+    "from-progression-sensor": "node src/index_variant_nofuture_progression.js"
   },
   "license": "MIT",
   "dependencies": {

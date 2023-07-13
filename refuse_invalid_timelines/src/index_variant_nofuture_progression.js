@@ -23,13 +23,12 @@ async function main() {
   const awsClient = new AwsClientsWrapper(envName); // FIXME parametrizzare profilo e regione
 
   try {
-    const validations = await awsClient.failingNotificationPage();
+    // faling notifications from progression sensor
+    const validations =
+      await awsClient.failingNotificationsFromProgressionSensor();
+    console.log("number of failing notifications: " + validations.length);
 
-    const interestingValidations = validations.filter(
-      validationAttemptsAreMoreThenOne
-    );
-
-    const iuns = interestingValidations.map((row) => row.iun.S);
+    const iuns = validations.map((row) => row.sla_relatedEntityId.S);
 
     for (let i = 0; i < iuns.length; i++) {
       console.log(``);
@@ -52,15 +51,15 @@ async function main() {
         console.log(`    File ${fileKey} exist ? ${exists ? "yes" : "NO!"}`);
 
         if (!exists) {
-          await awsClient.putRefusingTimeline(
-            iun,
-            notification.recipients.L.length,
-            fileKey,
-            notification.sentAt.S,
-            notification.senderPaId.S
-          );
+          // await awsClient.putRefusingTimeline(
+          //   iun,
+          //   notification.recipients.L.length,
+          //   fileKey,
+          //   notification.sentAt.S,
+          //   notification.senderPaId.S
+          // );
 
-          await awsClient.removeFutureActions(iun);
+          await awsClient.logFutureActions(iun);
 
           console.log("    REFUSE NOTIFICATION !!");
           break;
