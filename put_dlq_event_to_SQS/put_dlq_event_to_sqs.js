@@ -84,7 +84,7 @@ async function redriveMessagefromDLQ() {
   };
   const dlqQueueData = await sqs.getQueueUrl(dlqQueueParams).promise();
   dlqUrl = dlqQueueData.QueueUrl;
-  let maxNumberOfMessages = 10;
+  let maxNumberOfMessages = 1;
   if(dlqName.includes(".fifo")) {
     maxNumberOfMessages = 1
   }
@@ -105,7 +105,10 @@ async function redriveMessagefromDLQ() {
         console.log(`Hai ricevuto ${messages.length} messaggi dalla DLQ.`);
         messages.forEach((message) => {
           console.log(message.MessageId)
-          if(message.MessageId == idMessage){
+          if(idMessage == "ALL"){
+            sendMessageToSQS(message)
+          }
+          else if(message.MessageId == idMessage){
             console.log("Messaggio individuato. REDRIVE in corso")
             sendMessageToSQS(message)
             hasNext = false;

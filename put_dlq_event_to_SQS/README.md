@@ -10,9 +10,9 @@ Eseguire il comando:
 
 Dove:
 - `<aws-profile>` è il profilo dell'account AWS;
-- `<MessageID>` é l'id del messaggio presente in DLQ recuperabile da console AWS.
+- `<MessageID>` é l'id del messaggio presente in DLQ recuperabile da console AWS (inserire *ALL* per fare il redrive di tutti i messaggi).
 - `<DLQUrl>` è il nome della DLQ in oggetto.
-- `<SQSgUrl>` è il nome della coda di destinazione del redrive.
+- `<SQSUrl>` è il nome della coda di destinazione del redrive.
 
 Note: 
 Lo Script, dato in input una coda DLQ, una coda di destinazione e messageId, effettua le seguenti operazione:
