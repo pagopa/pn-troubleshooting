@@ -44,22 +44,31 @@ async function sendMessageToSQS(message) {
   };
   const destinationQueueData = await sqs.getQueueUrl(destinationQueueParams).promise();
   const destinationQueueUrl = destinationQueueData.QueueUrl;
-  
+  //START PREPARE ATTRIBUTES
+  Object.keys(message.MessageAttributes).forEach((att)=> {
+    if(message.MessageAttributes[att].BinaryListValues.length == 0)
+      delete message.MessageAttributes[att].BinaryListValues
+    if(message.MessageAttributes[att].StringListValues.length == 0)
+      delete message.MessageAttributes[att].StringListValues
+  })
+  //END PREPARE ATTRIBUTES
   const jsonObject = [{
     Id: message.MessageId,
-    MessageBody: message.Body
+    MessageBody: message.Body,
+    MessageAttributes: message.MessageAttributes
   }]
+  console.log(jsonObject)
   const sendParams = {
     QueueUrl: destinationQueueUrl,
     Entries: jsonObject,
   };
-  
+
   sqs.sendMessageBatch(sendParams, (err, data) => {
     if (err) {
       console.error('Errore durante l\'invio del messaggio:', err);
       return;
     }
-    
+
     console.log('Messaggio inviato alla coda di destinazione con successo.');
     const deleteParams = {
       QueueUrl: dlqUrl,
@@ -84,7 +93,7 @@ async function redriveMessagefromDLQ() {
   };
   const dlqQueueData = await sqs.getQueueUrl(dlqQueueParams).promise();
   dlqUrl = dlqQueueData.QueueUrl;
-  let maxNumberOfMessages = 1;
+  let maxNumberOfMessages = 10;
   if(dlqName.includes(".fifo")) {
     maxNumberOfMessages = 1
   }
@@ -104,7 +113,6 @@ async function redriveMessagefromDLQ() {
       if (messages && messages.length > 0) {
         console.log(`Hai ricevuto ${messages.length} messaggi dalla DLQ.`);
         messages.forEach((message) => {
-          console.log(message.MessageId)
           if(idMessage == "ALL"){
             sendMessageToSQS(message)
           }
