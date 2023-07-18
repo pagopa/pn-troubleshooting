@@ -44,20 +44,32 @@ async function sendMessageToSQS(message) {
   };
   const destinationQueueData = await sqs.getQueueUrl(destinationQueueParams).promise();
   const destinationQueueUrl = destinationQueueData.QueueUrl;
-  //START PREPARE ATTRIBUTES
-  Object.keys(message.MessageAttributes).forEach((att)=> {
-    if(message.MessageAttributes[att].BinaryListValues.length == 0)
-      delete message.MessageAttributes[att].BinaryListValues
-    if(message.MessageAttributes[att].StringListValues.length == 0)
-      delete message.MessageAttributes[att].StringListValues
-  })
-  //END PREPARE ATTRIBUTES
-  const jsonObject = [{
-    Id: message.MessageId,
-    MessageBody: message.Body,
-    MessageAttributes: message.MessageAttributes
-  }]
-  console.log(jsonObject)
+  //START PREPARE MESSAGE ATTRIBUTES
+  if("MessageAttributes" in message) {
+    Object.keys(message.MessageAttributes).forEach((att)=> {
+      if(message.MessageAttributes[att].BinaryListValues.length == 0)
+        delete message.MessageAttributes[att].BinaryListValues
+      if(message.MessageAttributes[att].StringListValues.length == 0)
+        delete message.MessageAttributes[att].StringListValues
+    })
+  }
+  //END PREPARE MESSAGE ATTRIBUTES
+  let jsonObject = null;
+  if(dlqName.includes(".fifo")) {
+    jsonObject = [{
+      Id: message.MessageId,
+      MessageBody: message.Body,
+      MessageGroupId: message.Attributes.MessageGroupId,
+      MessageDeduplicationId: message.Attributes.MessageDeduplicationId
+    }]
+  }
+  else {
+    jsonObject = [{
+      Id: message.MessageId,
+      MessageBody: message.Body,
+      MessageAttributes: message.MessageAttributes
+    }]
+  }
   const sendParams = {
     QueueUrl: destinationQueueUrl,
     Entries: jsonObject,
@@ -102,7 +114,7 @@ async function redriveMessagefromDLQ() {
     MaxNumberOfMessages: maxNumberOfMessages, // Numero massimo di messaggi da recuperare (modificabile) ma deve essere 1 per code FIFO
     AttributeNames: ['All'],
     MessageAttributeNames: ['All'],
-    VisibilityTimeout: 360,    // Tempo in secondi di non visibilità del messaggio dalla DLQ
+    VisibilityTimeout: 20,    // Tempo in secondi di non visibilità del messaggio dalla DLQ
     WaitTimeSeconds: 5,
   };
   try {
@@ -112,9 +124,28 @@ async function redriveMessagefromDLQ() {
       const messages = response.Messages;
       if (messages && messages.length > 0) {
         console.log(`Hai ricevuto ${messages.length} messaggi dalla DLQ.`);
+        let i = 0;
         messages.forEach((message) => {
+          console.log(message)
           if(idMessage == "ALL"){
-            sendMessageToSQS(message)
+            if (!message.hasOwnProperty("MessageAttributes")) {
+              i = i+1
+              console.log(i)
+              const deleteParams = {
+                QueueUrl: dlqUrl,
+                Entries: [{
+                  Id: message.MessageId,
+                  ReceiptHandle: message.ReceiptHandle,
+                }],
+              };
+              sqs.deleteMessageBatch(deleteParams, (err, data) => {
+                if (err) {
+                  console.error('Errore durante l\'eliminazione del messaggio dalla DLQ di origine:', err);
+                }
+                console.log('Messaggio eliminato dalla DLQ di origine con successo.');
+              });
+            }
+            /*sendMessageToSQS(message)*/
           }
           else if(message.MessageId == idMessage){
             console.log("Messaggio individuato. REDRIVE in corso")
