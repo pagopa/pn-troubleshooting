@@ -115,10 +115,10 @@ async function downloadRequestIdData(requestId){
     })
     console.debug('paperRequestDelivery '+requestId)
     
-    const paperReceiverAddresses = await queryItemFromTable('pn-PaperRequestDelivery', {
+    const paperAddresses = await queryItemFromTable('pn-PaperAddress', {
         requestId: requestId
     })
-    console.debug('paperReceiverAddresses '+requestId)
+    console.debug('paperAddresses '+requestId)
 
     const pnEcRichiesteMetadati = []
     for(let i=0; i<10; i++){
@@ -166,7 +166,7 @@ async function downloadRequestIdData(requestId){
     return {
         paperRequestError: paperRequestError,
         paperRequestDelivery: paperRequestDelivery,
-        paperReceiverAddresses: paperReceiverAddresses,
+        paperAddresses: paperAddresses,
         pnEcRichiesteMetadati: pnEcRichiesteMetadati
     }
 }
