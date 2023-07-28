@@ -63,7 +63,7 @@ async function sendMessageToSQS(message) {
       MessageDeduplicationId: message.Attributes.MessageDeduplicationId
     }]
   }
-  else {
+  else{
     jsonObject = [{
       Id: message.MessageId,
       MessageBody: message.Body,
@@ -127,25 +127,10 @@ async function redriveMessagefromDLQ() {
         let i = 0;
         messages.forEach((message) => {
           console.log(message)
-          if(idMessage == "ALL"){
-            if (!message.hasOwnProperty("MessageAttributes")) {
-              i = i+1
-              console.log(i)
-              const deleteParams = {
-                QueueUrl: dlqUrl,
-                Entries: [{
-                  Id: message.MessageId,
-                  ReceiptHandle: message.ReceiptHandle,
-                }],
-              };
-              sqs.deleteMessageBatch(deleteParams, (err, data) => {
-                if (err) {
-                  console.error('Errore durante l\'eliminazione del messaggio dalla DLQ di origine:', err);
-                }
-                console.log('Messaggio eliminato dalla DLQ di origine con successo.');
-              });
-            }
-            /*sendMessageToSQS(message)*/
+          i = i+1
+          console.log(i)
+          if(idMessage == "ALL" && message.hasOwnProperty("MessageAttributes")){
+            sendMessageToSQS(message)
           }
           else if(message.MessageId == idMessage){
             console.log("Messaggio individuato. REDRIVE in corso")
