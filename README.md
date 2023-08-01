@@ -1,28 +1,58 @@
 # pn-troubleshooting
 
-Useful troubleshooting scripts
+PN-troubleshooting contiene una serie di script utili costruiti adhoc dagli sviluppatori di PN per velocizzare il processo di diagnostica e risoluzione dei problemi.
 
-## Useful command line
+## Tabella dei Contenuti
 
-### X-Ray trace id timestamp conversion
+- [Scripts](#scripts)
 
-E' possibile estrarre il time stamp dal X-Ray trace id.
+## Scripts
 
-Esempio:
-
-`Root=1-64baa554-4ed7c4a915bb316a17082a5f`
-
-Il valore tra i due separatori `64baa554` è la codifica esadecimale del timestamp in epoch, per convertirlo:
-
+### put_dlq_event_to_SQS
+Vuoi fare un redrive di un messaggio/evento da una coda DLQ ad una SQS?
 ```bash
-XRAYTIME=64baa554
-date -r $((16#$XRAYTIME"))
-Fri Jul 21 17:33:40 CEST 2023
+node put_dlq_event_to_sqs.js --awsProfile <aws-profile> --dlqName <DLQName> --destinationQueueName <SQSName> --idMessage <MessageID>
 ```
 
-In formato UTC
+### put_dlq_event_to_kinesis
+Vuoi pubblicare un evento su uno stream kinesis?
 ```bash
-XRAYTIME=64baa554
-date -u -r $((16#$XRAYTIME"))
-Fri Jul 21 15:33:40 UTC 2023
+node put_dlq_event_to_kinesis.js --awsProfile <aws-profile> --arnStream <kinesis-stream-arn>
+```
+
+### redrive_paper_event
+Vuoi fare il redrive di un evento cartaceo a partire da un requestId?
+```bash
+node redrive_paper_events.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --requestId <request-id>
+```
+
+### scan_dynamoDB
+Vuoi fare una scan su una tabella DynamoDB?
+```bash
+node scan_dynamo.js --awsProfile <aws-profile> --tableName <dynamodb-table>
+```
+
+### refuse_invalid_timelines
+Vuoi rifiutare una notifica bloccata che non è stata ancora validata?
+
+#### Script 1: partenza da FutureAction
+```bash
+npm run from-future-action
+```
+
+#### Script 2: partenza da ProgressionSensor
+```bash
+npm run from-progression-sensor
+```
+
+### get_paper_error_details
+Vuoi fare una scan su tutte le informazioni relative ad un requestId di un invio Analogico in formato JSON?
+```bash
+node index.js --awsCoreProfile <aws-core-profile> --awsConfinfoProfile <aws-confinfo-profile> --requestId <request-id>
+```
+
+### edit_paper_address
+Vuoi generare la codifica di un receiver address di un invio analogico mediante requestId? Campi generati da inserire in pn-paper-address e pn-paper-request-delivery 
+```bash
+node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id>
 ```

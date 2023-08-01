@@ -1,21 +1,36 @@
 const AWS = require('aws-sdk');
 const fs = require('fs');
+const { parseArgs } = require('util');
 
-const arguments = process.argv ;
-  
-if(arguments.length<=3){
-  console.error("Specify AWS profile and DynamoDB table as argument")
-  console.log("node scan_dynamo.js <aws-profile> <dynamodb-table>")
-  process.exit(1)
-}
+const args = ["awsProfile", "tableName"]
+const values = {
+  values: { awsProfile, tableName },
+} = parseArgs({
+  options: {
+    awsProfile: {
+      type: "string",
+      short: "a"
+    },
+    tableName: {
+      type: "string",
+      short: "t"
+    },
+  },
+});
 
-const awsProfile = arguments[2]
-const table = arguments[3]
+args.forEach(k => {
+  if(!values.values[k]) {
+    console.log("Parameter '" + k + "' is not defined")
+    console.log("Usage: node scan_dynamo.js --awsProfile <aws-profile> --tableName <dynamodb-table>")
+    process.exit(1)
+  }
+});
 
-let dlqUrl = null;
 console.log("Using profile: "+ awsProfile)
+
 let credentials = null
 process.env.AWS_SDK_LOAD_CONFIG=1
+
 if(awsProfile.indexOf('sso_')>=0){ // sso profile
   credentials = new AWS.SsoCredentials({profile:awsProfile});
   AWS.config.credentials = credentials;
@@ -28,7 +43,7 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
 // Definisci i parametri di scan aggiungendo un filtro se desiderato https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/dynamodb-example-query-scan.html
 const params = {
-  TableName: table,
+  TableName: tableName,
   Limit: 100
   // FilterExpression: <condition>,
 };

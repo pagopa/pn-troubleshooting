@@ -12,17 +12,34 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { GetCommand, QueryCommand, DynamoDBDocumentClient } = require("@aws-sdk/lib-dynamodb");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 
-const arguments = process.argv;
-  
-if(arguments.length<=4){
-  console.error("Specify AWS profile")
-  console.log("node index.js <aws-core-profile> <aws-confinfo-profile> <request-id>")
-  process.exit(1)
-}
 
-const awsCoreProfile = arguments[2]
-const awsConfinfoProfile = arguments[3]
-const requestId = arguments[4]
+const args = ["awsCoreProfile", "awsConfinfoProfile", "requestId"]
+const values = {
+  values: { awsCoreProfile, awsConfinfoProfile, requestId },
+} = parseArgs({
+  options: {
+    awsCoreProfile: {
+      type: "string",
+      short: "a"
+    },
+    awsConfinfoProfile: {
+      type: "string",
+      short: "b"
+    },
+    requestId: {
+        type: "string",
+        short: "i"
+      }
+  },
+});
+
+args.forEach(k => {
+    if(!values.values[k]) {
+      console.log("Parameter '" + k + "' is not defined")
+      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --awsConfinfoProfile <aws-confinfo-profile> --requestId <request-id>")
+      process.exit(1)
+    }
+  });
 
 console.log("Using AWS Core profile: "+ awsCoreProfile)
 console.log("Using AWS Confinfo profile: "+ awsConfinfoProfile)
