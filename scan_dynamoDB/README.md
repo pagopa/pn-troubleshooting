@@ -1,16 +1,28 @@
-## Scan on DynamoDB
+# Scan on DynamoDB table
 
-Per poter avviare lo Script eseguire gli steps:
+Script di Scan di una tabella DynamoDB.
 
-Installare dipendenze node:
-`npm install`
+## Tabella dei Contenuti
 
-Eseguire il comando:
-`node check_dynamo.js <aws-profile> <dynamodb-table>`
+- [Descrizione](#descrizione)
+- [Installazione](#installazione)
+- [Utilizzo](#utilizzo)
 
+## Descrizione
+
+Lo Script, data in input il nome di tabella DynamoDB e dopo aver configurato i parametri all'interno del codice effettua una scan che restituisce i risultati in base alle condizioni inserite.
+
+## Installazione
+
+```bash
+npm install
+```
+
+## Utilizzo
+
+```bash
+node scan_dynamo.js --awsProfile <aws-profile> --tableName <dynamodb-table>
+```
 Dove:
-- `<aws-profile>` è il profilo dell'account AWS;
-- `<dynamodb-table>` é la tabella sulla quale si intende effettuare la scan.
-
-Note: 
-Lo Script, data in input una tabella DynamoDB e dopo aver configurato i parametri all'interno del codice effettua una scan che restituisce i risultati in base alle condizioni inserite.
+- `<aws-profile>` è il profilo dell'account AWS dell'ambiente di riferimento.
+- `<dynamodb-table>` é la tabella sulla quale si intende effettuare una scan.

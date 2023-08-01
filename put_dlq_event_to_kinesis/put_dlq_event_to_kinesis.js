@@ -1,23 +1,33 @@
 const AWS = require('aws-sdk');
 const fs = require('fs');
-/*var credentials = new AWS.SharedIniFileCredentials({profile: 'default'});
-AWS.config.credentials = credentials;
-AWS.config.update({region: 'us-east-1', endpoint: 'http://localhost:4566'});*/
 
-const arguments = process.argv ;
-  
-if(arguments.length<=3){
-  console.error("Specify AWS profile and kinesis stream name as argument")
-  process.exit(1)
-}
+const args = ["awsProfile", "arnStream"]
+const values = {
+  values: { awsProfile, arnStream },
+} = parseArgs({
+  options: {
+    awsProfile: {
+      type: "string",
+      short: "a"
+    },
+    arnStream: {
+      type: "string",
+      short: "s"
+    }
+  },
+});
 
-const awsProfile = arguments[2]
-const arnStream = arguments[3]
+args.forEach(k => {
+    if(!values.values[k]) {
+      console.log("Parameter '" + k + "' is not defined")
+      console.log("Usage: node put_dlq_event_to_kinesis.js --awsProfile <aws-profile> --arnStream <kinesis-stream-arn>")
+      process.exit(1)
+    }
+  });
 
 console.log("Using profile "+ awsProfile)
-
 console.log("ARN Stream " + arnStream)
-
+  
 let credentials = null
 
 process.env.AWS_SDK_LOAD_CONFIG=1

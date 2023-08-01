@@ -13,22 +13,44 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { GetCommand, QueryCommand, DynamoDBDocumentClient } = require("@aws-sdk/lib-dynamodb");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const { marshall } = require("@aws-sdk/util-dynamodb");
+const { parseArgs } = require('util');
 
-const arguments = process.argv;
-  
-if(arguments.length<=4){
-  console.error("Specify AWS profile")
-  console.log("node index.js <aws-core-profile> <aws-confinfo-profile> <request-id>")
-  process.exit(1)
-}
+const args = ["awsCoreProfile", "awsConfinfoProfile", "requestId"]
+const values = {
+  values: { awsCoreProfile, awsConfinfoProfile, requestId },
+} = parseArgs({
+  options: {
+    awsCoreProfile: {
+      type: "string",
+      short: "a"
+    },
+    awsConfinfoProfile: {
+      type: "string",
+      short: "b"
+    },
+    requestId: {
+        type: "string",
+        short: "i"
+    },
+    format: {
+        type: "string",
+        short: "f"
+    }    
+  },
+});
 
-const awsCoreProfile = arguments[2]
-const awsConfinfoProfile = arguments[3]
-const requestId = arguments[4]
-const format = 'raw'
+args.forEach(k => {
+    if(!values.values[k]) {
+      console.log("Parameter '" + k + "' is not defined")
+      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --awsConfinfoProfile <aws-confinfo-profile> --requestId <request-id> --format <format>")
+      process.exit(1)
+    }
+  });
 
 console.log("Using AWS Core profile: "+ awsCoreProfile)
 console.log("Using AWS Confinfo profile: "+ awsConfinfoProfile)
+
+const format = 'raw'
 
 const coreCredentials = fromSSO({ profile: awsCoreProfile })();
 const coreDynamoDbClient = new DynamoDBClient({
@@ -68,7 +90,7 @@ function getClientByTable(tableName){
     }
 }
 
-async function getItemFromTable(tableName, keys, format){
+async function getItemFromTable(tableName, keys, resultFormat){
     const client = getClientByTable(tableName)
     const params = {
         TableName: tableName,
@@ -76,7 +98,7 @@ async function getItemFromTable(tableName, keys, format){
     };
     const ret = await client.send(new GetCommand(params));
     if(ret && ret.Item){
-        if(format==='raw'){
+        if(resultFormat==='raw'){
             return marshall(i)
         }
         return ret.Item
@@ -85,7 +107,7 @@ async function getItemFromTable(tableName, keys, format){
     return null
 }
 
-async function queryItemFromTable(tableName, keys, format){
+async function queryItemFromTable(tableName, keys, resultFormat){
     const client = getClientByTable(tableName)
     const expressionAttributes = {}
     Object.entries(keys).forEach((k) => {
@@ -104,7 +126,7 @@ async function queryItemFromTable(tableName, keys, format){
     const ret = await client.send(new QueryCommand(params));
     if(ret && ret.Items){
         return ret.Items.map((i) => {
-            if(format==='raw'){
+            if(resultFormat==='raw'){
                 return marshall(i)
             } 
             return i                
@@ -118,17 +140,17 @@ async function downloadRequestIdData(requestId){
     console.debug('starting '+requestId)
     const paperRequestError = await queryItemFromTable('pn-PaperRequestError', {
         requestId: requestId
-    })
+    }, format)
     console.debug('paperRequestError '+requestId)
 
     const paperRequestDelivery = await getItemFromTable('pn-PaperRequestDelivery', {
         requestId: requestId
-    })
+    }, format)
     console.debug('paperRequestDelivery '+requestId)
     
     const paperAddresses = await queryItemFromTable('pn-PaperAddress', {
         requestId: requestId
-    })
+    }, format)
     console.debug('paperAddresses '+requestId)
 
     const pnEcRichiesteMetadati = []
@@ -136,7 +158,7 @@ async function downloadRequestIdData(requestId){
         const ecRequestId = 'pn-cons-000~'+requestId+'.PCRETRY_'+i
         const richiesta = await getItemFromTable('pn-EcRichieste', {
             requestId: ecRequestId
-        })
+        }, format)
         console.debug('EcRichieste '+ecRequestId)
 
 
@@ -146,7 +168,7 @@ async function downloadRequestIdData(requestId){
 
         const metadata = await getItemFromTable('pn-EcRichiesteMetadati', {
             requestId: ecRequestId
-        })
+        }, format)
         console.debug('EcRichiesteMetadati '+ecRequestId)
 
         const ecPayload = {
@@ -157,13 +179,13 @@ async function downloadRequestIdData(requestId){
         if(metadata){
             const meta = await queryItemFromTable('pn-PaperEvents', {
                 pk: 'META##'+requestId+'.PCRETRY_'+i
-            })
+            }, format)
 
             console.debug('PaperEvents Meta META##'+requestId+'.PCRETRY_'+i)
 
             const demat = await queryItemFromTable('pn-PaperEvents', {
                 pk: 'DEMAT##'+requestId+'.PCRETRY_'+i
-            })
+            }, format)
 
             console.debug('PaperEvents Meta DEMAT##'+requestId+'.PCRETRY_'+i)
 

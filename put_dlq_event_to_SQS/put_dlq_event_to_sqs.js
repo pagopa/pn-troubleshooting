@@ -1,24 +1,38 @@
 const AWS = require('aws-sdk');
 const fs = require('fs');
 
-const arguments = process.argv ;
-  
-if(arguments.length<=3){
-  console.error("Specify AWS profile, DLQ name, SQS name and ID message to redrive as argument")
-  console.log("node put_dlq_event_to_sqs.js <aws-profile> <DLQName> <SQSName> <MessageID>")
-  process.exit(1)
-}
+const args = ["awsprofile", "dlqName", "destinationQueueName", "idMessage"]
+const values = {
+  values: { awsProfile, dlqName, destinationQueueName, idMessage },
+} = parseArgs({
+  options: {
+    awsProfile: {
+      type: "string",
+      short: "a"
+    },
+    dlqName: {
+      type: "string",
+      short: "d"
+    },
+    destinationQueueName: {
+      type: "string",
+      short: "q"
+    },
+    idMessage: {
+      type: "string",
+      short: "i"
+    }
+  },
+});
 
-const awsProfile = arguments[2]
-const dlqName = arguments[3];  
-const destinationQueueName = arguments[4];
-const idMessage = arguments[5];  
-let dlqUrl = null;
-console.log("Using profile: "+ awsProfile)
-if(!dlqName.includes("DLQ")){
-  console.log("La campo DLQ fornito non è una DLQ: " + dlqName)
-  return
-}
+args.forEach(k => {
+    if(!values.values[k]) {
+      console.log("Parameter '" + k + "' is not defined")
+      console.log("Usage: node put_dlq_event_to_sqs.js --awsProfile <aws-profile> --dlqName <DLQName> --destinationQueueName <SQSName> --idMessage <MessageID>")
+      process.exit(1)
+    }
+  });
+
 console.log("Using DLQ Name: " + dlqName)
 console.log("Using Destination Queue Name: " + destinationQueueName)
 console.log("Using ID message: " + idMessage)

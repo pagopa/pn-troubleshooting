@@ -2,19 +2,33 @@ const { SQSClient, SendMessageCommand, GetQueueUrlCommand } = require("@aws-sdk/
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { QueryCommand, DynamoDBDocumentClient, PutCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
-const { v4 } = require('uuid');
 
-const arguments = process.argv;
-  
-if(arguments.length<=4){
-  console.error("Specify AWS profile")
-  console.log("node redrive_paper_event.js <aws-core-profile> <aws-confinfo-profile> <request-id>")
-  process.exit(1)
-}
+const args = ["awsCoreProfile", "awsConfinfoProfile", "requestId"]
+const values = {
+  values: { awsCoreProfile, awsConfinfoProfile, requestId },
+} = parseArgs({
+  options: {
+    awsCoreProfile: {
+      type: "string",
+    },
+    awsConfinfoProfile: {
+      type: "string",
+    },
+    requestId: {
+      type: "string",
+      short: "r"
+    },
+  },
+});
 
-const awsCoreProfile = arguments[2]
-const awsConfinfoProfile = arguments[3]
-const requestId = arguments[4]
+args.forEach(k => {
+    if(!values.values[k]) {
+      console.log("Parameter '" + k + "' is not defined")
+      console.log("Usage: node redrive_paper_events.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --requestId <request-id>")
+      process.exit(1)
+    }
+  });
+
 const tableAccountMapping = {
     'pn-EcRichieste': {
         account: 'confinfo',
@@ -142,12 +156,13 @@ function getClientByService(key){
     }
 }
 
-async function recreateItemWithAppendKeyValue(tableName, append) {
+async function recreateItemWithAppendKeyValue() {
+    var tableName = "pn-PaperRequestError"
     const items = await queryItemFromTable(tableName, {
         requestId: requestId
     })
     var item = items[0]
-    item.requestId = item.requestId + "_" + append
+    item.requestId = item.requestId + "_TMP"
     const resPut = await putItemInTable(tableName, item);
     if(resPut['$metadata'].httpStatusCode == 200 ) {
         console.log("PUT COMMAND OK!")
@@ -169,62 +184,18 @@ async function recreateItemWithAppendKeyValue(tableName, append) {
     
 }
 
-async function redriveMessageToSqs(sqs){
-    const valueV1 = createSqsMessagev1()
-    const res1 = await sendSQSMessage(sqs, valueV1)
-    /*const valueV2 = await createSqsMessagev2()
-    const res2 = await sendSQSMessage(sqs, valueV2)
-    */
-    console.log("SEND MESSAGE COMPLETE")
+async function redriveMessageToSqs(){
+    const value = await createSqsMessage()
+    const res = await sendSQSMessage("pn-paper_channel_requests-DLQ", value)
+    console.log(res)
+        if(resDel['$metadata'].httpStatusCode == 200 ) {
+            await recreateItemWithAppendKeyValue()
+            console.log("UPDATE COMPLETE")
+        } 
+        console.log("PROCESS COMPLETE")
 }
 
-
-function createSqsMessagev1(){
-    let iun = requestId.split(".")[1].replace("IUN_", "")
-    console.log(iun)
-    const date = Date.now()
-    const time = new Date(date).toISOString();
-    const expiredTime = new Date(date + (1000*10)).toISOString();
-    sqsMex = {
-        Body: {
-            "requestId": requestId,
-            "iun": iun,
-            "correlationId": null,
-            "isAddressRetry": false,
-            "attempt": 1,
-        },
-        MessageAttributes : {
-            attempt: {
-                DataType: "String",
-                StringValue: "1"
-            },
-            createdAt: {
-                DataType: "String",
-                StringValue: time
-            },
-            eventId: {
-                DataType: "String",
-                StringValue: v4()
-            },
-            eventType: {
-                DataType: "String",
-                StringValue: "SAFE_STORAGE_ERROR"
-            },
-            expired: {
-                DataType: "String",
-                StringValue: expiredTime
-            },
-            publisher: {
-                DataType: "String",
-                StringValue: "paper-channel-prepare"
-            }
-        }
-    }
-    console.log(sqsMex)
-    return sqsMex
-}
-
-async function createSqsMessagev2(){
+async function createSqsMessage(){
     let i = 0;
     const client = getClientByService("pn-EcRichiesteMetadati")
     let temp = "pn-cons-000~" + requestId + ".PCRETRY_"
@@ -238,7 +209,6 @@ async function createSqsMessagev2(){
             i = i + 1
         }
         else {
-            i = i - 1
             hasNext = false
         }
             
@@ -268,6 +238,6 @@ async function createSqsMessagev2(){
     return sqsMex
 }
 
-recreateItemWithAppendKeyValue("pn-PaperRequestError", "TMP")
-redriveMessageToSqs("pn-paper_channel_requests-DLQ")
+redriveMessageToSqs()
+
 

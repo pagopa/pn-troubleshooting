@@ -13,24 +13,43 @@ const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client
 const { KMSClient, DecryptCommand, EncryptCommand } = require("@aws-sdk/client-kms");
 const { marshall } = require("@aws-sdk/util-dynamodb")
 const { createHash } =  require('node:crypto')
+const { parseArgs } = require('util');
+
 const fs = require('fs')
 const jsonDiff = require('json-diff');
 
-const arguments = process.argv;
-  
-if(arguments.length<=4){
-  console.error("Specify AWS profile")
-  console.log("node index.js <aws-core-profile> <env> <request-id>")
-  process.exit(1)
-}
+const args = ["awsCoreProfile", "envType", "requestId"]
+const values = {
+  values: { awsCoreProfile, envType, requestId },
+} = parseArgs({
+  options: {
+    awsCoreProfile: {
+      type: "string",
+      short: "a"
+    },
+    envType: {
+      type: "string",
+      short: "e"
+    },
+    requestId: {
+        type: "string",
+        short: "i"
+      }
+  },
+});
 
-const awsCoreProfile = arguments[2]
-const envType = arguments[3]
-const requestId = arguments[4]
+args.forEach(k => {
+    if(!values.values[k]) {
+      console.log("Parameter '" + k + "' is not defined")
+      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id>")
+      process.exit(1)
+    }
+  });
 
-console.log("Using AWS Core profile: "+ awsCoreProfile)
-console.log("Using Env Type: "+ envType)
-console.log("Using Rquest ID: "+ requestId)
+  console.log("Using AWS Core profile: "+ awsCoreProfile)
+  console.log("Using Env Type: "+ envType)
+  console.log("Using Rquest ID: "+ requestId)
+
 
 const coreCredentials = fromSSO({ profile: awsCoreProfile })();
 const coreDynamoDbClient = new DynamoDBClient({
@@ -93,37 +112,6 @@ async function getItemFromTable(tableName, keys){
     }
 
     return null
-}
-
-async function queryItemFromTable(tableName, keys){
-    const client = getClientByTable(tableName)
-    const expressionAttributes = {}
-    Object.entries(keys).forEach((k) => {
-        expressionAttributes[':'+k[0]] = k[1]
-    })
-
-    const params = {
-        TableName: tableName,
-        KeyConditionExpression: Object.entries(keys).map((k) => {
-            return k[0]+' = :'+k[0]
-        }).join(', '),
-        ExpressionAttributeValues: expressionAttributes
-    };
-
-    const ret = await client.send(new QueryCommand(params));
-    if(ret && ret.Items){
-        return ret.Items
-    }
-
-    return []
-}
-
-async function getUpdatedAddressData(requestId, newAddressData = {}){
-    const paperReceiverAddress = await getItemFromTable('pn-PaperAddress', {
-        requestId: requestId,
-        addressType: 'RECEIVER_ADDRESS'
-    })
-    console.debug('paperReceiverAddress '+requestId)
 }
 
 async function getKeyArn(){

@@ -1,23 +1,43 @@
-## Get Updated Address Data
+# Edit Paper address information
 
-Per poter avviare lo Script eseguire gli steps:
+Script di generazione hash per la modifica di un receiver address.
 
-Installare dipendenze node:
-`npm install`
+## Tabella dei Contenuti
 
-Eseguire il comando:
-`node index.js <aws-profile-core> <env-type> <request-id>`
+- [Descrizione](#descrizione)
+- [Installazione](#installazione)
+- [Utilizzo](#utilizzo)
 
+## Descrizione
+Script interattivo che genera la codifica di un receiver address di un invio analogico avendo come input un requestId.
+Una volta generati i campi di interesse modificare manualmente le tabelle in `pn-paper-address` e `pn-paper-request-delivery`
+## Installazione
+
+```bash
+npm install
+```
+
+## Utilizzo
+### Step preliminare
+
+```bash
+aws sso login --profile sso_pn-core-<env>
+```
+
+### Esecuzione
+```bash
+node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id>
+```
 Dove:
-- `<aws-profile-core>` è il profilo dell'account AWS core;
-- `<env-type>` è l'environment: dev, test, uat, hotfix, prod;
+- `<aws-profile>` è il profilo dell'account AWS;
+- `<env-type>` è l'ambiente sul quale si vuole avviare lo script;
 - `<request-id>` è il request id del messaggio desiderato.
 
+
+### Output
 Lo script genera una cartella in `edits/{request_id}_{yyyy-MM-dd'T'HH:mm:ss. SSSXXX}` con i seguenti file:
 - **originalAddress.json**: indirizzo originale
 - **updatedAddress.json**: indirizzo aggiornato secondo gli input in fase di esecuzione
 - **updatedEncryptedAddress.json**: valori crittografati dell'indirizzo aggiornato
 - **updatedAddressHash.json**: hash dell'indirizzo aggiornato
 - **addressDiff.diff**: diff tra originalAddress.json e updatedAddress.json
-
-Nota: le proprietà che identificano l'indirizzo sono: `address`, `fullName`, `nameRow2`, `addressRow2`, `cap`, `city`, `city2`, `pr`, `country`.
