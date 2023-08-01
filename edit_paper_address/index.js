@@ -12,21 +12,39 @@ const prompt = require('prompt-sync')({sigint: true});
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
 const { KMSClient, DecryptCommand, EncryptCommand } = require("@aws-sdk/client-kms");
 const { createHash } =  require('node:crypto')
-const arguments = process.argv;
-  
-if(arguments.length<=4){
-  console.error("Specify AWS profile")
-  console.log("node index.js <aws-core-profile> <env> <request-id>")
-  process.exit(1)
-}
 
-const awsCoreProfile = arguments[2]
-const envType = arguments[3]
-const requestId = arguments[4]
+const args = ["awsCoreProfile", "envType", "requestId"]
+const values = {
+  values: { awsCoreProfile, envType, requestId },
+} = parseArgs({
+  options: {
+    awsCoreProfile: {
+      type: "string",
+      short: "a"
+    },
+    envType: {
+      type: "string",
+      short: "e"
+    },
+    requestId: {
+        type: "string",
+        short: "i"
+      }
+  },
+});
 
-console.log("Using AWS Core profile: "+ awsCoreProfile)
-console.log("Using Env Type: "+ envType)
-console.log("Using Rquest ID: "+ requestId)
+args.forEach(k => {
+    if(!values.values[k]) {
+      console.log("Parameter '" + k + "' is not defined")
+      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id>")
+      process.exit(1)
+    }
+  });
+
+  console.log("Using AWS Core profile: "+ awsCoreProfile)
+  console.log("Using Env Type: "+ envType)
+  console.log("Using Rquest ID: "+ requestId)
+
 
 const coreCredentials = fromSSO({ profile: awsCoreProfile })();
 const coreDynamoDbClient = new DynamoDBClient({

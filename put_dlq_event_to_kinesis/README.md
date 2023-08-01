@@ -1,18 +1,34 @@
-## Redrive Event from DLQ to Kinesis Stream
+# Redrive Event from DLQ to Kinesis Stream
 
-Installare dipendenze node:
-`npm install` 
+Script di redrive di un evento da una DLQ ad uno Stream Kinesis
 
-Salvare nel file `event.json` l'evento che si vuole pubblicare sullo stream kinesis
+## Tabella dei Contenuti
 
-Eseguire il comando:
-`node put_dlq_event_to_kinesis.js <aws-profile> <kinesis-stream-arn>`
+- [Descrizione](#descrizione)
+- [Installazione](#installazione)
+- [Utilizzo](#utilizzo)
 
-Dove `<aws-profile>` è il profilo dell'account AWS e `<kinesis-stream-arn>` é l'ARN dello stream kinesis sul quale si vuole pubblicare l'evento.
+## Descrizione
+Lo script esegue un operazione di redrive di un evento su uno stream kinesis a partire dalle informazioni inserite nel file `event.json`.
 
-Note: 
+## Installazione
 
-1) lo script esegue la put di un evento allo stream kinesis identificato dal suo ARN.
+```bash
+npm install
+```
 
-2) lo script viene eseguito sempre nella region `eu-south-1` 
+## Utilizzo
+### Step preliminare
 
+```bash
+aws sso login --profile sso_pn-confinfo-<env>
+aws sso login --profile sso_pn-core-<env>
+```
+
+### Esecuzione
+```bash
+node put_dlq_event_to_kinesis.js --awsProfile <aws-profile> --arnStream <kinesis-stream-arn>
+```
+Dove:
+- `<aws-profile>` è il profilo dell'account AWS;
+- `<kinesis-stream-arn>` é l'ARN dello stream kinesis sul quale si vuole pubblicare l'evento.
