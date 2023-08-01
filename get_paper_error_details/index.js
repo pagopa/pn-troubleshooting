@@ -5,12 +5,14 @@
  * pn-PaperRequestDelivery
  * pn-PaperAddress.  (quello veramente interessante è il RECEIVER_ADDRESS )
  * pn-EcRichieste.    in cui l'id va calcolato secondo la regola     "pn-cons-000~" + requestId + ".PCRETRY_" + n con n appartenente a [0 .... 10]
+ * pn-EcRichiesteMetadati.    in cui l'id va calcolato secondo la regola     "pn-cons-000~" + requestId + ".PCRETRY_" + n con n appartenente a [0 .... 10]
  * pn-PaperEvents:   due query una con pk = "META##" + requestId.    l'altra con pk = "DEMAT##"
  * Raccolti i dati vanno decodificati gli indirizzi contenuti nella pn-PaperAddress  utilizzando la chiave simmetrica KMS definita in storage.yml di pn-paper-channe
 */
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { GetCommand, QueryCommand, DynamoDBDocumentClient } = require("@aws-sdk/lib-dynamodb");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
+const { marshall } = require("@aws-sdk/util-dynamodb");
 
 const arguments = process.argv;
   
@@ -23,6 +25,7 @@ if(arguments.length<=4){
 const awsCoreProfile = arguments[2]
 const awsConfinfoProfile = arguments[3]
 const requestId = arguments[4]
+const format = 'raw'
 
 console.log("Using AWS Core profile: "+ awsCoreProfile)
 console.log("Using AWS Confinfo profile: "+ awsConfinfoProfile)
@@ -65,7 +68,7 @@ function getClientByTable(tableName){
     }
 }
 
-async function getItemFromTable(tableName, keys){
+async function getItemFromTable(tableName, keys, format){
     const client = getClientByTable(tableName)
     const params = {
         TableName: tableName,
@@ -73,13 +76,16 @@ async function getItemFromTable(tableName, keys){
     };
     const ret = await client.send(new GetCommand(params));
     if(ret && ret.Item){
+        if(format==='raw'){
+            return marshall(i)
+        }
         return ret.Item
     }
 
     return null
 }
 
-async function queryItemFromTable(tableName, keys){
+async function queryItemFromTable(tableName, keys, format){
     const client = getClientByTable(tableName)
     const expressionAttributes = {}
     Object.entries(keys).forEach((k) => {
@@ -97,7 +103,12 @@ async function queryItemFromTable(tableName, keys){
     console.log('params', params)
     const ret = await client.send(new QueryCommand(params));
     if(ret && ret.Items){
-        return ret.Items
+        return ret.Items.map((i) => {
+            if(format==='raw'){
+                return marshall(i)
+            } 
+            return i                
+        })
     }
 
     return []
