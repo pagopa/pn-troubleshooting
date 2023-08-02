@@ -73,19 +73,7 @@ const tableAccountMapping = {
     'pn-PaperAddress': 'core'
 }
 
-/*
-
-        return Utility.convertToHash(this.address) +
-                Utility.convertToHash(this.fullName) +
-                Utility.convertToHash(this.nameRow2) +
-                Utility.convertToHash(this.addressRow2) +
-                Utility.convertToHash(this.cap) +
-                Utility.convertToHash(this.city) +
-                Utility.convertToHash(this.city2) +
-                Utility.convertToHash(this.pr) +
-                Utility.convertToHash(this.country);
-*/
-
+// address properties
 const properties = ['address', 'fullName', 'nameRow2', 'addressRow2', 'cap', 'city', 'city2', 'pr', 'country']
 
 function getClientByTable(tableName){
@@ -115,6 +103,8 @@ async function getItemFromTable(tableName, keys){
 }
 
 async function getKeyArn(){
+    // get KMS key as output of Paper Channel storage stack
+    // the key is used to encrypt and decrypt data to/from pn-PaperAddress DynamoDB table
     const input = { // DescribeStacksInput
         StackName: "pn-paper-channel-storage-"+envType,
       };
@@ -133,7 +123,7 @@ async function getKeyArn(){
 }
 
 async function getReceiverPaperAddress(requestId){
-    // leggo indirizzo criptato
+    // read encrypted receiver address
     const paperReceiverAddress = await getItemFromTable('pn-PaperAddress', {
         requestId: requestId,
         addressType: 'RECEIVER_ADDRESS'
@@ -147,7 +137,7 @@ async function getReceiverPaperAddress(requestId){
 }
 
 async function getPaperRequestDelivery(requestId){
-    // leggo indirizzo criptato
+    // read paper request delivery
     const paperRequestDelivery = await getItemFromTable('pn-PaperRequestDelivery', {
         requestId: requestId
     })
@@ -160,7 +150,7 @@ async function getPaperRequestDelivery(requestId){
 }
 
 async function getDecodedAddressData(paperReceiverAddress, kmsArn){
-    // leggo indirizzo criptato
+    // decrypt pnPaperAddress properties
     const decodedAddressData = {}
 
     for(let i=0; i<properties.length; i++){
@@ -176,6 +166,7 @@ async function getDecodedAddressData(paperReceiverAddress, kmsArn){
 }
 
 async function getEncodedAddressData(kmsArn, addressData){
+    // encrypt pnPaperAddress properties
     const encryptedAddressData = {}
     for(let i=0; i<properties.length; i++){
         const property = properties[i]
@@ -215,6 +206,8 @@ async function getEncryptedValue(value, kmsArn){
 }
 
 function readNewAddressData(existingDecodedAddressData){
+    // read address values from users's prompt, if the users press "returns", the existing value is used
+    // LIMITATION: it is not possible to change a not empty value to an empty one (TODO)
     const newAddressData = {}
 
     for(let i=0; i<properties.length; i++){
@@ -233,6 +226,7 @@ function readNewAddressData(existingDecodedAddressData){
 function getAddressHash(addressData){
     let fullHash = ''
 
+    // the address hash is the concatenation of sha256 of not null address properties previously transformed to lower case and free of "spaces" 
     for(let i=0; i<properties.length; i++){
         const property = properties[i]
         console.log('property '+property, addressData[property])
@@ -286,6 +280,8 @@ async function run(){
 
     const encodedNewAddressData = await getEncodedAddressData(keyArn, addressDataDiff)
     console.log('encoded new address data', encodedNewAddressData)
+    // copy new encoded values to original paper address
+    Object.assign(paperReceiverAddress, encodedNewAddressData)
 
     const paperRequestDelivery = await getPaperRequestDelivery(requestId)
     console.log('paper request delivery', paperRequestDelivery)
