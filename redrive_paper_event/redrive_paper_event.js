@@ -2,6 +2,7 @@ const { SQSClient, SendMessageCommand, GetQueueUrlCommand } = require("@aws-sdk/
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { QueryCommand, DynamoDBDocumentClient, PutCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
+const { parseArgs } = require('util');
 
 const args = ["awsCoreProfile", "awsConfinfoProfile", "requestId"]
 const values = {
@@ -42,7 +43,7 @@ const tableAccountMapping = {
         account: 'core',
         service: 'dynamoDB'
     },
-    'pn-paper_channel_requests-DLQ': {
+    'pn-paper_channel_requests': {
         account: 'core',
         service: 'SQS'
     },
@@ -186,13 +187,13 @@ async function recreateItemWithAppendKeyValue() {
 
 async function redriveMessageToSqs(){
     const value = await createSqsMessage()
-    const res = await sendSQSMessage("pn-paper_channel_requests-DLQ", value)
+    const res = await sendSQSMessage("pn-paper_channel_requests", value)
     console.log(res)
-        if(resDel['$metadata'].httpStatusCode == 200 ) {
-            await recreateItemWithAppendKeyValue()
-            console.log("UPDATE COMPLETE")
-        } 
-        console.log("PROCESS COMPLETE")
+    if(res['$metadata'].httpStatusCode == 200 ) {
+        await recreateItemWithAppendKeyValue()
+        console.log("UPDATE COMPLETE")
+    } 
+    console.log("PROCESS COMPLETE")
 }
 
 async function createSqsMessage(){
