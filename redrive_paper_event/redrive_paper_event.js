@@ -197,7 +197,6 @@ async function redriveMessageToSqs(){
 
 async function createSqsMessage(){
     let i = 0;
-    const client = getClientByService("pn-EcRichiesteMetadati")
     let temp = "pn-cons-000~" + requestId + ".PCRETRY_"
     var items;
     let hasNext = true;
@@ -213,12 +212,12 @@ async function createSqsMessage(){
         }
             
     }
-    let currentRequestId = temp + i
     const date = Date.now()
     const expiredTime = new Date(date + (1000*10)).toISOString();
     sqsMex = {
         Body: {
-            "requestId": currentRequestId,
+            "requestId": requestId,
+            "newPcRetry": i+"" // string required
         },
         MessageAttributes : {
             attempt: {
