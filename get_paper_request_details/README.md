@@ -34,12 +34,13 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash
-node index.js --awsCoreProfile <aws-core-profile> --awsConfinfoProfile <aws-confinfo-profile> --requestId <request-id>
+node index.js --awsCoreProfile <aws-core-profile> --awsConfinfoProfile <aws-confinfo-profile> --requestId <request-id> --format <format>
 ```
 Dove:
 - `<aws-profile-dev>` è il profilo dell'account AWS dev;
 - `<aws-profile-conf>` è il profilo dell'account AWS confinfo;
-- `<request-id>` è il request id del messaggio desiderato.
+- `<request-id>` è il request id del messaggio desiderato;
+- `<format>` è il formato dell'output, può essere "raw" o "compact"
 
 
 

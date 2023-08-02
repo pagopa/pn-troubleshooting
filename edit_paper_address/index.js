@@ -11,7 +11,12 @@ const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const prompt = require('prompt-sync')({sigint: true});
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
 const { KMSClient, DecryptCommand, EncryptCommand } = require("@aws-sdk/client-kms");
+const { marshall } = require("@aws-sdk/util-dynamodb")
 const { createHash } =  require('node:crypto')
+const { parseArgs } = require('util');
+
+const fs = require('fs')
+const jsonDiff = require('json-diff');
 
 const args = ["awsCoreProfile", "envType", "requestId"]
 const values = {
@@ -68,19 +73,7 @@ const tableAccountMapping = {
     'pn-PaperAddress': 'core'
 }
 
-/*
-
-        return Utility.convertToHash(this.address) +
-                Utility.convertToHash(this.fullName) +
-                Utility.convertToHash(this.nameRow2) +
-                Utility.convertToHash(this.addressRow2) +
-                Utility.convertToHash(this.cap) +
-                Utility.convertToHash(this.city) +
-                Utility.convertToHash(this.city2) +
-                Utility.convertToHash(this.pr) +
-                Utility.convertToHash(this.country);
-*/
-
+// address properties
 const properties = ['address', 'fullName', 'nameRow2', 'addressRow2', 'cap', 'city', 'city2', 'pr', 'country']
 
 function getClientByTable(tableName){
@@ -109,39 +102,9 @@ async function getItemFromTable(tableName, keys){
     return null
 }
 
-async function queryItemFromTable(tableName, keys){
-    const client = getClientByTable(tableName)
-    const expressionAttributes = {}
-    Object.entries(keys).forEach((k) => {
-        expressionAttributes[':'+k[0]] = k[1]
-    })
-
-    const params = {
-        TableName: tableName,
-        KeyConditionExpression: Object.entries(keys).map((k) => {
-            return k[0]+' = :'+k[0]
-        }).join(', '),
-        ExpressionAttributeValues: expressionAttributes
-    };
-
-    console.log('params', params)
-    const ret = await client.send(new QueryCommand(params));
-    if(ret && ret.Items){
-        return ret.Items
-    }
-
-    return []
-}
-
-async function getUpdatedAddressData(requestId, newAddressData = {}){
-    const paperReceiverAddress = await getItemFromTable('pn-PaperAddress', {
-        requestId: requestId,
-        addressType: 'RECEIVER_ADDRESS'
-    })
-    console.debug('paperReceiverAddress '+requestId)
-}
-
 async function getKeyArn(){
+    // get KMS key as output of Paper Channel storage stack
+    // the key is used to encrypt and decrypt data to/from pn-PaperAddress DynamoDB table
     const input = { // DescribeStacksInput
         StackName: "pn-paper-channel-storage-"+envType,
       };
@@ -159,7 +122,8 @@ async function getKeyArn(){
     return null
 }
 
-async function getDecodedAddressData(kmsArn){
+async function getReceiverPaperAddress(requestId){
+    // read encrypted receiver address
     const paperReceiverAddress = await getItemFromTable('pn-PaperAddress', {
         requestId: requestId,
         addressType: 'RECEIVER_ADDRESS'
@@ -169,6 +133,24 @@ async function getDecodedAddressData(kmsArn){
         throw new Error("Missing paper receiver address")
     }
 
+    return paperReceiverAddress    
+}
+
+async function getPaperRequestDelivery(requestId){
+    // read paper request delivery
+    const paperRequestDelivery = await getItemFromTable('pn-PaperRequestDelivery', {
+        requestId: requestId
+    })
+
+    if(!paperRequestDelivery){
+        throw new Error("Missing paper request delivery")
+    }
+
+    return paperRequestDelivery    
+}
+
+async function getDecodedAddressData(paperReceiverAddress, kmsArn){
+    // decrypt pnPaperAddress properties
     const decodedAddressData = {}
 
     for(let i=0; i<properties.length; i++){
@@ -184,13 +166,12 @@ async function getDecodedAddressData(kmsArn){
 }
 
 async function getEncodedAddressData(kmsArn, addressData){
+    // encrypt pnPaperAddress properties
     const encryptedAddressData = {}
     for(let i=0; i<properties.length; i++){
         const property = properties[i]
         if(addressData[property]){
             encryptedAddressData[property] = await getEncryptedValue(addressData[property], kmsArn)
-        } else {
-            console.log('[ENCRYPT] empty value for '+property)
         }
     }
 
@@ -213,7 +194,6 @@ async function getDecryptedValue(value, kmsArn){
 async function getEncryptedValue(value, kmsArn){
     const base64Value = Buffer.from(value, 'utf-8').toString('base64')
 
-    console.log('base64Value', base64Value)
     const input = { // DecryptRequest
         Plaintext: Buffer.from(base64Value, 'base64'), 
         KeyId: kmsArn
@@ -221,13 +201,13 @@ async function getEncryptedValue(value, kmsArn){
     const command = new EncryptCommand(input);
     const response = await kmsClient.send(command);
 
-    console.log(response.CiphertextBlob)
-
     const base64Text = Buffer.from(response.CiphertextBlob).toString('base64'); 
     return base64Text
 }
 
 function readNewAddressData(existingDecodedAddressData){
+    // read address values from users's prompt, if the users press "returns", the existing value is used
+    // LIMITATION: it is not possible to change a not empty value to an empty one (TODO)
     const newAddressData = {}
 
     for(let i=0; i<properties.length; i++){
@@ -246,6 +226,7 @@ function readNewAddressData(existingDecodedAddressData){
 function getAddressHash(addressData){
     let fullHash = ''
 
+    // the address hash is the concatenation of sha256 of not null address properties previously transformed to lower case and free of "spaces" 
     for(let i=0; i<properties.length; i++){
         const property = properties[i]
         console.log('property '+property, addressData[property])
@@ -258,6 +239,21 @@ function getAddressHash(addressData){
     return fullHash
 }
 
+async function writeResults(paperAddress, decodedAddressData, newAddressData, encodedNewAddressData, paperRequestDelivery){
+    const folder = 'edits/'+requestId+'_'+new Date().toISOString()
+
+    fs.mkdirSync(folder, { recursive: true })
+    fs.writeFileSync(folder+'/paperAddress.json', JSON.stringify(marshall(paperAddress)))
+    fs.writeFileSync(folder+'/originalAddress.json', JSON.stringify(decodedAddressData))
+    fs.writeFileSync(folder+'/updatedAddress.json', JSON.stringify(newAddressData))
+    fs.writeFileSync(folder+'/updatedEncryptedAddress.json', JSON.stringify(encodedNewAddressData))
+    fs.writeFileSync(folder+'/paperRequestDelivery.json', JSON.stringify(marshall(paperRequestDelivery)))
+
+    fs.writeFileSync(folder+'/addressDiff.diff', jsonDiff.diffString(decodedAddressData, newAddressData, { full: true }))
+
+    return folder
+}
+
 async function run(){
     const keyArn = await getKeyArn()    
     console.log('kms key arn', keyArn)
@@ -266,18 +262,37 @@ async function run(){
         throw new Error("Missing key arn")
     }
 
-    const decodedAddressData = await getDecodedAddressData(keyArn)
+    const paperReceiverAddress = await getReceiverPaperAddress(requestId)
+    console.log('original address data', paperReceiverAddress)
+
+    const decodedAddressData = await getDecodedAddressData(paperReceiverAddress, keyArn)
     console.log('decoded address data', decodedAddressData)
 
     const newAddressData = readNewAddressData(decodedAddressData)
     console.log('new Address Data', newAddressData)
 
-    const encodedNewAddressData = await getEncodedAddressData(keyArn, newAddressData)
+    const addressDataDiff = []
+    properties.forEach((p) => {
+        if(decodedAddressData[p]!==newAddressData[p]){
+            addressDataDiff[p] = newAddressData[p]
+        }
+    })
+
+    const encodedNewAddressData = await getEncodedAddressData(keyArn, addressDataDiff)
     console.log('encoded new address data', encodedNewAddressData)
+    // copy new encoded values to original paper address
+    Object.assign(paperReceiverAddress, encodedNewAddressData)
+
+    const paperRequestDelivery = await getPaperRequestDelivery(requestId)
+    console.log('paper request delivery', paperRequestDelivery)
 
     const updatedAddressHash = getAddressHash(newAddressData)
     console.log('updated Address Hash', updatedAddressHash)
+    paperRequestDelivery.addressHash = updatedAddressHash
 
+    const folder = await writeResults(paperReceiverAddress, decodedAddressData, newAddressData, encodedNewAddressData, paperRequestDelivery)
+
+    console.log('Results available in '+folder+' folder')
 }
 
 run()

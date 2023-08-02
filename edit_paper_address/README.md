@@ -10,7 +10,7 @@ Script di generazione hash per la modifica di un receiver address.
 
 ## Descrizione
 Script interattivo che genera la codifica di un receiver address di un invio analogico avendo come input un requestId.
-Una volta generati i campi di interesse modificare manualmente le tabelle in `pn-paper-address` e `pn-paper-request-delivery`
+Una volta generati i campi di interesse, è possibile modificare manualmente le tabelle in `pn-paper-address` e `pn-paper-request-delivery`
 ## Installazione
 
 ```bash
@@ -34,4 +34,12 @@ Dove:
 - `<request-id>` è il request id del messaggio desiderato.
 
 
-
+### Output
+Lo script genera una cartella in `edits/{request_id}_{yyyy-MM-dd'T'HH:mm:ss. SSSXXX}` con i seguenti file:
+- **originalAddress.json**: indirizzo originale
+- **updatedAddress.json**: indirizzo aggiornato secondo gli input in fase di esecuzione
+- **updatedEncryptedAddress.json**: valori crittografati dell'indirizzo aggiornato
+- **updatedAddressHash.json**: hash dell'indirizzo aggiornato
+- **paperAddress.json**: entita pn-PaperAddress aggiornata con i valori codificati ed in formato raw DynamoDB
+- **paperRequestDelivery.json**: entità pn-PaperRequestDelivery con la property `addressHash` aggiornata ed in formato raw DynamoDB
+- **addressDiff.diff**: diff tra originalAddress.json e updatedAddress.json
