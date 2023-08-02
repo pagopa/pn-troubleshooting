@@ -14,6 +14,7 @@ const { GetCommand, QueryCommand, DynamoDBDocumentClient } = require("@aws-sdk/l
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const { marshall } = require("@aws-sdk/util-dynamodb");
 const { parseArgs } = require('util');
+const fs = require('fs')
 
 const args = ["awsCoreProfile", "awsConfinfoProfile", "requestId"]
 const values = {
@@ -99,7 +100,7 @@ async function getItemFromTable(tableName, keys, resultFormat){
     const ret = await client.send(new GetCommand(params));
     if(ret && ret.Item){
         if(resultFormat==='raw'){
-            return marshall(i)
+            return marshall(ret.Item)
         }
         return ret.Item
     }
@@ -122,7 +123,6 @@ async function queryItemFromTable(tableName, keys, resultFormat){
         ExpressionAttributeValues: expressionAttributes
     };
 
-    console.log('params', params)
     const ret = await client.send(new QueryCommand(params));
     if(ret && ret.Items){
         return ret.Items.map((i) => {
@@ -204,7 +204,16 @@ async function downloadRequestIdData(requestId){
     }
 }
 
+function writeResults(data){
+    const folder = 'details'
+
+    const filePath = folder+'/'+requestId+'_'+new Date().toISOString()+'.json'
+    fs.mkdirSync(folder, { recursive: true })
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 4))
+
+    return folder
+}
 downloadRequestIdData(requestId)
 .then(function(data){
-    console.log(JSON.stringify(data))
+    writeResults(data)
 })
