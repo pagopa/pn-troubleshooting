@@ -239,15 +239,16 @@ function getAddressHash(addressData){
     return fullHash
 }
 
-async function writeResults(paperAddress, decodedAddressData, newAddressData, encodedNewAddressData, paperRequestDelivery){
+async function writeResults(paperAddress, decodedAddressData, newAddressData, encodedNewAddressData, paperRequestDelivery, updatedPaperRequestDelivery){
     const folder = 'edits/'+requestId+'_'+new Date().toISOString()
 
     fs.mkdirSync(folder, { recursive: true })
-    fs.writeFileSync(folder+'/paperAddress.json', JSON.stringify(marshall(paperAddress)))
-    fs.writeFileSync(folder+'/originalAddress.json', JSON.stringify(decodedAddressData))
-    fs.writeFileSync(folder+'/updatedAddress.json', JSON.stringify(newAddressData))
-    fs.writeFileSync(folder+'/updatedEncryptedAddress.json', JSON.stringify(encodedNewAddressData))
-    fs.writeFileSync(folder+'/paperRequestDelivery.json', JSON.stringify(marshall(paperRequestDelivery)))
+    fs.writeFileSync(folder+'/paperAddress.json', JSON.stringify(marshall(paperAddress), null, 4))
+    fs.writeFileSync(folder+'/originalAddress.json', JSON.stringify(decodedAddressData, null, 4))
+    fs.writeFileSync(folder+'/updatedAddress.json', JSON.stringify(newAddressData, null, 4))
+    fs.writeFileSync(folder+'/updatedEncryptedAddress.json', JSON.stringify(encodedNewAddressData, null, 4))
+    fs.writeFileSync(folder+'/paperRequestDelivery.json', JSON.stringify(marshall(paperRequestDelivery), null, 4))
+    fs.writeFileSync(folder+'/updatedPaperRequestDelivery.json', JSON.stringify(marshall(updatedPaperRequestDelivery), null, 4))
 
     fs.writeFileSync(folder+'/addressDiff.diff', jsonDiff.diffString(decodedAddressData, newAddressData, { full: true }))
 
@@ -288,9 +289,11 @@ async function run(){
 
     const updatedAddressHash = getAddressHash(newAddressData)
     console.log('updated Address Hash', updatedAddressHash)
-    paperRequestDelivery.addressHash = updatedAddressHash
+    
+    const updatedPaperRequestDelivery = Object.assign({}, paperRequestDelivery)
+    updatedPaperRequestDelivery.addressHash = updatedAddressHash
 
-    const folder = await writeResults(paperReceiverAddress, decodedAddressData, newAddressData, encodedNewAddressData, paperRequestDelivery)
+    const folder = await writeResults(paperReceiverAddress, decodedAddressData, newAddressData, encodedNewAddressData, paperRequestDelivery, updatedPaperRequestDelivery)
 
     console.log('Results available in '+folder+' folder')
 }
