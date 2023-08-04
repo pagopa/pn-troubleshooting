@@ -18,9 +18,14 @@ const { parseArgs } = require('util');
 const fs = require('fs')
 const jsonDiff = require('json-diff');
 
-const args = ["awsCoreProfile", "envType", "requestId"]
+const args = [
+    { name: "awsCoreProfile", mandatory: true },
+    { name: "envType", mandatory: true },
+    { name: "requestId", mandatory: true },
+    { name: "update", mandatory: false }
+]
 const values = {
-  values: { awsCoreProfile, envType, requestId },
+  values: { awsCoreProfile, envType, requestId, update },
 } = parseArgs({
   options: {
     awsCoreProfile: {
@@ -34,14 +39,19 @@ const values = {
     requestId: {
         type: "string",
         short: "i"
-      }
+    },
+    update: {
+        type: "boolean",
+        default: false,
+        short: "w"
+    }
   },
 });
 
 args.forEach(k => {
-    if(!values.values[k]) {
-      console.log("Parameter '" + k + "' is not defined")
-      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id>")
+    if (k.mandatory && !values.values[k.name]) {
+      console.log("Parameter '" + k.name + "' is not defined")
+      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id> [--update]")
       process.exit(1)
     }
   });
@@ -49,6 +59,7 @@ args.forEach(k => {
   console.log("Using AWS Core profile: "+ awsCoreProfile)
   console.log("Using Env Type: "+ envType)
   console.log("Using Rquest ID: "+ requestId)
+  console.log("Using Write Operation on DynamoDB : "+ update)
 
 
 const coreCredentials = fromSSO({ profile: awsCoreProfile })();
@@ -310,11 +321,13 @@ async function run(){
     console.log('Results available in '+folder+' folder')
 
     // optionally, update
-
-    await putItemInTable('pn-PaperRequestDelivery', updatedPaperRequestDelivery)
-
-    await putItemInTable('pn-PaperAddress', updatePaperReceiverAddress)
+    if (update) {
+        console.log("Sto modificando le tabelle: pn-PaperRequestDelivery, pn-PaperAddress" )
+        await putItemInTable('pn-PaperRequestDelivery', updatedPaperRequestDelivery)
+        await putItemInTable('pn-PaperAddress', updatePaperReceiverAddress)
+    }
 }
+    
 
 run()
 .then((d) => {
