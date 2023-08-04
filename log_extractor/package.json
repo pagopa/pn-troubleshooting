@@ -1,0 +1,19 @@
+{
+  "name": "cprova-ucumber-html-reporter",
+  "version": "0.0.1",
+  "description": "Prova",
+  "main": "index.js",
+  "scripts": {
+    "generate-report": "node src/index.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "cucumber-html-reporter": "7.1.0",
+    "fast-xml-parser": "^4.2.2",
+    "@aws-sdk/client-api-gateway": "^3.321.1",
+    "@aws-sdk/credential-provider-ini": "^3.321.1",
+    "@aws-sdk/client-cloudwatch-logs": "^3.321.1",
+    "@aws-sdk/client-dynamodb": "^3.378.0",
+    "@aws-sdk/lib-dynamodb": "^3.378.0"
+  }
+}
