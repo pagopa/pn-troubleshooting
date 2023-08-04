@@ -53,7 +53,8 @@ const scanTable = async () => {
     let items;
     do{
       items = await dynamoDB.scan(params).promise();
-      items.Items.forEach((item) => console.log(JSON.stringify(AWS.DynamoDB.Converter.marshall(item))));
+      items.Items.forEach((item) => scanResults.push(AWS.DynamoDB.Converter.marshall(item)));
+      
       params.ExclusiveStartKey = items.LastEvaluatedKey;
     } while(typeof items.LastEvaluatedKey !== "undefined");
     
@@ -61,6 +62,7 @@ const scanTable = async () => {
 }
 
 scanTable()
-.then((rows) => {
-    console.log('done')
+.then((results) => {
+  fs.writeFileSync(tableName+'_'+new Date().toISOString()+'.json', JSON.stringify(results))
+  console.log('done')
 })
