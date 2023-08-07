@@ -10,7 +10,7 @@ function awsClientCfg( envName, profileName, roleArn ) {
     return { 
       region: "eu-south-1", 
       credentials: fromIni({ 
-        profile: `sso_pn-confinfo-${envName}`,
+        profile: `sso_pn-core-${envName}`,
       })
     }
   }else{
@@ -120,7 +120,7 @@ class AwsClientsWrapper {
 
     const domainListCommand = new GetDomainNamesCommand( { limit: 50 } );
     const domainsListResponse = await this._apiGwClient.send( domainListCommand );
-
+    
     const allMappings = new CustomDomainsMappings();
 
     for( let domain of domainsListResponse.items ) {

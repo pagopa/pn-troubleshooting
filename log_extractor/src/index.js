@@ -3,6 +3,18 @@ const { CSVLogGenerator } = require("./libs/CSVLogGenerator");
 const { parseArgs } = require('util');
 const fs = require('fs')
 
+function _getAlarmType(alarm) {
+  if (alarm.toLowerCase().includes("b2b")){
+    return "b2b"
+  }
+  if (alarm.toLowerCase().includes("web")){
+    return "web"
+  }
+  else {
+    return "io"
+  }
+}
+
 async function main() {
 
   const args = [
@@ -59,7 +71,8 @@ async function main() {
   const csvLogger = new CSVLogGenerator();
 
   await awsClient.init();
-  if (alarm.includes("Fatal")){
+  if (alarm.includes("Fatal")) {
+    console.log("Fatal Alarm to handle!!!")
     var fromEpochMs = (new Date("08/04/23 15:00:00")).getTime();
     var toEpochMs = Date.now();
     let delay = 1000*60*60*1 // 2hours
@@ -69,60 +82,28 @@ async function main() {
     var results = await awsClient.getTraceIDsByFatalAlarm(logGroupNames, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \/(?i)FatAL\/")
     csvLogger.generateCSV( resultPath, envName, results )
   }
-  
-  /*var res = await awsClient._fetchAllApiGwMappings();*/
-
-  //console.log(res);
- /* const logExtractor = new TestCaseLogExtractor( awsClient );
-  const xmlReportParser = new XmlReportParser();
-  const htmlReportGenerator = new HtmlReportGenerator();
-  
-  try {
-    await awsClient.init();
-
-    
-    const testCases = xmlReportParser.parse( inputXmlReportPath );
-    const testCasesIds = testCases.listTestCasesIds();
-    console.log( "Loaded TestCases: ", testCasesIds );
-  
-    await htmlReportGenerator.generateReport( 
-        inputJsonReportPath, 
-        outputHtmlReportFolder + outputHtmlReportName, 
-        envName, 
-        testCasesIds
-      );
-
-    
-    const logsByTestCaseAndCall = await logExtractor.extractHttpCallLogs( testCases, console );
-    
-    await htmlReportGenerator.generateTestCasesLogsReports( 
-        outputHtmlReportFolder, 
-        logsByTestCaseAndCall 
-      );
+  else if (alarm.includes("ApiGwAlarm")) {
+    console.log("Api Gateway Alarm to handle!!!")
+    const type = _getAlarmType(alarm)
+    console.log(type)
+    var fromEpochMs = (new Date("08/05/23 15:47:00")).getTime();
+    var toEpochMs = Date.now();
+    let delay = 1000*60*60*1 // 2hours
+    if ((toEpochMs-fromEpochMs) > delay)
+      toEpochMs = fromEpochMs + delay
+    var res = await awsClient._fetchAllApiGwMappings();
+    console.log(JSON.stringify(res._mappings))
+    Object.keys(res._mappings).forEach(v => { 
+      res._mappings[v].forEach(e => {
+        //console.log(e.logGroups)
+        for (let lg of e.logGroups){
+          
+        }
+      });
+    });
+    //Object.keys(res._mappings).keys().map( el => console.log(res._mappings[el].logGroup ));
   }
-  catch( error ) {
-    console.error( error );
-  }
-*/
+  
 }
 
-async function writeResults(result){
-  const folder = 'result/fatal/'+new Date().toISOString()
-
-  const csvContent = [];
-  csvContent.push(Object.keys(result[0]).join(',')); // Intestazione
-
-  result.forEach((item) => {
-      const values = Object.values(item).map(value => `"${value}"`);
-      csvContent.push(values.join(','));
-  });
-
-  // Convertire il contenuto CSV in una stringa
-  const csvString = csvContent.join('\n');
-
-  // Scrivere la stringa CSV in un file
-  fs.writeFileSync('output.csv', csvString, 'utf-8');
-
-  console.log('File CSV creato con successo.');
-}
 main();
