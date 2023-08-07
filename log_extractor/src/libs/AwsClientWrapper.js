@@ -10,7 +10,7 @@ function awsClientCfg( envName, profileName, roleArn ) {
     return { 
       region: "eu-south-1", 
       credentials: fromIni({ 
-        profile: `sso_pn-core-${envName}`,
+        profile: `sso_pn-confinfo-${envName}`,
       })
     }
   }else{
@@ -293,17 +293,23 @@ class AwsClientsWrapper {
       }
     }
     var res = this._remapLogQueryResults( logs );
+    console.log(res)
     var trace_ids = res.map( el => el.trace_id );
-    return this._getLogsByTraceIds(fromEpochMs, toEpochMs, trace_ids);
+    if (trace_ids.length > 0)
+      return this._getLogsByTraceIds(logGroupNames, fromEpochMs, toEpochMs, trace_ids);
+    return []
   }
    
   
-  async _getLogsByTraceIds(fromEpochMs, toEpochMs, traceIds) {
+  async _getLogsByTraceIds(logGroupNames,fromEpochMs, toEpochMs, traceIds) {
     let queryString = "fields @timestamp, @log, message | filter "
-    traceIds.map( el => queryString = queryString + "@message like \"" + el +"\" or " );
+    traceIds.map( el => queryString = queryString + "@message like \"" + el.replace("Root=", "") +"\" or " );
     queryString = queryString.substring(0, queryString.length - 3) + " | sort @timestamp desc"
+    console.log(logGroupNames instanceof Array)
+    console.log(this._ecsLogGroupsNames instanceof Array)
+    const totalLogGroups = logGroupNames.concat(this._ecsLogGroupsNames)
     let query = {
-      logGroupNames: this._ecsLogGroupsNames, 
+      logGroupNames: totalLogGroups, 
       queryString, 
       startTime: fromEpochMs, 
       endTime: toEpochMs

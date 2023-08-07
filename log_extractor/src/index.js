@@ -1,31 +1,36 @@
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const { CSVLogGenerator } = require("./libs/CSVLogGenerator");
 const { parseArgs } = require('util');
-const fs = require('fs')
+const fs = require('fs');
 
-function _getAlarmType(alarm) {
+function _getAlarmMicroserviceType(alarm) {
   if (alarm.toLowerCase().includes("b2b")){
-    return "b2b"
+    return alarm.toLowerCase().split("-b2b-")[0].substring(3) + "_b2b"
   }
   if (alarm.toLowerCase().includes("web")){
-    return "web"
+    return alarm.toLowerCase().split("-web-")[0].substring(3) + "_web"
   }
   else {
-    return "io"
+    return alarm.toLowerCase().split("-io-")[0].substring(3) + "_io"
   }
 }
+
+function _prepareDate(start) {
+  return (new Date(start.split("/")[1] + "/" + start.split("/")[0] + "/" + start.split("/")[2])).getTime();
+} 
 
 async function main() {
 
   const args = [
     { name: "envName", mandatory: true },
     { name: "alarm", mandatory: true },
+    { name: "start", mandatory: true },
     { name: "traceId", mandatory: false },
     { name: "profileName", mandatory: false },
     { name: "roleArn", mandatory: false }
   ]
   const values = {
-    values: { envName, traceId, alarm, profileName, roleArn },
+    values: { envName, traceId, start, alarm, profileName, roleArn },
   } = parseArgs({
     options: {
       envName: {
@@ -35,6 +40,11 @@ async function main() {
       alarm: {
         type: "string",
         short: "a",
+        default: undefined
+      },
+      start: {
+        type: "string",
+        short: "d",
         default: undefined
       },
       traceId: {
@@ -71,37 +81,53 @@ async function main() {
   const csvLogger = new CSVLogGenerator();
 
   await awsClient.init();
+  var results = [];
+
+  //PREPARE INTERVAL
+  const fromEpochMs = _prepareDate(start)
+  console.log(fromEpochMs)
+  var toEpochMs = Date.now();
+  console.log(toEpochMs)
+  const delay = 1000*60*30 // 30m
+  console.log(fromEpochMs + "-" + toEpochMs + "= " + (toEpochMs-fromEpochMs))
+  /*if ((toEpochMs-fromEpochMs) > delay)
+    toEpochMs = fromEpochMs + delay
+  console.log(toEpochMs)*/
+  //GETTING LOG GROUPS
+  const logGroups = await awsClient._fetchAllApiGwMappings();
+
   if (alarm.includes("Fatal")) {
     console.log("Fatal Alarm to handle!!!")
-    var fromEpochMs = (new Date("08/04/23 15:00:00")).getTime();
-    var toEpochMs = Date.now();
-    let delay = 1000*60*60*1 // 2hours
-    /*if ((toEpochMs-fromEpochMs) > delay)
-      toEpochMs = fromEpochMs + delay*/
-    logGroupNames = ['/aws/ecs/pn-external-channel']
-    var results = await awsClient.getTraceIDsByFatalAlarm(logGroupNames, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \/(?i)FatAL\/")
-    csvLogger.generateCSV( resultPath, envName, results )
+    const ms = (alarm.replace("-ErrorFatalLogs-Alarm", "")).replace("oncall-","")
+    const resLogGroups = ["/aws/ecs/"+ms]
+    console.log(resLogGroups)
+    results = await awsClient.getTraceIDsByFatalAlarm(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \/(?i)FatAL\/")
   }
   else if (alarm.includes("ApiGwAlarm")) {
     console.log("Api Gateway Alarm to handle!!!")
-    const type = _getAlarmType(alarm)
-    console.log(type)
-    var fromEpochMs = (new Date("08/05/23 15:47:00")).getTime();
-    var toEpochMs = Date.now();
-    let delay = 1000*60*60*1 // 2hours
-    if ((toEpochMs-fromEpochMs) > delay)
-      toEpochMs = fromEpochMs + delay
-    var res = await awsClient._fetchAllApiGwMappings();
-    console.log(JSON.stringify(res._mappings))
-    Object.keys(res._mappings).forEach(v => { 
-      res._mappings[v].forEach(e => {
-        //console.log(e.logGroups)
-        for (let lg of e.logGroups){
-          
+    var resLogGroups = []
+    let ms_type = _getAlarmMicroserviceType(alarm).split("_")
+    const ms = ms_type[0]
+    const type = ms_type[1]
+    console.log("PIPPO"  + JSON.stringify(logGroups._mappings))
+    Object.keys(logGroups._mappings).forEach(v => { 
+      logGroups._mappings[v].forEach(e => {
+        for (let lg of e.logGroups) {
+          if ((lg.includes(ms) && lg.toLowerCase().includes(type)) ||  e.path.includes(ms) ) {
+            resLogGroups.push(lg)
+          }
         }
-      });
+        });
     });
-    //Object.keys(res._mappings).keys().map( el => console.log(res._mappings[el].logGroup ));
+    console.log(resLogGroups)
+    results = await awsClient.getTraceIDsByFatalAlarm(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by xrayTraceId as trace_id | filter status >= 404")
+  }
+
+  if (results.length > 0) {
+    csvLogger.generateCSV( resultPath, envName, results )
+  }
+  else {
+    console.log("Logs not found")
   }
   
 }
