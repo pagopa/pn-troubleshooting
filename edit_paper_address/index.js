@@ -322,7 +322,7 @@ async function run(){
 
     // optionally, update
     if (update) {
-        console.log("Sto modificando le tabelle: pn-PaperRequestDelivery, pn-PaperAddress" )
+        console.log("I'm editing the following tables: pn-PaperRequestDelivery, pn-PaperAddress" )
         await putItemInTable('pn-PaperRequestDelivery', updatedPaperRequestDelivery)
         await putItemInTable('pn-PaperAddress', updatePaperReceiverAddress)
     }

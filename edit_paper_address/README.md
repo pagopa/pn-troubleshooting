@@ -40,6 +40,7 @@ Lo script genera una cartella in `edits/{request_id}_{yyyy-MM-dd'T'HH:mm:ss. SSS
 - **updatedAddress.json**: indirizzo aggiornato secondo gli input in fase di esecuzione
 - **updatedEncryptedAddress.json**: valori crittografati dell'indirizzo aggiornato
 - **updatedAddressHash.json**: hash dell'indirizzo aggiornato
-- **paperAddress.json**: entita pn-PaperAddress aggiornata con i valori codificati ed in formato raw DynamoDB
+- **paperAddress.json**: entita pn-PaperAddress precedente all'aggiornamento in formato raw DynamoDB
+- **updatedPaperAddress.json**: entita pn-PaperAddress aggiornata con i valori codificati ed in formato raw DynamoDB
 - **paperRequestDelivery.json**: entità pn-PaperRequestDelivery con la property `addressHash` aggiornata ed in formato raw DynamoDB
 - **addressDiff.diff**: diff tra originalAddress.json e updatedAddress.json
