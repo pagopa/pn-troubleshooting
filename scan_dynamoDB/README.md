@@ -26,3 +26,8 @@ node scan_dynamo.js --awsProfile <aws-profile> --tableName <dynamodb-table>
 Dove:
 - `<aws-profile>` è il profilo dell'account AWS dell'ambiente di riferimento.
 - `<dynamodb-table>` é la tabella sulla quale si intende effettuare una scan.
+
+## Output
+Lo script genera un file in formato JSON `{table_name}_{yyyy-MM-dd'T'HH:mm:ss. SSSXXX}.json` con il risultato ottenuto dalla Scan eseguita.
+
+

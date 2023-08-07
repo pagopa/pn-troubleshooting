@@ -6,7 +6,7 @@
 */
 
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { GetCommand, QueryCommand, DynamoDBDocumentClient } = require("@aws-sdk/lib-dynamodb");
+const { GetCommand, PutCommand, DynamoDBDocumentClient } = require("@aws-sdk/lib-dynamodb");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const prompt = require('prompt-sync')({sigint: true});
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
@@ -18,9 +18,14 @@ const { parseArgs } = require('util');
 const fs = require('fs')
 const jsonDiff = require('json-diff');
 
-const args = ["awsCoreProfile", "envType", "requestId"]
+const args = [
+    { name: "awsCoreProfile", mandatory: true },
+    { name: "envType", mandatory: true },
+    { name: "requestId", mandatory: true },
+    { name: "update", mandatory: false }
+]
 const values = {
-  values: { awsCoreProfile, envType, requestId },
+  values: { awsCoreProfile, envType, requestId, update },
 } = parseArgs({
   options: {
     awsCoreProfile: {
@@ -34,14 +39,19 @@ const values = {
     requestId: {
         type: "string",
         short: "i"
-      }
+    },
+    update: {
+        type: "boolean",
+        default: false,
+        short: "w"
+    }
   },
 });
 
 args.forEach(k => {
-    if(!values.values[k]) {
-      console.log("Parameter '" + k + "' is not defined")
-      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id>")
+    if (k.mandatory && !values.values[k.name]) {
+      console.log("Parameter '" + k.name + "' is not defined")
+      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id> [--update]")
       process.exit(1)
     }
   });
@@ -49,6 +59,7 @@ args.forEach(k => {
   console.log("Using AWS Core profile: "+ awsCoreProfile)
   console.log("Using Env Type: "+ envType)
   console.log("Using Rquest ID: "+ requestId)
+  console.log("Using Write Operation on DynamoDB : "+ update)
 
 
 const coreCredentials = fromSSO({ profile: awsCoreProfile })();
@@ -239,11 +250,12 @@ function getAddressHash(addressData){
     return fullHash
 }
 
-async function writeResults(paperAddress, decodedAddressData, newAddressData, encodedNewAddressData, paperRequestDelivery, updatedPaperRequestDelivery){
+async function writeResults(paperAddress, updatedPaperAddress, decodedAddressData, newAddressData, encodedNewAddressData, paperRequestDelivery, updatedPaperRequestDelivery){
     const folder = 'edits/'+requestId+'_'+new Date().toISOString()
 
     fs.mkdirSync(folder, { recursive: true })
     fs.writeFileSync(folder+'/paperAddress.json', JSON.stringify(marshall(paperAddress), null, 4))
+    fs.writeFileSync(folder+'/updatedPaperAddress.json', JSON.stringify(marshall(updatedPaperAddress), null, 4))
     fs.writeFileSync(folder+'/originalAddress.json', JSON.stringify(decodedAddressData, null, 4))
     fs.writeFileSync(folder+'/updatedAddress.json', JSON.stringify(newAddressData, null, 4))
     fs.writeFileSync(folder+'/updatedEncryptedAddress.json', JSON.stringify(encodedNewAddressData, null, 4))
@@ -253,6 +265,17 @@ async function writeResults(paperAddress, decodedAddressData, newAddressData, en
     fs.writeFileSync(folder+'/addressDiff.diff', jsonDiff.diffString(decodedAddressData, newAddressData, { full: true }))
 
     return folder
+}
+
+
+async function putItemInTable(tableName, item){
+    const client = getClientByTable(tableName)
+    const command = new PutCommand({
+        TableName: tableName,
+        Item: item
+    });
+    const res = await client.send(command);
+    return res
 }
 
 async function run(){
@@ -282,7 +305,7 @@ async function run(){
     const encodedNewAddressData = await getEncodedAddressData(keyArn, addressDataDiff)
     console.log('encoded new address data', encodedNewAddressData)
     // copy new encoded values to original paper address
-    Object.assign(paperReceiverAddress, encodedNewAddressData)
+    const updatePaperReceiverAddress = Object.assign({}, paperReceiverAddress, encodedNewAddressData)
 
     const paperRequestDelivery = await getPaperRequestDelivery(requestId)
     console.log('paper request delivery', paperRequestDelivery)
@@ -293,10 +316,18 @@ async function run(){
     const updatedPaperRequestDelivery = Object.assign({}, paperRequestDelivery)
     updatedPaperRequestDelivery.addressHash = updatedAddressHash
 
-    const folder = await writeResults(paperReceiverAddress, decodedAddressData, newAddressData, encodedNewAddressData, paperRequestDelivery, updatedPaperRequestDelivery)
+    const folder = await writeResults(paperReceiverAddress, updatePaperReceiverAddress, decodedAddressData, newAddressData, encodedNewAddressData, paperRequestDelivery, updatedPaperRequestDelivery)
 
     console.log('Results available in '+folder+' folder')
+
+    // optionally, update
+    if (update) {
+        console.log("I'm editing the following tables: pn-PaperRequestDelivery, pn-PaperAddress" )
+        await putItemInTable('pn-PaperRequestDelivery', updatedPaperRequestDelivery)
+        await putItemInTable('pn-PaperAddress', updatePaperReceiverAddress)
+    }
 }
+    
 
 run()
 .then((d) => {
