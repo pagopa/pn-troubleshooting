@@ -245,6 +245,87 @@ class AwsClientsWrapper {
     return fullQueryResult;
   }
   
+  async executeLogInsightQuery( logGroupNames, fromEpochMs, toEpochMs, queryString ) {
+    const scheduleQueryCommand = new StartQueryCommand({ 
+          logGroupNames, queryString,
+          startTime: fromEpochMs, 
+          endTime: toEpochMs 
+        });
+    
+    const queryScheduleResponse = await this._cloudWatchClient.send( scheduleQueryCommand );
+    let logs = null;
+    
+    while( !logs ) {
+      await sleep( 1 * 1000 )
+      try {
+        logs = await this._fetchQueryResult( queryScheduleResponse.queryId );
+      }
+      catch( error ) {
+        console.log( error );
+        await sleep( 20 * 1000 );
+      }
+    }
+    
+    return this._remapLogQueryResults( logs );
+  }
+        
+  async getTraceIDsByFatalAlarm(logGroupNames, fromEpochMs, toEpochMs, queryString) {
+    let query = {
+      logGroupNames, 
+      queryString, 
+      startTime: fromEpochMs, 
+      endTime: toEpochMs
+    }
+     
+    const scheduleQueryCommand = new StartQueryCommand(query);
+
+    const queryScheduleResponse = await this._cloudWatchClient.send( scheduleQueryCommand );
+    let logs = null;
+
+    while( !logs ) {
+      await sleep( 1 * 1000 )
+      try {
+        logs = await this._fetchQueryResult( queryScheduleResponse.queryId );
+      }
+      catch( error ) {
+        console.log( error );
+        await sleep( 20 * 1000 );
+      }
+    }
+    var res = this._remapLogQueryResults( logs );
+    var trace_ids = res.map( el => el.trace_id );
+    return this._getLogsByTraceIds(fromEpochMs, toEpochMs, trace_ids);
+  }
+   
+  
+  async _getLogsByTraceIds(fromEpochMs, toEpochMs, traceIds) {
+    let queryString = "fields @timestamp, @log, message | filter "
+    traceIds.map( el => queryString = queryString + "@message like \"" + el +"\" or " );
+    queryString = queryString.substring(0, queryString.length - 3) + " | sort @timestamp desc"
+    let query = {
+      logGroupNames: this._ecsLogGroupsNames, 
+      queryString, 
+      startTime: fromEpochMs, 
+      endTime: toEpochMs
+    }
+     
+    const scheduleQueryCommand = new StartQueryCommand(query);
+
+    const queryScheduleResponse = await this._cloudWatchClient.send( scheduleQueryCommand );
+    let logs = null;
+
+    while( !logs ) {
+      await sleep( 1 * 1000 )
+      try {
+        logs = await this._fetchQueryResult( queryScheduleResponse.queryId );
+      }
+      catch( error ) {
+        console.log( error );
+        await sleep( 20 * 1000 );
+      }
+    }
+    return this._remapLogQueryResults( logs );
+  }
 }
 
 

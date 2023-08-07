@@ -1,8 +1,7 @@
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
-const { XmlReportParser } = require("./libs/XmlReportParser");
-const { HtmlReportGenerator } = require("./libs/HtmlReportGenerator");
-const { TestCaseLogExtractor } = require("./libs/TestCaseLogExtractor");
+const { CSVLogGenerator } = require("./libs/CSVLogGenerator");
 const { parseArgs } = require('util');
+const fs = require('fs')
 
 async function main() {
 
@@ -54,27 +53,21 @@ async function main() {
       }
     });
 
-  /*console.log('PARAM{envName: '+ envName +', profileName: '+profileName+', roleArn: '+roleArn);*/
   
-  const inputXmlReportPath = '../../target/surefire-reports/TEST-it.pagopa.pn.cucumber.CucumberB2BTest.xml';
-  const inputJsonReportPath = '../../target/cucumber-report.json';
-
-  const outputHtmlReportFolder = '../../target/surefire-reports/';
-  const outputHtmlReportName = 'TEST-it.pagopa.pn.cucumber.CucumberB2BTest.html';
-
-
-
+  const resultPath = 'results';
   const awsClient = new AwsClientsWrapper( envName, profileName, roleArn);
+  const csvLogger = new CSVLogGenerator();
 
+  await awsClient.init();
   if (alarm.includes("Fatal")){
-    var fromEpochMs = (new Date("08/03/23 09:15:00")).getTime();
+    var fromEpochMs = (new Date("08/04/23 15:00:00")).getTime();
     var toEpochMs = Date.now();
-    console.log('PIPPO ' + fromEpochMs + " " + toEpochMs);
+    let delay = 1000*60*60*1 // 2hours
+    /*if ((toEpochMs-fromEpochMs) > delay)
+      toEpochMs = fromEpochMs + delay*/
     logGroupNames = ['/aws/ecs/pn-external-channel']
-    var res = await awsClient.executeLogInsightQuery( logGroupNames, fromEpochMs, toEpochMs, "FATAL" ) 
-    res.forEach(element => {
-      console.log(element.AWS-XRAY-TRACE-ID)
-    });
+    var results = await awsClient.getTraceIDsByFatalAlarm(logGroupNames, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \/(?i)FatAL\/")
+    csvLogger.generateCSV( resultPath, envName, results )
   }
   
   /*var res = await awsClient._fetchAllApiGwMappings();*/
@@ -113,4 +106,23 @@ async function main() {
 */
 }
 
+async function writeResults(result){
+  const folder = 'result/fatal/'+new Date().toISOString()
+
+  const csvContent = [];
+  csvContent.push(Object.keys(result[0]).join(',')); // Intestazione
+
+  result.forEach((item) => {
+      const values = Object.values(item).map(value => `"${value}"`);
+      csvContent.push(values.join(','));
+  });
+
+  // Convertire il contenuto CSV in una stringa
+  const csvString = csvContent.join('\n');
+
+  // Scrivere la stringa CSV in un file
+  fs.writeFileSync('output.csv', csvString, 'utf-8');
+
+  console.log('File CSV creato con successo.');
+}
 main();
