@@ -4,6 +4,15 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Rimozioni specifiche del progetto
+bi_or_not_bi/rstudio-server/workspace/data
+bi_or_not_bi/rstudio-server/workspace/derby.log
+bi_or_not_bi/rstudio-server/workspace/.env
+bi_or_not_bi/rstudio-server/.env
+
+### Rstudio ###
+.Rproj.user
+
 ### STS ###
 .apt_generated
 .classpath
