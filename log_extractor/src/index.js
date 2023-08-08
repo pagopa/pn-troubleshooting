@@ -85,23 +85,19 @@ async function main() {
 
   //PREPARE INTERVAL
   const fromEpochMs = _prepareDate(start)
-  console.log(fromEpochMs)
   var toEpochMs = Date.now();
-  console.log(toEpochMs)
   const delay = 1000*60*30 // 30m
-  console.log(fromEpochMs + "-" + toEpochMs + "= " + (toEpochMs-fromEpochMs))
-  /*if ((toEpochMs-fromEpochMs) > delay)
+  if ((toEpochMs-fromEpochMs) > delay)
     toEpochMs = fromEpochMs + delay
-  console.log(toEpochMs)*/
   //GETTING LOG GROUPS
   const logGroups = await awsClient._fetchAllApiGwMappings();
-
+  console.log(awsClient._ecsLogGroupsNames)
+  
   if (alarm.includes("Fatal")) {
     console.log("Fatal Alarm to handle!!!")
     const ms = (alarm.replace("-ErrorFatalLogs-Alarm", "")).replace("oncall-","")
     const resLogGroups = ["/aws/ecs/"+ms]
-    console.log(resLogGroups)
-    results = await awsClient.getTraceIDsByFatalAlarm(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \/(?i)FatAL\/")
+    results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \/(?i)FatAL\/")
   }
   else if (alarm.includes("ApiGwAlarm")) {
     console.log("Api Gateway Alarm to handle!!!")
@@ -109,7 +105,6 @@ async function main() {
     let ms_type = _getAlarmMicroserviceType(alarm).split("_")
     const ms = ms_type[0]
     const type = ms_type[1]
-    console.log("PIPPO"  + JSON.stringify(logGroups._mappings))
     Object.keys(logGroups._mappings).forEach(v => { 
       logGroups._mappings[v].forEach(e => {
         for (let lg of e.logGroups) {
@@ -120,7 +115,7 @@ async function main() {
         });
     });
     console.log(resLogGroups)
-    results = await awsClient.getTraceIDsByFatalAlarm(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by xrayTraceId as trace_id | filter status >= 404")
+    results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by xrayTraceId as trace_id | filter status >= 404")
   }
 
   if (results.length > 0) {

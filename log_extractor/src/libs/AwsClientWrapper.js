@@ -4,13 +4,13 @@ const { STSClient, AssumeRoleCommand } = require("@aws-sdk/client-sts");
 const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, DescribeLogGroupsCommand } = require("@aws-sdk/client-cloudwatch-logs");
 const { QueryCommand, DynamoDBDocumentClient, PutCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-function awsClientCfg( envName, profileName, roleArn ) {
+function awsClientCfg( profile, profileName, roleArn ) {
   const self = this;
   if(!profileName){
     return { 
       region: "eu-south-1", 
       credentials: fromIni({ 
-        profile: `sso_pn-confinfo-${envName}`,
+        profile: profile,
       })
     }
   }else{
@@ -42,7 +42,6 @@ async function sleep( ms ) {
     setTimeout( () => accept(null) , ms );
   })
 }
-
 
 
 class CustomDomainsMappings {
@@ -98,14 +97,42 @@ class CustomDomainsMappings {
 class AwsClientsWrapper {
 
   constructor( envName, profileName, roleArn ) {
-    this._cloudWatchClient = new CloudWatchLogsClient( awsClientCfg( envName, profileName, roleArn ));
+    /*this._cloudWatchClient = new CloudWatchLogsClient( awsClientCfg( envName, profileName, roleArn ));
     this._apiGwClient = new APIGatewayClient( awsClientCfg( envName, profileName, roleArn ));
-    this._dynamoClient = new DynamoDBClient( awsClientCfg( envName, profileName, roleArn ));
+    this._dynamoClient = new DynamoDBClient( awsClientCfg( envName, profileName, roleArn ));*/
+    const ssoCoreProfile = `sso_pn-core-${envName}`
+    const ssoConfinfoProfile = `sso_pn-confinfo-${envName}`
+    this._cloudWatchClient = {
+      core: new CloudWatchLogsClient( awsClientCfg( ssoCoreProfile, profileName, roleArn )),
+      confinfo: new CloudWatchLogsClient( awsClientCfg( ssoConfinfoProfile, profileName, roleArn ))
+    } 
+    this._apiGwClient = new APIGatewayClient( awsClientCfg( ssoCoreProfile, profileName, roleArn ));
+    this._dynamoClient = {
+      core: new DynamoDBClient( awsClientCfg( ssoCoreProfile, profileName, roleArn )),
+      confinfo: new DynamoDBClient( awsClientCfg( ssoConfinfoProfile, profileName, roleArn ))
+    } ;
   }
 
   async init() {
     this._apiGwMappings = await this._fetchAllApiGwMappings();
     this._ecsLogGroupsNames = await this._fetchEcsLogGroups();
+  }
+
+
+  _getProfileByECS(logGroupName) {
+    return this._ecsLogGroupsNames.core.includes(logGroupName) ? "core" : "confinfo"
+  }
+
+
+  async _scheduleQueryAccount(profile, logGroupNames, queryString, fromEpochMs, toEpochMs) {
+    let query = {
+      logGroupNames: logGroupNames, 
+      queryString, 
+      startTime: fromEpochMs, 
+      endTime: toEpochMs
+    }
+    const scheduleQueryCoreCommand = new StartQueryCommand(query);
+    return await this._cloudWatchClient[profile].send( scheduleQueryCoreCommand ); 
   }
 
   /**
@@ -154,8 +181,14 @@ class AwsClientsWrapper {
     const logGroupNamePrefix = '/aws/ecs/';
     const listEcsLogGroupsCommand = new DescribeLogGroupsCommand({ logGroupNamePrefix, limit: 50 });
     
-    const ecsLogGroups = await this._cloudWatchClient.send( listEcsLogGroupsCommand );
-    const ecsLogGroupsNames = ecsLogGroups.logGroups.map( el => el.logGroupName );
+    const ecsLogGroups = {
+      core: await this._cloudWatchClient.core.send( listEcsLogGroupsCommand ),
+      confinfo: await this._cloudWatchClient.confinfo.send( listEcsLogGroupsCommand )
+    }
+    const ecsLogGroupsNames = {
+      core: ecsLogGroups.core.logGroups.map( el => el.logGroupName ),
+      confinfo: ecsLogGroups.confinfo.logGroups.map( el => el.logGroupName )
+    }
     return ecsLogGroupsNames;
   }
 
@@ -168,20 +201,20 @@ class AwsClientsWrapper {
    * @param {LogInsight query} queryString 
    * @returns 
    */
-  async executeLogInsightQuery( logGroupNames, fromEpochMs, toEpochMs, queryString ) {
+  async executeLogInsightQuery( profile, logGroupNames, fromEpochMs, toEpochMs, queryString ) {
     const scheduleQueryCommand = new StartQueryCommand({ 
           logGroupNames, queryString,
           startTime: fromEpochMs, 
           endTime: toEpochMs 
         });
     
-    const queryScheduleResponse = await this._cloudWatchClient.send( scheduleQueryCommand );
+    const queryScheduleResponse = await this._cloudWatchClient[profile].send( scheduleQueryCommand );
     let logs = null;
     
     while( !logs ) {
       await sleep( 1 * 1000 )
       try {
-        logs = await this._fetchQueryResult( queryScheduleResponse.queryId );
+        logs = await this._fetchQueryResult( profile, queryScheduleResponse.queryId );
       }
       catch( error ) {
         console.log( error );
@@ -193,9 +226,10 @@ class AwsClientsWrapper {
   }
 
   // FIXME: same result for cancelled query and empty result set
-  async _fetchQueryResult( queryId ) {
+  async _fetchQueryResult( profile, queryId ) {
     const queryPollCommand = new GetQueryResultsCommand({ queryId });
-    const queryPollResponse = await this._cloudWatchClient.send( queryPollCommand );
+    var queryPollResponse;
+    queryPollResponse = await this._cloudWatchClient[profile].send( queryPollCommand );
 
     let logs = null;
     if( ! ["Scheduled", "Running"].includes( queryPollResponse.status )) {
@@ -236,7 +270,7 @@ class AwsClientsWrapper {
                     + " or (@message =~ \"" + requestId + "\") )";
     }
     
-    const allLogGroupsNames = [ ... apiGwLogGroups, ... this._ecsLogGroupsNames ]
+    const allLogGroupsNames = [ ... apiGwLogGroups, ... this._ecsLogGroupsNames.core, ... this._ecsLogGroupsNames.confinfo ]
     const fullQueryResult = await this.executeLogInsightQuery( 
       allLogGroupsNames, approximateEpochMs.start, approximateEpochMs.end, 
       `fields @timestamp, @log, @message | sort @timestamp asc | filter ${fullQueryFilterClause}`
@@ -244,92 +278,81 @@ class AwsClientsWrapper {
   
     return fullQueryResult;
   }
-  
-  async executeLogInsightQuery( logGroupNames, fromEpochMs, toEpochMs, queryString ) {
-    const scheduleQueryCommand = new StartQueryCommand({ 
-          logGroupNames, queryString,
-          startTime: fromEpochMs, 
-          endTime: toEpochMs 
-        });
-    
-    const queryScheduleResponse = await this._cloudWatchClient.send( scheduleQueryCommand );
-    let logs = null;
-    
-    while( !logs ) {
-      await sleep( 1 * 1000 )
-      try {
-        logs = await this._fetchQueryResult( queryScheduleResponse.queryId );
-      }
-      catch( error ) {
-        console.log( error );
-        await sleep( 20 * 1000 );
-      }
-    }
-    
-    return this._remapLogQueryResults( logs );
-  }
         
-  async getTraceIDsByFatalAlarm(logGroupNames, fromEpochMs, toEpochMs, queryString) {
+  async getTraceIDsByQuery(logGroupNames, fromEpochMs, toEpochMs, queryString) {
     let query = {
       logGroupNames, 
       queryString, 
       startTime: fromEpochMs, 
       endTime: toEpochMs
     }
-     
+    console.log(query)
     const scheduleQueryCommand = new StartQueryCommand(query);
-
-    const queryScheduleResponse = await this._cloudWatchClient.send( scheduleQueryCommand );
+    var profile = "core"
+    if(logGroupNames[0].includes("ecs")){
+      profile = this._getProfileByECS(logGroupNames[0]);
+    }
+    const queryScheduleResponse = await this._cloudWatchClient[profile].send( scheduleQueryCommand );
     let logs = null;
-
+    console.log(queryScheduleResponse.queryId)
     while( !logs ) {
       await sleep( 1 * 1000 )
       try {
-        logs = await this._fetchQueryResult( queryScheduleResponse.queryId );
+        logs = await this._fetchQueryResult( profile , queryScheduleResponse.queryId );
       }
       catch( error ) {
         console.log( error );
         await sleep( 20 * 1000 );
       }
     }
+
     var res = this._remapLogQueryResults( logs );
     console.log(res)
     var trace_ids = res.map( el => el.trace_id );
     if (trace_ids.length > 0)
-      return this._getLogsByTraceIds(logGroupNames, fromEpochMs, toEpochMs, trace_ids);
+      return this._getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, trace_ids);
     return []
   }
    
   
-  async _getLogsByTraceIds(logGroupNames,fromEpochMs, toEpochMs, traceIds) {
-    let queryString = "fields @timestamp, @log, message | filter "
-    traceIds.map( el => queryString = queryString + "@message like \"" + el.replace("Root=", "") +"\" or " );
+  async _getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, traceIds) {
+    let queryString = "fields @timestamp, @log, @message "
+    //traceIds.map( el => queryString = queryString + "@message like \"" + el.replace("Root=", "") +"\" or " );
     queryString = queryString.substring(0, queryString.length - 3) + " | sort @timestamp desc"
-    console.log(logGroupNames instanceof Array)
-    console.log(this._ecsLogGroupsNames instanceof Array)
-    const totalLogGroups = logGroupNames.concat(this._ecsLogGroupsNames)
-    let query = {
-      logGroupNames: totalLogGroups, 
-      queryString, 
-      startTime: fromEpochMs, 
-      endTime: toEpochMs
+    
+    var profile = "core"
+    if(logGroupNames[0].includes("ecs")){
+      profile = this._getProfileByECS(logGroupNames[0]);
     }
-     
-    const scheduleQueryCommand = new StartQueryCommand(query);
+    const completeLogGroupsNames = logGroupNames.concat(this._ecsLogGroupsNames[profile]);
+    var query = {
+      "core": null,
+      "confinfo": null
+    }
+    if (profile == "core"){
+      query[profile] = await this._scheduleQueryAccount(profile, completeLogGroupsNames, queryString, fromEpochMs, toEpochMs)
+      query["confinfo"] = await this._scheduleQueryAccount("confinfo", this._ecsLogGroupsNames["confinfo"], queryString, fromEpochMs, toEpochMs)
+    }
+    else {
+      query[profile] = await this._scheduleQueryAccount(profile, completeLogGroupsNames, queryString, fromEpochMs, toEpochMs)
+      query["core"] = await this._scheduleQueryAccount("core", this._ecsLogGroupsNames["core"], queryString, fromEpochMs, toEpochMs)
+    }
+    
+    let coreLogs = null
+    let confinfoLogs = null
 
-    const queryScheduleResponse = await this._cloudWatchClient.send( scheduleQueryCommand );
-    let logs = null;
-
-    while( !logs ) {
+    while( !coreLogs || !confinfoLogs) {
       await sleep( 1 * 1000 )
       try {
-        logs = await this._fetchQueryResult( queryScheduleResponse.queryId );
+        coreLogs = await this._fetchQueryResult( "core", query["core"].queryId );
+        confinfoLogs = await this._fetchQueryResult( "confinfo", query["confinfo"].queryId );
       }
       catch( error ) {
         console.log( error );
         await sleep( 20 * 1000 );
       }
     }
+    const logs = coreLogs.concat(confinfoLogs);
     return this._remapLogQueryResults( logs );
   }
 }
