@@ -14,6 +14,7 @@ fi
 source ${SCRIPT_DIR}/.env
 
 echo "- Go to data directory"
+mkdir -p "${SCRIPT_DIR}/data"
 cd ${SCRIPT_DIR}/data
 
 echo "- List onboarded istitutions"
