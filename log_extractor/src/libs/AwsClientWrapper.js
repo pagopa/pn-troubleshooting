@@ -127,7 +127,7 @@ class AwsClientsWrapper {
 
 x
   _getProfileByECS(logGroupName) {
-    return this._ecsLogGroupsNames.core.has_key(logGroupName) ? "core" : "confinfo"
+    return this._ecsLogGroupsNames.core.includes(logGroupName) ? "core" : "confinfo"
   }
 
   _getProfileBySQS(sqsName) {
@@ -343,7 +343,15 @@ x
 
     var res = this._remapLogQueryResults( logs );
     console.log(res)
-    var trace_ids = res.map( el => el.trace_id );
+    var trace_ids = res.map( el => {
+      if(el.trace_id.split(";").length > 1) {
+        let t = el.trace_id.split("Root=")[1];
+        return t.substring(0, t.indexOf(";"))
+      }
+      else {
+        return el.replace("Root=", "")
+      }
+    })
     if (trace_ids.length > 0)
       return this._getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, trace_ids);
     return []
@@ -354,7 +362,7 @@ x
     let queryString = "fields @timestamp, @log, message | filter "
     traceIds.map( el => queryString = queryString + "@message like \"" + el.replace("Root=", "") +"\" or " );
     queryString = queryString.substring(0, queryString.length - 3) + " | sort @timestamp desc"
-    
+    console.log(queryString)
     var profile = "core"
     if(logGroupNames[0].includes("ecs")){
       profile = this._getProfileByECS(logGroupNames[0]);
@@ -388,7 +396,7 @@ x
       }
     }
     const logs = coreLogs.concat(confinfoLogs);
-    return this._remapLogQueryResults( logs );
+    return this._remapLogQueryResults( logs ).sort((a, b) => new Date(a['@timestamp']) - new Date(b['@timestamp']));
   }
 
   async getEventsByDLQ(queueName) {
