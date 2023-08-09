@@ -4,6 +4,8 @@ const { STSClient, AssumeRoleCommand } = require("@aws-sdk/client-sts");
 const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, DescribeLogGroupsCommand } = require("@aws-sdk/client-cloudwatch-logs");
 const { QueryCommand, DynamoDBDocumentClient, PutCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { SQSClient, ListQueuesCommand, ReceiveMessageCommand } = require("@aws-sdk/client-sqs");
+
 function awsClientCfg( profile, profileName, roleArn ) {
   const self = this;
   if(!profileName){
@@ -110,19 +112,27 @@ class AwsClientsWrapper {
     this._dynamoClient = {
       core: new DynamoDBClient( awsClientCfg( ssoCoreProfile, profileName, roleArn )),
       confinfo: new DynamoDBClient( awsClientCfg( ssoConfinfoProfile, profileName, roleArn ))
+    };
+    this._sqsClient = {
+      core: new SQSClient( awsClientCfg( ssoCoreProfile, profileName, roleArn )),
+      confinfo: new SQSClient( awsClientCfg( ssoConfinfoProfile, profileName, roleArn ))
     } ;
   }
 
   async init() {
     this._apiGwMappings = await this._fetchAllApiGwMappings();
     this._ecsLogGroupsNames = await this._fetchEcsLogGroups();
+    this._sqsNames = await this._fetchAllSQS();
   }
 
-
+x
   _getProfileByECS(logGroupName) {
-    return this._ecsLogGroupsNames.core.includes(logGroupName) ? "core" : "confinfo"
+    return this._ecsLogGroupsNames.core.has_key(logGroupName) ? "core" : "confinfo"
   }
 
+  _getProfileBySQS(sqsName) {
+    return sqsName in this._sqsNames.core ? "core" : "confinfo"
+  }
 
   async _scheduleQueryAccount(profile, logGroupNames, queryString, fromEpochMs, toEpochMs) {
     let query = {
@@ -172,6 +182,31 @@ class AwsClientsWrapper {
     }
     return allMappings;
   }
+
+  async _elabSqsNameUrl(profile){
+    const input = { // ListQueuesRequest
+      QueueNamePrefix: ""
+    };
+    const command = new ListQueuesCommand(input);
+    const res = await this._sqsClient[profile].send( command )
+    let sqs = {}
+    res.QueueUrls.forEach(value=> {
+      let key = value.substring(value.lastIndexOf("/") + 1)
+      sqs[key] = value
+    })
+    return sqs
+  }
+
+  async _fetchAllSQS() {
+    let sqsValue = {
+      core: [],
+      confinfo: []
+    }
+    sqsValue.core = await this._elabSqsNameUrl("core")
+    sqsValue.confinfo = await this._elabSqsNameUrl("confinfo")
+    return sqsValue
+  }
+
 
   /**
    * List all LogGroup that contains log of ECS microservices
@@ -316,8 +351,8 @@ class AwsClientsWrapper {
    
   
   async _getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, traceIds) {
-    let queryString = "fields @timestamp, @log, @message "
-    //traceIds.map( el => queryString = queryString + "@message like \"" + el.replace("Root=", "") +"\" or " );
+    let queryString = "fields @timestamp, @log, message | filter "
+    traceIds.map( el => queryString = queryString + "@message like \"" + el.replace("Root=", "") +"\" or " );
     queryString = queryString.substring(0, queryString.length - 3) + " | sort @timestamp desc"
     
     var profile = "core"
@@ -354,6 +389,22 @@ class AwsClientsWrapper {
     }
     const logs = coreLogs.concat(confinfoLogs);
     return this._remapLogQueryResults( logs );
+  }
+
+  async getEventsByDLQ(queueName) {
+    const profile = this._getProfileBySQS(queueName)
+    const queueUrl = this._sqsNames[profile][queueName]
+    const input = { // ReceiveMessageRequest
+      QueueUrl: queueUrl, // required
+      MaxNumberOfMessages: 10,
+      VisibilityTimeout: 15,
+      WaitTimeSeconds: 3
+    };
+    const command = new ReceiveMessageCommand(input);
+    const response = await this._sqsClient[profile].send(command);
+    const sampledMessage = response.Messages
+    console.log("There are " + response.Messages.length + " message(s) sampled")
+    return sampledMessage
   }
 }
 

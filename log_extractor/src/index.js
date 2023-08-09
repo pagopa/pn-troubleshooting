@@ -1,5 +1,5 @@
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
-const { CSVLogGenerator } = require("./libs/CSVLogGenerator");
+const { ReportGenerator } = require("./libs/ReportGenerator");
 const { parseArgs } = require('util');
 const fs = require('fs');
 
@@ -78,7 +78,7 @@ async function main() {
   
   const resultPath = 'results';
   const awsClient = new AwsClientsWrapper( envName, profileName, roleArn);
-  const csvLogger = new CSVLogGenerator();
+  const reportLogger = new ReportGenerator();
 
   await awsClient.init();
   var results = [];
@@ -89,24 +89,23 @@ async function main() {
   const delay = 1000*60*30 // 30m
   if ((toEpochMs-fromEpochMs) > delay)
     toEpochMs = fromEpochMs + delay
-  //GETTING LOG GROUPS
-  const logGroups = await awsClient._fetchAllApiGwMappings();
-  console.log(awsClient._ecsLogGroupsNames)
-  
+  var extension = null;
   if (alarm.includes("Fatal")) {
+    extension = "csv"
     console.log("Fatal Alarm to handle!!!")
     const ms = (alarm.replace("-ErrorFatalLogs-Alarm", "")).replace("oncall-","")
     const resLogGroups = ["/aws/ecs/"+ms]
     results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \/(?i)FatAL\/")
   }
   else if (alarm.includes("ApiGwAlarm")) {
+    extension = "csv"
     console.log("Api Gateway Alarm to handle!!!")
     var resLogGroups = []
     let ms_type = _getAlarmMicroserviceType(alarm).split("_")
     const ms = ms_type[0]
     const type = ms_type[1]
-    Object.keys(logGroups._mappings).forEach(v => { 
-      logGroups._mappings[v].forEach(e => {
+    Object.keys(awsClient._apiGwMappings._mappings).forEach(v => { 
+      awsClient._apiGwMappings._mappings[v].forEach(e => {
         for (let lg of e.logGroups) {
           if ((lg.includes(ms) && lg.toLowerCase().includes(type)) ||  e.path.includes(ms) ) {
             resLogGroups.push(lg)
@@ -114,15 +113,18 @@ async function main() {
         }
         });
     });
-    console.log(resLogGroups)
     results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by xrayTraceId as trace_id | filter status >= 404")
   }
-
-  if (results.length > 0) {
-    csvLogger.generateCSV( resultPath, envName, results )
+  else if (alarm.includes("DLQ-HasMessage")) {
+    extension = "json"
+    console.log("DLQ Message Alarm to handle!!!")
+    const queueName = alarm.replace("-HasMessage", "")
+    results = await awsClient.getEventsByDLQ(queueName)
   }
-  else {
-    console.log("Logs not found")
+  if (results.length > 0) {
+    reportLogger.generateReport( resultPath, envName, results, extension )
+  } else {
+    console.log("Logs and/or Events not found")
   }
   
 }
