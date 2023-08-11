@@ -28,6 +28,37 @@ FROM
 "))
 
 
+write.csv(enti, "data/enti.csv", row.names=FALSE)
+
+## Download apiKey
+# aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
+# dynamodb scan \
+# --table-name "pn-apiKey" \
+# --scan-filter '{"status":{"AttributeValueList":[ {"S":"ENABLED"} ],"ComparisonOperator": "EQ"}}' \
+# --attributes-to-get "id" "x-pagopa-pn-cx-id" "pdnd" \
+#   --max-items 50000 \
+#  | jq -r '.Items| .[] | tojson'
+
+prepare_json_strings_from_cdc( sc, "raw_apikey", "json_apikey", "file:///home/rstudio/workspace/data/apikey.jsons" )
+sdf_sql(sc, " 
+  create or replace temporary view apikey as 
+  SELECT 
+    get_json_object(json_string, '$.id.S') as id,
+    get_json_object(json_string, '$.x-pagopa-pn-cx-id.S') as paId,
+    get_json_object(json_string, '$.pdnd.BOOL') as pdnd
+  FROM
+    json_apikey
+")
+
+apikey = sdf_collect( sdf_sql(sc, "
+SELECT
+  *
+FROM
+  apikey
+"))
+
+
+write.csv(apikey, "data/apikey", row.names=FALSE)
 
 
 

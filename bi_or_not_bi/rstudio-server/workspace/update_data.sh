@@ -24,6 +24,15 @@ aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
     --max-items 100000 \
   | jq -r '.Items| .[] | tojson' > enti.jsons
 
+echo "- List enabled apikeys"
+aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
+  dynamodb scan \
+  --table-name "pn-apiKey" \
+  --scan-filter '{"status":{"AttributeValueList":[ {"S":"ENABLED"} ],"ComparisonOperator": "EQ"}}' \
+  --attributes-to-get "id" "x-pagopa-pn-cx-id" "pdnd" \
+  --max-items 50000 \
+  | jq -r '.Items| .[] | tojson' > apikey.jsons
+
 echo "- Download new CDC"
 aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
     s3 sync "s3://${LOG_BUCKET}/cdcTos3/" cdc
