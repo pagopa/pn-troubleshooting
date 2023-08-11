@@ -15,7 +15,8 @@ sdf_sql(sc, "
   create or replace temporary view enti as 
   SELECT 
     get_json_object(json_string, '$.id.S') as id,
-    get_json_object(json_string, '$.description.S') as desc
+    get_json_object(json_string, '$.description.S') as desc,
+    get_json_object(json_string, '$.ipaCode.S') as ipaCode
   FROM
     json_enti
 ")
