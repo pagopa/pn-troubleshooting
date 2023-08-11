@@ -10,6 +10,9 @@ function _getAlarmMicroserviceType(alarm) {
   else if (alarm.toLowerCase().includes("web")){
     return alarm.toLowerCase().split("-web-")[0].substring(3) + "_web"
   }
+  else if (alarm.toLowerCase().includes("be")){
+    return alarm.toLowerCase().split("-be-")[0].substring(3) + "_be"
+  }
   else {
     return alarm.toLowerCase().split("-io-")[0].substring(3) + "_io"
   }
@@ -20,7 +23,7 @@ function _prepareDate(start) {
 } 
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node ./src/index.js --envName <env-name>  --alarm|--key <alarm>|<key> [--start \"<start>\" --logGroups [<logGroups>]]"
+  const usage = "Usage: ./src/index.js --envName <env-name> --alarm|--input|--url <alarm>|<input>|<url> [--start \"<start>\" --logGroups [<logGroups>] --traceId <traceId> --limit <limit>]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -42,6 +45,10 @@ function _checkingParameters(args, values){
       })
     }
   })
+  if (Number(limit) > 100) {
+    console.log("Limit value must be below 100! Default value is 20")
+    process.exit(1)
+  }
 }
 
 async function main() {
@@ -49,62 +56,65 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "alarm", mandatory: false, subcommand: ["start"] },
-    { name: "key", mandatory: false, subcommand: ["logGroups", "start"]},
-    { name: "start", mandatory: false, subcommand: []},
+    { name: "input", mandatory: false, subcommand: ["logGroups"]},
+    { name: "url", mandatory: false, subcommand: ["traceId"]},
+    { name: "start", mandatory: true, subcommand: []},
     { name: "logGroups", mandatory: false, subcommand: []},
     { name: "profileName", mandatory: false, subcommand: []},
-    { name: "roleArn", mandatory: false, subcommand: []}
+    { name: "roleArn", mandatory: false, subcommand: []},
+    { name: "limit", mandatory: false, subcommand: []}
   ]
   const values = {
-    values: { envName, start, alarm, key, logGroups, profileName, roleArn },
+    values: { envName, start, alarm, input, logGroups, profileName, roleArn, limit, url, traceId },
   } = parseArgs({
     options: {
       envName: {
-        type: "string",
-        short: "e",
-        default: undefined
+        type: "string", short: "e", default: undefined
       },
-      alarm: {
-        type: "string",
-        short: "a",
-        default: undefined
+      alarm: { 
+        type: "string", short: "a", default: undefined
       },
       start: {
-        type: "string",
-        short: "d",
-        default: undefined
+        type: "string", short: "d", default: undefined
       },
-      key: {
-        type: "string",
-        short: "k",
-        default: undefined
+      input: {
+        type: "string", short: "k", default: undefined
       },
       logGroups: {
-        type: "string",
-        short: "l",
-        default: undefined
+        type: "string", short: "l", default: undefined
       },
       profileName: {
-        type: "string",
-        short: "p",
-        default: undefined
+        type: "string", short: "p", default: undefined
       },
       roleArn: {
-        type: "string",
-        short: "r",
-        default: undefined
+        type: "string", short: "r", default: undefined
+      },
+      limit: {
+        type: "string", short: "m", default: "20"
+      },
+      url: {
+        type: "string", short: "u", default: undefined
+      },
+      traceId: {
+        type: "string", short: "t", default: undefined
       }
     },
   });  
 
   _checkingParameters(args, values)
-  
+
   const resultPath = 'results';
   const awsClient = new AwsClientsWrapper( envName, profileName, roleArn);
   const reportLogger = new ReportGenerator();
 
+  if (Number(limit) > 100 ) {
+    var lim = 100;
+  }
+  else {
+    var lim = Number(limit)
+  } 
   await awsClient.init();
-  var results = [];
+  var results = null;
 
   //PREPARE INTERVAL
   const fromEpochMs = _prepareDate(start)
@@ -119,7 +129,7 @@ async function main() {
       console.log("Fatal Alarm to handle!!!")
       const ms = (alarm.replace("-ErrorFatalLogs-Alarm", "")).replace("oncall-","")
       const resLogGroups = ["/aws/ecs/"+ms]
-      results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \/(?i)FatAL\/")
+      results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \/(?i)FatAL\/", lim)
     }
     else if (alarm.includes("ApiGwAlarm")) {
       extension = "csv"
@@ -137,24 +147,40 @@ async function main() {
           }
           });
       });
-      results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by xrayTraceId as trace_id | filter status >= 404")
+      results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by xrayTraceId as trace_id | filter status >= 500", lim)
     }
     else if (alarm.includes("DLQ-HasMessage")) {
       extension = "json"
       console.log("DLQ Message Alarm to handle!!!")
       const queueName = alarm.replace("-HasMessage", "")
-      results = await awsClient.getEventsByDLQ(queueName)
+      results = await awsClient.getEventsByDLQ(queueName, lim)
     }
   }
-  else if (key) {
+  else if (input) {
     extension = "csv"
-    console.log("Key " + key + " value discovered. Finding in LogGroup " + logGroups.toString() + "!!!")
+    console.log("Input value " + input + " discovered. Finding in LogGroup " + logGroups.toString() + "!!!")
     var resLogGroups = []
     logGroups.split(",").forEach(e => resLogGroups.push(e))
-    console.log(resLogGroups )
-    results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \"" + key + "\"")
+    results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by trace_id | filter @message like \"" + input + "\"", lim)
   }
-  if (results.length > 0) {
+  else if (url) {
+    extension = "csv"
+    console.log("URL " + url + " discovered. Finding in related LogGroup!!!")
+    
+    //const domain = url.replace(/https:\/\//, "").replace(/\/.*/, "");
+    //console.log(domain)
+    /*var resLogGroups = []
+    console.log(awsClient._apiGwMappings._mappings[domain])
+    awsClient._apiGwMappings._mappings[domain].forEach(v => { 
+      resLogGroups = resLogGroups.concat(v.logGroups)
+    });*/
+    const resLogGroups = await awsClient._apiGwMappings.getApiGwLogGroups(url)
+    if (resLogGroups.length > 0){
+      results = await awsClient.getTraceIDsByQuery(resLogGroups, fromEpochMs, toEpochMs,  "stats count(*) by xrayTraceId as trace_id | filter @message like \"" + traceId + "\"", limit)
+    }
+    //var result = awsClient.fetchSynchronousLogs()
+  }
+  if (results) {
     reportLogger.generateReport( resultPath, envName, results, extension )
   } else {
     console.log("Logs and/or Events not found")

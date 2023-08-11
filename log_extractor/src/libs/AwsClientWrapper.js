@@ -63,7 +63,7 @@ class CustomDomainsMappings {
     domainMappings.push({ domain, path, apiId, logGroups });
   }
 
-  getApiGwLogGroups( httpMethod, url  ) {
+  getApiGwLogGroups( url ) {
     
     let domain = url.replace(/https:\/\//, "").replace(/\/.*/, "");
     let urlPath = url.replace(/https:\/\//, "").replace(/[^/]+\//, "");
@@ -89,7 +89,6 @@ class CustomDomainsMappings {
         }
       }
     }
-    console.log(matchingMapping)
     return matchingMapping ? matchingMapping.logGroups: []
     
   }
@@ -136,11 +135,12 @@ x
 
   async _scheduleQueryAccount(profile, logGroupNames, queryString, fromEpochMs, toEpochMs) {
     let query = {
-      logGroupNames: logGroupNames, 
+      logGroupNames: logGroupNames,
       queryString, 
       startTime: fromEpochMs, 
       endTime: toEpochMs
     }
+    console.log(query)
     const scheduleQueryCoreCommand = new StartQueryCommand(query);
     return await this._cloudWatchClient[profile].send( scheduleQueryCoreCommand ); 
   }
@@ -213,7 +213,7 @@ x
    * @returns a list of log-group names
    */
   async _fetchEcsLogGroups() {
-    const logGroupNamePrefix = '/aws/ecs/';
+    const logGroupNamePrefix = '/aws/ecs/pn';
     const listEcsLogGroupsCommand = new DescribeLogGroupsCommand({ logGroupNamePrefix, limit: 50 });
     
     const ecsLogGroups = {
@@ -237,6 +237,7 @@ x
    * @returns 
    */
   async executeLogInsightQuery( profile, logGroupNames, fromEpochMs, toEpochMs, queryString ) {
+
     const scheduleQueryCommand = new StartQueryCommand({ 
           logGroupNames, queryString,
           startTime: fromEpochMs, 
@@ -283,12 +284,12 @@ x
   }
 
 
-  async fetchSynchronousLogs( httpMethod, url, traceId, approximateEpochMs ) {
+  async fetchSynchronousLogs( profile, url, traceId, fromEpochMs, toEpochMs ) {
     
-    const apiGwLogGroups = this._apiGwMappings.getApiGwLogGroups( httpMethod, url );
+    const apiGwLogGroups = this._apiGwMappings.getApiGwLogGroups( url );
     
     const logsForRequestId = await this.executeLogInsightQuery( 
-        apiGwLogGroups, approximateEpochMs.start, approximateEpochMs.end, 
+        profile, apiGwLogGroups, fromEpochMs, toEpochMs, 
         "sort @timestamp asc | filter( @message =~ \"" + traceId + "\")"
       );
     
@@ -307,14 +308,14 @@ x
     
     const allLogGroupsNames = [ ... apiGwLogGroups, ... this._ecsLogGroupsNames.core, ... this._ecsLogGroupsNames.confinfo ]
     const fullQueryResult = await this.executeLogInsightQuery( 
-      allLogGroupsNames, approximateEpochMs.start, approximateEpochMs.end, 
-      `fields @timestamp, @log, @message | sort @timestamp asc | filter ${fullQueryFilterClause}`
+      profile, allLogGroupsNames, fromEpochMs, toEpochMs, 
+      `fields @timestamp, @log, message | sort @timestamp asc | filter ${fullQueryFilterClause}`
     );
   
     return fullQueryResult;
   }
         
-  async getTraceIDsByQuery(logGroupNames, fromEpochMs, toEpochMs, queryString) {
+  async getTraceIDsByQuery(logGroupNames, fromEpochMs, toEpochMs, queryString, limit) {
     let query = {
       logGroupNames, 
       queryString, 
@@ -340,26 +341,33 @@ x
         await sleep( 20 * 1000 );
       }
     }
-
+    var trace_ids = []
     var res = this._remapLogQueryResults( logs );
     console.log(res)
-    var trace_ids = res.map( el => {
-      if(el.trace_id.split(";").length > 1) {
-        let t = el.trace_id.split("Root=")[1];
-        return t.substring(0, t.indexOf(";"))
-      }
-      else {
-        return el.replace("Root=", "")
+    res.forEach( el => {
+      console.log("ELPIPITO." + JSON.stringify(el))
+      if(el.trace_id) {
+        console.log("INT")
+        if(el.trace_id.split(";").length > 1) {
+          let t = el.trace_id.split("Root=")[1];
+          trace_ids.push(t.substring(0, t.indexOf(";")))
+        }
+        else {
+          trace_ids.push(el.trace_id.replace("Root=", ""))
+        }
       }
     })
-    if (trace_ids.length > 0)
-      return this._getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, trace_ids);
-    return []
+    console.log(trace_ids)
+    if (trace_ids.length > 0) {
+      return {
+        logs: await this._getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, trace_ids.slice(0, limit)),
+        trace_ids: trace_ids.slice(limit)
+      }
+    }
   }
-   
   
   async _getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, traceIds) {
-    let queryString = "fields @timestamp, @log, message | filter "
+    let queryString = "fields @timestamp, @log, @message | filter "
     traceIds.map( el => queryString = queryString + "@message like \"" + el.replace("Root=", "") +"\" or " );
     queryString = queryString.substring(0, queryString.length - 3) + " | sort @timestamp desc"
     console.log(queryString)
@@ -373,7 +381,8 @@ x
       "confinfo": null
     }
     if (profile == "core"){
-      query[profile] = await this._scheduleQueryAccount(profile, completeLogGroupsNames, queryString, fromEpochMs, toEpochMs)
+      
+      query[profile] = await this._scheduleQueryAccount(profile, completeLogGroupsNames.concat("/aws/events/core-event-bus-input-events"), queryString, fromEpochMs, toEpochMs)
       query["confinfo"] = await this._scheduleQueryAccount("confinfo", this._ecsLogGroupsNames["confinfo"], queryString, fromEpochMs, toEpochMs)
     }
     else {
