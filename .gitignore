@@ -37,3 +37,5 @@ build/
 
 ### Node.js ###
 node_modules/
+
+data_extractor/results
