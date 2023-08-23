@@ -1,0 +1,15 @@
+{
+  "name": "data-extractor",
+  "version": "1.0.0",
+  "description": "Estrattore dati da AWS",
+  "main": "index.js",
+  "scripts": {},
+  "license": "MIT",
+  "dependencies": {
+    "fast-xml-parser": "^4.2.2",
+    "@aws-sdk/client-api-gateway": "^3.321.1",
+    "@aws-sdk/credential-provider-ini": "^3.321.1",
+    "@aws-sdk/client-cloudwatch-logs": "^3.321.1",
+    "@aws-sdk/client-sqs": "^3.379.1"
+  }
+}
