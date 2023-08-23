@@ -1,4 +1,4 @@
-# Data Helper
+# Data Extractor
 
 Script che supporta l'estrazione di dati come log ed eventi.
 
@@ -45,3 +45,10 @@ Dove:
 - `<traceId>` è il trace id di riferimento ottenuto in risposta dalla richiesta indicata in <url>; (obbligatorio per url)
 - `<limit>` è il limite massimo di trace id che lo script analizzera nella propria ricerca (default=20);
 
+Usage Example:
+```bash
+node ./src/index.js --envName prod --alarm oncall-pn-external-channel-ErrorFatalLogs-Alarm --start "08/08/23 17:46:00"
+```
+```bash
+node ./src/index.js --envName dev --alarm pn-delivery-progress-B2B-ApiGwAlarm --start "21/08/23 18:44:00"
+```
