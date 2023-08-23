@@ -47,7 +47,7 @@ Dove:
 
 Usage Example:
 ```bash
-node ./src/index.js --envName prod --alarm oncall-pn-external-channel-ErrorFatalLogs-Alarm --start "08/08/23 17:46:00"
+node ./src/index.js --envName prod --alarm oncall-pn-external-channel-ErrorFatalLogs-Alarm --start "21/08/23 17:46:00"
 ```
 ```bash
 node ./src/index.js --envName dev --alarm pn-delivery-progress-B2B-ApiGwAlarm --start "21/08/23 18:44:00"
