@@ -56,3 +56,9 @@ Vuoi generare la codifica di un receiver address di un invio analogico mediante 
 ```bash
 node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id>
 ```
+
+### data_extractor
+Vuoi estrarre dei log o degli eventi in base ad input, allarmi o richieste effettuate?
+```bash
+node ./src/index.js --envName <env-name> --alarm|--input|--url <alarm>|<input>|<url> [--start \"<start>\" --logGroups \"<logGroups>\" --traceId <traceId> --limit <limit>]
+```
