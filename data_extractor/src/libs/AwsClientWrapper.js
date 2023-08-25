@@ -140,6 +140,7 @@ x
       startTime: fromEpochMs, 
       endTime: toEpochMs
     }
+    console.log(queryString)
     console.log(query)
     const scheduleQueryCoreCommand = new StartQueryCommand(query);
     return await this._cloudWatchClient[profile].send( scheduleQueryCoreCommand ); 
@@ -354,12 +355,12 @@ x
       }
     })
     if (trace_ids.length > 0) {
-      const to_review = trace_ids.splice(0, limit);
+      const reviewed = trace_ids.splice(0, limit);
       return {
-        logs: await this._getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, trace_ids),
+        logs: await this._getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, reviewed),
         trace_ids: {
-          'reviewed': trace_ids,
-          'to_review': to_review
+          'reviewed': reviewed,
+          'to_review': trace_ids
         } 
       }
     }
