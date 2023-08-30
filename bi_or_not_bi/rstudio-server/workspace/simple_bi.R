@@ -2,7 +2,6 @@ source( "common.R")
 
 sc = local_spark()
 
-
 # Download Enti
 # aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
 #   dynamodb scan \
@@ -20,16 +19,6 @@ sdf_sql(sc, "
   FROM
     json_enti
 ")
-
-enti = sdf_collect( sdf_sql(sc, "
-SELECT
-  *
-FROM
-  enti
-"))
-
-
-write.csv(enti, "data/enti.csv", row.names=FALSE)
 
 ## Download apiKey
 # aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
@@ -51,15 +40,40 @@ sdf_sql(sc, "
     json_apikey
 ")
 
-apikey = sdf_collect( sdf_sql(sc, "
+spark_read_csv( sc, "pdnd_finality_data", "file:///home/rstudio/workspace/data/pdnd__iscritti_pn.csv")
+
+enti = sdf_collect( sdf_sql(sc, "
 SELECT
-  *
+  paId,
+  first(ente) as paDesc,
+  first(ipaCode) as ipaCode,
+  concat_ws( ', ', collect_set( apiKeyId )) as apiKeysIds
 FROM
-  apikey
+  (
+    SELECT
+      e.id as paId,
+      e.desc as ente,
+      e.ipaCode as ipaCode,
+      a.id as apiKeyId,
+      a.pdnd as requirePdnd
+    FROM
+      enti e 
+      JOIN apikey a ON e.id = a.paId
+      JOIN pdnd_finality_data f ON f.codice = e.ipaCode
+    WHERE
+        a.pdnd = 'true'
+      AND
+        f.fonte_codice = 'IPA'
+      AND
+        upper( f.stato_finalita ) in ('ATTIVO' )
+  )
+   as all_api_keys
+GROUP BY
+  paId
 "))
 
+write.csv(enti, "data/enti.csv", row.names=FALSE)
 
-write.csv(apikey, "data/apikey", row.names=FALSE)
 
 
 
@@ -80,7 +94,7 @@ sdf_sql(sc, "
 ")
 
 
-## Notification Table
+## Registraione di recapiti e domicili digitali per girono
 recapiti_e_domicili = sdf_collect( sdf_sql(sc, "
 SELECT
   raw.sk_str as type,
