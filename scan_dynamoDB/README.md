@@ -31,3 +31,5 @@ Dove:
 Lo script genera un file in formato JSON `{table_name}_{yyyy-MM-dd'T'HH:mm:ss. SSSXXX}.json` con il risultato ottenuto dalla Scan eseguita.
 
 
+## Esempio di filtro per codice di errore
+`for i in $(jq -r '.[] | select(.error.S=="Cap is mandatory")' pn-PaperRequestError_2023-09-04T09:45:44.939Z.json | jq -r '.requestId.S'); do echo $i;done`
