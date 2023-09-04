@@ -8,6 +8,10 @@ RUN apt-get update \
 RUN Rscript -e 'install.packages("sparklyr")'
 RUN Rscript -e 'install.packages("shiny")'
 
+RUN mkdir /home/rstudio/spark/ \
+    && cd /home/rstudio/spark/ \
+    && wget https://dlcdn.apache.org/spark/spark-3.3.3/spark-3.3.3-bin-hadoop3.tgz \
+    && tar xvzf spark-3.3.3-bin-hadoop3.tgz
 
-RUN Rscript -e 'library(sparklyr)' \
-            -e 'spark_install(version = "3.3.2", hadoop_version = "3")'
+RUN cd /home/rstudio/spark/ \
+    && chown -R rstudio:rstudio .

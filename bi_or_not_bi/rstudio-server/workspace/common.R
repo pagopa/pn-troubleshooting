@@ -1,8 +1,8 @@
 library(sparklyr)
 
 local_spark <- function() {
-  spark_install(version = "3.3.2", hadoop_version = "3")
-  spark_connect(master = "local", version = "3.3.2", hadoop_version = "3")
+  spark_install(version = "3.3.3", hadoop_version = "3")
+  spark_connect(master = "local", version = "3.3.3", hadoop_version = "3")
 }
 
 prepare_json_strings_from_cdc <- function( sc, raw_files_table_name, json_strings_table_name, path ) {

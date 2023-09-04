@@ -12,6 +12,11 @@ docker compose build
 docker compose up
 ```
 
+Successivamente utilizzare un borwser per collegarsi all'URL http://localhost:8787/
+
+Il nome utente è fisso "rstudio" la password viene generata e scritta all'avvio
+del container.
+
 Se si vuole avere una password costante bisogna configurarla 
 scrivendo la riga 
 ```
