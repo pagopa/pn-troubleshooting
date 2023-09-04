@@ -62,3 +62,9 @@ Vuoi estrarre dei log o degli eventi in base ad input, allarmi o richieste effet
 ```bash
 node ./src/index.js --envName <env-name> --alarm|--input|--url <alarm>|<input>|<url> [--start \"<start>\" --logGroups \"<logGroups>\" --traceId <traceId> --limit <limit>]
 ```
+
+### check_certificate
+Vuoi verificare la scadenza dei certificati di un ambiente?
+```bash
+node index.js --envName <env-Name>
+```
