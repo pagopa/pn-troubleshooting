@@ -1,0 +1,12 @@
+
+services:
+  rstudio:
+    build:
+      context: rstudio-with-sparklyr
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      PASSWORD: ${YOUR_PASSWORD_FROM_ENV_FILE}
+    volumes:
+      - ./workspace:/home/rstudio/workspace
+      
