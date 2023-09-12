@@ -1,29 +1,45 @@
 const AWS = require('aws-sdk');
 const fs = require('fs');
+const { parseArgs } = require('util');
 
-const arguments = process.argv ;
-  
-if(arguments.length<=3){
-  console.error("Specify AWS profile, DLQ name, SQS name and ID message to redrive as argument")
-  console.log("node put_dlq_event_to_sqs.js <aws-profile> <DLQName> <SQSName> <MessageID>")
-  process.exit(1)
-}
+const args = ["awsProfile", "dlqName", "destinationQueueName", "idMessage"]
+const values = {
+  values: { awsProfile, dlqName, destinationQueueName, idMessage },
+} = parseArgs({
+  options: {
+    awsProfile: {
+      type: "string",
+      short: "a"
+    },
+    dlqName: {
+      type: "string",
+      short: "d"
+    },
+    destinationQueueName: {
+      type: "string",
+      short: "q"
+    },
+    idMessage: {
+      type: "string",
+      short: "i"
+    }
+  },
+});
 
-const awsProfile = arguments[2]
-const dlqName = arguments[3];  
-const destinationQueueName = arguments[4];
-const idMessage = arguments[5];  
-let dlqUrl = null;
-console.log("Using profile: "+ awsProfile)
-if(!dlqName.includes("DLQ")){
-  console.log("La campo DLQ fornito non è una DLQ: " + dlqName)
-  return
-}
+args.forEach(k => {
+    if(!values.values[k]) {
+      console.log("Parameter '" + k + "' is not defined")
+      console.log("Usage: node put_dlq_event_to_sqs.js --awsProfile <aws-profile> --dlqName <DLQName> --destinationQueueName <SQSName> --idMessage <MessageID>")
+      process.exit(1)
+    }
+  });
+
 console.log("Using DLQ Name: " + dlqName)
 console.log("Using Destination Queue Name: " + destinationQueueName)
 console.log("Using ID message: " + idMessage)
 
 let credentials = null
+var elementsElaborated = []
 
 process.env.AWS_SDK_LOAD_CONFIG=1
 if(awsProfile.indexOf('sso_')>=0){ // sso profile
@@ -38,29 +54,45 @@ AWS.config.update({region: 'eu-south-1'});
 const sqs = new AWS.SQS();
 
 
+async function _writeInFile(result, filename ) {
+  fs.mkdirSync("result", { recursive: true });
+  fs.writeFileSync('result/' + filename+'.json', JSON.stringify(result, null, 4), 'utf-8')
+}
+
 async function sendMessageToSQS(message) {
   const destinationQueueParams = {
     QueueName: destinationQueueName
   };
   const destinationQueueData = await sqs.getQueueUrl(destinationQueueParams).promise();
   const destinationQueueUrl = destinationQueueData.QueueUrl;
-  
-  const jsonObject = [{
-    Id: message.MessageId,
-    MessageBody: message.Body
-  }]
+  let jsonObject = null;
+  if(dlqName.includes(".fifo")) {
+    jsonObject = [{
+      Id: message.MessageId,
+      MessageBody: message.Body,
+      MessageGroupId: message.Attributes.MessageGroupId,
+      MessageDeduplicationId: message.Attributes.MessageDeduplicationId
+    }]
+  }
+  else{
+    jsonObject = [{
+      Id: message.MessageId,
+      MessageBody: message.Body,
+      MessageAttributes: message.Attributes
+    }]
+  }
   const sendParams = {
     QueueUrl: destinationQueueUrl,
     Entries: jsonObject,
   };
-  
   sqs.sendMessageBatch(sendParams, (err, data) => {
     if (err) {
       console.error('Errore durante l\'invio del messaggio:', err);
       return;
     }
-    
+
     console.log('Messaggio inviato alla coda di destinazione con successo.');
+    elementsElaborated.push(message)
     const deleteParams = {
       QueueUrl: dlqUrl,
       Entries: [{
@@ -93,7 +125,7 @@ async function redriveMessagefromDLQ() {
     MaxNumberOfMessages: maxNumberOfMessages, // Numero massimo di messaggi da recuperare (modificabile) ma deve essere 1 per code FIFO
     AttributeNames: ['All'],
     MessageAttributeNames: ['All'],
-    VisibilityTimeout: 360,    // Tempo in secondi di non visibilità del messaggio dalla DLQ
+    VisibilityTimeout: 20,    // Tempo in secondi di non visibilità del messaggio dalla DLQ
     WaitTimeSeconds: 5,
   };
   try {
@@ -103,11 +135,17 @@ async function redriveMessagefromDLQ() {
       const messages = response.Messages;
       if (messages && messages.length > 0) {
         console.log(`Hai ricevuto ${messages.length} messaggi dalla DLQ.`);
-        messages.forEach((message) => {
-          console.log(message.MessageId)
-          if(message.MessageId == idMessage){
+        let i = 0;
+        messages.forEach(async (message) => {
+          console.log(message)
+          i = i+1
+          console.log(i)
+          if(idMessage == "ALL" && message.hasOwnProperty("Attributes")){
+            await sendMessageToSQS(message)
+          }
+          else if(message.MessageId == idMessage){
             console.log("Messaggio individuato. REDRIVE in corso")
-            sendMessageToSQS(message)
+            await sendMessageToSQS(message)
             hasNext = false;
           }
         });
@@ -119,6 +157,8 @@ async function redriveMessagefromDLQ() {
     
   } catch (error) {
     console.error('Errore durante la ricezione dei messaggi dalla DLQ:', error);
+  } finally {
+    await _writeInFile(elementsElaborated, "ElaboratedMessages")
   }
 }
 
