@@ -3,7 +3,7 @@ const { parseArgs } = require('util');
 
 
 function _checkingParameters(args, values){
-  const usage = "Usage: ./src/index.js --envName <env-name>"
+  const usage = "Usage: index.js --envName <env-name>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){

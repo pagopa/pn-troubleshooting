@@ -4,14 +4,14 @@ const { SQSClient, ListQueuesCommand, GetQueueAttributesCommand } = require("@aw
 
 function awsClientCfg( profile ) {
   const self = this;
-  if(!profileName){
+  //if(!profileName){
     return { 
       region: "eu-south-1", 
       credentials: fromIni({ 
         profile: profile,
       })
     }
-  }
+  //}
 }
 
 class AwsClientsWrapper {
@@ -59,7 +59,7 @@ class AwsClientsWrapper {
   async _fetchAllDLQ() {
     let sqsValue = {
       core: {},
-      confinfo: 
+      confinfo: {}
     }
     sqsValue.core = await this._elabSqsNameUrl("core")
     sqsValue.confinfo = await this._elabSqsNameUrl("confinfo")
