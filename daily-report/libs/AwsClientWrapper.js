@@ -40,7 +40,6 @@ class AwsClientsWrapper {
     const command = new ListQueuesCommand(input);
     const res = await this._sqsClient[profile].send( command )
     let sqs = {}
-    console.log(profile)
     const dlqs = res.QueueUrls.filter((queue) => queue.includes("DLQ"));
     for (const dlq of dlqs) {
       const attributes = {
@@ -63,7 +62,6 @@ class AwsClientsWrapper {
     }
     sqsValue.core = await this._elabSqsNameUrl("core")
     sqsValue.confinfo = await this._elabSqsNameUrl("confinfo")
-    console.log(sqsValue)
     return sqsValue
   }
 }
