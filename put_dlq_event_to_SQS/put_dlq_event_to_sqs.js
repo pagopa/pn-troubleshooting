@@ -1,7 +1,8 @@
 const AWS = require('aws-sdk');
 const fs = require('fs');
+const { parseArgs } = require('util');
 
-const args = ["awsprofile", "dlqName", "destinationQueueName", "idMessage"]
+const args = ["awsProfile", "dlqName", "destinationQueueName", "idMessage"]
 const values = {
   values: { awsProfile, dlqName, destinationQueueName, idMessage },
 } = parseArgs({
@@ -38,6 +39,7 @@ console.log("Using Destination Queue Name: " + destinationQueueName)
 console.log("Using ID message: " + idMessage)
 
 let credentials = null
+var elementsElaborated = []
 
 process.env.AWS_SDK_LOAD_CONFIG=1
 if(awsProfile.indexOf('sso_')>=0){ // sso profile
@@ -52,22 +54,17 @@ AWS.config.update({region: 'eu-south-1'});
 const sqs = new AWS.SQS();
 
 
+async function _writeInFile(result, filename ) {
+  fs.mkdirSync("result", { recursive: true });
+  fs.writeFileSync('result/' + filename+'.json', JSON.stringify(result, null, 4), 'utf-8')
+}
+
 async function sendMessageToSQS(message) {
   const destinationQueueParams = {
     QueueName: destinationQueueName
   };
   const destinationQueueData = await sqs.getQueueUrl(destinationQueueParams).promise();
   const destinationQueueUrl = destinationQueueData.QueueUrl;
-  //START PREPARE MESSAGE ATTRIBUTES
-  if("MessageAttributes" in message) {
-    Object.keys(message.MessageAttributes).forEach((att)=> {
-      if(message.MessageAttributes[att].BinaryListValues.length == 0)
-        delete message.MessageAttributes[att].BinaryListValues
-      if(message.MessageAttributes[att].StringListValues.length == 0)
-        delete message.MessageAttributes[att].StringListValues
-    })
-  }
-  //END PREPARE MESSAGE ATTRIBUTES
   let jsonObject = null;
   if(dlqName.includes(".fifo")) {
     jsonObject = [{
@@ -81,14 +78,13 @@ async function sendMessageToSQS(message) {
     jsonObject = [{
       Id: message.MessageId,
       MessageBody: message.Body,
-      MessageAttributes: message.MessageAttributes
+      MessageAttributes: message.Attributes
     }]
   }
   const sendParams = {
     QueueUrl: destinationQueueUrl,
     Entries: jsonObject,
   };
-
   sqs.sendMessageBatch(sendParams, (err, data) => {
     if (err) {
       console.error('Errore durante l\'invio del messaggio:', err);
@@ -96,6 +92,7 @@ async function sendMessageToSQS(message) {
     }
 
     console.log('Messaggio inviato alla coda di destinazione con successo.');
+    elementsElaborated.push(message)
     const deleteParams = {
       QueueUrl: dlqUrl,
       Entries: [{
@@ -139,16 +136,16 @@ async function redriveMessagefromDLQ() {
       if (messages && messages.length > 0) {
         console.log(`Hai ricevuto ${messages.length} messaggi dalla DLQ.`);
         let i = 0;
-        messages.forEach((message) => {
+        messages.forEach(async (message) => {
           console.log(message)
           i = i+1
           console.log(i)
-          if(idMessage == "ALL" && message.hasOwnProperty("MessageAttributes")){
-            sendMessageToSQS(message)
+          if(idMessage == "ALL" && message.hasOwnProperty("Attributes")){
+            await sendMessageToSQS(message)
           }
           else if(message.MessageId == idMessage){
             console.log("Messaggio individuato. REDRIVE in corso")
-            sendMessageToSQS(message)
+            await sendMessageToSQS(message)
             hasNext = false;
           }
         });
@@ -160,6 +157,8 @@ async function redriveMessagefromDLQ() {
     
   } catch (error) {
     console.error('Errore durante la ricezione dei messaggi dalla DLQ:', error);
+  } finally {
+    await _writeInFile(elementsElaborated, "ElaboratedMessages")
   }
 }
 
