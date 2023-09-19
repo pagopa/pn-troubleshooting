@@ -88,7 +88,7 @@ async function main() {
   console.log("Retrieving " + certificateName + "-next")
   certificates[certificateName + "-next"] = await awsClient._getSSMParameter( certificateName + "-next" );
   console.log("Retrieving Tier of Values")
-  var tierType = await awsClient._getSSMParameterDescriptionTier( certificateName );
+  const tierType = await awsClient._getSSMParameterDescriptionTier( certificateName );
   await _backup(certificates, "cert", ".json")
   //parsing certificate 
   for (const key in certificates) {
