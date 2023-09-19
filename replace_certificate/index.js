@@ -83,8 +83,12 @@ async function main() {
   secrets = {}
 
   //FASE BACKUP
+  console.log("Retrieving " + certificateName)
   certificates[certificateName] = await awsClient._getSSMParameter( certificateName )
+  console.log("Retrieving " + certificateName + "-next")
   certificates[certificateName + "-next"] = await awsClient._getSSMParameter( certificateName + "-next" );
+  console.log("Retrieving Tier of Values")
+  var tierType = await awsClient._getSSMParameterDescriptionTier( certificateName );
   await _backup(certificates, "cert", ".json")
   //parsing certificate 
   for (const key in certificates) {
@@ -99,23 +103,23 @@ async function main() {
   if( replace ){
     //FASE SOSTITUZIONE
     //Sostituisce certificato contenuto in <CertificateName> con <CertificateName>-Next
-    console.log("Sostituisce certificato contenuto in <CertificateName> con <CertificateName>-Next")
-    await awsClient._updateSSMParameter( certificateName, JSON.stringify(certificates[certificateName+"-next"]));
+    console.log("Replacing certificate <CertificateName> with <CertificateName>-Next")
+    await awsClient._updateSSMParameter( certificateName, tierType[certificateName], JSON.stringify(certificates[certificateName+"-next"]));
 
     if(certificate == "ade"){ 
       //Sostituisce il secret contenuto in <CertificateName>.secretId con <CertificateName>-next.secretId
-      console.log("Sostituisce il secret contenuto in <CertificateName>.secretId con <CertificateName>-next.secretId")
+      console.log("Replacing secret <CertificateName>.secretId with <CertificateName>-next.secretId")
       await awsClient._updateSecretValue( certificates[certificateName].secretid, secrets[certificates[certificateName+"-next"].secretid]);
 
       //Sostituisce il certificate <CertificateName> con <CertificateName> ma con secretId non next
-      console.log("Sostituisce il certificate <CertificateName> con <CertificateName> ma con secretId non next")
+      console.log("Replacing certificate <CertificateName> with <CertificateName> and secretId updated")
       var certSecretIdUpdated = JSON.parse(JSON.stringify(certificates[certificateName+"-next"]))
       certSecretIdUpdated.secretid = certificates[certificateName].secretid
-      await awsClient._updateSSMParameter( certificateName, JSON.stringify(certSecretIdUpdated));
+      await awsClient._updateSSMParameter( certificateName, tierType[certificateName], JSON.stringify(certSecretIdUpdated));
     }
     else if (certificate == "infocamere") {
       //Aggiornamento Alias che punta alla nuova Chiave
-      console.log("Aggiornamento Alias che punta alla nuova Chiave")
+      console.log("Updating Alias like new Key")
       await awsClient._updateAlias("alias/pn-national-registries-infocamere-signing-key-alias", certificates[certificateName+"-next"].keyId)
     }
   }

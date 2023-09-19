@@ -1,6 +1,6 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { SSMClient, GetParameterCommand, PutParameterCommand} = require("@aws-sdk/client-ssm");
+const { SSMClient, GetParameterCommand, PutParameterCommand, DescribeParametersCommand} = require("@aws-sdk/client-ssm");
 const { SecretsManagerClient, GetSecretValueCommand, UpdateSecretCommand} = require("@aws-sdk/client-secrets-manager");
 const { KMSClient, UpdateAliasCommand } = require("@aws-sdk/client-kms");
 function awsClientCfg( profile ) {
@@ -27,7 +27,7 @@ class AwsClientsWrapper {
   async _getSSMParameter(param) {
     const input = { // GetParameterRequest
       Name: param, // required
-      WithDecryption: true || false,
+      WithDecryption: true,
     };
     const res = await this._ssmClient.send(new GetParameterCommand(input));
     if(res) {
@@ -35,13 +35,37 @@ class AwsClientsWrapper {
     }
   }
 
-  async _updateSSMParameter(name, value) {
+  async _getSSMParameterDescriptionTier(param) {
+    const input = { // DescribeParametersRequest
+      Filters: [ // ParametersFilterList
+        { // ParametersFilter
+          Key: "Name", // required
+          Values: [ // ParametersFilterValueList // required
+            param,
+          ],
+        },
+      ],
+    };
+    const res = await this._ssmClient.send(new DescribeParametersCommand(input));
+    if(res) {
+      var parameters = {}
+      res.Parameters?.forEach(x => {
+          parameters[x.Name] = x.Tier; 
+      })
+      return parameters
+    }
+    else {
+      this._errorDuringProcess(res.httpStatusCode, "_getSSMParameterDescriptionTier")
+    }
+  }
+
+  async _updateSSMParameter(name, tier, value) {
     const input = { // PutParameterRequest
       Name: name, // required
       Value: value, // required
       Type: "String", 
       Overwrite: true,
-      Tier: "Standard",
+      Tier: tier,
     };
     const command = new PutParameterCommand(input);
     const res = await this._ssmClient.send(command);
