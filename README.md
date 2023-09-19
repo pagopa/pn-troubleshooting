@@ -68,3 +68,9 @@ Vuoi verificare la scadenza dei certificati di un ambiente?
 ```bash
 node index.js --envName <env-Name>
 ```
+
+### replace_certificate
+Vuoi fare un backup dei certificati o sostituire i certificati attuali con quelli nuovi? 
+```bash
+node index.js --envName <env-Name> --certificate <ade|infocamere> [--replace]
+```
