@@ -48,3 +48,5 @@ build/
 node_modules/
 
 data_extractor/results
+
+replace_certificate/backup
