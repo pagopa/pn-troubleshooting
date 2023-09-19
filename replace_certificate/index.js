@@ -89,7 +89,7 @@ async function main() {
   //parsing certificate 
   for (const key in certificates) {
     certificates[key] = JSON.parse(certificates[key])
-    if(certificateName.indexOf("ade")>0){
+    if(certificate.indexOf("ade")>0){
       secrets[certificates[key].secretid] = await awsClient._getSecretValue( certificates[key].secretid );
     }
   }
@@ -102,7 +102,7 @@ async function main() {
     console.log("Sostituisce certificato contenuto in <CertificateName> con <CertificateName>-Next")
     await awsClient._updateSSMParameter( certificateName, JSON.stringify(certificates[certificateName+"-next"]));
 
-    if(certificateName.indexOf("ade")>0){ 
+    if(certificate.indexOf("ade")>0){ 
       //Sostituisce il secret contenuto in <CertificateName>.secretId con <CertificateName>-next.secretId
       console.log("Sostituisce il secret contenuto in <CertificateName>.secretId con <CertificateName>-next.secretId")
       await awsClient._updateSecretValue( certificates[certificateName].secretid, secrets[certificates[certificateName+"-next"].secretid]);
@@ -113,7 +113,7 @@ async function main() {
       certSecretIdUpdated.secretid = certificates[certificateName].secretid
       await awsClient._updateSSMParameter( certificateName, JSON.stringify(certSecretIdUpdated));
     }
-    else if (certificateName.indexOf("infocamere")>0) {
+    else if (certificate.indexOf("infocamere")>0) {
       //Aggiornamento Alias che punta alla nuova Chiave
       console.log("Aggiornamento Alias che punta alla nuova Chiave")
       await awsClient._updateAlias("alias/pn-national-registries-infocamere-signing-key-alias", certificates[certificateName+"-next"].keyId)
