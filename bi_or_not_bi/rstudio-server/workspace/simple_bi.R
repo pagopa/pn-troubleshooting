@@ -40,14 +40,14 @@ sdf_sql(sc, "
     json_apikey
 ")
 
-spark_read_csv( sc, "pdnd_finality_data", "file:///home/rstudio/workspace/data/pdnd__iscritti_pn.csv")
+spark_read_csv( sc, "pdnd_purpouse_data", "file:///home/rstudio/workspace/data/pdnd__iscritti_pn.csv")
 
 enti = sdf_collect( sdf_sql(sc, "
 SELECT
   paId,
   first(ente) as paDesc,
-  first(ipaCode) as ipaCode,
-  concat_ws( ', ', collect_set( apiKeyId )) as apiKeysIds
+  first(ipaCode) as ipaCode
+--  concat_ws( ', ', collect_set( apiKeyId )) as apiKeysIds
 FROM
   (
     SELECT
@@ -59,20 +59,18 @@ FROM
     FROM
       enti e 
       JOIN apikey a ON e.id = a.paId
-      JOIN pdnd_finality_data f ON f.codice = e.ipaCode
+      JOIN pdnd_purpouse_data f ON f.codice = e.ipaCode
     WHERE
         a.pdnd = 'true'
       AND
-        f.fonte_codice = 'IPA'
-      AND
-        upper( f.stato_finalita ) in ('ATTIVO' )
+        instr(upper( f.stato_finalita), 'ATTIVO' ) > 0
   )
    as all_api_keys
 GROUP BY
   paId
 "))
 
-write.csv(enti, "data/enti.csv", row.names=FALSE)
+write.csv(enti, "data/out-onBoardingTech.csv", row.names=FALSE)
 
 
 
@@ -94,7 +92,7 @@ sdf_sql(sc, "
 ")
 
 
-## Registraione di recapiti e domicili digitali per girono
+## Registrazione di recapiti e domicili digitali per girono
 recapiti_e_domicili = sdf_collect( sdf_sql(sc, "
 SELECT
   raw.sk_str as type,
@@ -124,8 +122,7 @@ GROUP BY
   raw.sk_str, operationType, date_trunc( 'DD', created_str)
 "))
 
-
-
+write.csv(recapiti_e_domicili, "data/out-recapiti_e_domicili.csv", row.names=FALSE)
 
 
 ## Notification Table
@@ -147,6 +144,8 @@ sdf_sql(sc, "
       and 
         operationType = 'INSERT'
       and
+        get_json_object( newImg, '$.senderPaId.S' ) != '4a4149af-172e-4950-9cc8-63ccc9a6d865'
+      and
         get_json_object( newImg, '$.senderPaId.S' ) is not null
   )
    as raw
@@ -163,4 +162,45 @@ FROM
   JOIN enti e on n.paId = e.id
 "))
 
+write.csv(notifiche_per_pa, "data/out-notifiche_per_pa.csv", row.names=FALSE)
 
+# Numero di RS spedite
+
+digital_failures = sdf_collect( sdf_sql(sc, "
+  SELECT 
+      get_json_object( newImg, '$.paId.S' ) as paId,
+      get_json_object( newImg, '$.iun.S' ) as iun
+    FROM
+      cdc_objects
+    WHERE
+        tableName = 'pn-Timelines'
+      and 
+        operationType = 'INSERT'
+      and
+        get_json_object( newImg, '$.paId.S' ) != '4a4149af-172e-4950-9cc8-63ccc9a6d865'        
+      and
+        get_json_object( newImg, '$.category.S' ) = 'DIGITAL_FAILURE_WORKFLOW'
+"))
+write.csv(digital_failures, "data/out-digital_failures.csv", row.names=FALSE)
+
+# Numero di RS spedite
+
+accepted_notification = sdf_collect( sdf_sql(sc, "
+  SELECT 
+      get_json_object( newImg, '$.paId.S' ) as paId,
+      e.desc,
+      get_json_object( newImg, '$.iun.S' ) as iun
+    FROM
+      cdc_objects
+    JOIN enti e on get_json_object( newImg, '$.paId.S' ) = e.id  
+    WHERE
+        tableName = 'pn-Timelines'
+      and 
+        operationType = 'INSERT'
+      and
+        get_json_object( newImg, '$.paId.S' ) != '4a4149af-172e-4950-9cc8-63ccc9a6d865'        
+      and
+        get_json_object( newImg, '$.category.S' ) = 'REQUEST_ACCEPTED'
+"))
+
+write.csv(accepted_notification, "data/out-accepted_notification.csv", row.names=FALSE)
