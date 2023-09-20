@@ -164,7 +164,7 @@ FROM
 
 write.csv(notifiche_per_pa, "data/out-notifiche_per_pa.csv", row.names=FALSE)
 
-# Numero di RS spedite
+# Numero di RS spedite DIGITAL_FAILURE_WORKFLOW
 
 digital_failures = sdf_collect( sdf_sql(sc, "
   SELECT 
@@ -183,7 +183,7 @@ digital_failures = sdf_collect( sdf_sql(sc, "
 "))
 write.csv(digital_failures, "data/out-digital_failures.csv", row.names=FALSE)
 
-# Numero di RS spedite
+# Numero di notifiche accettate
 
 accepted_notification = sdf_collect( sdf_sql(sc, "
   SELECT 
