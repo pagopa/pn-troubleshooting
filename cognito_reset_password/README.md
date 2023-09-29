@@ -10,9 +10,9 @@ Imposta una nuova password per un utente Cognito
 Dove:
 - `<aws-profile>` è il profilo dell'account AWS dell'ambiente di riferimento.
 - `<aws-region>` é la region AWS dove risiede lo user pool Cognito
-- `new-password` è la nuova password
-- `email` è l'email dell'utente per il quale generare una nuova password
-- `cognito-user-pool` è l'ID dello user pool cognito (da recuperare da console AWS)
+- `<new-password>` è la nuova password
+- `<email>` è l'email dell'utente per il quale generare una nuova password
+- `<cognito-user-pool>` è l'ID dello user pool cognito (da recuperare da console AWS)
 
 I vincoli della password sono:
 - lunghezza minima: 16
