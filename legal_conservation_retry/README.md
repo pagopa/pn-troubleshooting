@@ -17,7 +17,7 @@ Dove:
 
 Senza invocazione della lambda
 ```bash
-./index.sh -p sso_pn-confinfo-dev -r eu-south-1 -f ./tpl/example-input.json -i
+./index.sh -p sso_pn-confinfo-dev -r eu-south-1 -f ./tpl/example-input.json
 ```
 
 Con invocazione della lambda
