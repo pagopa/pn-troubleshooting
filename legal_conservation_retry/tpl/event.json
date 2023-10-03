@@ -1,0 +1,22 @@
+{
+    "kinesisSeqNumber": "49642115848638112355480323782160580827394338152236711954",
+    "version": "0",
+    "isFake": true,
+    "id": "340f3708-f0cb-405a-13bf-96d2849994bf",
+    "detail-type": "SafeStorageOutcomeEvent",
+    "source": "GESTORE DISPONIBILITA",
+    "account": "089813480515",
+    "time": "2023-06-28T07:38:12Z",
+    "region": "eu-south-1",
+    "resources": [],
+    "detail": {
+      "key": "KEY_PLACEHOLDER",
+      "versionId": "01",
+      "documentType": "DOCUMENT_TYPE_PLACEHOLDER",
+      "documentStatus": "SAVED",
+      "contentType": "CONTENT_TYPE_PLACEHOLDER",
+      "checksum": "CHECKSUM_PLACEHOLDER",
+      "retentionUntil": "2033-06-30T07:38:06Z",
+      "client_short_code": "CLIENT_SHORT_CODE_PLACEHOLDER"
+    }
+  }
