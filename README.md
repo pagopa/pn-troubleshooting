@@ -87,3 +87,9 @@ Vuoi ritrasmettere un documento in conservazione sostitutiva?
 ```bash
 ./index.sh -r <aws-region> -p <aws-profile> -f <json-file> [-i <invoke>]
 ```
+
+### legal_conservation_retry
+Vuoi estrarre tutti i file in errore in conservazione sostitutiva?
+```bash
+./index.js --envName <env-name> --startDate <startDate> [--endDate <endDate>]
+```
