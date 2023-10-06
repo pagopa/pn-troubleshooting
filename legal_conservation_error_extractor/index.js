@@ -48,14 +48,18 @@ async function checkStatus(awsClient, tableName, data){
     }
     const result = await awsClient._queryDynamoDB(tableName, null, params)
     result.forEach(value => {
-      if (value?.status?.S.indexOf('OK' > 0)) {
-        console.log("Found status 'OK' for fileKey= " + k)
+      if (value?.status?.S == 'OK') {
+        console.log("Found status 'OK' for fileKey= \"" + k + "\"")
         toDelete = true;
       }
     })
     if(!toDelete) {
-      console.log("No status 'OK' found for fileKey= " + k)
-      toExport.push(data[k])
+      console.log("No status 'OK' found for fileKey= \"" + k + "\"")
+      data[k].forEach(arr => {
+        arr.forEach(el => {
+          toExport.push(el)
+        })
+      })
     }
   }
   return toExport;
@@ -153,7 +157,7 @@ async function main() {
     endDate = new Date().getFullYear().toString() + new Date().getMonth().toString().padStart(2, '0')
   }
   listDate = _getListParams(startDate, endDate);
-  
+
   for( let date of listDate ) {
       params = {
         ExpressionAttributeValues: {
