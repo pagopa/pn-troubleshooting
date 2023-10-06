@@ -1,6 +1,5 @@
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const fs = require('fs');
-const { start } = require("repl");
 const { parseArgs } = require('util');
 
 
@@ -90,11 +89,12 @@ function _getListParams(startDate, endDate) {
     }
   }
   else {
-    let end = endDate - startDate + 1
+    let end = endDate - startDate 
     for (i = 0; i <= end; i++) {
       list.push((parseInt(startDate)+i).toString())
     }
   }
+  console.log(list.sort())
   return list.sort();
 }
 
@@ -120,6 +120,7 @@ async function getLegalConservationHistoryRequest(awsClient, params){
 
 const tableName =  "pn-legal-conservation-request-history"
 const indexValue = "sortBy-errorTimestamp"
+
 async function main() {
 
   const args = [
@@ -144,45 +145,35 @@ async function main() {
   });  
 
   _checkingParameters(args, values)
+
   const awsClient = new AwsClientsWrapper( envName );
 
   var result = {};
-  if (endDate) {
-    listDate = _getListParams(startDate, endDate);
-    for( let date of listDate ) {
-        params = {
-          ExpressionAttributeValues: {
-            ":value": {
-              "S": date
-            },
+  if (!endDate){
+    endDate = new Date().getFullYear().toString() + new Date().getMonth().toString().padStart(2, '0')
+  }
+  listDate = _getListParams(startDate, endDate);
+  
+  for( let date of listDate ) {
+      params = {
+        ExpressionAttributeValues: {
+          ":value": {
+            "S": date
           },
-          KeyConditionExpression: "errorResponseTimestampYearMonth = :value"
-      }
-      resultTmp = await getLegalConservationHistoryRequest(awsClient, params)
-      Object.keys(resultTmp).forEach(k => {
-        if (result.hasOwnProperty(k)) {
-          result[k].push(resultTmp[k]);  
-        }
-        else {
-          result[k] = []
-          result[k].push(resultTmp[k]);  
-        }
-      })
-    }
-  }
-  else {
-    params = {
-      ExpressionAttributeValues: {
-        ":value": {
-          "S": startDate
         },
-      },
-      KeyConditionExpression: "errorResponseTimestampYearMonth = :value"
+        KeyConditionExpression: "errorResponseTimestampYearMonth = :value"
     }
-    result = await getLegalConservationHistoryRequest(awsClient, params)
+    resultTmp = await getLegalConservationHistoryRequest(awsClient, params)
+    Object.keys(resultTmp).forEach(k => {
+      if (result.hasOwnProperty(k)) {
+        result[k].push(resultTmp[k]);  
+      }
+      else {
+        result[k] = []
+        result[k].push(resultTmp[k]);  
+      }
+    })
   }
-  
-  
   
   console.log("Checking if status 'OK' for each fileKey")
   const toExport = {
