@@ -52,8 +52,8 @@ Resources:
                 - env
                 - mkdir -p input_data/conf_obj
                 - aws s3 cp --recursive s3://${BUCKET_NAME}/${CONF_OBJ_DUMP_S3_URL} input_data/conf_obj
-                - mkdir -p input_data/timeline_for_invoicing
-                - aws s3 cp s3://${BUCKET_NAME}/${TIMELINE_FOR_INVOICING_TGZ_S3_URL} input_data/timeline_for_invoicing
+                - mkdir -p input_data/TABLE_NAME_pn-TimelinesForInvoicing
+                - aws s3 cp s3://${BUCKET_NAME}/${TIMELINE_FOR_INVOICING_TGZ_S3_URL} input_data/TABLE_NAME_pn-TimelinesForInvoicing
                 - git clone https://github.com/pagopa/pn-troubleshooting.git
                 - ( cd pn-troubleshooting && git checkout ${COMMIT_REF} )
             build:
