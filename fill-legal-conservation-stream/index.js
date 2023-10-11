@@ -131,8 +131,7 @@ const publishEvents = async(results) => {
     for (let i = 0; i < kinesisEvents.length; i += chunkSize) {
         const chunk = kinesisEvents.slice(i, i + chunkSize);
         console.log('processing chunk '+(i+1))
-        console.log('Chunked events', chunk)
-        //await putEventsIntoKinesis(chunk)
+        await putEventsIntoKinesis(chunk)
     }
 }
 
