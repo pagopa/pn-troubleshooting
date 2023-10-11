@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'Example microservice deploy'
+Parameters:
+  StreamArn:
+    Type: String
+  
+  Bucket:
+    Type: String
+
+  Version:
+    Type: String
+
+Resources:
+
+  KinesisStreamFillerCodebuildProject:
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      ServiceRole: !Ref CodeBuildServiceRole
+      Name: pn-kinesis-stream-filler
+      TimeoutInMinutes: 480
+      ConcurrentBuildLimit: 1
+      Source: 
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo "### NO PRE_BUILD"
+            build:
+              commands:
+                - git clone https://github.com/pagopa/pn-troubleshooting.git
+                - (cd pn-troubleshooting && git checkout ${VERSION})
+                - cd pn-troubleshooting/fill-legal-conservation-stream
+                - npm install
+                - node index.js --streamArn ${STREAM_ARN} --bucket ${BUCKET}
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Type: LINUX_CONTAINER
+        Image: "aws/codebuild/standard:7.0"
+        EnvironmentVariables:
+          - Name: REGION
+            Type: PLAINTEXT
+            Value: !Ref AWS::Region
+          - Name: STREAM_ARN
+            Type: PLAINTEXT
+            Value: !Ref StreamArn
+          - Name: BUCKET
+            Type: PLAINTEXT
+            Value: !Ref Bucket
+          - Name: VERSION
+            Type: PLAINTEXT
+            Value: !Ref Version
+
+  ManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: pn-kinesis-stream-filler-managed-policy
+      Roles:
+        - !Ref CodeBuildServiceRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*
+          - Effect: Allow
+            Action:
+              - dynamodb:Scan
+            Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/pn-SsDocumenti
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - kinesis:PutRecords
+            Resource: '*'
+                  
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: pn-kinesis-stream-filler-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "codebuild.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"

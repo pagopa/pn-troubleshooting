@@ -24,7 +24,7 @@ function getStreamNameFromArn(streamArn){
 }
 
 function _checkingParameters(args, values){
-    const usage = "Usage: index.js --envName <env-name> --streamArn <stream-arn> --bucket <bucket>"
+    const usage = "Usage: index.js [--envName <env-name>] [--lastKey <last-key>] --streamArn <stream-arn> --bucket <bucket>"
     //CHECKING PARAMETER
     args.forEach(el => {
       if(el.mandatory && !values.values[el.name]){
@@ -37,7 +37,8 @@ function _checkingParameters(args, values){
 
   
 const args = [
-    { name: "envName", mandatory: true, subcommand: [] },
+    { name: "envName", mandatory: false, subcommand: [] },
+    { name: "lastKey", mandatory: false, subcommand: [] },
     { name: "streamArn", mandatory: true, subcommand: [] },
     { name: "bucket", mandatory: true, subcommand: [] }
   ]
@@ -48,6 +49,9 @@ const values = {
         options: {
             envName: {
                 type: "string", short: "e", default: undefined
+            },
+            lastKey: {
+                type: "string", short: "k", default: undefined
             },
             streamArn: {
                 type: "string", short: "s", default: undefined
@@ -60,22 +64,20 @@ const values = {
 
 _checkingParameters(args, values)
 
-const awsConfinfoProfile = "sso_pn-confinfo-" + envName
-const confinfoCredentials = fromSSO({ profile: awsConfinfoProfile })();
-const kinesisClient = new KinesisClient({
-    credentials: confinfoCredentials,
-    region: 'eu-south-1'
-});
+const awsConfinfoProfile = envName?"sso_pn-confinfo-" + envName:null
 
-const s3Client = new S3Client({
-    credentials: confinfoCredentials,
+const confinfoConfig = {
     region: 'eu-south-1'
-});
+}
 
-const confinfoDynamoDbClient = new DynamoDBClient({
-    credentials: confinfoCredentials,
-    region: 'eu-south-1'
-});
+if(awsConfinfoProfile){
+    const confinfoCredentials = fromSSO({ profile: awsConfinfoProfile })();
+    confinfoConfig.credentials = confinfoCredentials
+}
+
+const kinesisClient = new KinesisClient(confinfoConfig);
+const s3Client = new S3Client(confinfoConfig);
+const confinfoDynamoDbClient = new DynamoDBClient(confinfoConfig);
 const confinfoDDocClient = DynamoDBDocumentClient.from(confinfoDynamoDbClient);
 
 const tpl = fs.readFileSync('./event-tpl.json')
@@ -133,7 +135,6 @@ const publishEvents = async(results) => {
     for (let i = 0; i < kinesisEvents.length; i += chunkSize) {
         const chunk = kinesisEvents.slice(i, i + chunkSize);
         console.log('processing chunk '+(i+1))
-        console.log('Chunked events', chunk)
         await putEventsIntoKinesis(chunk)
     }
 }
@@ -163,7 +164,7 @@ async function putEventsIntoKinesis(events){
 }
 
 async function run(){
-    let lastEvaluatedKey = null
+    let lastEvaluatedKey = lastKey?JSON.parse(lastKey):null // restore stopped execution
     let hasMorePages = true
     while(hasMorePages) {
         const resultsPage = await scanPage(lastEvaluatedKey)
@@ -171,7 +172,7 @@ async function run(){
         await publishEvents(resultsPage)
         lastEvaluatedKey = resultsPage.LastEvaluatedKey
         if(lastEvaluatedKey){
-            console.log('Continue to lastEvaluatedKey: '+lastEvaluatedKey)
+            console.log('Continue to lastEvaluatedKey: '+JSON.stringify(lastEvaluatedKey))
             hasMorePages = true
         } else {
             console.log('No more pages')
