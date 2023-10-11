@@ -1,0 +1,11 @@
+{
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.427.0",
+        "@aws-sdk/client-kinesis": "^3.427.0",
+        "@aws-sdk/client-s3": "^3.427.0",
+        "@aws-sdk/client-ssm": "^3.405.0",
+        "@aws-sdk/credential-provider-sso": "^3.370.0",
+        "@aws-sdk/lib-dynamodb": "^3.427.0",
+        "@aws-sdk/util-dynamodb": "^3.427.0"
+    }
+}

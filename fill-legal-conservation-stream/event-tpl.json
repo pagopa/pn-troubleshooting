@@ -1,0 +1,14 @@
+{
+    "detail-type": "SafeStorageOutcomeEvent",
+    "source": "GESTORE DISPONIBILITA",
+    "time": "",
+    "detail": {
+        "key": "",
+        "versionId": "01",
+        "documentType": "",
+        "documentStatus": "SAVED",
+        "contentType": "",
+        "checksum": "",
+        "client_short_code": ""
+    }
+}
