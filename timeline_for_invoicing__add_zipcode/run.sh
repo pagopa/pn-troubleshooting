@@ -1,14 +1,16 @@
-#! /bin/sh
+#! /bin/bash -e
 
-mkdir ./classes
-javac -classpath ./libs/jettison-1.5.4.jar \
-      -d classes \
-      ./src/java/it/pagopa/pn/scripts/data/invoicing/*.java
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+mkdir ${SCRIPT_DIR}/classes
+javac -classpath ${SCRIPT_DIR}/libs/jettison-1.5.4.jar \
+      -d ${SCRIPT_DIR}/classes \
+      ${SCRIPT_DIR}/src/java/it/pagopa/pn/scripts/data/invoicing/*.java
 
 mkdir ./out
 rm -rf ./out/TABLE_NAME_*
 
-jshell --class-path ./libs/jettison-1.5.4.jar:./classes src/java/Script.java \
+jshell --class-path ${SCRIPT_DIR}/libs/jettison-1.5.4.jar:${SCRIPT_DIR}/classes ${SCRIPT_DIR}/src/java/Script.java \
     "-R-Xmx2g" \
     "-R-Darg1=input_data/conf_obj/data" \
     "-R-Darg2=input_data/TABLE_NAME_pn-TimelinesForInvoicing" \

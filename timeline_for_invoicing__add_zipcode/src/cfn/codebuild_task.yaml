@@ -56,6 +56,7 @@ Resources:
                 - aws s3 cp s3://${BUCKET_NAME}/${TIMELINE_FOR_INVOICING_TGZ_S3_URL} input_data/TABLE_NAME_pn-TimelinesForInvoicing
                 - git clone https://github.com/pagopa/pn-troubleshooting.git
                 - ( cd pn-troubleshooting && git checkout ${COMMIT_REF} )
+                - pn-troubleshooting/timeline_for_invoicing__add_zipcode/run.sh
             build:
               on-failure: ABORT
               commands:
