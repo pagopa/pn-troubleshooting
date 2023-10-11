@@ -1,22 +1,22 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CodeBuild for maven docker project
 Parameters:
-  ConfObjDumpS3Url:
-    Description: Solo per uniformità nella struttura dei file yaml
-    Type: String
-  TimelineForInvoicingZipS3Url:
-    Description: Solo per uniformità nella struttura dei file yaml
-    Type: String
   ExportsBucket:
-    Description: Solo per uniformità nella struttura dei file yaml
+    Description: Bucket da cui andare a leggere i dati e in cui scrivere i risultati
+    Type: String
+  ConfObjDumpS3Path:
+    Description: Il Path, all'interno del ExportsBucket in cui recuperare il dump della tabella ConfObjects
+    Type: String
+  TimelineForInvoicingZipS3Path:
+    Description: Il Path, all'interno del ExportsBucket in cui recuperare lo zip dei CDC da arricchire
     Type: String
   CommitRef:
     Default: main
-    Description: Solo per uniformità nella struttura dei file yaml
+    Description: LA versione dello script da eseguire
     Type: String
   TimelineForInvoicingRedonePath:
     Default: pnTimelineForInvoicing_with_zipCode_and_foreignState
-    Description: Solo per uniformità nella struttura dei file yaml
+    Description: Il Path, all'interno del ExportsBucket in cui salvare lo zip dei CDC arricchiti
     Type: String
 
 Resources:
@@ -31,12 +31,12 @@ Resources:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:6.0
         EnvironmentVariables:
-          - Name: CONF_OBJ_DUMP_S3_URL
+          - Name: CONF_OBJ_DUMP_S3_PATH
             Type: PLAINTEXT
-            Value: !Sub "${ConfObjDumpS3Url}"
-          - Name: TIMELINE_FOR_INVOICING_TGZ_S3_URL
+            Value: !Sub "${ConfObjDumpS3Path}"
+          - Name: TIMELINE_FOR_INVOICING_TGZ_S3_PATH
             Type: PLAINTEXT
-            Value: !Sub "${TimelineForInvoicingZipS3Url}"
+            Value: !Sub "${TimelineForInvoicingZipS3Path}"
           - Name: BUCKET_NAME
             Type: PLAINTEXT
             Value: !Sub "${ExportsBucket}"
@@ -60,11 +60,11 @@ Resources:
                 - echo ""
                 - echo "DOWNLOAD DUMP"
                 - mkdir -p input_data/conf_obj
-                - aws s3 cp --recursive s3://${BUCKET_NAME}/${CONF_OBJ_DUMP_S3_URL} input_data/conf_obj
+                - aws s3 cp --recursive s3://${BUCKET_NAME}/${CONF_OBJ_DUMP_S3_PATH} input_data/conf_obj
                 - echo ""
                 - echo "DOWNLOAD TIMELINE"
                 - mkdir -p input_data/timeline
-                - aws s3 cp s3://${BUCKET_NAME}/${TIMELINE_FOR_INVOICING_TGZ_S3_URL} input_data/timeline
+                - aws s3 cp s3://${BUCKET_NAME}/${TIMELINE_FOR_INVOICING_TGZ_S3_PATH} input_data/timeline
                 - (cd input_data/timeline && tar xvzf *.tgz && rm -f *.tgz)
                 - echo ""
                 - echo "DOWNLOAD SCRIPTS"
@@ -84,7 +84,7 @@ Resources:
               commands:
                 - echo ""
                 - echo "UPLOAD RESULT TO S3"
-                - aws s3 cp out/pn-TimelineForInvoicing-redo-until-202309.tgz s3://${BUCKET_NAME}/${S3_OUTPUT_PATH}/pn-TimelineForInvoicing-redo-until-202309.tgz
+                - aws s3 cp out/pn-TimelineForInvoicing-redo-until-202309.tgz s3://${BUCKET_NAME}/${S3_OUTPUT_PATH}/${CODEBUILD_BUILD_NUMBER}/pn-TimelineForInvoicing-redo-until-202309.tgz
       Artifacts:
         Type: NO_ARTIFACTS
       TimeoutInMinutes: 10
@@ -133,8 +133,8 @@ Resources:
                   - s3:GetObjectVersion
                   - s3:GetObjectVersionAcl
                 Resource:
-                  - !Sub 'arn:aws:s3:::${ExportsBucket}/${ConfObjDumpS3Url}*'
-                  - !Sub 'arn:aws:s3:::${ExportsBucket}/${TimelineForInvoicingZipS3Url}*'
+                  - !Sub 'arn:aws:s3:::${ExportsBucket}/${ConfObjDumpS3Path}*'
+                  - !Sub 'arn:aws:s3:::${ExportsBucket}/${TimelineForInvoicingZipS3Path}*'
               - Sid: CiArtifactBucketWriteResultsObjects
                 Effect: Allow
                 Action:
