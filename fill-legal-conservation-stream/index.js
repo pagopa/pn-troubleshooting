@@ -24,7 +24,7 @@ function getStreamNameFromArn(streamArn){
 }
 
 function _checkingParameters(args, values){
-    const usage = "Usage: index.js --envName <env-name> --streamArn <stream-arn> --bucket <bucket>"
+    const usage = "Usage: index.js [--envName <env-name>] --streamArn <stream-arn> --bucket <bucket>"
     //CHECKING PARAMETER
     args.forEach(el => {
       if(el.mandatory && !values.values[el.name]){
@@ -37,7 +37,7 @@ function _checkingParameters(args, values){
 
   
 const args = [
-    { name: "envName", mandatory: true, subcommand: [] },
+    { name: "envName", mandatory: false, subcommand: [] },
     { name: "streamArn", mandatory: true, subcommand: [] },
     { name: "bucket", mandatory: true, subcommand: [] }
   ]
@@ -60,22 +60,20 @@ const values = {
 
 _checkingParameters(args, values)
 
-const awsConfinfoProfile = "sso_pn-confinfo-" + envName
-const confinfoCredentials = fromSSO({ profile: awsConfinfoProfile })();
-const kinesisClient = new KinesisClient({
-    credentials: confinfoCredentials,
-    region: 'eu-south-1'
-});
+const awsConfinfoProfile = envName?"sso_pn-confinfo-" + envName:null
 
-const s3Client = new S3Client({
-    credentials: confinfoCredentials,
+const confinfoConfig = {
     region: 'eu-south-1'
-});
+}
 
-const confinfoDynamoDbClient = new DynamoDBClient({
-    credentials: confinfoCredentials,
-    region: 'eu-south-1'
-});
+if(awsConfinfoProfile){
+    const confinfoCredentials = fromSSO({ profile: awsConfinfoProfile })();
+    confinfoConfig.credentials = confinfoCredentials
+}
+
+const kinesisClient = new KinesisClient(confinfoConfig);
+const s3Client = new S3Client(confinfoConfig);
+const confinfoDynamoDbClient = new DynamoDBClient(confinfoConfig);
 const confinfoDDocClient = DynamoDBDocumentClient.from(confinfoDynamoDbClient);
 
 const tpl = fs.readFileSync('./event-tpl.json')
