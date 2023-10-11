@@ -1,0 +1,129 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CodeBuild for maven docker project
+Parameters:
+  ConfObjDumpS3Url:
+    Description: Solo per uniformità nella struttura dei file yaml
+    Type: String
+  TimelineForInvoicingZipS3Url:
+    Description: Solo per uniformità nella struttura dei file yaml
+    Type: String
+  ExportsBucket:
+    Description: Solo per uniformità nella struttura dei file yaml
+    Type: String
+  CommitRef:
+    Default: main
+    Description: Solo per uniformità nella struttura dei file yaml
+    Type: String
+
+Resources:
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: ComputeTimelineForInvoicingWithZipCodeAndForeignState
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      BadgeEnabled: false
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:6.0
+        EnvironmentVariables:
+          - Name: CONF_OBJ_DUMP_S3_URL
+            Type: PLAINTEXT
+            Value: !Sub "${ConfObjDumpS3Url}"
+          - Name: TIMELINE_FOR_INVOICING_TGZ_S3_URL
+            Type: PLAINTEXT
+            Value: !Sub "${TimelineForInvoicingZipS3Url}"
+          - Name: BUCKET_NAME
+            Type: PLAINTEXT
+            Value: !Sub "${ExportsBucket}"
+          - Name: COMMIT_REF
+            Type: PLAINTEXT
+            Value: !Sub "${CommitRef}"
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          env:
+            shell: bash
+          phases:
+            pre_build:
+              on-failure: ABORT
+              commands:
+                - env
+                - mkdir -p input_data/conf_obj
+                - aws s3 cp --recursive s3://${BUCKET_NAME}/${CONF_OBJ_DUMP_S3_URL} input_data/conf_obj
+                - mkdir -p input_data/timeline_for_invoicing
+                - aws s3 cp s3://${BUCKET_NAME}/${TIMELINE_FOR_INVOICING_TGZ_S3_URL} input_data/timeline_for_invoicing
+                - git clone https://github.com/pagopa/pn-troubleshooting.git
+                - ( cd pn-troubleshooting && git checkout ${COMMIT_REF} )
+            build:
+              on-failure: ABORT
+              commands:
+                - |
+                  ls -R input_data
+            post_build:
+              on-failure: ABORT
+              commands:
+                - |
+                  echo "Post Build"
+      Artifacts:
+        Type: NO_ARTIFACTS
+      TimeoutInMinutes: 10
+      
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # - Sid: CodeBuildReportGroup
+              #   Effect: Allow
+              #   Action:
+              #     - codebuild:CreateReportGroup
+              #     - codebuild:CreateReport
+              #     - codebuild:UpdateReport
+              #     - codebuild:BatchPutTestCases
+              #     - codebuild:BatchPutCodeCoverages
+              #   Resource:
+              #     - !Sub 'arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/*'
+              - Sid: CreateLogGroup
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/ComputeTimelineForInvoicingWithZipCodeAndForeignState:log-stream:'
+              - Sid: CreateAndWriteLogStream
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/ComputeTimelineForInvoicingWithZipCodeAndForeignState:log-stream:*'
+              - Sid: ExportsBucket
+                Effect: Allow
+                Action:
+                  - s3:GetReplicationConfiguration
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ExportsBucket}'
+              - Sid: CiArtifactBucketObjects
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetObjectVersionAcl
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ExportsBucket}/${ConfObjDumpS3Url}*'
+                  - !Sub 'arn:aws:s3:::${ExportsBucket}/${TimelineForInvoicingZipS3Url}*'
+
