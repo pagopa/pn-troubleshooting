@@ -24,7 +24,7 @@ function getStreamNameFromArn(streamArn){
 }
 
 function _checkingParameters(args, values){
-    const usage = "Usage: index.js [--envName <env-name>] --streamArn <stream-arn> --bucket <bucket>"
+    const usage = "Usage: index.js [--envName <env-name>] [--lastKey <last-key>] --streamArn <stream-arn> --bucket <bucket>"
     //CHECKING PARAMETER
     args.forEach(el => {
       if(el.mandatory && !values.values[el.name]){
@@ -38,6 +38,7 @@ function _checkingParameters(args, values){
   
 const args = [
     { name: "envName", mandatory: false, subcommand: [] },
+    { name: "lastKey", mandatory: false, subcommand: [] },
     { name: "streamArn", mandatory: true, subcommand: [] },
     { name: "bucket", mandatory: true, subcommand: [] }
   ]
@@ -48,6 +49,9 @@ const values = {
         options: {
             envName: {
                 type: "string", short: "e", default: undefined
+            },
+            lastKey: {
+                type: "string", short: "k", default: undefined
             },
             streamArn: {
                 type: "string", short: "s", default: undefined
@@ -160,7 +164,7 @@ async function putEventsIntoKinesis(events){
 }
 
 async function run(){
-    let lastEvaluatedKey = null
+    let lastEvaluatedKey = lastKey?JSON.parse(lastKey):null // restore stopped execution
     let hasMorePages = true
     while(hasMorePages) {
         const resultsPage = await scanPage(lastEvaluatedKey)
