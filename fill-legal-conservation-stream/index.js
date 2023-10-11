@@ -6,6 +6,15 @@ const { parseArgs } = require('util');
 const { KinesisClient, PutRecordsCommand } = require("@aws-sdk/client-kinesis");
 const { S3Client, HeadObjectCommand } = require("@aws-sdk/client-s3");
 
+const documentTypesForLegalConservation = [ 
+    'PN_AAR', 
+    'PN_LEGAL_FACTS', 
+    'PN_DOWNTIME_LEGAL_FACTS', 
+    'PN_EXTERNAL_LEGAL_FACTS', 
+    'PN_LOGS_ARCHIVE_AUDIT5Y', 
+    'PN_LOGS_ARCHIVE_AUDIT10Y'  
+]
+
 function makePartitionKey(event){
     return 'str##'+event.detail.key
 }
@@ -69,6 +78,9 @@ const confinfoDynamoDbClient = new DynamoDBClient({
 });
 const confinfoDDocClient = DynamoDBDocumentClient.from(confinfoDynamoDbClient);
 
+const tpl = fs.readFileSync('./event-tpl.json')
+const jsonTpl = JSON.parse(tpl)
+
 async function getObjectMetadata(fileKey){
     const input = {
         "Bucket": bucket,
@@ -78,6 +90,17 @@ async function getObjectMetadata(fileKey){
       const response = await s3Client.send(command);
 
       return response;
+}
+
+const mapSafeStorageDocumentToLegalConservationEvent = (document) => {
+    const obj = Object.assign({}, jsonTpl)
+    obj.detail.key = document.documentKey
+    obj.detail.documentType = document.documentType.tipoDocumento
+    obj.detail.contentType = document.contentType
+    obj.detail.checksum = document.checkSum
+    obj.detail.client_short_code = document.clientShortCode
+    obj.detail.is_mock_fill = true
+    return obj
 }
 
 const scanPage = async (lastEvaluatedKey) => {
@@ -93,42 +116,24 @@ const scanPage = async (lastEvaluatedKey) => {
     return confinfoDDocClient.send(scanCommand)
 }
 
-const tpl = fs.readFileSync('./event-tpl.json')
-const jsonTpl = JSON.parse(tpl)
-
 const publishEvents = async(results) => {
     const kinesisEvents = results.Items.filter((i) => {
-        return [ 'PN_AAR', 
-        'PN_LEGAL_FACTS', 
-        'PN_DOWNTIME_LEGAL_FACTS', 
-        'PN_EXTERNAL_LEGAL_FACTS', 
-        'PN_LOGS_ARCHIVE_AUDIT5Y', 
-        'PN_LOGS_ARCHIVE_AUDIT10Y'  ]
-        .indexOf(i.documentType.tipoDocumento)>=0
+        return documentTypesForLegalConservation.indexOf(i.documentType.tipoDocumento)>=0
     }).map((i) => {
-        const obj = Object.assign({}, jsonTpl)
-        obj.detail.key = i.documentKey
-        obj.detail.documentType = i.documentType.tipoDocumento
-        obj.detail.contentType = i.contentType
-        obj.detail.checksum = i.checkSum
-        obj.detail.client_short_code = i.clientShortCode
-        obj.detail.is_mock_fill = true
-        return obj
+        return mapSafeStorageDocumentToLegalConservationEvent(i)
     })
 
     for(let i=0; i<kinesisEvents.length; i++){
+        // retrieve document creation date from S3 bucket since it is not available in DynamoDB
         const s3Metadata = await getObjectMetadata(kinesisEvents[i].detail.key)
-        console.log(s3Metadata)
         kinesisEvents[i].time = new Date(s3Metadata.LastModified).toISOString()
-        console.log('time '+kinesisEvents[i].time)
     }
-
-    console.log('kinesis events', kinesisEvents)
 
     const chunkSize = 500;
     for (let i = 0; i < kinesisEvents.length; i += chunkSize) {
         const chunk = kinesisEvents.slice(i, i + chunkSize);
         console.log('processing chunk '+(i+1))
+        console.log('Chunked events', chunk)
         await putEventsIntoKinesis(chunk)
     }
 }
@@ -165,7 +170,13 @@ async function run(){
 
         await publishEvents(resultsPage)
         lastEvaluatedKey = resultsPage.LastEvaluatedKey
-        hasMorePages = false
+        if(lastEvaluatedKey){
+            console.log('Continue to lastEvaluatedKey: '+lastEvaluatedKey)
+            hasMorePages = true
+        } else {
+            console.log('No more pages')
+            hasMorePages = false
+        }
     }
 }
 run()
