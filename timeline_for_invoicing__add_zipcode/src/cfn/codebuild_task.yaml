@@ -50,18 +50,29 @@ Resources:
               on-failure: ABORT
               commands:
                 - env
+                - echo ""
+                - echo "DOWNLOAD DUMP"
                 - mkdir -p input_data/conf_obj
                 - aws s3 cp --recursive s3://${BUCKET_NAME}/${CONF_OBJ_DUMP_S3_URL} input_data/conf_obj
-                - mkdir -p input_data/TABLE_NAME_pn-TimelinesForInvoicing
-                - aws s3 cp s3://${BUCKET_NAME}/${TIMELINE_FOR_INVOICING_TGZ_S3_URL} input_data/TABLE_NAME_pn-TimelinesForInvoicing
+                - echo ""
+                - echo "DOWNLOAD TIMELINE"
+                - mkdir -p input_data/timeline
+                - aws s3 cp s3://${BUCKET_NAME}/${TIMELINE_FOR_INVOICING_TGZ_S3_URL} input_data/timeline
+                - (cd input_data/timeline && tar xvzf *.tgz && rm -f *.tgz)
+                - echo ""
+                - echo "DOWNLOAD SCRIPTS"
                 - git clone https://github.com/pagopa/pn-troubleshooting.git
                 - ( cd pn-troubleshooting && git checkout ${COMMIT_REF} )
-                - pn-troubleshooting/timeline_for_invoicing__add_zipcode/run.sh
+                - echo ""
+                - echo "LIST ALL FILES"
+                - find . | sed -e "s/[^-][^\/]*\// |/g" -e "s/|\([^ ]\)/|-\1/"
+                
             build:
               on-failure: ABORT
               commands:
-                - |
-                  ls -R input_data
+                - echo ""
+                - echo "RUN SCRIPTS"
+                - pn-troubleshooting/timeline_for_invoicing__add_zipcode/run.sh
             post_build:
               on-failure: ABORT
               commands:
