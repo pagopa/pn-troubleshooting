@@ -54,7 +54,7 @@ public class CdcFileTransformer {
 
     protected void saveTransformedData( Path fromDir, Path toDir, Path readedPath, CdcFileParsedData newData) throws IOException {
 
-        Path relativeFromSourceDir = fromDir.relativize( readedPath.toAbsolutePath() );
+        Path relativeFromSourceDir = fromDir.toAbsolutePath().relativize( readedPath.toAbsolutePath() );
         Path destinationPath = toDir.resolve( relativeFromSourceDir );
 
         ioUtil.saveFileOfObjects( destinationPath, newData );

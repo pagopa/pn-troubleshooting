@@ -2,12 +2,12 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-mkdir ${SCRIPT_DIR}/classes
+mkdir -p ${SCRIPT_DIR}/classes
 javac -classpath ${SCRIPT_DIR}/libs/jettison-1.5.4.jar \
       -d ${SCRIPT_DIR}/classes \
       ${SCRIPT_DIR}/src/java/it/pagopa/pn/scripts/data/invoicing/*.java
 
-mkdir ./out
+mkdir -p ./out
 rm -rf ./out/TABLE_NAME_*
 
 jshell --class-path ${SCRIPT_DIR}/libs/jettison-1.5.4.jar:${SCRIPT_DIR}/classes ${SCRIPT_DIR}/src/java/Script.java \
