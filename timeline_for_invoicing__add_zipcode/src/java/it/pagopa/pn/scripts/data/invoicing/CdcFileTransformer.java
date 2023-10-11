@@ -16,6 +16,7 @@ public class CdcFileTransformer {
         Files.walk( fromDir )
                 .filter( this::isFile )
                 .forEach((Path cdcFile) -> {
+                        System.out.println("Transform " + cdcFile);
                         try {
                             CdcFileParsedData data = ioUtil.loadFileOfObjects(cdcFile);
 
@@ -34,6 +35,7 @@ public class CdcFileTransformer {
         Files.walk( fromDir )
                 .filter( this::isFile )
                 .forEach((Path cdcFile) -> {
+                    System.out.println("Walk " + cdcFile);
                     try {
                         CdcFileParsedData data = ioUtil.loadFileOfObjects(cdcFile);
 
