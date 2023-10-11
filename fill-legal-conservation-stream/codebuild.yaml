@@ -17,6 +17,7 @@ Resources:
     Properties:
       ServiceRole: !Ref CodeBuildServiceRole
       Name: pn-kinesis-stream-filler
+      TimeoutInMinutes: 480
       ConcurrentBuildLimit: 1
       Source: 
         Type: NO_SOURCE
