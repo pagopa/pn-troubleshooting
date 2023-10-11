@@ -167,7 +167,7 @@ async function run(){
         const resultsPage = await scanPage(lastEvaluatedKey)
 
         await publishEvents(resultsPage)
-        lastEvaluatedKey = resultsPage.L
+        lastEvaluatedKey = resultsPage.LastEvaluatedKey
         if(lastEvaluatedKey){
             console.log('Continue to lastEvaluatedKey: '+JSON.stringify(lastEvaluatedKey))
             hasMorePages = true
