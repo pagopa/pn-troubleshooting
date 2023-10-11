@@ -18,5 +18,5 @@ jshell --class-path ${SCRIPT_DIR}/libs/jettison-1.5.4.jar:${SCRIPT_DIR}/classes 
 
 echo "Ended with exit code $?"
 
-tar cvzf ./out/pn-TimelineForInvoicing-redo-until-202309.tgz ./out/TABLE_NAME_pn-TimelinesForInvoicing
+( cd out && tar cvzf ./pn-TimelineForInvoicing-redo-until-202309.tgz ./TABLE_NAME_pn-TimelinesForInvoicing )
 echo "Archive Generated in ./out/pn-TimelineForInvoicing-redo-until-202309.tgz"
