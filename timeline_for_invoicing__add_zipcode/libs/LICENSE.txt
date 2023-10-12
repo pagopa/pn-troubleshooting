@@ -1,0 +1,6 @@
+The jettison-1.5.4.jar is downloaded by https://mvnrepository.com/artifact/org.codehaus.jettison/jettison
+
+It is protected by 	Apache License version 2.0
+
+Is copied in this repository to have very simple and reproducible build process.
+
