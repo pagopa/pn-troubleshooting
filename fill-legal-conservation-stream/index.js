@@ -44,7 +44,7 @@ const args = [
   ]
   
 const values = {
-        values: { envName, streamArn, bucket },
+        values: { envName, streamArn, bucket, lastKey },
     } = parseArgs({
         options: {
             envName: {
