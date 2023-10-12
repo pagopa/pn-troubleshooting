@@ -61,6 +61,8 @@ Resources:
                 - echo "DOWNLOAD DUMP"
                 - mkdir -p input_data/conf_obj
                 - aws s3 cp --recursive s3://${BUCKET_NAME}/${CONF_OBJ_DUMP_S3_PATH} input_data/conf_obj
+                - find input_data/conf_obj -name "*.gz" -exec gunzip {} \;
+                - find input_data/conf_obj -name "*.gz" -delete
                 - echo ""
                 - echo "DOWNLOAD TIMELINE"
                 - mkdir -p input_data/timeline
