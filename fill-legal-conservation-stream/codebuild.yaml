@@ -81,6 +81,14 @@ Resources:
             Action:
               - kinesis:PutRecords
             Resource: '*'
+          - Action:
+              - kms:Encrypt*
+              - kms:Decrypt*
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:Describe*
+            Effect: Allow
+            Resource: '*'         
                   
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
