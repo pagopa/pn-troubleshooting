@@ -81,12 +81,16 @@ Resources:
                 - echo ""
                 - echo "RUN SCRIPTS"
                 - pn-troubleshooting/timeline_for_invoicing__add_zipcode/run.sh
+                - mkdir tmp
+                - cp out/pn-TimelineForInvoicing-redo-until-202309.tgz tmp
+                - (cd tmp && tar xvzf *.tgz && rm *.tgz && zip -r ../out/pn-TimelineForInvoicing-redo-until-202309.zip .)
             post_build:
               on-failure: ABORT
               commands:
                 - echo ""
                 - echo "UPLOAD RESULT TO S3"
                 - aws s3 cp out/pn-TimelineForInvoicing-redo-until-202309.tgz s3://${BUCKET_NAME}/${S3_OUTPUT_PATH}/${CODEBUILD_BUILD_NUMBER}/pn-TimelineForInvoicing-redo-until-202309.tgz
+                - aws s3 cp out/pn-TimelineForInvoicing-redo-until-202309.zip s3://${BUCKET_NAME}/${S3_OUTPUT_PATH}/${CODEBUILD_BUILD_NUMBER}/pn-TimelineForInvoicing-redo-until-202309.zip
       Artifacts:
         Type: NO_ARTIFACTS
       TimeoutInMinutes: 10
