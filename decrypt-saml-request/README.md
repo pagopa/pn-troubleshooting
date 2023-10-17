@@ -1,8 +1,10 @@
 ## DECRYPT SAML REQUEST
 
-`node index.js <log-private-key-path> <saml-request-path>`
+`./decrypt.sh <aws-profile> <env> <saml-request-path>`
 
-Note: you have to download the log private key locally before running the script
+Where:
+- `<aws-profile>` is the AWS profile allowed to get secrets from target AWS account
+- `<env>` is the PN platform environment (dev, test, uat, hotfix, prod)
+- `<saml-request-path>` is the SAML assertion file to decrypt
 
-**TODO:**
-- download private key from Secrets Manage `spidhub-prod-hub-login-logs`
+The script generates the decrypted SAML assertion file in the same path of the encrypted one with the `-decrypted` suffix.
