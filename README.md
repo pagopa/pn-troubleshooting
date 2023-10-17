@@ -93,3 +93,9 @@ Vuoi estrarre tutti i file in errore in conservazione sostitutiva?
 ```bash
 ./index.js --envName <env-name> --startDate <startDate> [--endDate <endDate>]
 ```
+
+### generate_jws
+Vuoi generare un JWS per InfoCamere?
+```bash
+./index.js <aws-profile> <client-id>
+```
