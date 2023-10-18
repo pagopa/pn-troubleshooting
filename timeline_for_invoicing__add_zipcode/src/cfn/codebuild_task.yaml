@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CodeBuild for maven docker project
+Parameters:
+  ExportsBucket:
+    Description: Bucket da cui andare a leggere i dati e in cui scrivere i risultati
+    Type: String
+  ConfObjDumpS3Path:
+    Description: Il Path, all'interno del ExportsBucket in cui recuperare il dump della tabella ConfObjects
+    Type: String
+  TimelineForInvoicingZipS3Path:
+    Description: Il Path, all'interno del ExportsBucket in cui recuperare lo zip dei CDC da arricchire
+    Type: String
+  CommitRef:
+    Default: main
+    Description: LA versione dello script da eseguire
+    Type: String
+  TimelineForInvoicingRedonePath:
+    Default: pnTimelineForInvoicing_with_zipCode_and_foreignState
+    Description: Il Path, all'interno del ExportsBucket in cui salvare lo zip dei CDC arricchiti
+    Type: String
+
+Resources:
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: ComputeTimelineForInvoicingWithZipCodeAndForeignState
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      BadgeEnabled: false
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:6.0
+        EnvironmentVariables:
+          - Name: CONF_OBJ_DUMP_S3_PATH
+            Type: PLAINTEXT
+            Value: !Sub "${ConfObjDumpS3Path}"
+          - Name: TIMELINE_FOR_INVOICING_TGZ_S3_PATH
+            Type: PLAINTEXT
+            Value: !Sub "${TimelineForInvoicingZipS3Path}"
+          - Name: BUCKET_NAME
+            Type: PLAINTEXT
+            Value: !Sub "${ExportsBucket}"
+          - Name: COMMIT_REF
+            Type: PLAINTEXT
+            Value: !Sub "${CommitRef}"
+          - Name: S3_OUTPUT_PATH
+            Type: PLAINTEXT
+            Value: !Sub "${TimelineForInvoicingRedonePath}"
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          env:
+            shell: bash
+          phases:
+            pre_build:
+              on-failure: ABORT
+              commands:
+                - env
+                - echo ""
+                - echo "DOWNLOAD DUMP"
+                - mkdir -p input_data/conf_obj
+                - aws s3 cp --recursive s3://${BUCKET_NAME}/${CONF_OBJ_DUMP_S3_PATH} input_data/conf_obj
+                - find input_data/conf_obj -name "*.gz" -exec gunzip {} \;
+                - find input_data/conf_obj -name "*.gz" -delete
+                - echo ""
+                - echo "DOWNLOAD TIMELINE"
+                - mkdir -p input_data/timeline
+                - aws s3 cp s3://${BUCKET_NAME}/${TIMELINE_FOR_INVOICING_TGZ_S3_PATH} input_data/timeline
+                - (cd input_data/timeline && tar xvzf *.tgz && rm -f *.tgz)
+                - echo ""
+                - echo "DOWNLOAD SCRIPTS"
+                - git clone https://github.com/pagopa/pn-troubleshooting.git
+                - ( cd pn-troubleshooting && git checkout ${COMMIT_REF} )
+                - echo ""
+                - echo "LIST ALL FILES"
+                - find . | sed -e "s/[^-][^\/]*\// |/g" -e "s/|\([^ ]\)/|-\1/"
+            build:
+              on-failure: ABORT
+              commands:
+                - echo ""
+                - echo "RUN SCRIPTS"
+                - pn-troubleshooting/timeline_for_invoicing__add_zipcode/run.sh
+                - mkdir tmp
+                - cp out/pn-TimelineForInvoicing-redo-until-202309.tgz tmp
+                - (cd tmp && tar xvzf *.tgz && rm *.tgz && zip -r ../out/pn-TimelineForInvoicing-redo-until-202309.zip .)
+            post_build:
+              on-failure: ABORT
+              commands:
+                - echo ""
+                - echo "UPLOAD RESULT TO S3"
+                - aws s3 cp out/pn-TimelineForInvoicing-redo-until-202309.tgz s3://${BUCKET_NAME}/${S3_OUTPUT_PATH}/${CODEBUILD_BUILD_NUMBER}/pn-TimelineForInvoicing-redo-until-202309.tgz
+                - aws s3 cp out/pn-TimelineForInvoicing-redo-until-202309.zip s3://${BUCKET_NAME}/${S3_OUTPUT_PATH}/${CODEBUILD_BUILD_NUMBER}/pn-TimelineForInvoicing-redo-until-202309.zip
+      Artifacts:
+        Type: NO_ARTIFACTS
+      TimeoutInMinutes: 10
+      
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CreateLogGroup
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/ComputeTimelineForInvoicingWithZipCodeAndForeignState:log-stream:'
+              - Sid: CreateAndWriteLogStream
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/ComputeTimelineForInvoicingWithZipCodeAndForeignState:log-stream:*'
+              - Sid: ExportsBucket
+                Effect: Allow
+                Action:
+                  - s3:GetReplicationConfiguration
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ExportsBucket}'
+              - Sid: CiArtifactBucketObjects
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetObjectVersionAcl
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ExportsBucket}/${ConfObjDumpS3Path}*'
+                  - !Sub 'arn:aws:s3:::${ExportsBucket}/${TimelineForInvoicingZipS3Path}*'
+              - Sid: CiArtifactBucketWriteResultsObjects
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectVersion
+                  - s3:PutObjectVersionAcl
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ExportsBucket}/${TimelineForInvoicingRedonePath}/*'
+
+

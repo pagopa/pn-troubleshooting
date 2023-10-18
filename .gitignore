@@ -1,3 +1,7 @@
+timeline_for_invoicing__add_zipcode/out
+timeline_for_invoicing__add_zipcode/classes
+timeline_for_invoicing__add_zipcode/input_data
+
 HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
@@ -50,3 +54,5 @@ node_modules/
 data_extractor/results
 
 replace_certificate/backup
+
+legal_conservation_error_extractor/result

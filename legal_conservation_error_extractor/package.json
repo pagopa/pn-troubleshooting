@@ -1,0 +1,13 @@
+{
+  "name": "legal_conservation_error_extractor",
+  "version": "1.0.0",
+  "description": "Genera un report contentente gli error non gestiti da legal consevation",
+  "main": "index.js",
+  "scripts": {},
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.423.0",
+    "@aws-sdk/credential-provider-ini": "^3.321.1",
+    "fast-xml-parser": "^4.2.2"
+  }
+}

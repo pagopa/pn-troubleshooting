@@ -74,3 +74,22 @@ Vuoi fare un backup dei certificati o sostituire i certificati attuali con quell
 ```bash
 node index.js --envName <env-Name> --certificate <ade|infocamere> [--replace]
 ```
+
+
+### cognito_reset_password
+Vuoi resettare la password ad un utente cognito?
+```bash
+./reset-cognito-pwd.sh -r <aws-region> -p <aws-profile> -x <new-password> -e <email> -c <cognito-user-pool>
+```
+
+### legal_conservation_retry
+Vuoi ritrasmettere un documento in conservazione sostitutiva?
+```bash
+./index.sh -r <aws-region> -p <aws-profile> -f <json-file> [-i <invoke>]
+```
+
+### legal_conservation_retry
+Vuoi estrarre tutti i file in errore in conservazione sostitutiva?
+```bash
+./index.js --envName <env-name> --startDate <startDate> [--endDate <endDate>]
+```
