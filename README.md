@@ -99,3 +99,9 @@ Vuoi eseguire il dump di una coda SQS?
 ```bash
 node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> [--format <output-format>]
 ```
+
+### generate_jws
+Vuoi generare un JWS per InfoCamere?
+```bash
+./node index.js <aws-profile> <client-id>
+```
