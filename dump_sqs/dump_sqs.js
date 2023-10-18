@@ -5,11 +5,12 @@ const { parseArgs } = require('util');
 const args = [
   { name: "awsProfile", mandatory: true, subcommand: [] },
   { name: "queueName", mandatory: true, subcommand: [] },
+  { name: "visibilityTimeout", mandatory: false, subcommand: [] },
   { name: "format", mandatory: false, subcommand: [] }
 ]
 
 const values = {
-  values: { awsProfile, queueName, format },
+  values: { awsProfile, queueName, format, visibilityTimeout },
 } = parseArgs({
   options: {
     awsProfile: {
@@ -20,6 +21,11 @@ const values = {
       type: "string",
       short: "q"
     },
+    visibilityTimeout: {
+      type: "string",
+      short: "t",
+      default: "20"
+    },
     format: {
       type: "string",
       short: "f",
@@ -29,7 +35,7 @@ const values = {
 });
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> [--format <output-format>]"
+  const usage = "Usage: node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--format <output-format>]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -90,7 +96,7 @@ async function dumpSQS() {
     MaxNumberOfMessages: maxNumberOfMessages, // Numero massimo di messaggi da recuperare (modificabile) ma deve essere 1 per code FIFO
     AttributeNames: ['All'],
     MessageAttributeNames: ['All'],
-    VisibilityTimeout: 20,    // Tempo in secondi di non visibilità del messaggio dalla DLQ
+    VisibilityTimeout: parseInt(visibilityTimeout),    // Tempo in secondi di non visibilità del messaggio dalla DLQ
     WaitTimeSeconds: 5,
   };
   try {
