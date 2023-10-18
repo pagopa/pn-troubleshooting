@@ -91,11 +91,17 @@ Vuoi ritrasmettere un documento in conservazione sostitutiva?
 ### legal_conservation_retry
 Vuoi estrarre tutti i file in errore in conservazione sostitutiva?
 ```bash
-./index.js --envName <env-name> --startDate <startDate> [--endDate <endDate>]
+./node index.js --envName <env-name> --startDate <startDate> [--endDate <endDate>]
+```
+
+### dump_sqs
+Vuoi eseguire il dump di una coda SQS?
+```bash
+node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> [--format <output-format>]
 ```
 
 ### generate_jws
 Vuoi generare un JWS per InfoCamere?
 ```bash
-./index.js <aws-profile> <client-id>
+./node index.js <aws-profile> <client-id>
 ```
