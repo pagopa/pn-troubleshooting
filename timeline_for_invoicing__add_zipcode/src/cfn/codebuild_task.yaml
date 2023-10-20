@@ -7,12 +7,17 @@ Parameters:
   ConfObjDumpS3Path:
     Description: Il Path, all'interno del ExportsBucket in cui recuperare il dump della tabella ConfObjects
     Type: String
-  TimelineForInvoicingZipS3Path:
-    Description: Il Path, all'interno del ExportsBucket in cui recuperare lo zip dei CDC da arricchire
+  TimelineForInvoicingBucket:
+    Description: Il bucket, in cui sono salvati i CDC della tabella pn-timelineForInvoicing
+    Type: String
+  TimelineForInvoicingS3Path:
+    Description: |
+        Il Path, all'interno del TimelineForInvoicingBucket in cui recuperare i file json dei 
+        CDC da arricchire
     Type: String
   CommitRef:
     Default: main
-    Description: LA versione dello script da eseguire
+    Description: La versione dello script da eseguire
     Type: String
   TimelineForInvoicingRedonePath:
     Default: pnTimelineForInvoicing_with_zipCode_and_foreignState
@@ -34,9 +39,9 @@ Resources:
           - Name: CONF_OBJ_DUMP_S3_PATH
             Type: PLAINTEXT
             Value: !Sub "${ConfObjDumpS3Path}"
-          - Name: TIMELINE_FOR_INVOICING_TGZ_S3_PATH
+          - Name: TIMELINE_FOR_INVOICING_SRC_S3_URL
             Type: PLAINTEXT
-            Value: !Sub "${TimelineForInvoicingZipS3Path}"
+            Value: !Sub "s3://${TimelineForInvoicingBucket}/${TimelineForInvoicingS3Path}"
           - Name: BUCKET_NAME
             Type: PLAINTEXT
             Value: !Sub "${ExportsBucket}"
@@ -66,8 +71,7 @@ Resources:
                 - echo ""
                 - echo "DOWNLOAD TIMELINE"
                 - mkdir -p input_data/timeline
-                - aws s3 cp s3://${BUCKET_NAME}/${TIMELINE_FOR_INVOICING_TGZ_S3_PATH} input_data/timeline
-                - (cd input_data/timeline && tar xvzf *.tgz && rm -f *.tgz)
+                - aws s3 cp --recursive ${TIMELINE_FOR_INVOICING_SRC_S3_URL} input_data/timeline
                 - echo ""
                 - echo "DOWNLOAD SCRIPTS"
                 - git clone https://github.com/pagopa/pn-troubleshooting.git
@@ -82,15 +86,16 @@ Resources:
                 - echo "RUN SCRIPTS"
                 - pn-troubleshooting/timeline_for_invoicing__add_zipcode/run.sh
                 - mkdir tmp
-                - cp out/pn-TimelineForInvoicing-redo-until-202309.tgz tmp
-                - (cd tmp && tar xvzf *.tgz && rm *.tgz && zip -r ../out/pn-TimelineForInvoicing-redo-until-202309.zip .)
+                - cp out/pn-TimelineForInvoicing-redo.tgz tmp
+                - (cd tmp && tar xvzf *.tgz && rm *.tgz && zip -r ../out/pn-TimelineForInvoicing-redo.zip .)
             post_build:
               on-failure: ABORT
               commands:
                 - echo ""
                 - echo "UPLOAD RESULT TO S3"
-                - aws s3 cp out/pn-TimelineForInvoicing-redo-until-202309.tgz s3://${BUCKET_NAME}/${S3_OUTPUT_PATH}/${CODEBUILD_BUILD_NUMBER}/pn-TimelineForInvoicing-redo-until-202309.tgz
-                - aws s3 cp out/pn-TimelineForInvoicing-redo-until-202309.zip s3://${BUCKET_NAME}/${S3_OUTPUT_PATH}/${CODEBUILD_BUILD_NUMBER}/pn-TimelineForInvoicing-redo-until-202309.zip
+                - today_string=$(date "+%Y-%m-%d")
+                - aws s3 cp out/pn-TimelineForInvoicing-redo.tgz s3://${BUCKET_NAME}/${S3_OUTPUT_PATH}/${today_string}/pn-TimelineForInvoicing-redo_${today_string}_${CODEBUILD_BUILD_NUMBER}.tgz
+                - aws s3 cp out/pn-TimelineForInvoicing-redo.zip s3://${BUCKET_NAME}/${S3_OUTPUT_PATH}/${today_string}/pn-TimelineForInvoicing-redo_${today_string}_${CODEBUILD_BUILD_NUMBER}.zip
       Artifacts:
         Type: NO_ARTIFACTS
       TimeoutInMinutes: 10
@@ -125,14 +130,15 @@ Resources:
                   - logs:PutLogEvents
                 Resource:
                   - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/ComputeTimelineForInvoicingWithZipCodeAndForeignState:log-stream:*'
-              - Sid: ExportsBucket
+              - Sid: ListingOnBuckets
                 Effect: Allow
                 Action:
                   - s3:GetReplicationConfiguration
                   - s3:ListBucket
                 Resource:
                   - !Sub 'arn:aws:s3:::${ExportsBucket}'
-              - Sid: CiArtifactBucketObjects
+                  - !Sub 'arn:aws:s3:::${TimelineForInvoicingBucket}'
+              - Sid: ReadBucketsObjects
                 Effect: Allow
                 Action:
                   - s3:GetObject
@@ -140,8 +146,8 @@ Resources:
                   - s3:GetObjectVersionAcl
                 Resource:
                   - !Sub 'arn:aws:s3:::${ExportsBucket}/${ConfObjDumpS3Path}*'
-                  - !Sub 'arn:aws:s3:::${ExportsBucket}/${TimelineForInvoicingZipS3Path}*'
-              - Sid: CiArtifactBucketWriteResultsObjects
+                  - !Sub 'arn:aws:s3:::${TimelineForInvoicingBucket}/${TimelineForInvoicingS3Path}*'
+              - Sid: WriteResultsToBucket
                 Effect: Allow
                 Action:
                   - s3:PutObject

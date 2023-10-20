@@ -4,12 +4,17 @@ import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
 
 public class ConfinfoMap {
 
@@ -22,7 +27,7 @@ public class ConfinfoMap {
                 .filter( dataPath -> Files.isRegularFile( dataPath ) )
                 .flatMap( dataPath-> {
                     try {
-                        return Files.lines( dataPath );
+                        return readPathLineByLine( dataPath );
                     } catch (IOException exc) {
                         throw new RuntimeException( exc );
                     }
@@ -79,13 +84,42 @@ public class ConfinfoMap {
         try {
             return new JSONObject( jsonString );
         } catch (JSONException exc) {
-            throw new RuntimeException(exc);
+            throw new RuntimeException("gettingTimelineInfo " + fullKey, exc);
         }
     }
 
 
     private static String getFirstLevelString( JSONObject item, String propertyName ) throws JSONException {
         return item.getJSONObject( propertyName ).getString("S");
+    }
+
+
+    private static Stream<String> readPathLineByLine(Path path) throws IOException {
+      Stream<String> stream;
+      
+      if( isGzip( path ) ) {
+        stream = readGzipLineByLine( path );
+      }
+      else {
+        stream = Files.lines( path );
+      }
+
+      return stream;
+    }
+
+    private static boolean isGzip(Path path) {
+      return path.toString().endsWith(".gz");
+    }
+
+    private static Stream<String> readGzipLineByLine(Path path) throws IOException {
+      InputStream fileIs = Files.newInputStream(path);
+      // Even though GZIPInputStream has a buffer it reads individual bytes
+      // when processing the header, better add a buffer in-between
+      BufferedInputStream bufferedIs = new BufferedInputStream(fileIs, 65535);
+      GZIPInputStream gzipIs = new GZIPInputStream(bufferedIs);
+      BufferedReader reader = new BufferedReader(new InputStreamReader(gzipIs));
+      
+      return reader.lines();  
     }
 
 }

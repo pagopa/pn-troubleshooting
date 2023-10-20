@@ -31,7 +31,7 @@ public class FixTimeline4Invoicing {
     }
 
     public void transform(Path fromDir, Path toDir) throws IOException {
-        Map<String, JSONObject> originalTimelineForInvoicingMap = new HashMap<>();
+        Map<String, String> originalTimelineForInvoicingMap = new HashMap<>();
         
         System.out.println("Start timeline precomputation");
         this.cdcFileTransformer.walkSource( fromDir, data -> this.collectInvoicingTimelinesInto_wrapException( data, originalTimelineForInvoicingMap) );
@@ -40,7 +40,7 @@ public class FixTimeline4Invoicing {
         this.cdcFileTransformer.transform( fromDir, toDir, data -> this.transformOneFileData_wrapException( data, originalTimelineForInvoicingMap ) );
     }
 
-    protected void collectInvoicingTimelinesInto_wrapException( CdcFileParsedData data, Map<String, JSONObject> holder) {
+    protected void collectInvoicingTimelinesInto_wrapException( CdcFileParsedData data, Map<String, String> holder) {
         try {
             this.collectInvoicingTimelinesInto( data, holder );
         } catch (JSONException exc) {
@@ -48,64 +48,73 @@ public class FixTimeline4Invoicing {
         }
     }
 
-    private void collectInvoicingTimelinesInto( CdcFileParsedData data, Map<String, JSONObject> holder) throws JSONException {
+    private void collectInvoicingTimelinesInto( CdcFileParsedData data, Map<String, String> holder) throws JSONException {
         for( List<JSONObject> lineData : data ) {
             for( JSONObject jsonObj: lineData ) {
                 String timelineElementId = getNestedProperty(jsonObj, "dynamodb.NewImage.timelineElementId.S");
-                holder.put( timelineElementId, jsonObj );
+                String timestampString = getNestedProperty( jsonObj, "dynamodb.NewImage.timestamp.S");
+                holder.put( timelineElementId, timestampString );
             }
         }
     }
 
-    protected CdcFileParsedData transformOneFileData_wrapException( CdcFileParsedData data, Map<String, JSONObject> originalTimelineForInvoicingMap ) {
+    protected CdcFileParsedData transformOneFileData_wrapException( CdcFileParsedData data, Map<String, String> originalTimelineForInvoicingMap ) {
         try {
             return this.transformOneFileData( data, originalTimelineForInvoicingMap );
         } catch (JSONException exc) {
             throw new RuntimeException( exc );
         }
     }
-    protected CdcFileParsedData transformOneFileData( CdcFileParsedData data, Map<String, JSONObject> originalTimelineForInvoicingMap ) throws JSONException {
+    protected CdcFileParsedData transformOneFileData( CdcFileParsedData data, Map<String, String> originalTimelineForInvoicingMap ) throws JSONException {
 
         for( List<JSONObject> lineData : data ) {
             for( JSONObject m: lineData ) {
 
                 String category = getNestedProperty( m, "dynamodb.NewImage.category.S");
+                
                 if( CAP_CATEGORIES.contains( category )) {
+                    String origZipCode = getNestedProperty( m, "dynamodb.NewImage.details.M.physicalAddress.M.zip.S");
+                    String origForeignState = getNestedProperty( m, "dynamodb.NewImage.details.M.physicalAddress.M.foreignState.S");
+                      
+                    if( origZipCode == null && origForeignState == null ) {
+                        
+                        String timelineElementId = getNestedProperty( m, "dynamodb.NewImage.timelineElementId.S");
+                        String paId = getNestedProperty(m, "dynamodb.NewImage.paId.S");
+                        
+                        JSONObject confinfoEntry = this.confinfoMap.getTimelineInfo( timelineElementId );
+                        String zipCode = getNestedProperty( confinfoEntry, "physicalAddress.M.cap.S");
+                        String foreignState = getNestedProperty( confinfoEntry, "physicalAddress.M.state.S");
+                        System.out.println( timelineElementId + ") " + zipCode + " " + foreignState );
 
-                    String timelineElementId = getNestedProperty( m, "dynamodb.NewImage.timelineElementId.S");
-                    String paId = getNestedProperty(m, "dynamodb.NewImage.paId.S");
-                    JSONObject confinfoEntry = this.confinfoMap.getTimelineInfo( timelineElementId );
-                    String zipCode = getNestedProperty( confinfoEntry, "physicalAddress.M.cap.S");
-                    String foreignState = getNestedProperty( confinfoEntry, "physicalAddress.M.state.S");
-                    System.out.println( timelineElementId + ") " + zipCode + " " + foreignState );
+                      
+                        setNestedProperty( m, "dynamodb.NewImage.details.M.physicalAddress.M.zip", zipCode );
+                        if( foreignState != null ) {
+                            setNestedProperty( m, "dynamodb.NewImage.details.M.physicalAddress.M.foreignState", foreignState );
+                        }
+    
+                        String invoicingTimestamp = findRefinementTimestamp( originalTimelineForInvoicingMap, timelineElementId );
+                        invoicingTimestamp = invoicingTimestamp.replaceFirst("\\.([0-9]{3})[0-9]+Z", ".$1Z");
+                        setNestedProperty( m, "dynamodb.NewImage.invoincingTimestamp", invoicingTimestamp );
+    
+                        String invoicingDay = invoicingTimestamp.replaceFirst("T.*", "");
+                        setNestedProperty( m, "dynamodb.NewImage.invoicingDay", invoicingDay );
+    
+                        String paId_invoicingDay = paId + "_" + invoicingDay;
+                        setNestedProperty( m, "dynamodb.NewImage.paId_invoicingDay", paId_invoicingDay );
+                        setNestedProperty( m, "dynamodb.Keys.paId_invoicingDay", paId_invoicingDay );
+    
+                        String invoincingTimestamp_timelineElementId = invoicingTimestamp + "_" + timelineElementId;
+                        setNestedProperty( m, "dynamodb.NewImage.invoincingTimestamp_timelineElementId", invoincingTimestamp_timelineElementId);
+                        setNestedProperty( m, "dynamodb.Keys.invoincingTimestamp_timelineElementId", invoincingTimestamp_timelineElementId);
+    
+                        long YEAR_SECONDS = 365 * 24 * 3600l;
+                        long ttl = Instant.parse( invoicingTimestamp ).getEpochSecond() + YEAR_SECONDS;
+                        setNestedProperty( m, "dynamodb.NewImage.ttl", "" + ttl, "N");
+    
+                        if( timelineElementId == null || paId == null || zipCode == null || invoicingTimestamp == null || invoicingDay == null ) {
+                            throw new RuntimeException("SOMETHING IS NULL");
+                        }
 
-                    setNestedProperty( m, "dynamodb.NewImage.details.M.physicalAddress.M.zip", zipCode );
-                    if( foreignState != null ) {
-                        setNestedProperty( m, "dynamodb.NewImage.details.M.physicalAddress.M.foreignState", foreignState );
-                    }
-
-
-                    String invoicingTimestamp = findRefinementTimestamp( originalTimelineForInvoicingMap, timelineElementId );
-                    invoicingTimestamp = invoicingTimestamp.replaceFirst("\\.([0-9]{3})[0-9]+Z", ".$1Z");
-                    setNestedProperty( m, "dynamodb.NewImage.invoincingTimestamp", invoicingTimestamp );
-
-                    String invoicingDay = invoicingTimestamp.replaceFirst("T.*", "");
-                    setNestedProperty( m, "dynamodb.NewImage.invoicingDay", invoicingDay );
-
-                    String paId_invoicingDay = paId + "_" + invoicingDay;
-                    setNestedProperty( m, "dynamodb.NewImage.paId_invoicingDay", paId_invoicingDay );
-                    setNestedProperty( m, "dynamodb.Keys.paId_invoicingDay", paId_invoicingDay );
-
-                    String invoincingTimestamp_timelineElementId = invoicingTimestamp + "_" + timelineElementId;
-                    setNestedProperty( m, "dynamodb.NewImage.invoincingTimestamp_timelineElementId", invoincingTimestamp_timelineElementId);
-                    setNestedProperty( m, "dynamodb.Keys.invoincingTimestamp_timelineElementId", invoincingTimestamp_timelineElementId);
-
-                    long YEAR_SECONDS = 365 * 24 * 3600l;
-                    long ttl = Instant.parse( invoicingTimestamp ).getEpochSecond() + YEAR_SECONDS;
-                    setNestedProperty( m, "dynamodb.NewImage.ttl", "" + ttl, "N");
-
-                    if( timelineElementId == null || paId == null || zipCode == null || invoicingTimestamp == null || invoicingDay == null ) {
-                        throw new RuntimeException("SOMZING IS NULL");
                     }
                 }
 
@@ -115,7 +124,7 @@ public class FixTimeline4Invoicing {
         return data;
     }
 
-    private String findRefinementTimestamp(Map<String, JSONObject> originalTimelineForInvoicingMap, String timelineElementId) throws JSONException {
+    private String findRefinementTimestamp(Map<String, String> originalTimelineForInvoicingMap, String timelineElementId) throws JSONException {
         // NOTIFICA RIFIUTATA
         // NOTIFICA PERFEZIONATA PER DECORRENZA TERMINI
         // NOTIFICA VISUALIZZATA
@@ -139,17 +148,14 @@ public class FixTimeline4Invoicing {
         return refinementTimestamp;
     }
 
-    private String computeRefinementTimestamp(Map<String, JSONObject> originalTimelineForInvoicingMap, String ... timelineIds) throws JSONException {
+    private String computeRefinementTimestamp(Map<String, String> originalTimelineForInvoicingMap, String ... timelineIds) throws JSONException {
 
         List<String> timestamps = new ArrayList<>();
 
         for( String timelineElementId: timelineIds ) {
-            JSONObject timelineEl = originalTimelineForInvoicingMap.get( timelineElementId );
-            if( timelineEl != null ) {
-                String timestamp = getNestedProperty( timelineEl, "dynamodb.NewImage.timestamp.S");
-                if( timestamp != null ) {
-                    timestamps.add( timestamp );
-                }
+            String timestamp = originalTimelineForInvoicingMap.get( timelineElementId );
+            if( timestamp != null ) {
+                timestamps.add( timestamp );
             }
         }
 
