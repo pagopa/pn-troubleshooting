@@ -15,6 +15,10 @@ Parameters:
         Il Path, all'interno del TimelineForInvoicingBucket in cui recuperare i file json dei 
         CDC da arricchire
     Type: String
+  DecryptKey:
+    Description: la ciave kms per decryptare la timeline4invoicing
+    Type: String
+    Default: 2d795a70-2898-4449-8fe1-f0eaf2b6e266
   CommitRef:
     Default: main
     Description: La versione dello script da eseguire
@@ -65,13 +69,11 @@ Resources:
                 - echo ""
                 - echo "DOWNLOAD DUMP"
                 - mkdir -p input_data/conf_obj
-                - aws s3 cp --recursive s3://${BUCKET_NAME}/${CONF_OBJ_DUMP_S3_PATH} input_data/conf_obj
-                - find input_data/conf_obj -name "*.gz" -exec gunzip {} \;
-                - find input_data/conf_obj -name "*.gz" -delete
+                - aws s3 cp s3://${BUCKET_NAME}/${CONF_OBJ_DUMP_S3_PATH} input_data/conf_obj
                 - echo ""
                 - echo "DOWNLOAD TIMELINE"
                 - mkdir -p input_data/timeline
-                - aws s3 cp --recursive ${TIMELINE_FOR_INVOICING_SRC_S3_URL} input_data/timeline
+                - aws s3 cp --recursive ${TIMELINE_FOR_INVOICING_SRC_S3_URL}/TABLE_NAME_pn-TimelinesForInvoicing/ input_data/timeline/TABLE_NAME_pn-TimelinesForInvoicing/
                 - echo ""
                 - echo "DOWNLOAD SCRIPTS"
                 - git clone https://github.com/pagopa/pn-troubleshooting.git
@@ -84,7 +86,7 @@ Resources:
               commands:
                 - echo ""
                 - echo "RUN SCRIPTS"
-                - pn-troubleshooting/timeline_for_invoicing__add_zipcode/run.sh
+                - pn-troubleshooting/timeline_for_invoicing__add_zipcode/run.sh --no-checks
                 - mkdir tmp
                 - cp out/pn-TimelineForInvoicing-redo.tgz tmp
                 - (cd tmp && tar xvzf *.tgz && rm *.tgz && zip -r ../out/pn-TimelineForInvoicing-redo.zip .)
@@ -147,6 +149,12 @@ Resources:
                 Resource:
                   - !Sub 'arn:aws:s3:::${ExportsBucket}/${ConfObjDumpS3Path}*'
                   - !Sub 'arn:aws:s3:::${TimelineForInvoicingBucket}/${TimelineForInvoicingS3Path}*'
+              - Sid: DecryptBucketsObjects
+                Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource:
+                  - !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${DecryptKey}'
               - Sid: WriteResultsToBucket
                 Effect: Allow
                 Action:

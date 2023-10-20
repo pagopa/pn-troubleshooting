@@ -26,20 +26,24 @@ echo "Ended with exit code $?"
 ( cd out && tar czf ./pn-TimelineForInvoicing-redo.tgz ./TABLE_NAME_pn-TimelinesForInvoicing )
 echo "Archive Generated in ./out/pn-TimelineForInvoicing-redo.tgz"
 
-num_files=$( find ${fromDir} -type f -and -not -name ".DS_Store" | wc -l | tr -d '\n ')
 
-echo "List differencies"
-find ${fromDir} \
-      -type f -and -not -name ".DS_Store" \
-      -exec echo echo {} \&\& jd \<\( jq -sr \'. \| tojson\' {} \) \<\( jq -sr \'. \| tojson\' {} \) \> {} \; \
-     | sed -e 's|/input_data/timeline/|/out/diffs/|4' \
-     | sed -e 's|/input_data/timeline/|/out/|3' \
-     | sed -e 's|/out/diffs/.*/|/out/diffs/|' \
-     | sed -e 's/^/( / ; s/$/ ) \&/' \
-     | awk '{ if ((NR % 100) == 1) printf("wait $(jobs -p)\n"); print; }' \
-     | sed '$ s/$/\nwait $(jobs -p)/' \
-     | bash | grep -n . | sed -e "s/^/[total $num_files] /"
+if ( [ ! "$1" == "--no-checks" ] ) then
 
-echo "Summarize diffs"
-find ./out/diffs -not -type d -exec echo {} \; -exec cat {} \; \
-     | gzip > ./out/all_diffs.txt.gz
+  echo "List differencies"
+  num_files=$( find ${fromDir} -type f -and -not -name ".DS_Store" | wc -l | tr -d '\n ')
+
+  find ${fromDir} \
+        -type f -and -not -name ".DS_Store" \
+        -exec echo echo {} \&\& jd \<\( jq -sr \'. \| tojson\' {} \) \<\( jq -sr \'. \| tojson\' {} \) \> {} \; \
+      | sed -e 's|/input_data/timeline/|/out/diffs/|4' \
+      | sed -e 's|/input_data/timeline/|/out/|3' \
+      | sed -e 's|/out/diffs/.*/|/out/diffs/|' \
+      | sed -e 's/^/( / ; s/$/ ) \&/' \
+      | awk '{ if ((NR % 100) == 1) printf("wait $(jobs -p)\n"); print; }' \
+      | sed '$ s/$/\nwait $(jobs -p)/' \
+      | bash | grep -n . | sed -e "s/^/[total $num_files] /"
+
+  echo "Summarize diffs"
+  find ./out/diffs -not -type d -exec echo {} \; -exec cat {} \; \
+      | gzip > ./out/all_diffs.txt.gz
+fi
