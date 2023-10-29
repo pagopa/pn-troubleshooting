@@ -26,6 +26,16 @@ public class CdcFileParsedData extends ArrayList<List<JSONObject>> {
         return result;
     }
 
+    public static boolean checkNestedProperty( JSONObject root, String path) throws JSONException {
+      String[] pathSteps = path.split("\\.");
+
+      JSONObject item = getParentObject( root, pathSteps );
+
+      String lastStep = pathSteps[pathSteps.length - 1];
+
+      return item.has( lastStep );
+  }
+
     public static void setNestedProperty( JSONObject root, String path, String value) throws JSONException {
         setNestedProperty( root, path, value, "S");
     }

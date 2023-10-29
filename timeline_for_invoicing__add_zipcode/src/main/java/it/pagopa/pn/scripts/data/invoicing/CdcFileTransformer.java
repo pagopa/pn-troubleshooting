@@ -3,6 +3,7 @@ package it.pagopa.pn.scripts.data.invoicing;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -11,11 +12,12 @@ public class CdcFileTransformer {
     private LoadAndSaveCdcFile ioUtil = new LoadAndSaveCdcFile();
 
     public void transform( Path fromDir, Path toDir, Function<CdcFileParsedData, CdcFileParsedData> fileContentMapper ) throws IOException {
-
+        AtomicInteger count = new AtomicInteger( 0 );
+        
         Files.walk( fromDir )
                 .filter( this::isFile )
                 .forEach((Path cdcFile) -> {
-                        System.out.println("Transform " + cdcFile);
+                        System.out.println( count.getAndIncrement() + ") Transform " + cdcFile);
                         try {
                             CdcFileParsedData data = ioUtil.loadFileOfObjects(cdcFile);
 
@@ -30,11 +32,12 @@ public class CdcFileTransformer {
     }
 
     public void walkSource( Path fromDir, Consumer<CdcFileParsedData> consumer ) throws IOException {
-
+        AtomicInteger count = new AtomicInteger( 0 );
+        
         Files.walk( fromDir )
                 .filter( this::isFile )
                 .forEach((Path cdcFile) -> {
-                    System.out.println("Walk " + cdcFile);
+                    System.out.println(count.getAndIncrement() + ") Walk " + cdcFile);
                     try {
                         CdcFileParsedData data = ioUtil.loadFileOfObjects(cdcFile);
 
