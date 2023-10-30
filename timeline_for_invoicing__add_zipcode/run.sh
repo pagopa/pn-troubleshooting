@@ -20,7 +20,7 @@ if ( [ ! "$1" == "--no-checks" ] ) then
 fi
 
 java --class-path $( find ${SCRIPT_DIR}/libs/ -name *.jar | sed -e 's/$/:/' | tr -d '\n' )${SCRIPT_DIR}/classes \
-    -Xmx6g \
+    -Xmx4g \
     it.pagopa.pn.scripts.data.invoicing.FixTimeline4Invoicing \
     "FixTimeline4Invoicing" \
     "./input_data/conf_obj/anonymized.json.gz" \
