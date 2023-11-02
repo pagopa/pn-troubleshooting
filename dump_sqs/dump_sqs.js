@@ -90,7 +90,7 @@ async function dumpSQS() {
     QueueName: queueName
   };
   const queueData = await sqs.getQueueUrl(queueParams).promise();
-  let maxNumberOfMessages = queueName.includes(".fifo") ? 1: 10;
+  let maxNumberOfMessages = queueName.includes(".fifo") ? 1: 1;
   const params = {
     QueueUrl: queueData.QueueUrl,
     MaxNumberOfMessages: maxNumberOfMessages, // Numero massimo di messaggi da recuperare (modificabile) ma deve essere 1 per code FIFO
@@ -108,10 +108,20 @@ async function dumpSQS() {
       const messages = response.Messages;
       if (messages && messages.length > 0) {
         console.log(`Hai ricevuto ${messages.length} messaggi dalla coda.`);
-        
+        i = messages.length + i
         messages.forEach(async (message) => {
           elementsElaborated.push(message)
+          var params = {
+            QueueUrl: queueData.QueueUrl,
+            ReceiptHandle: message.ReceiptHandle
+          };
+          sqs.deleteMessage(params, function(err, data) {
+            if (err) console.log("errore nell'eliminazione dell'evento: " + message) ;    
+          });
         });
+        if (i > 9999) {
+          hasNext = false;
+        }
       } else {
         hasNext = false;
         console.log('La coda è vuota.');

@@ -15,13 +15,13 @@ const values = {
 } = parseArgs({
   options: {
     awsProfile: {
-      type: "string",
-      short: "a"
+        type: "string",
+        short: "a"
     },
     fileName: {
         type: "string",
         short: "f"
-      },
+    },
   },
 });
 
@@ -113,7 +113,7 @@ async function run(){
     const batchRecords = []
     let batch = []
     for(let i=0; i<records.length; i++){
-        batch.push(records[i])
+        batch.push(JSON.parse(records[i].Body))
         if(batch.length == 100){
             batchRecords.push(batch)
             batch = []
