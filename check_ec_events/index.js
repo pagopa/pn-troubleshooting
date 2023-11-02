@@ -6,32 +6,37 @@ const { parseArgs } = require('util');
 const fs = require('fs')
 
 const args = [
-    { name: "awsCoreProfile", mandatory: true },
+    { name: "awsProfile", mandatory: true },
+    { name: "fileName", mandatory: true },
 ]
 
 const values = {
-  values: { awsCoreProfile },
+  values: { awsProfile, fileName },
 } = parseArgs({
   options: {
-    awsCoreProfile: {
+    awsProfile: {
       type: "string",
       short: "a"
     },
+    fileName: {
+        type: "string",
+        short: "f"
+      },
   },
 });
 
 args.forEach(k => {
     if (k.mandatory && !values.values[k.name]) {
       console.log("Parameter '" + k.name + "' is not defined")
-      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> [--publish]")
+      console.log("Usage: node index.js --awsProfile <aws-profile> --fileName <file-name>")
       process.exit(1)
     }
 });
 
-console.log("Using AWS Core profile: "+ awsCoreProfile)
+console.log("Using AWS profile: "+ awsProfile)
 
 
-const coreCredentials = fromSSO({ profile: awsCoreProfile })();
+const coreCredentials = fromSSO({ profile: awsProfile })();
 const coreDynamoDbClient = new DynamoDBClient({
     credentials: coreCredentials,
     region: 'eu-south-1'
@@ -39,7 +44,7 @@ const coreDynamoDbClient = new DynamoDBClient({
 const coreDDocClient = DynamoDBDocumentClient.from(coreDynamoDbClient);
 
 function getAllRecords(){
-    const data = fs.readFileSync('dump.json', 'utf-8')
+    const data = fs.readFileSync(fileName, 'utf-8')
 
     const records = JSON.parse(data)
 

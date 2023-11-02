@@ -105,3 +105,9 @@ Vuoi generare un JWS per InfoCamere?
 ```bash
 ./node index.js <aws-profile> <client-id>
 ```
+
+### check_ec_events
+Vuoi verificare se gli eventi su external-channel sono eventi duplicati?
+```bash
+node index.js --awsProfile <aws-profile> --fileName <file-name>
+```
