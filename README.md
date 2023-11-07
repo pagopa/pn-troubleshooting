@@ -105,3 +105,9 @@ Vuoi generare un JWS per InfoCamere?
 ```bash
 ./node index.js <aws-profile> <client-id>
 ```
+
+### timelines_from_iuns
+Script Python per ottenere timelines da una lista di IUN
+```bash
+python3 ./timelines_from_iuns.py iuns.txt timelines.json --profile <aws-profile>
+```
