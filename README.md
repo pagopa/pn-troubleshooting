@@ -97,7 +97,7 @@ Vuoi estrarre tutti i file in errore in conservazione sostitutiva?
 ### dump_sqs
 Vuoi eseguire il dump di una coda SQS?
 ```bash
-node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> [--format <output-format>]
+node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--format <output-format> --limit <limit-value> --remove]
 ```
 
 ### generate_jws
