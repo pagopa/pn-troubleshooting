@@ -117,3 +117,9 @@ Vuoi inviare eventi a partire da un file su una coda SQS?
 ```bash
 node index.js --awsProfile <aws-profile> --fileName <file-name>
 ```
+
+### timelines_from_iuns
+Script Python per ottenere timelines da una lista di IUN
+```bash
+python3 ./timelines_from_iuns.py iuns.txt timelines.json --profile <aws-profile>
+```

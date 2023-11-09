@@ -8,16 +8,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static it.pagopa.pn.scripts.data.invoicing.CdcFileParsedData.getNestedProperty;
 import static it.pagopa.pn.scripts.data.invoicing.CdcFileParsedData.setNestedProperty;
+import static it.pagopa.pn.scripts.data.invoicing.CdcFileParsedData.checkNestedProperty;
 
 public class FixTimeline4Invoicing {
 
     public static final Collection<String> CAP_CATEGORIES = Collections.unmodifiableList(Arrays.asList(
       "SEND_SIMPLE_REGISTERED_LETTER", "SEND_ANALOG_DOMICILE"
     ));
-
+    
     private final ConfinfoMap confinfoMap;
     private final CdcFileTransformer cdcFileTransformer;
 
@@ -30,13 +32,44 @@ public class FixTimeline4Invoicing {
         this.cdcFileTransformer = new CdcFileTransformer();
     }
 
-    public void transform(Path fromDir, Path toDir) throws IOException {
+    public void transform(Path fromDir, Path toDir, Path timelineCheck) throws IOException {
+        int maxSize = 0;
+        Map<String, Set<String>> timelineViewed = new HashMap<>();
+        if( timelineCheck != null ) {
+          System.out.println("Load timeline for duble check");
+          this.cdcFileTransformer.walkSource( timelineCheck, data -> this.collectTimelinesInto_wrapException( data, timelineViewed) );          
+          
+          maxSize = timelineViewed.size();
+          
+          Set<String> iuns = new HashSet<>( timelineViewed.keySet() );
+          for( String iun: iuns ) {
+            Set<String> timelineIds = timelineViewed.get( iun );
+            boolean viewed = timelineIds.stream().anyMatch( id -> id.startsWith("NOTIFICATION_VIEWED"));
+            if( ! viewed ) {
+              timelineViewed.remove( iun );
+            }
+          }
+
+          this.cdcFileTransformer.walkSource( fromDir, data -> this.removeTimelinesFrom_wrapException( data, timelineViewed) );
+          
+          AtomicInteger count = new AtomicInteger( 0 );
+          timelineViewed.entrySet()
+              .stream()
+              .filter( entry -> entry.getValue().size() > 0)
+              .forEach( ( entry ) -> {
+                  System.out.println( count.getAndIncrement() + ") " + entry.getKey() + " remain " + entry.getValue() );
+              });
+          if( count.get() > 0 ) {
+            System.exit( 200 );
+          }
+        }
+
         Map<String, String> originalTimelineForInvoicingMap = new HashMap<>();
         
-        System.out.println("Start timeline precomputation");
+        System.out.println("Start invoicing timeline precomputation");
         this.cdcFileTransformer.walkSource( fromDir, data -> this.collectInvoicingTimelinesInto_wrapException( data, originalTimelineForInvoicingMap) );
         
-        System.out.println("Start timeline trasformation");
+        System.out.println("Start invoicing timeline trasformation");
         this.cdcFileTransformer.transform( fromDir, toDir, data -> this.transformOneFileData_wrapException( data, originalTimelineForInvoicingMap ) );
     }
 
@@ -57,6 +90,63 @@ public class FixTimeline4Invoicing {
             }
         }
     }
+
+    protected void collectTimelinesInto_wrapException( CdcFileParsedData data, Map<String, Set<String>> holder) {
+        try {
+            this.collectTimelinesInto( data, holder );
+        } catch (JSONException exc) {
+            throw new RuntimeException( exc );
+        }
+    }
+
+    private void collectTimelinesInto( CdcFileParsedData data, Map<String, Set<String>> holder) throws JSONException {
+        for( List<JSONObject> lineData : data ) {
+            for( JSONObject jsonObj: lineData ) {
+                String eventName = getNestedProperty( jsonObj, "eventName");
+                if( "INSERT".equals(eventName) ) {
+                    String category = getNestedProperty( jsonObj, "dynamodb.NewImage.category.S");
+                    if( CAP_CATEGORIES.contains( category ) ) {
+                        String timelineElementId = getNestedProperty(jsonObj, "dynamodb.NewImage.timelineElementId.S");
+                        String iun = getNestedProperty(jsonObj, "dynamodb.NewImage.iun.S");
+                        holder.computeIfAbsent( iun, (k) -> new HashSet<>()).add(timelineElementId);
+                    }
+                    else if ( "NOTIFICATION_VIEWED".equals( category ) ) {
+                        if( checkNestedProperty( jsonObj, "dynamodb.NewImage.details.M.notificationCost") ) {
+                            String cost = getNestedProperty( jsonObj, "dynamodb.NewImage.details.M.notificationCost.N");
+                            if( "100".equals( cost )) {
+                                String timelineElementId = getNestedProperty(jsonObj, "dynamodb.NewImage.timelineElementId.S");
+                                String iun = getNestedProperty(jsonObj, "dynamodb.NewImage.iun.S");
+                                holder.computeIfAbsent( iun, (k) -> new HashSet<>()).add(timelineElementId);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+
+    protected void removeTimelinesFrom_wrapException( CdcFileParsedData data, Map<String, Set<String>> holder) {
+        try {
+            this.removeTimelinesFrom( data, holder );
+        } catch (JSONException exc) {
+            throw new RuntimeException( exc );
+        }
+    }
+
+    private void removeTimelinesFrom( CdcFileParsedData data, Map<String, Set<String>> holder) throws JSONException {
+        for( List<JSONObject> lineData : data ) {
+            for( JSONObject jsonObj: lineData ) {
+                String category = getNestedProperty( jsonObj, "dynamodb.NewImage.category.S");
+                if( CAP_CATEGORIES.contains( category ) || "NOTIFICATION_VIEWED".equals( category )) {
+                    String timelineElementId = getNestedProperty(jsonObj, "dynamodb.NewImage.timelineElementId.S");
+                    String iun = getNestedProperty(jsonObj, "dynamodb.NewImage.iun.S");
+                    holder.computeIfAbsent( iun, (k) -> new HashSet<>()).remove(timelineElementId);
+                }
+            }
+        }
+    }
+    
 
     protected CdcFileParsedData transformOneFileData_wrapException( CdcFileParsedData data, Map<String, String> originalTimelineForInvoicingMap ) {
         try {
@@ -95,7 +185,7 @@ public class FixTimeline4Invoicing {
                         String invoicingTimestamp = findRefinementTimestamp( originalTimelineForInvoicingMap, timelineElementId );
                         invoicingTimestamp = invoicingTimestamp.replaceFirst("\\.([0-9]{3})[0-9]+Z", ".$1Z");
                         setNestedProperty( m, "dynamodb.NewImage.invoincingTimestamp", invoicingTimestamp );
-    
+                        
                         String invoicingDay = invoicingTimestamp.replaceFirst("T.*", "");
                         setNestedProperty( m, "dynamodb.NewImage.invoicingDay", invoicingDay );
     
@@ -134,12 +224,14 @@ public class FixTimeline4Invoicing {
         String recIdx = iun_recIdx_arr[1];
 
         String notificationRefusedTimelineElementId = "REQUEST_REFUSED.IUN_" + iun;
+        String notificationCancelledTimelineElementId = "NOTIFICATION_CANCELLED.IUN_" + iun;
         String notificationViewedTimelineElementId = "NOTIFICATION_VIEWED.IUN_" + iun + ".RECINDEX_" + recIdx;
         String notificationRefinedTimelineElementId = "REFINEMENT.IUN_" + iun + ".RECINDEX_" + recIdx;
 
         String refinementTimestamp = computeRefinementTimestamp(
                 originalTimelineForInvoicingMap,
                 notificationRefusedTimelineElementId,
+                notificationCancelledTimelineElementId,
                 notificationViewedTimelineElementId,
                 notificationRefinedTimelineElementId
             );
@@ -159,7 +251,7 @@ public class FixTimeline4Invoicing {
             }
         }
 
-        String timestamp = timestamps.stream().max( Comparator.naturalOrder() ).get();
+        String timestamp = timestamps.stream().min( Comparator.naturalOrder() ).get();
         return timestamp;
     }
 
@@ -168,13 +260,15 @@ public class FixTimeline4Invoicing {
         String confinfoPathStr = args[1];
         String cdcDirStr = args[2];
         String newCdcDirStr = args[3];
+        String cdcTimelineForCheckStr = args.length > 4 ? args[4] : null;
         
         Path confinfoPath = Paths.get( confinfoPathStr );
         Path cdcDir = Paths.get( cdcDirStr );
         Path newCdcDir = Paths.get( newCdcDirStr );
+        Path cdcTimelineForCheck = cdcTimelineForCheckStr == null ? null : Paths.get( cdcTimelineForCheckStr );
 
         FixTimeline4Invoicing application = new FixTimeline4Invoicing( confinfoPath );
-        application.transform( cdcDir, newCdcDir );
+        application.transform( cdcDir, newCdcDir, cdcTimelineForCheck );
 
     }
 
