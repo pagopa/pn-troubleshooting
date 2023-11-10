@@ -58,17 +58,12 @@ async function main() {
 
   async function handleEventToSQS(queueUrl, id, body, attributes){
     const res = await awsClient._sendEventToSQS(queueUrl, body, attributes);
-    try { 
-        if ('MD5OfMessageBody' in res) {
-          console.log("Evento " + id + " inviato con successo!!!")
-        }
-        else {
-          failure.push(id)
-          console.error("Invio di " + id + " fallito!!!")
-        }
-    } catch (error) {
-        failure.push(id)
-        console.error(error)
+    if ('MD5OfMessageBody' in res) {
+      console.log("Event " + id + " sent successfully!!!")
+    }
+    else {
+      failure.push(id)
+      console.error("Event " + id + " failed!!!")
     }
   }
   
@@ -106,9 +101,10 @@ async function main() {
   
   if (failure.length > 0) {
     await _writeInFile(failure, "FailedMessages")
+    console.log("Failed n° " + failure.length + "events")
   }
   else {
-    console.log("Nessun evento fallito")
+    console.log("No events Failed")
   }
   
 }
