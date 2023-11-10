@@ -115,7 +115,7 @@ node index.js --awsProfile <aws-profile> --fileName <file-name>
 ### put_event_to_SQS
 Vuoi inviare eventi a partire da un file su una coda SQS?
 ```bash
-node index.js --awsProfile <aws-profile> --fileName <file-name>
+node index.js --profile <profile> --queueUrl <queueUrl> --fileName <fileName> [--from [dump_sqs|ec_events]]
 ```
 
 ### timelines_from_iuns
