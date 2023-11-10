@@ -97,13 +97,25 @@ Vuoi estrarre tutti i file in errore in conservazione sostitutiva?
 ### dump_sqs
 Vuoi eseguire il dump di una coda SQS?
 ```bash
-node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> [--format <output-format>]
+node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--format <output-format> --limit <limit-value> --remove]
 ```
 
 ### generate_jws
 Vuoi generare un JWS per InfoCamere?
 ```bash
 ./node index.js <aws-profile> <client-id>
+```
+
+### check_ec_events
+Vuoi verificare se gli eventi su external-channel sono eventi duplicati?
+```bash
+node index.js --awsProfile <aws-profile> --fileName <file-name>
+```
+
+### put_event_to_SQS
+Vuoi inviare eventi a partire da un file su una coda SQS?
+```bash
+node index.js --awsProfile <aws-profile> --fileName <file-name>
 ```
 
 ### timelines_from_iuns

@@ -6,11 +6,13 @@ const args = [
   { name: "awsProfile", mandatory: true, subcommand: [] },
   { name: "queueName", mandatory: true, subcommand: [] },
   { name: "visibilityTimeout", mandatory: false, subcommand: [] },
-  { name: "format", mandatory: false, subcommand: [] }
+  { name: "format", mandatory: false, subcommand: [] },
+  { name: "remove", mandatory: false, subcommand: [] },
+  { name: "limit", mandatory: false, subcommand: [] }
 ]
 
 const values = {
-  values: { awsProfile, queueName, format, visibilityTimeout },
+  values: { awsProfile, queueName, format, visibilityTimeout, remove, limit },
 } = parseArgs({
   options: {
     awsProfile: {
@@ -30,12 +32,21 @@ const values = {
       type: "string",
       short: "f",
       default: "raw"
-    }
+    },
+    remove: {
+      type: "boolean",
+      default: false
+    },
+    limit: {
+      type: "string",
+      short: "l",
+      default: "undefined"
+    },
   },
 });
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--format <output-format>]"
+  const usage = "Usage: node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--format <output-format> --limit <limit-value> --remove]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -107,11 +118,14 @@ async function dumpSQS() {
       const response = await sqs.receiveMessage(params).promise();
       const messages = response.Messages;
       if (messages && messages.length > 0) {
-        console.log(`Hai ricevuto ${messages.length} messaggi dalla coda.`);
-        
+        i = messages.length + i
+        console.log(`Hai ricevuto ${i} messaggi dalla coda.`);
         messages.forEach(async (message) => {
           elementsElaborated.push(message)
         });
+        if (i > limit){
+          hasNext = false;
+        }
       } else {
         hasNext = false;
         console.log('La coda è vuota.');
@@ -142,6 +156,18 @@ async function dumpSQS() {
     }
     console.log("NUMBER OF MESSAGE: " + extraction.length)
     await _writeInFile(extraction, "ElaboratedMessages")
+
+    if (remove) {
+      extraction.forEach(async (e) => {
+        var params = {
+          QueueUrl: queueData.QueueUrl,
+          ReceiptHandle: e.ReceiptHandle
+        };
+        sqs.deleteMessage(params, function(err, data) {
+          if (err) console.log("errore nell'eliminazione dell'evento: " + message) ;    
+        });
+      })
+    }
   }
 }
 

@@ -1,0 +1,44 @@
+
+const { fromIni } = require("@aws-sdk/credential-provider-ini");
+const { SQSClient, SendMessageCommand } = require("@aws-sdk/client-sqs");
+const { v4: uuidv4 } = require('uuid');
+
+function awsClientCfg( profile ) {
+  const self = this;
+  //if(!profileName){
+    return { 
+      region: "eu-south-1", 
+      credentials: fromIni({ 
+        profile: profile,
+      })
+    }
+  //}
+}
+
+class AwsClientsWrapper {
+
+  constructor( envName, profileName, roleArn ) {
+    const ssoProfile = `${envName}`
+    this._sqsClient = new SQSClient( awsClientCfg( ssoProfile, profileName, roleArn ));
+  }
+
+  async init() {
+    this._sqsNames = await this._fetchAllSQS();
+  }
+
+  async _sendEventToSQS(queueUrl, event) {
+    const input = { // SendMessageRequest
+      QueueUrl: queueUrl, // required
+      MessageBody: JSON.stringify(event), // required
+      MessageGroupId: uuidv4(),
+    };
+    //console.log(JSON.stringify(input))
+    const command = new SendMessageCommand(input);
+    const response = await this._sqsClient.send(command);
+    return response;
+    //return input;
+  }
+}
+
+exports.AwsClientsWrapper = AwsClientsWrapper;
+

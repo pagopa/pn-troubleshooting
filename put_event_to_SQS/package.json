@@ -1,0 +1,15 @@
+{
+  "name": "put_dlq_event_to_sqs_v3",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.438.0",
+    "uuid": "^9.0.1"
+  }
+}
