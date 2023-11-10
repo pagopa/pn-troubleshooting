@@ -15,6 +15,14 @@ function awsClientCfg( profile ) {
   //}
 }
 
+function clearAttributes(attributes){
+  const eventsToRepublish = Object.values(attributes);
+  eventsToRepublish.forEach(key => {
+    key.StringListValues.length == 0 ? delete key.StringListValues : null
+    key.BinaryListValues.length == 0 ? delete key.BinaryListValues : null
+  })
+  return attributes
+}
 class AwsClientsWrapper {
 
   constructor( envName, profileName, roleArn ) {
@@ -30,10 +38,10 @@ class AwsClientsWrapper {
     const input = { // SendMessageRequest
       QueueUrl: queueUrl, // required
       MessageBody: JSON.stringify(event), // required
-      MessageGroupId: uuidv4(),
     };
-    attributes ? input["MessageAttributes"] = attributes : null
-    const response = {}
+    queueUrl.indexOf(".fifo") > 0 ? input["MessageGroupId"] = uuidv4() : null
+    attributes ? input["MessageAttributes"] = clearAttributes(attributes) : null
+    var response = {}
     try {
       const command = new SendMessageCommand(input);
       response = await this._sqsClient.send(command);

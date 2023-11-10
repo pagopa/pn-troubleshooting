@@ -101,7 +101,7 @@ async function main() {
   
   if (failure.length > 0) {
     await _writeInFile(failure, "FailedMessages")
-    console.log("Failed n° " + failure.length + "events")
+    console.log("Failed n° " + failure.length + " events")
   }
   else {
     console.log("No events Failed")
