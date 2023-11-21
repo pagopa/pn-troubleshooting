@@ -2,6 +2,7 @@ package it.pagopa.pn.scripts.ecmetadata.checks.sparksql;
 
 import it.pagopa.pn.scripts.ecmetadata.checks.logs.Msg;
 import it.pagopa.pn.scripts.ecmetadata.checks.logs.MsgSenderSupport;
+import it.pagopa.pn.scripts.ecmetadata.checks.seq.RawEventSequence;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.*;
 
@@ -123,6 +124,11 @@ public class SparkSqlWrapper extends MsgSenderSupport {
                 LineHolder.class
             )
             .createOrReplaceTempView( tableName );
+    }
+
+    public void temporaryTableFromBeanCollection(String tableName, List<RawEventSequence> list, Class<RawEventSequence> beanClass) {
+        spark.createDataFrame( sparkContext.parallelize( list ), beanClass )
+                .createOrReplaceTempView( tableName );
     }
 
 

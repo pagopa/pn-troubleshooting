@@ -65,16 +65,16 @@ public class ExtractorDayAggregator {
     public static class CardinalityByProductAndDayRow implements Serializable {
 
 
-        private String papeprMeta_productType;
+        private String paperMeta_productType;
         private String day;
         private long cardinality;
 
-        public String getPapeprMeta_productType() {
-            return papeprMeta_productType;
+        public String getPaperMeta_productType() {
+            return paperMeta_productType;
         }
 
-        public void setPapeprMeta_productType(String papeprMeta_productType) {
-            this.papeprMeta_productType = papeprMeta_productType;
+        public void setPaperMeta_productType(String papeprMeta_productType) {
+            this.paperMeta_productType = papeprMeta_productType;
         }
 
         public String getDay() {

@@ -38,7 +38,7 @@ public class ExtractorJobFactory {
                         "  FROM\n" +
                         "    all_paper_metadata_with_synthetic_select_list\n" +
                         "  WHERE\n" +
-                        "      papeprMeta_productType = '%s' \n" +
+                        "      paperMeta_productType = '%s' \n" +
                         "    AND \n" +
                         "      requestTimestamp BETWEEN '%sT00:00:00' and '%sT24:00:00' " +
                         "  ORDER BY \n" +

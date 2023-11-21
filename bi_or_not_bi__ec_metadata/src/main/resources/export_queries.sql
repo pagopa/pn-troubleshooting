@@ -1,11 +1,11 @@
 
 -----------------------------------------------------------------------------------------------
--- 010__all_paper_metadata_with_synthetic_select_list
+-- 010__all_paper_metadata_with_synthetic_select_list_no_class
 
-create or replace temporary view all_paper_metadata_with_synthetic_select_list as
+create or replace temporary view all_paper_metadata_with_synthetic_select_list_no_class as
   SELECT
     requestTimestamp,
-    papeprMeta_productType,
+    paperMeta_productType,
     array_join(transform(
       array_sort(
         event_list,
@@ -17,24 +17,49 @@ create or replace temporary view all_paper_metadata_with_synthetic_select_list a
                         ELSE 0
                    END
       ),
-      e -> e.paperProg_statusCode
+      e -> trim( e.paperProg_statusCode )
     ), ' ')
      as statuses_string,
     requestId
   FROM
     ec_metadta__fromfile
   WHERE
-    papeprMeta_productType is not null
+    paperMeta_productType is not null
 ;
 
 
+-----------------------------------------------------------------------------------------------
+-- 020__all_paper_metadata_with_synthetic_select_list
+
+create or replace temporary view all_paper_metadata_with_synthetic_select_list as
+  WITH categorized_sequences_no_arr AS (
+    SELECT
+      product,
+      array_join( codes, ' ') as statuses_string,
+      coalesce( stage, 'UNCLASSIFIED' ) as stage
+    FROM
+      categorized_sequences
+  )
+  SELECT
+    a.requestTimestamp,
+    a.paperMeta_productType,
+    if ( a.statuses_string = '', 'INFLIGHT', coalesce( c.stage, 'UNKNOWN' )) as stage,
+    a.statuses_string,
+    a.requestId
+  FROM
+    all_paper_metadata_with_synthetic_select_list_no_class a
+    LEFT JOIN categorized_sequences_no_arr c ON c.product = a.paperMeta_productType
+                                       and c.statuses_string = a.statuses_string
+;
+
 ----------------------------------------------------------------------------------------------
--- 020__cardinality_by_product_and_sequence
+-- 030__cardinality_by_product_and_sequence
 
 create or replace temporary view cardinality_by_product_and_sequence as
   SELECT
-    papeprMeta_productType,
+    paperMeta_productType,
     statuses_string,
+    array_join(collect_set( stage ), ' ') as stage,
     count(requestId) as cardinality,
     min(requestTimestamp) as oldest_with_this_sequence,
     from_unixtime(percentile(
@@ -76,27 +101,27 @@ create or replace temporary view cardinality_by_product_and_sequence as
   FROM
     all_paper_metadata_with_synthetic_select_list
   GROUP BY
-    papeprMeta_productType,
+    paperMeta_productType,
     statuses_string
   ORDER BY
-    papeprMeta_productType,
+    paperMeta_productType,
     statuses_string
 ;
 
 ----------------------------------------------------------------------------------------------
--- 030__cardinality_by_product_and_day
+-- 040__cardinality_by_product_and_day
 
 create or replace temporary view cardinality_by_product_and_day as
   SELECT
-    papeprMeta_productType,
+    paperMeta_productType,
     date(requestTimestamp) as day,
     count(requestId) as cardinality
   FROM
     all_paper_metadata_with_synthetic_select_list
   GROUP BY
-    papeprMeta_productType,
+    paperMeta_productType,
     day
   ORDER BY
-    papeprMeta_productType,
+    paperMeta_productType,
     day
 ;

@@ -7,7 +7,7 @@
       get_json_object(json_string, '$.Item.digitalRequestMetadata.M.channel.S') as digitalMeta_channel,
       get_json_object(json_string, '$.Item.digitalRequestMetadata.M.correlationId.S') as digitalMeta_correlationId,
       get_json_object(json_string, '$.Item.digitalRequestMetadata.M.eventType.S') as digitalMeta_eventType,
-      get_json_object(json_string, '$.Item.paperRequestMetadata.M.productType.S') as papeprMeta_productType,
+      get_json_object(json_string, '$.Item.paperRequestMetadata.M.productType.S') as paperMeta_productType,
       get_json_object(json_string, '$.Item.paperRequestMetadata.M.printType.S') as paperMeta_printType,
       get_json_object(json_string, '$.Item.requestTimestamp.S') as requestTimestamp,
       get_json_object(json_string, '$.Item.messageId.S') as messageId,
