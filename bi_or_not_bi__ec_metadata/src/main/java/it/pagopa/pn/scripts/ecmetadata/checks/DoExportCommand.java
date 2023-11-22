@@ -3,6 +3,7 @@ package it.pagopa.pn.scripts.ecmetadata.checks;
 import it.pagopa.pn.scripts.ecmetadata.checks.logs.MsgListenerImpl;
 import it.pagopa.pn.scripts.ecmetadata.checks.s3client.S3FileLister;
 import it.pagopa.pn.scripts.ecmetadata.checks.seq.RawEventSequence;
+import it.pagopa.pn.scripts.ecmetadata.checks.seq.SequenceSummaryParser;
 import it.pagopa.pn.scripts.ecmetadata.checks.seq.SequenceTree;
 import it.pagopa.pn.scripts.ecmetadata.checks.sparksql.SparkSqlWrapper;
 import it.pagopa.pn.scripts.ecmetadata.checks.sparksql.SqlQueryMap;
@@ -31,7 +32,7 @@ class DoExportCommand implements Callable<Integer> {
     private Path extractionOutputFolder =  Paths.get( "./out/extraction" );
 
     @Option( names = {"--categorized-sequences-tree-path"})
-    private Path categorizedSequencesTreePath = Paths.get("out/sequence_tree.json");
+    private Path categorizedSequencesTreePath = Paths.get("sequence_tree.json");
 
     @Option( names = {"--file-min-rows"})
     private int minRows = 70 * 1000;
@@ -45,22 +46,32 @@ class DoExportCommand implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
 
+        // - Load queries from sql file
         SqlQueryMap queries = SqlQueryMap.fromClasspathResource( EXPORT_QUERIES_RESOURCE );
+
+        // - exported data aggregator
         ExtractorDayAggregator extractionPolicy = new ExtractorDayAggregator( minRows, maxRows );
 
+        // - Load sequences manual classification
         SequenceTree categorizedSequencesTree = SequenceTree.loadFromJson( categorizedSequencesTreePath );
         List<RawEventSequence> categorizedSequences = categorizedSequencesTree.getSequences();
 
+        // - Start spark
         MsgListenerImpl logger = new MsgListenerImpl();
         SparkSqlWrapper spark = SparkSqlWrapper.localMultiCore("Export EcMetadata");
         spark.addListener( logger );
 
+        // - Send manual sequence classification to spark
         spark.temporaryTableFromBeanCollection( "categorized_sequences", categorizedSequences, RawEventSequence.class);
 
+
+        // - Clean export folder
         cleanFolder( extractionOutputFolder );
 
+        // - Read indexed data
         spark.readParquetTable( parent.getIndexedOutputFolder(), "ec_metadta__fromfile" );
 
+        // - Execute all queries present in SQL file
         for( String queryName: queries.getQueriesNames() ) {
             String sqlQuery = queries.getQuery(queryName);
             System.out.println( "############## EXECUTE QUERY " + queryName);
@@ -69,13 +80,22 @@ class DoExportCommand implements Callable<Integer> {
             spark.execSql(sqlQuery);
         }
 
+        // - Export sequence summary
+        Path extractionSequenceSummary = extractionOutputFolder.resolve("summary.csv");
         spark.tableToCsvSingleFile(
                 "cardinality_by_product_and_sequence",
-                extractionOutputFolder.resolve("summary.csv")
+                extractionSequenceSummary
         );
 
+        // - Write sequenceses tree
+        List<RawEventSequence> seqs = SequenceSummaryParser.loadSequences( extractionSequenceSummary );
+        for( RawEventSequence seq: seqs ) {
+            categorizedSequencesTree.addSequence( seq );
+        }
+        categorizedSequencesTree.writeToJson( categorizedSequencesTreePath );
 
 
+        // - Compute product and day cardinality; usefull for export aggregation
         Map<String, List<ExtractorDayAggregator.CardinalityByProductAndDayRow>> daySummaries = spark
                 .tableToBeanStream(
                         "cardinality_by_product_and_day",
@@ -86,10 +106,17 @@ class DoExportCommand implements Callable<Integer> {
                 ));
 
 
+        // - Decide which extraction have to do. Balancing number of files and file dimension
         Map<String, List<ExtractorDayAggregator.ExtractionInterval>> extractionsByProduct;
         extractionsByProduct = extractionPolicy.computeExtractionsListFromSummary(daySummaries);
 
+        // - Export to parquet
+        spark.writeTableToParquet(
+                "all_paper_metadata_with_synthetic_select_list",
+                extractionOutputFolder.resolve("parquet")
+            );
 
+        // - Do exports
         ExtractorJobFactory jobFactory = ExtractorJobFactory.newInstance( spark, extractionOutputFolder );
 
         for( String product: extractionsByProduct.keySet() ) {

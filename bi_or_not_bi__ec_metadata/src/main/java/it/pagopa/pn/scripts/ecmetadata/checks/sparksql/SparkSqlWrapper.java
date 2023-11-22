@@ -131,6 +131,10 @@ public class SparkSqlWrapper extends MsgSenderSupport {
                 .createOrReplaceTempView( tableName );
     }
 
+    public void writeTableToParquet(String tableName, Path parquetOut ) {
+        spark.table( tableName ).write().parquet( parquetOut.toString() );
+    }
+
 
     public static final class LineHolder implements Serializable {
 
