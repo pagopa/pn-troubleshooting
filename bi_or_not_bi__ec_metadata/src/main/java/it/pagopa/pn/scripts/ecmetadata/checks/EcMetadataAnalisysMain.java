@@ -29,8 +29,15 @@ public class EcMetadataAnalisysMain {
         return indexedOutputFolder;
     }
 
-    public static class Parameters {
+    @Option( names = {"--extracted-data-folder"})
+    private Path extractionOutputFolder =  Paths.get( "./out/extraction" );
+    public Path getExtractionOutputFolder() {
+        return extractionOutputFolder;
+    }
 
-
+    @Option( names = {"--barchart-csv-file-name"})
+    private String barCharDataCsvFileName =  "product_and_day__bar_chart__data.csv";
+    public String getBarCharDataCsvFileName() {
+        return barCharDataCsvFileName;
     }
 }

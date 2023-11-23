@@ -1,13 +1,11 @@
 package it.pagopa.pn.scripts.ecmetadata.checks;
 
 import it.pagopa.pn.scripts.ecmetadata.checks.logs.MsgListenerImpl;
-import it.pagopa.pn.scripts.ecmetadata.checks.s3client.S3FileLister;
 import it.pagopa.pn.scripts.ecmetadata.checks.seq.RawEventSequence;
 import it.pagopa.pn.scripts.ecmetadata.checks.seq.SequenceSummaryParser;
 import it.pagopa.pn.scripts.ecmetadata.checks.seq.SequenceTree;
 import it.pagopa.pn.scripts.ecmetadata.checks.sparksql.SparkSqlWrapper;
 import it.pagopa.pn.scripts.ecmetadata.checks.sparksql.SqlQueryMap;
-import picocli.CommandLine;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.ParentCommand;
@@ -27,9 +25,6 @@ class DoExportCommand implements Callable<Integer> {
 
     public static final String EXPORT_QUERIES_RESOURCE = "export_queries.sql";
 
-
-    @Option( names = {"--extracted-data-folder"})
-    private Path extractionOutputFolder =  Paths.get( "./out/extraction" );
 
     @Option( names = {"--categorized-sequences-tree-path"})
     private Path categorizedSequencesTreePath = Paths.get("sequence_tree.json");
@@ -66,6 +61,7 @@ class DoExportCommand implements Callable<Integer> {
 
 
         // - Clean export folder
+        Path extractionOutputFolder = parent.getExtractionOutputFolder();
         cleanFolder( extractionOutputFolder );
 
         // - Read indexed data
@@ -117,7 +113,8 @@ class DoExportCommand implements Callable<Integer> {
             );
 
         // - Do exports
-        ExtractorJobFactory jobFactory = ExtractorJobFactory.newInstance( spark, extractionOutputFolder );
+        ExtractorJobFactory jobFactory = ExtractorJobFactory
+                  .newInstance( spark, extractionOutputFolder, parent.getBarCharDataCsvFileName() );
 
         for( String product: extractionsByProduct.keySet() ) {
             for( ExtractorDayAggregator.ExtractionInterval extraction:
@@ -131,7 +128,12 @@ class DoExportCommand implements Callable<Integer> {
             }
         }
 
+        spark.addJob("BarChart", jobFactory.newBarChartDataExtractionJob());
+
+        // - Wait scheduled jobs
         spark.shutdown( 1, TimeUnit.HOURS );
         return 0;
     }
+
+
 }
