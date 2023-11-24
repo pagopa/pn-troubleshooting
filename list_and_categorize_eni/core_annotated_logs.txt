@@ -12,7 +12,7 @@
 {"account":"core","grpId":"sg-0187c7b5dd3f49600","grpName":"pn-mandate-microsvc-prod-MandateMicroservice-VOU9AA54JU26-EcsServiceSecurityGroup-CI8Q4WBWERKP","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/2222cdc4-f6c3-47e7-95c2-c580317b663b","az":"eu-south-1c","privIp":"10.10.22.118","pubIp":null}
 {"account":"core","grpId":"sg-0187c7b5dd3f49600","grpName":"pn-mandate-microsvc-prod-MandateMicroservice-VOU9AA54JU26-EcsServiceSecurityGroup-CI8Q4WBWERKP","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/7f1d9eed-fe26-48a9-b8aa-e2da7146e873","az":"eu-south-1b","privIp":"10.10.21.191","pubIp":null}
 
-# Sulla risorsa  "" 
+# Sulla risorsa  "pn-infra/runtime-infra/pn-opensearch.yaml" OpenSearchServiceDomain
 # aggiungere TAG 
 #  - pn-eni-related=true
 #  - pn-eni-related-groupName-regexp="^pn-opensearch.*$"
