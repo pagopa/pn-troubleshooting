@@ -64,7 +64,7 @@ async function main() {
   batchDimension = Number(batchDimension)
   for (i = 0; i < elements.length; i = i+batchDimension){
     const batch = elements.slice(i, i+batchDimension);
-    console.log("N° " + ((i+batchDimension > elements.length) ? elements.length - i : i+batchDimension) + " elements imported!")
+    console.log("N° " + ((i+batchDimension > elements.length) ? elements.length : i+batchDimension) + " elements imported!")
     await awsClient._batchWriteItems(tableName, batch);
     
   }
