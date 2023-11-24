@@ -1,8 +1,21 @@
+# Sulla risorsa  "pn-downtime-logs/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-downtime-logs-microsvc-.*$"
 {"account":"core","grpId":"sg-0147e486adf9ed828","grpName":"pn-downtime-logs-microsvc-prod-DowntimeLogsMicroservice-1DLK4XYEP162Y-EcsServiceSecurityGroup-NXEOR0WZ1KKI","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/d26a25bc-e737-405e-9c3b-e79da75c3a9e","az":"eu-south-1a","privIp":"10.10.20.227","pubIp":null}
 {"account":"core","grpId":"sg-0147e486adf9ed828","grpName":"pn-downtime-logs-microsvc-prod-DowntimeLogsMicroservice-1DLK4XYEP162Y-EcsServiceSecurityGroup-NXEOR0WZ1KKI","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/e9bba842-c38c-418c-b61f-d5ac8ca6c0ff","az":"eu-south-1b","privIp":"10.10.21.216","pubIp":null}
+
+# Sulla risorsa  "pn-mandate/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-mandate-microsvc-.*$"
 {"account":"core","grpId":"sg-0187c7b5dd3f49600","grpName":"pn-mandate-microsvc-prod-MandateMicroservice-VOU9AA54JU26-EcsServiceSecurityGroup-CI8Q4WBWERKP","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/2222cdc4-f6c3-47e7-95c2-c580317b663b","az":"eu-south-1c","privIp":"10.10.22.118","pubIp":null}
 {"account":"core","grpId":"sg-0187c7b5dd3f49600","grpName":"pn-mandate-microsvc-prod-MandateMicroservice-VOU9AA54JU26-EcsServiceSecurityGroup-CI8Q4WBWERKP","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/7f1d9eed-fe26-48a9-b8aa-e2da7146e873","az":"eu-south-1b","privIp":"10.10.21.191","pubIp":null}
-{"account":"core","grpId":"sg-01c9bfc4b4109c83f","grpName":"launch-wizard-1","desc":"","az":"eu-south-1b","privIp":"10.10.21.99","pubIp":null}
+
+# Sulla risorsa  "" 
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-opensearch.*$"
 {"account":"core","grpId":"sg-02bed590c0e351e2d","grpName":"pn-opensearch","desc":"ES opensearchservi-bqkt8cyjx7kv","az":"eu-south-1a","privIp":"10.10.80.140","pubIp":null}
 {"account":"core","grpId":"sg-02bed590c0e351e2d","grpName":"pn-opensearch","desc":"ES opensearchservi-bqkt8cyjx7kv","az":"eu-south-1a","privIp":"10.10.80.201","pubIp":null}
 {"account":"core","grpId":"sg-02bed590c0e351e2d","grpName":"pn-opensearch","desc":"ES opensearchservi-bqkt8cyjx7kv","az":"eu-south-1a","privIp":"10.10.80.234","pubIp":null}
@@ -12,16 +25,36 @@
 {"account":"core","grpId":"sg-02bed590c0e351e2d","grpName":"pn-opensearch","desc":"ES opensearchservi-bqkt8cyjx7kv","az":"eu-south-1c","privIp":"10.10.82.172","pubIp":null}
 {"account":"core","grpId":"sg-02bed590c0e351e2d","grpName":"pn-opensearch","desc":"ES opensearchservi-bqkt8cyjx7kv","az":"eu-south-1c","privIp":"10.10.82.180","pubIp":null}
 {"account":"core","grpId":"sg-02bed590c0e351e2d","grpName":"pn-opensearch","desc":"ES opensearchservi-bqkt8cyjx7kv","az":"eu-south-1c","privIp":"10.10.82.185","pubIp":null}
+
+# Sulla risorsa  "pn-logextractor-be/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-logextractor-be-microsvc-.*$"
 {"account":"core","grpId":"sg-03e82622ba181c843","grpName":"pn-logextractor-be-microsvc-prod-LogextractorBeMicroservice-LWAQGQY0B69Z-EcsServiceSecurityGroup-LOD0W39KG3H9","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/a82ef489-aaa3-4782-8380-4326a9054374","az":"eu-south-1c","privIp":"10.10.22.232","pubIp":null}
+
+# Sulla risorsa  "/pn-infra-core/src/main/30-core-networking.tf" resource "aws_vpc_endpoint" "to_data_vault" ; resource "aws_vpc_endpoint" "to_safestorage_extch"
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-core_vpc-toconfinfo-.*$"
 {"account":"core","grpId":"sg-03fb983b62eb8971f","grpName":"pn-core_vpc-toconfinfo-secgrp2023052215210928980000000a","desc":"VPC Endpoint Interface vpce-01fd5892afd17fb36","az":"eu-south-1a","privIp":"10.10.60.45","pubIp":null}
 {"account":"core","grpId":"sg-03fb983b62eb8971f","grpName":"pn-core_vpc-toconfinfo-secgrp2023052215210928980000000a","desc":"VPC Endpoint Interface vpce-01fd5892afd17fb36","az":"eu-south-1b","privIp":"10.10.61.77","pubIp":null}
 {"account":"core","grpId":"sg-03fb983b62eb8971f","grpName":"pn-core_vpc-toconfinfo-secgrp2023052215210928980000000a","desc":"VPC Endpoint Interface vpce-01fd5892afd17fb36","az":"eu-south-1c","privIp":"10.10.62.193","pubIp":null}
 {"account":"core","grpId":"sg-03fb983b62eb8971f","grpName":"pn-core_vpc-toconfinfo-secgrp2023052215210928980000000a","desc":"VPC Endpoint Interface vpce-0c8cf7cb617a9d719","az":"eu-south-1a","privIp":"10.10.60.23","pubIp":null}
 {"account":"core","grpId":"sg-03fb983b62eb8971f","grpName":"pn-core_vpc-toconfinfo-secgrp2023052215210928980000000a","desc":"VPC Endpoint Interface vpce-0c8cf7cb617a9d719","az":"eu-south-1b","privIp":"10.10.61.220","pubIp":null}
 {"account":"core","grpId":"sg-03fb983b62eb8971f","grpName":"pn-core_vpc-toconfinfo-secgrp2023052215210928980000000a","desc":"VPC Endpoint Interface vpce-0c8cf7cb617a9d719","az":"eu-south-1c","privIp":"10.10.62.16","pubIp":null}
+
+# Sulla risorsa  "/pn-infra-core/src/main/60-load-balancers.tf" resource "aws_lb" "pn_core_ecs_alb"
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-core_vpc-webapp-.*$"
 {"account":"core","grpId":"sg-0513515e790fffede","grpName":"pn-core_vpc-webapp-secgrp20230522152109277200000009","desc":"ELB app/EcsA-20230522152202180500000011/510e186b8b8b7a4d","az":"eu-south-1a","privIp":"10.10.20.141","pubIp":null}
 {"account":"core","grpId":"sg-0513515e790fffede","grpName":"pn-core_vpc-webapp-secgrp20230522152109277200000009","desc":"ELB app/EcsA-20230522152202180500000011/510e186b8b8b7a4d","az":"eu-south-1b","privIp":"10.10.21.130","pubIp":null}
 {"account":"core","grpId":"sg-0513515e790fffede","grpName":"pn-core_vpc-webapp-secgrp20230522152109277200000009","desc":"ELB app/EcsA-20230522152202180500000011/510e186b8b8b7a4d","az":"eu-south-1c","privIp":"10.10.22.134","pubIp":null}
+
+# Sulla risorsa  "pn-delivery/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-delivery-microsvc-prod-DeliveryMicroservice-.*$"
 {"account":"core","grpId":"sg-05397b436349de60c","grpName":"pn-delivery-microsvc-prod-DeliveryMicroservice-1ELFS897U32FP-EcsServiceSecurityGroup-1AIC57UCSOLG9","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/1c340339-ed34-482e-a0e3-a9eda9a8dd55","az":"eu-south-1b","privIp":"10.10.41.185","pubIp":null}
 {"account":"core","grpId":"sg-05397b436349de60c","grpName":"pn-delivery-microsvc-prod-DeliveryMicroservice-1ELFS897U32FP-EcsServiceSecurityGroup-1AIC57UCSOLG9","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/68f9e9b9-ed3f-4196-a127-d1ebd13f4548","az":"eu-south-1a","privIp":"10.10.40.22","pubIp":null}
 {"account":"core","grpId":"sg-05397b436349de60c","grpName":"pn-delivery-microsvc-prod-DeliveryMicroservice-1ELFS897U32FP-EcsServiceSecurityGroup-1AIC57UCSOLG9","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/9d1c6f5c-182b-4479-83a9-a5f4b68583ed","az":"eu-south-1a","privIp":"10.10.40.42","pubIp":null}
@@ -29,6 +62,11 @@
 {"account":"core","grpId":"sg-05397b436349de60c","grpName":"pn-delivery-microsvc-prod-DeliveryMicroservice-1ELFS897U32FP-EcsServiceSecurityGroup-1AIC57UCSOLG9","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/ba94037c-77e6-4a83-8fa2-2b21fee3c959","az":"eu-south-1c","privIp":"10.10.42.227","pubIp":null}
 {"account":"core","grpId":"sg-05397b436349de60c","grpName":"pn-delivery-microsvc-prod-DeliveryMicroservice-1ELFS897U32FP-EcsServiceSecurityGroup-1AIC57UCSOLG9","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/bcb33284-91b4-4a88-b441-7d9df1cc0e2f","az":"eu-south-1b","privIp":"10.10.41.20","pubIp":null}
 {"account":"core","grpId":"sg-05397b436349de60c","grpName":"pn-delivery-microsvc-prod-DeliveryMicroservice-1ELFS897U32FP-EcsServiceSecurityGroup-1AIC57UCSOLG9","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/daebae09-cd05-4f13-84d9-7e258196a6d5","az":"eu-south-1c","privIp":"10.10.42.138","pubIp":null}
+
+# Sulla risorsa  "/pn-infra-core/src/main/30-core-networking.tf" module "vpc_endpoints_pn_core"
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-core_vpc-tls-.*$"
 {"account":"core","grpId":"sg-056c814ba56867897","grpName":"pn-core_vpc-tls-secgrp20230522152104956400000007","desc":"VPC Endpoint Interface vpce-0008d301217859c90","az":"eu-south-1a","privIp":"10.10.70.79","pubIp":null}
 {"account":"core","grpId":"sg-056c814ba56867897","grpName":"pn-core_vpc-tls-secgrp20230522152104956400000007","desc":"VPC Endpoint Interface vpce-0008d301217859c90","az":"eu-south-1b","privIp":"10.10.71.23","pubIp":null}
 {"account":"core","grpId":"sg-056c814ba56867897","grpName":"pn-core_vpc-tls-secgrp20230522152104956400000007","desc":"VPC Endpoint Interface vpce-0008d301217859c90","az":"eu-south-1c","privIp":"10.10.72.156","pubIp":null}
@@ -83,57 +121,171 @@
 {"account":"core","grpId":"sg-056c814ba56867897","grpName":"pn-core_vpc-tls-secgrp20230522152104956400000007","desc":"VPC Endpoint Interface vpce-0dfea7407cfe21af6","az":"eu-south-1a","privIp":"10.10.70.126","pubIp":null}
 {"account":"core","grpId":"sg-056c814ba56867897","grpName":"pn-core_vpc-tls-secgrp20230522152104956400000007","desc":"VPC Endpoint Interface vpce-0dfea7407cfe21af6","az":"eu-south-1b","privIp":"10.10.71.6","pubIp":null}
 {"account":"core","grpId":"sg-056c814ba56867897","grpName":"pn-core_vpc-tls-secgrp20230522152104956400000007","desc":"VPC Endpoint Interface vpce-0dfea7407cfe21af6","az":"eu-south-1c","privIp":"10.10.72.58","pubIp":null}
+
+# Sulla risorsa  "pn-user-attributes/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-user-attributes-microsvc-prod-UserAttributesMicroservice-.*$"
 {"account":"core","grpId":"sg-05a74e0329fd925a0","grpName":"pn-user-attributes-microsvc-prod-UserAttributesMicroservice-QR482I94P24-EcsServiceSecurityGroup-VWOY6EJUH22U","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/82994549-baf0-4782-ac17-0cc04be9a6b1","az":"eu-south-1b","privIp":"10.10.21.39","pubIp":null}
 {"account":"core","grpId":"sg-05a74e0329fd925a0","grpName":"pn-user-attributes-microsvc-prod-UserAttributesMicroservice-QR482I94P24-EcsServiceSecurityGroup-VWOY6EJUH22U","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/9a193680-1bac-4bab-ae93-e206ff83ca5d","az":"eu-south-1c","privIp":"10.10.22.129","pubIp":null}
+
+# Sulla risorsa  "pn-user-attributes/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-redis.*$"
 {"account":"core","grpId":"sg-05da11e638fb4b404","grpName":"pn-redis","desc":"ElastiCache pnr1wf0xa02horsy-001","az":"eu-south-1a","privIp":"10.10.20.12","pubIp":null}
 {"account":"core","grpId":"sg-05da11e638fb4b404","grpName":"pn-redis","desc":"ElastiCache pnr1wf0xa02horsy-002","az":"eu-south-1b","privIp":"10.10.21.54","pubIp":null}
 {"account":"core","grpId":"sg-05da11e638fb4b404","grpName":"pn-redis","desc":"ElastiCache pnr1wf0xa02horsy-003","az":"eu-south-1b","privIp":"10.10.21.161","pubIp":null}
 {"account":"core","grpId":"sg-05da11e638fb4b404","grpName":"pn-redis","desc":"ElastiCache pnr1wf0xa02horsy-004","az":"eu-south-1c","privIp":"10.10.22.59","pubIp":null}
+
+# Sulla risorsa  "pn-delivery/scripts/aws/cfn/microservice.yml" VersioningV1V2GetNotificationLambda
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-delivery-microsvc-prod-VersioningV1V2GetNotificationSecGroup*$"
 {"account":"core","grpId":"sg-06eb279b2948ceff4","grpName":"pn-delivery-microsvc-prod-VersioningV1V2GetNotificationSecGroup-1J7HIMCG1EXAQ","desc":"AWS Lambda VPC ENI-pn-delivery-versioning-v1v2-getnotification-lambda-2af2ae55-3949-420a-8128-a6a03e73e263","az":"eu-south-1c","privIp":"10.10.22.90","pubIp":null}
 {"account":"core","grpId":"sg-06eb279b2948ceff4","grpName":"pn-delivery-microsvc-prod-VersioningV1V2GetNotificationSecGroup-1J7HIMCG1EXAQ","desc":"AWS Lambda VPC ENI-pn-delivery-versioning-v1v2-getnotification-lambda-2e6fc765-fea6-496f-94d1-330fba4178ee","az":"eu-south-1b","privIp":"10.10.21.136","pubIp":null}
 {"account":"core","grpId":"sg-06eb279b2948ceff4","grpName":"pn-delivery-microsvc-prod-VersioningV1V2GetNotificationSecGroup-1J7HIMCG1EXAQ","desc":"AWS Lambda VPC ENI-pn-delivery-versioning-v1v2-getnotification-lambda-5d4acd19-2f58-4833-8cea-b02f331bca8d","az":"eu-south-1a","privIp":"10.10.20.128","pubIp":null}
+
+# Sulla risorsa  "    pn-infra/runtime-infra/pn-ipc.yaml" MountFargateEfsTarget[123]
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-ipc-prod-EFSSecurityGroup*$"
 {"account":"core","grpId":"sg-07d69d7e9c461e45b","grpName":"pn-ipc-prod-EFSSecurityGroup-1TWI3ZDIJ86NB","desc":"EFS mount target for fs-0faf74e58679071c4 (fsmt-0114dfa3025fbe05f)","az":"eu-south-1b","privIp":"10.10.21.86","pubIp":null}
 {"account":"core","grpId":"sg-07d69d7e9c461e45b","grpName":"pn-ipc-prod-EFSSecurityGroup-1TWI3ZDIJ86NB","desc":"EFS mount target for fs-0faf74e58679071c4 (fsmt-0854a8f37cf4871f8)","az":"eu-south-1a","privIp":"10.10.20.25","pubIp":null}
 {"account":"core","grpId":"sg-07d69d7e9c461e45b","grpName":"pn-ipc-prod-EFSSecurityGroup-1TWI3ZDIJ86NB","desc":"EFS mount target for fs-0faf74e58679071c4 (fsmt-0b30e1e35dc5d2f04)","az":"eu-south-1c","privIp":"10.10.22.62","pubIp":null}
+
+# Sulla risorsa  "pn-external-registries/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-external-registries-microsvc-prod-ExternalRegistryMicroservice-.*$"
 {"account":"core","grpId":"sg-099392f17465a8fe9","grpName":"pn-external-registries-microsvc-prod-ExternalRegistryMicroservice-ZEPXWDGTSLFO-EcsServiceSecurityGroup-QW6LSY6PCYD","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/2953812b-5b2b-4b06-9c76-8ed3795dfe01","az":"eu-south-1a","privIp":"10.10.40.24","pubIp":null}
 {"account":"core","grpId":"sg-099392f17465a8fe9","grpName":"pn-external-registries-microsvc-prod-ExternalRegistryMicroservice-ZEPXWDGTSLFO-EcsServiceSecurityGroup-QW6LSY6PCYD","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/4a52df55-755f-4b95-981e-091555aee04e","az":"eu-south-1b","privIp":"10.10.41.135","pubIp":null}
+
+# Sulla risorsa  "pn-delivery-push/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-delivery-push-microsvc-prod-DeliveryPushMicroservice-.*$"
 {"account":"core","grpId":"sg-09c35ba477816685c","grpName":"pn-delivery-push-microsvc-prod-DeliveryPushMicroservice-Y0VVRBA2Y0GR-EcsServiceSecurityGroup-3D5OA96DT5RQ","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/0586829e-6014-40aa-b316-c12091abfb56","az":"eu-south-1a","privIp":"10.10.20.238","pubIp":null}
 {"account":"core","grpId":"sg-09c35ba477816685c","grpName":"pn-delivery-push-microsvc-prod-DeliveryPushMicroservice-Y0VVRBA2Y0GR-EcsServiceSecurityGroup-3D5OA96DT5RQ","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/06c01621-3420-441a-91fe-0ff41abc0a03","az":"eu-south-1b","privIp":"10.10.21.73","pubIp":null}
 {"account":"core","grpId":"sg-09c35ba477816685c","grpName":"pn-delivery-push-microsvc-prod-DeliveryPushMicroservice-Y0VVRBA2Y0GR-EcsServiceSecurityGroup-3D5OA96DT5RQ","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/39b56ccb-af4d-4d5c-9265-81fe2d7128c1","az":"eu-south-1c","privIp":"10.10.22.85","pubIp":null}
+
+# Sulla risorsa  "pn-external-channels/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-external-channels-microsvc-prod-ExternalChannelsMicroservic-.*$"
 {"account":"core","grpId":"sg-09f67b89f8950cc48","grpName":"pn-external-channels-microsvc-prod-ExternalChannelsMicroservice-4U39RPY87SKF-EcsServiceSecurityGroup-NFT6V6V612A5","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/854251d1-16fc-4dc0-b4d2-3a0e370334af","az":"eu-south-1c","privIp":"10.10.42.126","pubIp":null}
-{"account":"core","grpId":"sg-0a81b1c0b01c7358f","grpName":"launch-wizard-2","desc":"","az":"eu-south-1b","privIp":"10.10.41.140","pubIp":null}
-{"account":"core","grpId":"sg-0a81b1c0b01c7358f","grpName":"launch-wizard-2","desc":"nessus4coresubnet","az":"eu-south-1b","privIp":"10.10.21.174","pubIp":null}
+
+# Sulla risorsa  "pn-national-registries/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-national-registries-microsvc-prod-NationalRegistryMicroservice-.*$"
 {"account":"core","grpId":"sg-0ba7293ff899133ee","grpName":"pn-national-registries-microsvc-prod-NationalRegistryMicroservice-12E8H6D4L0N9I-EcsServiceSecurityGroup-1H9RTXO97NN1A","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/3161be0e-d99e-46c0-9135-5ab29eead1d7","az":"eu-south-1c","privIp":"10.10.42.158","pubIp":null}
 {"account":"core","grpId":"sg-0ba7293ff899133ee","grpName":"pn-national-registries-microsvc-prod-NationalRegistryMicroservice-12E8H6D4L0N9I-EcsServiceSecurityGroup-1H9RTXO97NN1A","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/e74b5d2c-8dc1-429f-8b23-f341e65f1d75","az":"eu-south-1a","privIp":"10.10.40.65","pubIp":null}
+
+# Sulla risorsa  "pn-radd-fsu/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-radd-fsu-microsvc-prod-RaddMicroservice-.*$"
 {"account":"core","grpId":"sg-0bc223ba41785c82f","grpName":"pn-radd-fsu-microsvc-prod-RaddMicroservice-9EWQOUC8D1O1-EcsServiceSecurityGroup-EAHY7I9K1UF8","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/79c0438d-939e-4a9c-807a-478cd943adf8","az":"eu-south-1a","privIp":"10.10.20.174","pubIp":null}
 {"account":"core","grpId":"sg-0bc223ba41785c82f","grpName":"pn-radd-fsu-microsvc-prod-RaddMicroservice-9EWQOUC8D1O1-EcsServiceSecurityGroup-EAHY7I9K1UF8","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/e9043882-0d59-4416-add1-0de009b61915","az":"eu-south-1c","privIp":"10.10.22.33","pubIp":null}
+
+# Sulla risorsa  "pn-apikey-manager/scripts/aws/cfn/microservice.yml" Microservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-apikey-manager-microsvc-prod-ApikeyManagerMicroservice-.*$"
 {"account":"core","grpId":"sg-0beaed27c3e4cee96","grpName":"pn-apikey-manager-microsvc-prod-ApikeyManagerMicroservice-9DAANP2TR9V8-EcsServiceSecurityGroup-2CGKVL4Q13JR","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/9d54275f-5038-44ec-9884-b145c9a2f458","az":"eu-south-1a","privIp":"10.10.40.102","pubIp":null}
 {"account":"core","grpId":"sg-0beaed27c3e4cee96","grpName":"pn-apikey-manager-microsvc-prod-ApikeyManagerMicroservice-9DAANP2TR9V8-EcsServiceSecurityGroup-2CGKVL4Q13JR","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/b38c72e2-9e0e-4810-839e-dda6c1454f33","az":"eu-south-1b","privIp":"10.10.41.159","pubIp":null}
+
+# Sulla risorsa  "pn-infra/scripts/lambda-reverse-proxy/stack.yaml" ApplicationLoadBalancer
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^lambda-proxy-webapp-security-group.*$"
 {"account":"core","grpId":"sg-0caef6f3e923a2ba5","grpName":"lambda-proxy-webapp-security-group","desc":"ELB app/pn-re-Appli-KL1VVQCFKY0O/122ea1d0b1e6df8e","az":"eu-south-1a","privIp":"10.10.20.85","pubIp":null}
 {"account":"core","grpId":"sg-0caef6f3e923a2ba5","grpName":"lambda-proxy-webapp-security-group","desc":"ELB app/pn-re-Appli-KL1VVQCFKY0O/122ea1d0b1e6df8e","az":"eu-south-1b","privIp":"10.10.21.109","pubIp":null}
 {"account":"core","grpId":"sg-0caef6f3e923a2ba5","grpName":"lambda-proxy-webapp-security-group","desc":"ELB app/pn-re-Appli-KL1VVQCFKY0O/122ea1d0b1e6df8e","az":"eu-south-1c","privIp":"10.10.22.183","pubIp":null}
-{"account":"core","grpId":"sg-0cf1d6cda92218223","grpName":"pn-auth-fleet-microsvc-prod-DataVaultServiceSecurityGroup-7G73CJIHF2ET","desc":"AWS Lambda VPC ENI-pn-ioAuthorizerLambda-0aa7b16a-b5c8-4f75-aa2a-b7844bb6cf16","az":"eu-south-1c","privIp":"10.10.22.34","pubIp":null}
-{"account":"core","grpId":"sg-0cf1d6cda92218223","grpName":"pn-auth-fleet-microsvc-prod-DataVaultServiceSecurityGroup-7G73CJIHF2ET","desc":"AWS Lambda VPC ENI-pn-ioAuthorizerLambda-7471bc19-5dcd-4b89-9199-09751d59e8c2","az":"eu-south-1b","privIp":"10.10.21.156","pubIp":null}
-{"account":"core","grpId":"sg-0cf1d6cda92218223","grpName":"pn-auth-fleet-microsvc-prod-DataVaultServiceSecurityGroup-7G73CJIHF2ET","desc":"AWS Lambda VPC ENI-pn-ioAuthorizerLambda-c4abf57b-579e-4097-a8a2-48ee80ddd9cd","az":"eu-south-1a","privIp":"10.10.20.21","pubIp":null}
+
+# Sulla risorsa  "pn-infra/scripts/lambda-reverse-proxy/stack.yaml" LambdaProxyFunction
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-lambda-proxy-webapp-security-group.*$"
 {"account":"core","grpId":"sg-0d1f5319b4fc9efd4","grpName":"pn-lambda-proxy-webapp-security-group","desc":"AWS Lambda VPC ENI-pn-lambda-reverse-proxy-68086b57-1941-4189-af77-c534e25e5a93","az":"eu-south-1b","privIp":"10.10.21.187","pubIp":null}
 {"account":"core","grpId":"sg-0d1f5319b4fc9efd4","grpName":"pn-lambda-proxy-webapp-security-group","desc":"AWS Lambda VPC ENI-pn-lambda-reverse-proxy-8158d711-49b7-412b-a443-99187c504304","az":"eu-south-1c","privIp":"10.10.22.86","pubIp":null}
 {"account":"core","grpId":"sg-0d1f5319b4fc9efd4","grpName":"pn-lambda-proxy-webapp-security-group","desc":"AWS Lambda VPC ENI-pn-lambda-reverse-proxy-d82f9e3d-033d-4845-9f5e-df3c3d749c9f","az":"eu-south-1a","privIp":"10.10.20.186","pubIp":null}
+
+# Sulla risorsa  "pn-auth-fleet/scripts/aws/cfn/microservice.yml" IoAuthorizerLambda
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-auth-fleet-microsvc-prod-DataVaultServiceSecurityGroup.*$"
+{"account":"core","grpId":"sg-0cf1d6cda92218223","grpName":"pn-auth-fleet-microsvc-prod-DataVaultServiceSecurityGroup-7G73CJIHF2ET","desc":"AWS Lambda VPC ENI-pn-ioAuthorizerLambda-0aa7b16a-b5c8-4f75-aa2a-b7844bb6cf16","az":"eu-south-1c","privIp":"10.10.22.34","pubIp":null}
+{"account":"core","grpId":"sg-0cf1d6cda92218223","grpName":"pn-auth-fleet-microsvc-prod-DataVaultServiceSecurityGroup-7G73CJIHF2ET","desc":"AWS Lambda VPC ENI-pn-ioAuthorizerLambda-7471bc19-5dcd-4b89-9199-09751d59e8c2","az":"eu-south-1b","privIp":"10.10.21.156","pubIp":null}
+{"account":"core","grpId":"sg-0cf1d6cda92218223","grpName":"pn-auth-fleet-microsvc-prod-DataVaultServiceSecurityGroup-7G73CJIHF2ET","desc":"AWS Lambda VPC ENI-pn-ioAuthorizerLambda-c4abf57b-579e-4097-a8a2-48ee80ddd9cd","az":"eu-south-1a","privIp":"10.10.20.21","pubIp":null}
+
+# Sulla risorsa  "pn-paper-channel/scripts/aws/cfn/microservice.yml" PaperChannelMicroservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-paper-channel-microsvc-prod-PaperChannelMicroservice.*$"
 {"account":"core","grpId":"sg-0d6b9a25e08e373a7","grpName":"pn-paper-channel-microsvc-prod-PaperChannelMicroservice-1SQ7R2E9O2MUB-EcsServiceSecurityGroup-F91PD3XODTO5","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/904914da-cd72-4125-a6a8-b87b30374a28","az":"eu-south-1b","privIp":"10.10.21.64","pubIp":null}
 {"account":"core","grpId":"sg-0d6b9a25e08e373a7","grpName":"pn-paper-channel-microsvc-prod-PaperChannelMicroservice-1SQ7R2E9O2MUB-EcsServiceSecurityGroup-F91PD3XODTO5","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/b83041bc-2f7b-426b-a89d-4454c46ef744","az":"eu-south-1c","privIp":"10.10.22.251","pubIp":null}
+
+# Sulla risorsa  "pn-service-desk/scripts/aws/cfn/microservice.yml" ServiceDeskMicroservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-service-desk-microsvc-prod-ServiceDeskMicroservice.*$"
 {"account":"core","grpId":"sg-0d93be60392f62c38","grpName":"pn-service-desk-microsvc-prod-ServiceDeskMicroservice-1I6KNM06NHY7I-EcsServiceSecurityGroup-DJ2VWRP2JSJC","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/322d334f-cac2-4c00-9c97-467206fd526d","az":"eu-south-1a","privIp":"10.10.20.188","pubIp":null}
+
+# Sulla risorsa  "pn-kafka-bridge/scripts/aws/cfn/microservice.yml" KafkaBridgeMicroservice
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-kafka-bridge-microsvc-prod-KafkaBridgeMicroservice.*$"
+{"account":"core","grpId":"sg-0f2559b3b87956ccf","grpName":"pn-kafka-bridge-microsvc-prod-KafkaBridgeMicroservice-IHKILVWBP741-EcsServiceSecurityGroup-GQX4URWU7JEZ","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/6b17367b-0abd-4ed5-bd7f-fa0f1a886e25","az":"eu-south-1b","privIp":"10.10.41.200","pubIp":null}
+
+# Sulla risorsa  "pn-infra/runtime-infra/pn-logs-export.yaml" LogsToOpenSearch
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-groupName-regexp="^pn-logs-export-prod-LogsToOpenSearch.*$"
 {"account":"core","grpId":"sg-0de2b6de02ac8b17b","grpName":"pn-logs-export-prod-LogsToOpenSearch-TZGVYCI4ZBS1-DeliveryLambdaSecGroup-DYOX5HMXJ9TS","desc":"AWS Lambda VPC ENI-pn-logsToOpenSearch-opensearch-ingestion-2e56ce36-aa78-4beb-b32a-d042faf68e9a","az":"eu-south-1a","privIp":"10.10.20.251","pubIp":null}
 {"account":"core","grpId":"sg-0de2b6de02ac8b17b","grpName":"pn-logs-export-prod-LogsToOpenSearch-TZGVYCI4ZBS1-DeliveryLambdaSecGroup-DYOX5HMXJ9TS","desc":"AWS Lambda VPC ENI-pn-logsToOpenSearch-opensearch-ingestion-45b449f6-f131-4af7-a529-2a5cf0a9b612","az":"eu-south-1c","privIp":"10.10.22.180","pubIp":null}
 {"account":"core","grpId":"sg-0de2b6de02ac8b17b","grpName":"pn-logs-export-prod-LogsToOpenSearch-TZGVYCI4ZBS1-DeliveryLambdaSecGroup-DYOX5HMXJ9TS","desc":"AWS Lambda VPC ENI-pn-logsToOpenSearch-opensearch-ingestion-965bfc27-7b88-4c6d-8992-3c587ab90ad8","az":"eu-south-1b","privIp":"10.10.21.123","pubIp":null}
-{"account":"core","grpId":"sg-0f2559b3b87956ccf","grpName":"pn-kafka-bridge-microsvc-prod-KafkaBridgeMicroservice-IHKILVWBP741-EcsServiceSecurityGroup-GQX4URWU7JEZ","desc":"arn:aws:ecs:eu-south-1:510769970275:attachment/6b17367b-0abd-4ed5-bd7f-fa0f1a886e25","az":"eu-south-1b","privIp":"10.10.41.200","pubIp":null}
+
+
+# Sulla risorsa  "pn-infra-core/src/main/60-load-balancers.tf" resource "aws_lb" "pn_core_radd_nlb" 
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-description-regexp="^ELB net/RaddI-.*$"
 {"account":"core","grpId":null,"grpName":null,"desc":"ELB net/RaddI-20230522152227635500000014/1317d49352f4811e","az":"eu-south-1a","privIp":"10.10.5.8","pubIp":null}
 {"account":"core","grpId":null,"grpName":null,"desc":"ELB net/RaddI-20230522152227635500000014/1317d49352f4811e","az":"eu-south-1b","privIp":"10.10.5.24","pubIp":null}
 {"account":"core","grpId":null,"grpName":null,"desc":"ELB net/RaddI-20230522152227635500000014/1317d49352f4811e","az":"eu-south-1c","privIp":"10.10.5.40","pubIp":null}
+
+# Sulla risorsa  "pn-infra-core/src/main/60-load-balancers.tf" resource "aws_lb" "pn_core_servicedesk_nlb"
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-description-regexp="^ELB net/SeDeI-.*$"
 {"account":"core","grpId":null,"grpName":null,"desc":"ELB net/SeDeI-20230918133456556200000001/335dcf1978292b13","az":"eu-south-1a","privIp":"10.10.7.8","pubIp":null}
 {"account":"core","grpId":null,"grpName":null,"desc":"ELB net/SeDeI-20230918133456556200000001/335dcf1978292b13","az":"eu-south-1b","privIp":"10.10.7.24","pubIp":null}
 {"account":"core","grpId":null,"grpName":null,"desc":"ELB net/SeDeI-20230918133456556200000001/335dcf1978292b13","az":"eu-south-1c","privIp":"10.10.7.40","pubIp":null}
+
+# Sulla risorsa  "pn-infra-core/src/main/60-load-balancers.tf" resource "aws_lb" "pn_core_api_gw_nlb" 
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-description-regexp="^ELB net/WebI-.*$"
 {"account":"core","grpId":null,"grpName":null,"desc":"ELB net/WebI-20230522152235141700000016/fc0d78e10f27d701","az":"eu-south-1a","privIp":"10.10.3.8","pubIp":null}
 {"account":"core","grpId":null,"grpName":null,"desc":"ELB net/WebI-20230522152235141700000016/fc0d78e10f27d701","az":"eu-south-1b","privIp":"10.10.3.24","pubIp":null}
 {"account":"core","grpId":null,"grpName":null,"desc":"ELB net/WebI-20230522152235141700000016/fc0d78e10f27d701","az":"eu-south-1c","privIp":"10.10.3.40","pubIp":null}
+
+# Sulla risorsa "pn-infra-core/src/main/30-core-networking.tf" vpc_pn_core
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-description-regexp="^Interface for NAT Gateway.*$"
 {"account":"core","grpId":null,"grpName":null,"desc":"Interface for NAT Gateway nat-05db5a98629d32527","az":"eu-south-1b","privIp":"10.10.1.26","pubIp":"18.102.5.128"}
 {"account":"core","grpId":null,"grpName":null,"desc":"Interface for NAT Gateway nat-0b9455b5a3fbd9607","az":"eu-south-1c","privIp":"10.10.1.44","pubIp":"18.102.100.136"}
 {"account":"core","grpId":null,"grpName":null,"desc":"Interface for NAT Gateway nat-0c9a35d054ae1bd42","az":"eu-south-1a","privIp":"10.10.1.14","pubIp":"15.161.124.181"}
+
+
+# Sulla risorsa "Bastion host" Aggiungere i tag manualente sui bastion host
+# aggiungere TAG 
+#  - pn-eni-related=true
+#  - pn-eni-related-description-regexp="^launch-wizard-.*$"
+{"account":"core","grpId":"sg-01c9bfc4b4109c83f","grpName":"launch-wizard-1","desc":"","az":"eu-south-1b","privIp":"10.10.21.99","pubIp":null}
+{"account":"core","grpId":"sg-0a81b1c0b01c7358f","grpName":"launch-wizard-2","desc":"","az":"eu-south-1b","privIp":"10.10.41.140","pubIp":null}
+{"account":"core","grpId":"sg-0a81b1c0b01c7358f","grpName":"launch-wizard-2","desc":"nessus4coresubnet","az":"eu-south-1b","privIp":"10.10.21.174","pubIp":null}
+
