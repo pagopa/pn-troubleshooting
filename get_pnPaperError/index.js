@@ -60,13 +60,8 @@ async function main() {
   const awsClient = new AwsClientsWrapper( awsProfile );
   
   const res = await awsClient._scanRequest(tableName);
-  const requestIdx = []
-  res.forEach(element => {
-    console.log(element)
-  }); 
-  _writeInFile(res, "RequestIDx")
-  console.log(res);
-
+  await _writeInFile(res, "RequestIDx")
+  console.log('Sono stati memorizzati n° ' + res.length + ' elementi.');
 }
 
 main();
