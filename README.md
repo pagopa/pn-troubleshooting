@@ -129,3 +129,9 @@ Vuoi inserire dati in una tabella dynamo a partire da un file?
 ```bash
 node index.js --profile <profile> --tableName <tableName> --fileName <fileName> [--batchDimension <batchDimension]
 ```
+
+### compare-config
+Vuoi comparare le configurazioni tra due ambienti?
+```bash
+node index.js <envA>  <envB>  <pnConfigurationPath>
+```
