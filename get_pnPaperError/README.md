@@ -26,7 +26,7 @@ node scan_dynamo.js --awsProfile <aws-profile> --tableName <dynamodb-table> --fi
 Dove:
 - `<aws-profile>` è il profilo dell'account AWS dell'ambiente di riferimento.
 - `<dynamodb-table>` é la tabella sulla quale si intende effettuare una scan.
-- `<filter>` inserire un valore casual al momento
+- `<filter>` inserire un valore casual al momento (non viene utilizzato)
 
 ## Output
 Lo script genera un file in formato JSON contenente i requestIDx estratti

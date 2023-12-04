@@ -62,6 +62,7 @@ async function main() {
   const res = await awsClient._scanRequest(tableName);
   await _writeInFile(res, "RequestIDx")
   console.log('Sono stati memorizzati n° ' + res.length + ' elementi.');
+
 }
 
 main();

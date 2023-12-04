@@ -1,7 +1,8 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { DynamoDBClient, QueryCommand, DeleteItemCommand  } = require("@aws-sdk/client-dynamodb");
-const { SQSClient, SendMessageCommand } = require("@aws-sdk/client-sqs");
+const { SQSClient, SendMessageCommand, GetQueueUrlCommand } = require("@aws-sdk/client-sqs");
+const { SecretsManagerClient, GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager"); 
 const { unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function awsClientCfg( profile ) {
@@ -18,9 +19,12 @@ function awsClientCfg( profile ) {
 
 class AwsClientsWrapper {
 
-  constructor( awsProfile, profileName, roleArn ) {
-    this._dynamoClient = new DynamoDBClient( awsClientCfg( awsProfile, profileName, roleArn ))
-    this._sqsClient = new SQSClient( awsClientCfg( awsProfile, profileName, roleArn ))
+  constructor( envName, profileName, roleArn ) {
+    const coreProfile = 'sso_pn-core-' + envName
+    const confinfoProfile = 'sso_pn-confinfo-' + envName
+    this._dynamoClient = new DynamoDBClient( awsClientCfg( coreProfile, profileName, roleArn ));
+    this._sqsClient = new SQSClient( awsClientCfg( coreProfile, profileName, roleArn ));
+    this._secretClient = new SecretsManagerClient( awsClientCfg( confinfoProfile, profileName, roleArn ));
   }
 
   async init() {
@@ -66,14 +70,44 @@ class AwsClientsWrapper {
     try {
       const command = new SendMessageCommand(input);
       response = await this._sqsClient.send(command);
+      return response;
     }
     catch (error) {
       console.error("Problem during SendMessageCommand cause=", error)
     }
-    return response;
   }
 
-  
+  async _getSecretKey(secretId) {
+    const input = { // GetSecretValueRequest
+      SecretId: secretId, // required
+    };
+    var response = {}
+    try {
+      const command = new GetSecretValueCommand(input);
+      response = await this._secretClient.send(command);
+      return JSON.parse(response.SecretString);
+    }
+    catch (error) {
+      console.error("Problem during SendMessageCommand cause=", error)
+      process.exit(1)
+    }
+  }
+
+  async _getQueueUrl(queueName) {
+    const input = { // GetQueueUrlRequest
+      QueueName: queueName, // required
+    };
+    var response = {}
+    try {
+      const command = new GetQueueUrlCommand(input);
+      const response = await this._sqsClient.send(command);
+      return response.QueueUrl;
+    }
+    catch (error) {
+      console.error("Problem during getQueueUrlCommand cause=", error)
+      process.exit(1)
+    }
+  }
 }
 
 exports.AwsClientsWrapper = AwsClientsWrapper;

@@ -129,3 +129,15 @@ Vuoi inserire dati in una tabella dynamo a partire da un file?
 ```bash
 node index.js --profile <profile> --tableName <tableName> --fileName <fileName> [--batchDimension <batchDimension]
 ```
+
+### get-pnPaperError
+Vuoi recuperare i requestId della table pn-paperError in base ad un filtro?
+```bash
+node scan_dynamo.js --awsProfile <aws-profile> --tableName <dynamodb-table> --filter <filter>
+```
+
+### redrive-pnPaperError
+Vuoi risottomettere gli eventi recuperati da get-pnPaperError?
+```bash
+node index.js --envName <envName> --fileName <fileName>
+```

@@ -5,11 +5,9 @@ const { ApiClient } = require("../redrive_pnPaperError/libs/api");
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config()
 
-const apiKey = process.env.API_KEY;
-const queueUrl = process.env.QUEUE_URL;
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --awsProfile <aws-profile> --fileName <file-name> --prod"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> --prod"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -32,11 +30,6 @@ function _checkingParameters(args, values){
     }
   })
 }
-
-async function _writeInFile(result, filename ) {
-  fs.mkdirSync("result", { recursive: true });
-  fs.writeFileSync('result/' + filename+'.json', JSON.stringify(result, null, 4), 'utf-8')
-}
  
 function _prepareQueueData(requestId){
   const regex = /([A-Z]{4}-[A-Z]{4}-[A-Z]{4}-\d{6}-[A-Z]-\d)/;
@@ -47,11 +40,13 @@ function _prepareQueueData(requestId){
     "iun": extractedString,
     "correlationId": null,
     "isAddressRetry":false,
-    "isF24Flow":false,
     "attempt":0,
     "clientId":""
   }
-  prod ? delete data['isF24Flow'] : null
+  if (envName == 'uat') {
+    data['isF24Flow'] = false
+  }
+  console.log(data)
   return data
 }
 
@@ -92,39 +87,45 @@ function _prepareAttributes(requestId){
 async function main() {
 
   const args = [
-    { name: "awsProfile", mandatory: true, subcommand: [] },
+    { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "prod", subcommand: [] },
   ]
   const values = {
-    values: { awsProfile, fileName, prod},
+    values: { envName, fileName, prod},
   } = parseArgs({
     options: {
-      awsProfile: {
+      envName: {
         type: "string", short: "p", default: undefined
       },
       fileName: {
         type: "string", short: "t", default: undefined
       },
-      prod: {
-        type: "boolean", short: "e", default: false
-      },
     },
   });  
 
   _checkingParameters(args, values)
-  const awsClient = new AwsClientsWrapper( awsProfile );
+  const awsClient = new AwsClientsWrapper( envName );
   
+  console.log('Preparing data...')
+  const queueUrl = await awsClient._getQueueUrl('pn-paper_channel_requests');
+  const apiKeys = await awsClient._getSecretKey('pn-PersonalDataVault-Secrets')
+  const baseUrlSelfcare = envName == 'prod' ? process.env.SELFCARE_BASE_URL : process.env.SELFCARE_BASE_UAT_URL;
+  const baseUrlPDV = envName == 'prod' ? process.env.PDV_BASE_URL : process.env.PDV_BASE_UAT_URL;
+  const secrets =  {
+    apiKeyPF: apiKeys.TokenizerApiKeyForPF,
+    apiKeyPG: apiKeys.SelfcareApiKeyForPG
+  }
+
+  console.log('Reading from file...')
   const fileData = JSON.parse(fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }));
   for(let i = 0; i < fileData.length; i++){  //reinserire lunghezza di data.length
     const requestId = fileData[i].requestId.S
+    console.log('Handling requestId: ' + requestId)
     const res = await awsClient._queryRequest("pn-PaperAddress", requestId)
     if(res.addressType == 'DISCOVERED_ADDRESS'){
-      console.log("Flusso Postino")
+      console.log("Postal Flow. Preparing data...")
       const data = _prepareQueueData(requestId)
-      console.log(data)
       const attributes = _prepareAttributes(requestId)
-      console.log(attributes)
       const res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
       if ('MD5OfMessageBody' in res) {
         console.log("RequestId " + requestId + " sent successfully!!!")
@@ -143,11 +144,20 @@ async function main() {
       }
     }
     else {
-      console.log("Flusso Registro")
+      console.log("Registry Flow. Retrieving taxId..")
       const paperRequestDeliveryData = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
+      var taxId;
+      if(paperRequestDeliveryData.receiverType == 'PF') {
+        const res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlPDV ,secrets.apiKeyPF)
+        taxId = res.pii
+      }
+      else {
+        const res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlSelfcare, secrets.apiKeyPG)
+        taxId = res.taxCode
+      }
       const result = {
         correlationId: paperRequestDeliveryData.correlationId,
-        taxId: await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, apiKey),
+        taxId: taxId,
         receiverType: paperRequestDeliveryData.receiverType
       }
       console.log(result)

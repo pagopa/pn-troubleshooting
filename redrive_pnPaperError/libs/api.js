@@ -16,33 +16,29 @@ async function sendNationalRegistriesRequest(taxId, correlationId, receiverType)
         }
     };
 
-    let response = await axios.post(url, data, headers);
+    let response = await axios.post(url, data, { headers });
     return response.data;
 }
 
 // with PF or PG prefix
-async function decodeUID(uid, apiKey){
+async function decodeUID(uid, baseUrl, apiKey){
     // if uid prefix is PF-
     if(uid.startsWith('PF-')){
         const pfUid = uid.substring(3);
-        let url = process.env.PDV_BASE_URL+'/tokenizer/v1/tokens/'+pfUid+'/pii?fl=familyName&fl=fiscalCode';
+        let url = baseUrl+'/tokenizer/v1/tokens/'+pfUid+'/pii?fl=familyName&fl=fiscalCode';
         const headers = {
-            'x-api-key': apiKey
+            'x-api-key': apiKey,
         };
-
-        let response = await axios.get(url, headers);
-
+        let response = await axios.get(url, { headers });
         return response.data;        
     } else if(uid.startsWith('PG-')){
         const pgUid = uid.substring(3);
         // do the above request using axios
-        let url = process.env.SELFCARE_BASE_URL+'/external/data-vault/v1/institutions/'+pgUid;
+        let url = baseUrl+'/external/data-vault/v1/institutions/'+pgUid;
         const headers = {
             'Ocp-Apim-Subscription-Key': apiKey
         };
-
-        let response = await axios.get(url, headers);
-
+        let response = await axios.get(url, { headers });
         return response.data;        
     } else {
         throw new Error('Invalid UID prefix');
