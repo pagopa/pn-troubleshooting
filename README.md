@@ -141,3 +141,9 @@ Vuoi risottomettere gli eventi recuperati da get-pnPaperError?
 ```bash
 node index.js --envName <envName> --fileName <fileName>
 ```
+
+### compare-conf-environment
+Vuoi comparare le configurazioni tra due ambienti?
+```bash
+node index.js <envA>  <envB>  <pnConfigurationPath>
+```
