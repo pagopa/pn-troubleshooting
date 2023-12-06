@@ -37,6 +37,15 @@ node redrive_paper_events.js --awsCoreProfile <aws-profile-core> --awsConfinfoPr
 
 ```
 Dove:
-- `<aws-profile-core>` è il profilo dell'account AWS dev;
+- `<aws-profile-core>` è il profilo dell'account AWS core;
 - `<aws-profile-confinfo>` è il profilo dell'account AWS confinfo;
 - `<request-id>` è il request id del messaggio desiderato.
+
+
+Note: per eseguirlo iterativamente a partire dal dump della tabella pn-PaperRequestError eseguire il seguente script:
+```bash
+for i in $(jq -r '.[] | select(.error.S=="<ERROR>")' <dynamodb-dump-file-path> | jq -r '.requestId.S'); do
+    node redrive_paper_event.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --requestId $i;
+    sleep 5;
+done
+```

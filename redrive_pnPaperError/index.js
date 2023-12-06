@@ -7,7 +7,7 @@ require('dotenv').config()
 
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> --prod"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -84,6 +84,19 @@ function _prepareAttributes(requestId){
   return attributes;
 }
 
+const urls = {
+  uat: {
+    pdv: 'https://api.uat.tokenizer.pdv.pagopa.it',
+    selfcare: 'https://api.uat.selfcare.pagopa.it'
+  },
+  prod: {
+    pdv: 'https://api.tokenizer.pdv.pagopa.it',
+    selfcare: 'https://api.selfcare.pagopa.it'
+  }
+}
+
+const failedRequestIds = []
+
 async function main() {
 
   const args = [
@@ -91,7 +104,7 @@ async function main() {
     { name: "fileName", mandatory: true, subcommand: [] },
   ]
   const values = {
-    values: { envName, fileName, prod},
+    values: { envName, fileName },
   } = parseArgs({
     options: {
       envName: {
@@ -109,30 +122,38 @@ async function main() {
   console.log('Preparing data...')
   const queueUrl = await awsClient._getQueueUrl('pn-paper_channel_requests');
   const apiKeys = await awsClient._getSecretKey('pn-PersonalDataVault-Secrets')
-  const baseUrlSelfcare = envName == 'prod' ? process.env.SELFCARE_BASE_URL : process.env.SELFCARE_BASE_UAT_URL;
-  const baseUrlPDV = envName == 'prod' ? process.env.PDV_BASE_URL : process.env.PDV_BASE_UAT_URL;
+  const baseUrlSelfcare = envName == 'prod' ? urls.prod.selfcare : urls.uat.selfcare
+  const baseUrlPDV = envName == 'prod' ? urls.prod.pdv: urls.uat.pdv
   const secrets =  {
     apiKeyPF: apiKeys.TokenizerApiKeyForPF,
     apiKeyPG: apiKeys.SelfcareApiKeyForPG
   }
 
   console.log('Reading from file...')
+
+
   const fileData = JSON.parse(fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }));
   for(let i = 0; i < fileData.length; i++){  //reinserire lunghezza di data.length
     const requestId = fileData[i].requestId.S
+    const created = fileData[i].created.S
     console.log('Handling requestId: ' + requestId)
-    const res = await awsClient._queryRequest("pn-PaperAddress", requestId)
+    let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
     if(res.addressType == 'DISCOVERED_ADDRESS'){
       console.log("Postal Flow. Preparing data...")
       const data = _prepareQueueData(requestId)
       const attributes = _prepareAttributes(requestId)
-      const res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
+      console.log('message for requestId: ' +requestId, {
+        data,
+        attributes
+      })
+
+      res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
       if ('MD5OfMessageBody' in res) {
         console.log("RequestId " + requestId + " sent successfully!!!")
-        const res = await awsClient._deleteRequest("pn-PaperRequestError", requestId)
+        res = await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
         if('ConsumedCapacity' in res) {
           if(res.ConsumedCapacity.CapacityUnits == 1) {
-            console.log("RequestId " + requestId + " handled successfully!!!")
+            console.log("RequestId " + requestId + " deleted successfully!!!")
           }
           else {
             console.error("Problem to delete from pn-PaperRequestError " + requestId)
@@ -140,21 +161,29 @@ async function main() {
         }
       }
       else {
+        failedRequestIds.push({ requestId: requestId, error: res })
         console.error("RequestId " + requestId + " failed!!!")
       }
     }
     else {
       console.log("Registry Flow. Retrieving taxId..")
       const paperRequestDeliveryData = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
-      var taxId;
+      let taxId;
       if(paperRequestDeliveryData.receiverType == 'PF') {
-        const res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlPDV ,secrets.apiKeyPF)
+        res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlPDV, secrets.apiKeyPF)
         taxId = res.pii
       }
       else {
-        const res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlSelfcare, secrets.apiKeyPG)
+        res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlSelfcare, secrets.apiKeyPG)
         taxId = res.taxCode
       }
+
+      if(!taxId){
+        console.error("TaxId not found for requestId " + requestId+ " and fiscalCode " + paperRequestDeliveryData.fiscalCode + " and receiverType " + paperRequestDeliveryData.receiverType)
+        failedRequestIds.push({ requestId: requestId, error: res })
+        continue
+      }
+
       const result = {
         correlationId: paperRequestDeliveryData.correlationId,
         taxId: taxId,
@@ -162,9 +191,23 @@ async function main() {
       }
       console.log(result)
       await ApiClient.sendNationalRegistriesRequest(result.taxId, result.correlationId, result.receiverType)
+
+      res = await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
+      if('ConsumedCapacity' in res) {
+        if(res.ConsumedCapacity.CapacityUnits == 1) {
+          console.log("RequestId " + requestId + " deleted successfully!!!")
+        }
+        else {
+          console.error("Problem to delete from pn-PaperRequestError " + requestId)
+        }
+      } 
+
     }
   }
 
 }
 
-main();
+main()
+.then(function(){
+  console.log(JSON.stringify(failedRequestIds))
+})

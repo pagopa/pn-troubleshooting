@@ -2,7 +2,7 @@ const axios = require('axios');
 
 async function sendNationalRegistriesRequest(taxId, correlationId, receiverType){
 
-    let url = ALB_BASE_URL+'/national-registries-private/'+receiverType+'/addresses';
+    let url = process.env.ALB_BASE_URL+'/national-registries-private/'+receiverType+'/addresses';
     let headers = {
         'pn-national-registries-cx-id': 'pn-paper-channel',
         'Content-Type': 'application/json'

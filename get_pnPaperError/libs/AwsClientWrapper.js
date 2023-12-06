@@ -27,10 +27,11 @@ class AwsClientsWrapper {
   async _scanRequest(tableName){
     const input = { // ScanInput
       TableName: tableName, // required
-      ProjectionExpression: "#K",
+      ProjectionExpression: "#K, #C",
       FilterExpression : "not contains(#E, :e1) AND not contains(#E, :e2) AND #F = :f1",
       ExpressionAttributeNames: { // ExpressionAttributeNameMap
         "#K": "requestId",
+        "#C": "created",
         "#E": "error",
         "#F": "flowThrow"
       },

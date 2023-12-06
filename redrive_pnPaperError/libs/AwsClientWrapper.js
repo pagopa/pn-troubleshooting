@@ -46,12 +46,15 @@ class AwsClientsWrapper {
     return unmarshall(response.Items[0])
   }
 
-  async _deleteRequest(tableName, key){
+  async _deleteRequest(tableName, requestId, created){
     const input = { // DeleteItemInput
       TableName: tableName, // required
       Key: { // Key // required
         "requestId": { // AttributeValue Union: only one key present
-          S: key,
+          S: requestId,
+        },
+        "created": { // AttributeValue Union: only one key present
+          S: created,
         }
       }
     };
@@ -66,47 +69,27 @@ class AwsClientsWrapper {
       MessageBody: JSON.stringify(data), // required
       MessageAttributes: attributes
     };
-    var response = {}
-    try {
-      const command = new SendMessageCommand(input);
-      response = await this._sqsClient.send(command);
-      return response;
-    }
-    catch (error) {
-      console.error("Problem during SendMessageCommand cause=", error)
-    }
+    const command = new SendMessageCommand(input);
+    const response = await this._sqsClient.send(command);
+    return response;
   }
 
   async _getSecretKey(secretId) {
     const input = { // GetSecretValueRequest
       SecretId: secretId, // required
     };
-    var response = {}
-    try {
-      const command = new GetSecretValueCommand(input);
-      response = await this._secretClient.send(command);
-      return JSON.parse(response.SecretString);
-    }
-    catch (error) {
-      console.error("Problem during SendMessageCommand cause=", error)
-      process.exit(1)
-    }
+    const command = new GetSecretValueCommand(input);
+    const response = await this._secretClient.send(command);
+    return JSON.parse(response.SecretString);
   }
 
   async _getQueueUrl(queueName) {
     const input = { // GetQueueUrlRequest
       QueueName: queueName, // required
     };
-    var response = {}
-    try {
-      const command = new GetQueueUrlCommand(input);
-      const response = await this._sqsClient.send(command);
-      return response.QueueUrl;
-    }
-    catch (error) {
-      console.error("Problem during getQueueUrlCommand cause=", error)
-      process.exit(1)
-    }
+    const command = new GetQueueUrlCommand(input);
+    const response = await this._sqsClient.send(command);
+    return response.QueueUrl;
   }
 }
 
