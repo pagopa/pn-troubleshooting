@@ -26,10 +26,11 @@ aws sso login --profile <profile>
 
 ### Esecuzione
 ```bash
-node index.js --profile <profile> --queueUrl <queueUrl> --fileName <fileName> [--from [dump_sqs|ec_events]]
+node index.js --profile <profile> --queueUrl <queueUrl> --fileName <fileName> [--from [dump_sqs|ec_events] --persist]
 ```
 Dove:
 - `<profile>` è il profilo dell'account AWS;
 - `<queueUrl>` é l'URL della coda in cui si vogliono sottomettere gli eventi.
 - `<fileName>` è il path del file che contiene gli eventi.
 - `<from>` specifica da dove è stato prodotto il file in input. (optional - default = dump_sqs)
+- `--persist` se inserito indica se esegue l'invio in coda altrimenti stampa solo ciò che si sarebbe inviato (default false)
