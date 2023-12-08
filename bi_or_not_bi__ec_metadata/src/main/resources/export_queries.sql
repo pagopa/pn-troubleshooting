@@ -84,14 +84,18 @@ create or replace temporary view all_paper_metadata_with_synthetic_select_list_n
     )
       as deliveryFailureCause,
     array_join(
-          array_distinct(
+        array_distinct(
+          flatten(
             transform(
-              filter(event_list,
-                e -> e.paperProg_statusCode rlike '(REC.*B)|(REC.*E)'
-              ),
-              e -> e.paperProg_attachmentType
+                filter(
+                  event_list, 
+                  e -> e.paperProg_statusCode rlike '(REC.*B)|(REC.*E)'
+                ).paperProg_attachments,
+              e -> e.documentType
             )
-          ), ' ') as attachments,
+          )
+        ),
+      ' ') as attachments,
     requestId
   FROM
     ec_metadta__fromfile
