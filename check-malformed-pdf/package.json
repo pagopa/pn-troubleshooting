@@ -1,0 +1,20 @@
+{
+  "name": "check-malformed-pdf",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.468.0",
+    "@aws-sdk/client-s3": "^3.465.0",
+    "@aws-sdk/credential-provider-sso": "^3.465.0",
+    "@aws-sdk/lib-dynamodb": "^3.468.0",
+    "aws-sdk": "^2.1512.0",
+    "ndjson": "^2.0.0",
+    "pdf-to-text": "^0.0.7"
+  }
+}

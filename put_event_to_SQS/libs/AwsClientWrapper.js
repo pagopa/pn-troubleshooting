@@ -37,7 +37,7 @@ class AwsClientsWrapper {
   async _sendEventToSQS(queueUrl, event, attributes, persist) {
     const input = { // SendMessageRequest
       QueueUrl: queueUrl, // required
-      MessageBody: (typeof variable !== 'string') ? JSON.stringify(event) : event, // required
+      MessageBody: (typeof event !== 'string') ? JSON.stringify(event) : event, // required
     };
     queueUrl.indexOf(".fifo") > 0 ? input["MessageGroupId"] = uuidv4() : null
     attributes ? input["MessageAttributes"] = clearAttributes(attributes) : null
