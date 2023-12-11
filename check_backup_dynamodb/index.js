@@ -38,22 +38,19 @@ async function _checkingTableDifferences(profile, fileName, tables){
   console.log("In '" + profile + "' sono state effettuate le seguenti modifiche:")
   const data = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' });
   const parsedData = yamlParse(data);
-  var values = []
+  var values = ''
   const regex = /\/([^\/]+)$/;
   const backupTablesTmp = parsedData.Resources.TagBasedBackupSelection.Properties.BackupSelection.Resources
   parsedData.Resources.TagBasedBackupSelection.Properties.BackupSelection.Resources = [] 
   console.log("Sono state aggiunte le seguenti tabelle:")
   tables.forEach(element => {
-    tmp = {
-      'Fn::Sub': 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/' + element
-    }
-    values.push(tmp)
+    tmp = "- !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/" + element + "\n"
+    values = values.concat(tmp)
     const hasData = backupTablesTmp.some(obj => obj['Fn::Sub'] == tmp['Fn::Sub'])
     if (!hasData) {
       console.log("- " + element)
     }
   });
-  parsedData.Resources.TagBasedBackupSelection.Properties.BackupSelection.Resources = values
   console.log("Sono state rimosse le seguenti tabelle:")
   backupTablesTmp.forEach(elements => {
     const match = elements['Fn::Sub'].match(regex);
@@ -63,7 +60,7 @@ async function _checkingTableDifferences(profile, fileName, tables){
     }
   });
   console.log("----------")
-  return yamlDump(parsedData);
+  return values;
 }
 
 async function main() {
