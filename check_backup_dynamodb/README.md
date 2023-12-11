@@ -1,6 +1,6 @@
-# Put_Event_to_SQS
+# Check_Backup_DynamoDB
 
-Script di sottomissione eventi da un file in una coda SQS
+Script di aggiornamento dei file di backup di pn-infra
 ## Tabella dei Contenuti
 
 - [Descrizione](#descrizione)
@@ -9,7 +9,7 @@ Script di sottomissione eventi da un file in una coda SQS
 
 ## Descrizione
 
-Lo Script, dato in input un file e una QueueURL, effettua la sottomissione degli eventi contenuti nel file.
+Lo Script confronta i file di backup presenti in pn-infra delle tabelle dynamo dopodiché fornisce in output le informazioni da inserire nel campo Resources dei file stessi e un dettaglio di quali sono state le tabelle che sono state inserite/rimosse.
 
 ## Installazione
 
@@ -26,10 +26,8 @@ aws sso login --profile <profile>
 
 ### Esecuzione
 ```bash
-node index.js --profile <profile> --queueUrl <queueUrl> --fileName <fileName> [--from [dump_sqs|ec_events]]
+node index.js --envName <envName> --folderPath <folderPath>
 ```
 Dove:
-- `<profile>` è il profilo dell'account AWS;
-- `<queueUrl>` é l'URL della coda in cui si vogliono sottomettere gli eventi.
-- `<fileName>` è il path del file che contiene gli eventi.
-- `<from>` specifica da dove è stato prodotto il file in input. (optional - default = dump_sqs)
+- `<envName>` è l'ambiente sul quale si deve effettuare il controllo;
+- `<folderPath>` é il path dove sono contenuti i file di backup dynamodb di pn-infra.

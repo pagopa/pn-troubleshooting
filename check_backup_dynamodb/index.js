@@ -1,7 +1,7 @@
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const { parseArgs } = require('util');
 const fs = require('fs');
-const { yamlParse, yamlDump } = require('yaml-cfn');
+const { yamlParse } = require('yaml-cfn');
 
 
 const files  = ['pn-backup_core_dynamotable.yaml', 'pn-backup_confinfo_dynamotable.yaml']
@@ -31,36 +31,50 @@ function _checkingParameters(args, values){
   })
 }
 
-function fileElaboration() {
-
+function printElaboration(elements, flag) {  //true= added; false= removed
+  if(elements.length == 0) {
+    flag ? console.log("Non sono state aggiunte tabelle") : console.log("Non sono state rimosse tabelle")
+  }
+  else {
+    flag ? console.log("Sono state aggiunte le seguenti tabelle:") : console.log("Sono state rimosse le seguenti tabelle:")
+    elements.forEach(element => {
+      console.log(element)
+    });
+  }
 }
+
 async function _checkingTableDifferences(profile, fileName, tables){
+  if(idx = tables.indexOf('terraform-lock')) {
+    tables.splice(idx)
+  }
   console.log("In '" + profile + "' sono state effettuate le seguenti modifiche:")
   const data = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' });
   const parsedData = yamlParse(data);
-  var values = ''
   const regex = /\/([^\/]+)$/;
   const backupTablesTmp = parsedData.Resources.TagBasedBackupSelection.Properties.BackupSelection.Resources
   parsedData.Resources.TagBasedBackupSelection.Properties.BackupSelection.Resources = [] 
-  console.log("Sono state aggiunte le seguenti tabelle:")
+  var result = []
   tables.forEach(element => {
-    tmp = "- !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/" + element + "\n"
-    values = values.concat(tmp)
-    const hasData = backupTablesTmp.some(obj => obj['Fn::Sub'] == tmp['Fn::Sub'])
+    tmp = "- !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/" + element
+    const hasData = backupTablesTmp.some(obj => {
+      let splitted = obj['Fn::Sub'].split("/")
+      return splitted[splitted.length-1] == element ? true : false
+    }
+    )
     if (!hasData) {
-      console.log("- " + element)
+      result.push(tmp)
     }
   });
-  console.log("Sono state rimosse le seguenti tabelle:")
-  backupTablesTmp.forEach(elements => {
-    const match = elements['Fn::Sub'].match(regex);
+  printElaboration(result, true)
+  result = []
+  backupTablesTmp.forEach(element => {
+    const match = element['Fn::Sub'].match(regex);
     const bTableName = match ? match[1] : null;
     if (!tables.includes(bTableName)) {
-      console.log("- " + bTableName)
+      result.push(bTableName)
     }
   });
-  console.log("----------")
-  return values;
+  printElaboration(result, false)
 }
 
 async function main() {
@@ -96,8 +110,7 @@ async function main() {
     if(fileName.indexOf('confinfo') > 0) {
       account = 'confinfo';
     }
-    const res = await _checkingTableDifferences(account, folderPath + '/' + fileName, tables[account]);
-    await _writeInFile(res, fileName)
+    await _checkingTableDifferences(account, folderPath + '/' + fileName, tables[account]);
   });
 }
 
