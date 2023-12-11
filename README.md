@@ -135,3 +135,9 @@ Vuoi comparare le configurazioni tra due ambienti?
 ```bash
 node index.js <envA>  <envB>  <pnConfigurationPath>
 ```
+
+### check_backup_dynamodb
+Vuoi rigenerare le informazioni da inserire nei file di backup delle tabelle dynamo in base agli aggiornamenti?
+```bash
+node index.js --envName <envName> --folderPath <folderPath>
+```
