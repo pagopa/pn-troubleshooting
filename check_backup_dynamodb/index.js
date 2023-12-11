@@ -96,12 +96,6 @@ async function main() {
     },
   });  
 
-  
-  async function _writeInFile(result, filename ) {
-    fs.mkdirSync("result", { recursive: true });
-    fs.writeFileSync('result/' + filename, result)
-  }
-
   _checkingParameters(args, values)
   const awsClient = new AwsClientsWrapper( envName );
   const tables = await awsClient._fetchDynamoDbTables();
