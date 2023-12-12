@@ -123,3 +123,21 @@ Script Python per ottenere timelines da una lista di IUN
 ```bash
 python3 ./timelines_from_iuns.py iuns.txt timelines.json --profile <aws-profile>
 ```
+
+### dynamo_db_load_batch
+Vuoi inserire dati in una tabella dynamo a partire da un file?
+```bash
+node index.js --profile <profile> --tableName <tableName> --fileName <fileName> [--batchDimension <batchDimension]
+```
+
+### compare-config
+Vuoi comparare le configurazioni tra due ambienti?
+```bash
+node index.js <envA>  <envB>  <pnConfigurationPath>
+```
+
+### check_backup_dynamodb
+Vuoi rigenerare le informazioni da inserire nei file di backup delle tabelle dynamo in base agli aggiornamenti?
+```bash
+node index.js --envName <envName> --folderPath <folderPath>
+```
