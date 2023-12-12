@@ -1,0 +1,391 @@
+[
+  {
+    "account":"confinfo",
+    "title": "EfsTargets",
+    "resource": "pn-infra/runtime-infra/pn-ipc.yaml MountFargateEfsTarget[123]",
+    "regexp": "^infra-prod-EFSSecurityGroup.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "main ALB",
+    "resource": "pn-infra-confinfo/src/main/60-load-balancers.tf pn_confinfo_ecs_alb",
+    "regexp": "^pn-confinfo_vpc-webapp-secgrp.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "spidhub external ALB",
+    "resource": "pn-hub-spid-login-aws/scripts/deploy/stacks/orchestrator.yaml ExternalApplicationLoadBalancer",
+    "regexp": "^spidhub-prod-Orchestrator.*ExternalAlbSecurityGroup.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "conservazione norma SafeStorage listener Lambda",
+    "resource": "pn-cn/scripts/aws/cfn/microservice.yml SafeStorageListenerLambda",
+    "regexp": "^pn-cn-microsvc-prod-SafeStorageListenerLambdaSecGroup.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "AWS service endpoint",
+    "resource": "pn-infra-confinfo/src/main/30-confinfo-networking.tf vpc_pn_confinfo__secgrp_tls ",
+    "regexp": "^pn-confinfo_vpc-tls.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "spidhub ecs service",
+    "resource": "pn-hub-spid-login-aws/scripts/deploy/stacks/hub-login.yaml Service",
+    "regexp": "^spidhub-prod-HubLogin.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "Spidhub redis cache",
+    "resource": "pn-hub-spid-login-aws/scripts/deploy/stacks/cache.yaml Redis",
+    "regexp": "^spidhub-prod-Cache.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "ALB proxy consolidatore",
+    "resource": "pn-infra/scripts/lambda-reverse-proxy/stack.yaml  ApplicationLoadBalancer",
+    "regexp": "^lambda-proxy-webapp-security-group.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "spidhub Internal ALB",
+    "resource": "pn-hub-spid-login-aws/scripts/deploy/stacks/orchestrator.yaml InternalApplicationLoadBalancer",
+    "regexp": "^spidhub-prod-Orchestrator.*InternalAlbSecurityGroup.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "pn-datavault ecs ms",
+    "resource": "pn-data-vault/scripts/aws/cfn/microservice.yml DataVaultMicroservice",
+    "regexp": "^pn-data-vault-microsvc-.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "pn-ec ecs ms",
+    "resource": "pn-ec/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-ec-microsvc-.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "pn-address-manager ecs ms",
+    "resource": "pn-address-manager/scripts/aws/cfn/microservice.yml AddressManagerMicroservice",
+    "regexp": "^pn-address-manager-microsvc-.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "conservazione norma presigned url lambda ",
+    "resource": "pn-cn/scripts/aws/cfn/microservice.yml  PreSignedUrlGeneratorLambda",
+    "regexp": "^pn-cn-microsvc-prod-PreSignedUrlGeneratorLambdaSecGroup.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "consolidatore proxy function",
+    "resource": "pn-infra/scripts/lambda-reverse-proxy/stack.yaml LambdaProxyFunction",
+    "regexp": "^pn-lambda-proxy-webapp-security-group.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "pn-statemachinemanager ecs ms",
+    "resource": "pn-statemachinemanager/scripts/aws/cfn/microservice.yml StateMachineMicroservice",
+    "regexp": "^pn-statemachinemanager-microsvc-.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "pn-safestorage ecs ms",
+    "resource": "pn-ss/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-ss-microsvc-.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "consolidatore out vpc endpoint ",
+    "resource": "pn-infra-confinfo/src/main/30-confinfo-networking.tf vpc_pn_confinfo__secgrp_topostel",
+    "regexp": "^pn-core_vpc-topostel-.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "pn-safestorage lambda bucket",
+    "resource": "pn-ss/scripts/aws/cfn/microservice.yml PnSsGestoreBucket",
+    "regexp": "^pn-ss-gestore-bucket-sec-group.*$",
+    "regexpOn": "grpName"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "NLB esposizione datavault",
+    "resource": "pn-infra-confinfo/src/main/60-load-balancers.tf pn_confinfo_dvin_nlb",
+    "regexp": "^ELB net/DvI-.*$",
+    "regexpOn": "desc"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "NLB esposizione externalchannel e safestorage",
+    "resource": "pn-infra-confinfo/src/main/60-load-balancers.tf pn_confinfo_ecssin_nlb",
+    "regexp": "^ELB net/EcssI-.*$",
+    "regexpOn": "desc"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "NLB usato da consolidatore per inviare feedback",
+    "resource": "pn-infra-confinfo/src/main/60-load-balancers.tf pn_confinfo_postel_nlb",
+    "regexp": "^ELB net/PtI-.*$",
+    "regexpOn": "desc"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "spidhub internal NLB",
+    "resource": "pn-hub-spid-login-aws/scripts/deploy/stacks/orchestrator.yaml InternalNetworkLoadBalancer",
+    "regexp": "^ELB net/spidh-Inter-.*$",
+    "regexpOn": "desc"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "NAT",
+    "resource": "pn-hub-spid-login-aws/scripts/deploy/stacks/network.yaml NatGateway[ABC]",
+    "regexp": "^Interface for NAT Gateway.*$",
+    "regexpOn": "desc"
+  }, 
+  {
+    "account":"confinfo",
+    "title": "",
+    "resource": "",
+    "regexp": "",
+    "regexpOn": ""
+  }, 
+  {
+    "account":"confinfo",
+    "title": "Bastion hosts",
+    "resource": "",
+    "regexp": "^launch-wizard-.*$",
+    "regexpOn": "desc"
+  }
+  
+  ,
+
+
+  {
+    "account":"core",
+    "title": "pn-downtime-logs ecs ms",
+    "resource": "pn-downtime-logs/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-downtime-logs-microsvc-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-mandate ecs ms",
+    "resource": "pn-mandate/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-mandate-microsvc-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "OpenSearch",
+    "resource": "pn-infra/runtime-infra/pn-opensearch.yaml OpenSearchServiceDomain",
+    "regexp": "^pn-opensearch.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-logextractor-be ecs ms",
+    "resource": "pn-logextractor-be/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-logextractor-be-microsvc-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "VPC endpoint to connect to confinfo",
+    "resource": "/pn-infra-core/src/main/30-core-networking.tf aws_vpc_endpoint::to_data_vault ; aws_vpc_endpoint::to_safestorage_extch",
+    "regexp": "^pn-core_vpc-toconfinfo-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "main ALB",
+    "resource": "/pn-infra-core/src/main/60-load-balancers.tf aws_lb::pn_core_ecs_alb",
+    "regexp": "^pn-core_vpc-webapp-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-delivery ecs ms",
+    "resource": "pn-delivery/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-delivery-microsvc-prod-DeliveryMicroservice-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "AWS services endpoints",
+    "resource": "/pn-infra-core/src/main/30-core-networking.tf vpc_endpoints_pn_core",
+    "regexp": "^pn-core_vpc-tls-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-user-attributes ecs ms",
+    "resource": "pn-user-attributes/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-user-attributes-microsvc-prod-UserAttributesMicroservice-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "redis cache",
+    "resource": "pn-infra/runtime-infra/cache.yaml",
+    "regexp": "^pn-redis.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-delivery retrocompatibilita",
+    "resource": "pn-delivery/scripts/aws/cfn/microservice.yml VersioningV1V2GetNotificationLambda",
+    "regexp": "^pn-delivery-microsvc-prod-VersioningV1V2GetNotificationSecGroup*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "EFS mount target",
+    "resource": "pn-infra/runtime-infra/pn-ipc.yaml MountFargateEfsTarget[123]",
+    "regexp": "^pn-ipc-prod-EFSSecurityGroup*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-external-registries ecs ms",
+    "resource": "pn-external-registries/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-external-registries-microsvc-prod-ExternalRegistryMicroservice-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-delivery-push ecs ms",
+    "resource": "pn-delivery-push/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-delivery-push-microsvc-prod-DeliveryPushMicroservice-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-ec mock ecs ms",
+    "resource": "pn-external-channels/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-external-channels-microsvc-prod-ExternalChannelsMicroservic-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-national-registries ecs ms",
+    "resource": "pn-national-registries/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-national-registries-microsvc-prod-NationalRegistryMicroservice-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-radd-fsu ecs ms",
+    "resource": "pn-radd-fsu/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-radd-fsu-microsvc-prod-RaddMicroservice-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-apikey-manager ecs ms",
+    "resource": "pn-apikey-manager/scripts/aws/cfn/microservice.yml Microservice",
+    "regexp": "^pn-apikey-manager-microsvc-prod-ApikeyManagerMicroservice-.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "confinfo connection proxy",
+    "resource": "pn-infra/scripts/lambda-reverse-proxy/stack.yaml ApplicationLoadBalancer",
+    "regexp": "^lambda-proxy-webapp-security-group.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "confinfo connection proxy lambda",
+    "resource": "pn-infra/scripts/lambda-reverse-proxy/stack.yaml LambdaProxyFunction",
+    "regexp": "^pn-lambda-proxy-webapp-security-group.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "Io authorizer lambda",
+    "resource": "pn-auth-fleet/scripts/aws/cfn/microservice.yml IoAuthorizerLambda",
+    "regexp": "^pn-auth-fleet-microsvc-prod-DataVaultServiceSecurityGroup.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-paper-channel ecs ms",
+    "resource": "pn-paper-channel/scripts/aws/cfn/microservice.yml PaperChannelMicroservice",
+    "regexp": "^pn-paper-channel-microsvc-prod-PaperChannelMicroservice.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-service-desk ecs ms",
+    "resource": "pn-service-desk/scripts/aws/cfn/microservice.yml ServiceDeskMicroservice",
+    "regexp": "^pn-service-desk-microsvc-prod-ServiceDeskMicroservice.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "pn-kafka-bridge ecs ms",
+    "resource": "pn-kafka-bridge/scripts/aws/cfn/microservice.yml KafkaBridgeMicroservice",
+    "regexp": "^pn-kafka-bridge-microsvc-prod-KafkaBridgeMicroservice.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "lambda per invio log ad opensearch",
+    "resource": "pn-infra/runtime-infra/pn-logs-export.yaml LogsToOpenSearch",
+    "regexp": "^pn-logs-export-prod-LogsToOpenSearch.*$",
+    "regexpOn": "grpName"
+  },
+  {
+    "account":"core",
+    "title": "NLB ingresso radd",
+    "resource": "pn-infra-core/src/main/60-load-balancers.tf aws_lb::pn_core_radd_nlb",
+    "regexp": "^ELB net/RaddI-.*$",
+    "regexpOn": "desc"
+  },
+  {
+    "account":"core",
+    "title": "servicedesk ingress NLB",
+    "resource": "pn-infra-core/src/main/60-load-balancers.tf aws_lb::pn_core_servicedesk_nlb",
+    "regexp": "^ELB net/SeDeI-.*$",
+    "regexpOn": "desc"
+  },
+  {
+    "account":"core",
+    "title": "apigw ingress NLB",
+    "resource": "pn-infra-core/src/main/60-load-balancers.tf aws_lb::pn_core_api_gw_nlb",
+    "regexp": "^ELB net/WebI-.*$",
+    "regexpOn": "desc"
+  },
+  {
+    "account":"core",
+    "title": "NAT gateways",
+    "resource": "pn-infra-core/src/main/30-core-networking.tf vpc_pn_core",
+    "regexp": "^Interface for NAT Gateway.*$",
+    "regexpOn": "desc"
+  },
+  {
+    "account":"core",
+    "title": "bastion hosts",
+    "resource": "",
+    "regexp": "^launch-wizard-.*$",
+    "regexpOn": "desc"
+  }
+]
