@@ -162,13 +162,6 @@
   }, 
   {
     "account":"confinfo",
-    "title": "",
-    "resource": "",
-    "regexp": "",
-    "regexpOn": ""
-  }, 
-  {
-    "account":"confinfo",
     "title": "Bastion hosts",
     "resource": "",
     "regexp": "^launch-wizard-.*$",
