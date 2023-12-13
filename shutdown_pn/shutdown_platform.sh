@@ -90,44 +90,44 @@ echo ${aws_command_base_args}
 echo
 echo
 echo "################################################################################"
-echo "### PRIMA DI PROCEDERE DEPLOYARE IL FE PER LE PAGINE DI CORTESIA SUI PORTALI ###"
+echo "### BEFORE PROCEEDING, DEPLOY FE COURTESY PAGES ON PORTALS ###"
 echo "################################################################################"
 echo
 echo
 
 
-read -p "Vuoi veramente procedere allo stop dei servizi sull'account $aws_profile? <y/N> " prompt
+read -p "Do you really want to proceed to stop services on the account $aws_profile? <y/N> " prompt
 if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]
    then
     echo "FIRST STEP = > LAMBDA SET CONCURRENT EXECUTION TO ZERO" && sleep 3; 
-        #STOP LAMBDA:
-        echo "per una sola lambda premi invio su quella selezionata, per la multiselection utlizzare TAB e successivamente INVIO" && sleep 5
+        #Stop Lambda section
+        echo "For multiselection press TAB on each lambda in the list" && sleep 5
 
-        # Ottieni l'elenco delle Lambda
+        # Get Lambda List
         lambdas=$(aws ${aws_command_base_args} lambda list-functions  | jq -r '.Functions[] | .FunctionName ' )
 
-        # Esegui la multiselection
+        # Execute multiselection
         selection=$(echo "$lambdas" | fzf -m)
 
-        # Ferma le Lambda selezionate
+        # Stop all selected Lambda
         for lambda in $selection; do
-        aws ${aws_command_base_args} lambda put-function-concurrency --reserved-concurrent-executions 0 --function-name "$lambda"  && echo "la lambda $lambda e' stata arrestata"  >> output/output_shutdown_lambda.log ;
+        aws ${aws_command_base_args} lambda put-function-concurrency --reserved-concurrent-executions 0 --function-name "$lambda"  && echo "The lambda $lambda was stopped"  >> output/output_shutdown_lambda.log ;
         done
-        echo "Le lambda sono state arrestate vedi log di output"
+        echo "All Lambdas are been stopped check the output log"
     
     echo "SECOND STEP = > SET DESIRE COUNT TO ZERO IN ALL MICROSERVICE IN A CLUSTER" && sleep 3;
-        #STOP MICROSERVICE:
-        echo "per un solo cluster premi invio su quello selezionato, per la multiselection utlizzare TAB e successivamente INVIO" && sleep 5
+        #Stop Microservice section
+        echo "For multiselection press TAB on each cluster in the list" && sleep 5
 
-        # Ottieni l'elenco dei cluster ECS
+        # Get Cluster ECS list
         cluster=$(aws ${aws_command_base_args} ecs list-clusters --output text  | awk '{print $2}' | cut -d "/" -f 2)
 
-        # Esegui la multiselection
+        # Execute multiselection
         selection_c=$(echo "$cluster" | fzf -m)
 
-        # Ferma tutti i microservizi all'interno dei cluster ECS selezionati
+        # Stop all microservices within the selected ECS clusters
         for cluster in $selection_c; do
-        aws ${aws_command_base_args} ecs list-services --cluster $cluster  --output text  | awk '{print $2}'  | cut -d "/" -f 3 | while read -r service; do aws ${aws_command_base_args} ecs update-service --cluster $cluster  --service $service --desired-count 0 >> output/output_shutdown_ecs.log; done ; echo "i microservizi del cluster $cluster sono stati fermati, vedi log di output"
+        aws ${aws_command_base_args} ecs list-services --cluster $cluster  --output text  | awk '{print $2}'  | cut -d "/" -f 3 | while read -r service; do aws ${aws_command_base_args} ecs update-service --cluster $cluster  --service $service --desired-count 0 >> output/output_shutdown_ecs.log; done ; echo "All microservices of the $cluster are stopped, check the output"
         done
     else
       exit 0
