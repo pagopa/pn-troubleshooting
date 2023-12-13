@@ -66,7 +66,7 @@ public class CostMap {
            + costMap.values().iterator().next().getCostoRecapitistaPerPeso()
                  .keySet()
                  .stream()
-                 .map( k -> k.toString() )
+                 .map( k -> "peso_max_" + k.toString() + "g" )
                  .collect( Collectors.joining(","));
     }
 

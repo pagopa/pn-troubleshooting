@@ -20,8 +20,8 @@ function compare(configFolder, envA, envB){
                 continue
             }
 
-            if(!fs.existsSync(configA)){
-                console.log('configB '+configA+' doesn\'t exist')
+            if(!fs.existsSync(configB)){
+                console.log('configB '+configB+' doesn\'t exist')
                 continue
             }
 
