@@ -22,12 +22,12 @@ class AwsClientsWrapper {
   }
 
 
-  async _retrieveFromGlacier(bucketName, file, tier) {
+  async _retrieveFromGlacier(bucketName, file, expiration, tier) {
     const input = { // RestoreObjectRequest
       Bucket: bucketName, // required
       Key: file, // required
       RestoreRequest: { // RestoreRequest
-        Days: 30,
+        Days: expiration,
         GlacierJobParameters: { // GlacierJobParameters
           Tier: tier, // required
         },

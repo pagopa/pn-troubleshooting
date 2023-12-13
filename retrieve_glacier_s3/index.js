@@ -4,7 +4,7 @@ const fs = require('fs');
 
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> --tier <tier>"
+  const usage = "Usage: index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--days <days> --tier <tier>]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -35,10 +35,11 @@ async function main() {
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "bucketName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "tier", mandatory: true, subcommand: [] }
+    { name: "expiration", mandatory: false, subcommand: [] },
+    { name: "tier", mandatory: false, subcommand: [] }
   ]
   const values = {
-    values: { envName, bucketName, fileName, tier},
+    values: { envName, bucketName, fileName, expiration, tier},
   } = parseArgs({
     options: {
       envName: {
@@ -50,14 +51,17 @@ async function main() {
       fileName: {
         type: "string", short: "f", default: undefined
       },
+      expiration: {
+        type: "string", short: "t", default: "30"
+      },
       tier: {
         type: "string", short: "t", default: "Bulk"
       },
     },
   });  
   
-  
   _checkingParameters(args, values)
+  days = parseInt(days)
   const awsClient = new AwsClientsWrapper( envName );
   const keys = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' });
   const value = keys.split("\n")
@@ -65,7 +69,7 @@ async function main() {
     var splitted = element.split(",")
     const iun = splitted[0];
     const file = splitted[1];
-    var res = await awsClient._retrieveFromGlacier(bucketName, file, tier)
+    var res = await awsClient._retrieveFromGlacier(bucketName, file, expiration, tier)
     var statusCode = res['$metadata'].httpStatusCode
     if(statusCode == 409){
         console.log("Object restore is already in progress for IUN " + iun)

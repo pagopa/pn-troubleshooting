@@ -145,5 +145,5 @@ node index.js --envName <envName> --folderPath <folderPath>
 ### retrieve_glacier_s3
 Vuoi effettuare delle richieste di recupero su glacier tramite file in input per una serie di documenti?
 ```bash  
-node index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> --tier <tier>
+node index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--days <days> --tier <tier>]
 ```
