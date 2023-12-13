@@ -13,6 +13,7 @@ bi_or_not_bi/rstudio-server/workspace/data
 bi_or_not_bi/rstudio-server/workspace/derby.log
 bi_or_not_bi/rstudio-server/workspace/.env
 bi_or_not_bi/rstudio-server/.env
+pn-troubleshooting/shutdown_pn/output
 
 ### Rstudio ###
 .Rproj.user
