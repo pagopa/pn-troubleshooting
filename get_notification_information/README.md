@@ -16,16 +16,22 @@ Contiene la lista delle tabelle Dynamo legate al processo di notificazione, con 
 ## Contenuto
 
 Di seguito sono riportate, in forma tabellare, tutte le informazioni relative alle tabelle Dynamo legate al processo di notificazione.
-Tutte le tabelle censite vengono mostrate in cascata utilizzando heading di terzo livello che indica il nome della tabella, contentente almeno l'account AWS in cui si trova la tabella, una descrizione funzionale della tabella e uno o più referenti tecnici.
+Tutte le tabelle censite vengono mostrate in cascata insieme alle informazioni: microservizio che si occupa di gestire l'accesso alla tabella, descrizione funzionale della tabella, uno o più referenti tecnici.
 
-### pn-EcRichieste
+Le tabelle sono mostrate suddivise per Account AWS in modo da poterle raggruppare e identificare più agilmente.
 
-- **Account AWS**: pn-confinfo-dev
+### pn-confinfo
+
+##### pn-EcRichieste
+
+- **Microservizio**: // TODO
 - **Descrizione funzionale**: // TODO
 - **Referente tecnico**: // TODO
 
-### pn-EcRichiesteMetadati
+##### pn-EcRichiesteMetadati
 
-- **Account AWS**: pn-confinfo-dev
+- **Microservizio**: // TODO
 - **Descrizione funzionale**: // TODO
 - **Referente tecnico**: // TODO
+
+### pn-core
