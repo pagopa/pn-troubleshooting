@@ -6,6 +6,8 @@ Descrizione tabelle Dynamo di notificazione.
 
 - [Descrizione](#descrizione)
 - [Contenuto](#contenuto)
+    - [pn-EcRichieste](#pn-EcRichieste)
+    - [pn-EcRichiesteMetadati](#pn-EcRichiesteMetadati)
 
 ## Descrizione
 
