@@ -101,10 +101,10 @@ Contiene la lista delle tabelle Dynamo legate al processo di notificazione, con 
 
 ## Contenuto
 
-Di seguito sono riportate, in forma tabellare, tutte le informazioni relative alle tabelle Dynamo legate al processo di notificazione.
-Tutte le tabelle censite vengono mostrate in cascata insieme alle informazioni: microservizio che si occupa di gestire l'accesso alla tabella, descrizione funzionale della tabella, uno o più referenti tecnici.
+Di seguito sono riportate le informazioni relative alle tabelle Dynamo legate al processo di notificazione.
+Tutte le tabelle censite vengono mostrate in cascata insieme alle seguenti informazioni: microservizio che si occupa di gestire l'accesso alla tabella, descrizione funzionale della tabella, uno o più referenti tecnici.
 
-Le tabelle sono mostrate suddivise per Account AWS in modo da poterle raggruppare e identificare più agilmente.
+Le tabelle sono mostrate suddivise per Account AWS (indipendente dall'ambiente) in modo da poterle raggruppare e identificare più agilmente.
 
 ---
 
