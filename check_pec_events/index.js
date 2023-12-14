@@ -33,15 +33,19 @@ function _checkingEventsList(eventList) {
     booked: false,
     sent: false,
     accepted: false,
-    delivered: false,
   }
   for(const e of eventList ) {
     map[e.digProgrStatus.status] = true
   }
-  for(const param in map) {
-    if (!map[param]) {
-      return false
+  if( 'delivered' in map || 'notDelivered' in map){
+    for(const param in map) {
+      if (!map[param]) {
+        return false
+      }
     }
+  }
+  else {
+    return false
   }
   return true;
 }
