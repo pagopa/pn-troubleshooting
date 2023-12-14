@@ -106,6 +106,8 @@ Tutte le tabelle censite vengono mostrate in cascata insieme alle informazioni: 
 
 Le tabelle sono mostrate suddivise per Account AWS in modo da poterle raggruppare e identificare più agilmente.
 
+---
+
 ### pn-confinfo
 
 ##### PnSsTableDocumentiStreamMetadati 
@@ -239,6 +241,8 @@ Le tabelle sono mostrate suddivise per Account AWS in modo da poterle raggruppar
  - **Microservizio**: // TODO 
  - **Descrizione funzionale**: // TODO 
  - **Referente tecnico**: // TODO
+
+---
 
 ### pn-core
 
