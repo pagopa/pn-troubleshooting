@@ -141,3 +141,9 @@ Vuoi rigenerare le informazioni da inserire nei file di backup delle tabelle dyn
 ```bash
 node index.js --envName <envName> --folderPath <folderPath>
 ```
+
+### check_pec_events
+Vuoi verificare se un requestId di una PEC contiene tutti gli eventi previsti?
+```bash
+node index.js --envName <envName> --fileName <fileName>
+```
