@@ -1,0 +1,15 @@
+{
+  "name": "retrieve_sender_CON996",
+  "version": "1.0.0",
+  "description": "This script retrieve denomination and senderPaId of IUN",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.473.0",
+    "@aws-sdk/util-dynamodb": "^3.473.0"
+  }
+}
