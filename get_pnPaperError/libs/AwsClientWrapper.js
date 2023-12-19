@@ -41,12 +41,11 @@ class AwsClientsWrapper {
         ":e2": { S: "L’indirizzo non è presente a DB" },
       }
     };
+    lastEvaluatedKey ? input['ExclusiveStartKey'] = lastEvaluatedKey : null
     const command = new ScanCommand(input);
     const response = await this._dynamoClient.send(command);
     return response.Items
   }
-
-  
 }
 
 exports.AwsClientsWrapper = AwsClientsWrapper;
