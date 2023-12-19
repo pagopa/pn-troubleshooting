@@ -153,3 +153,9 @@ Vuoi effettuare delle richieste di recupero su glacier tramite file in input per
 ```bash  
 node index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--expiration <expiration> --tier <tier>]
 ```
+
+### sla_violations_start_workflow
+Vuoi avviare il workflow di notifiche per le quali non è stato consegnato l'evento sul DynamoDB Stream?
+```bash  
+node index.js --awsCoreProfile <aws-profile> --file <json-file>
+```
