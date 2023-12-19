@@ -1,6 +1,6 @@
 # retrieve sender CON996
 
-Script di verifica degli eventi relativi ad un evento pec SEND_DIGITAL
+Script che recupera denomination e senderPaID di uno IUN
 
 ## Tabella dei Contenuti
 
@@ -10,7 +10,7 @@ Script di verifica degli eventi relativi ad un evento pec SEND_DIGITAL
 
 ## Descrizione
 
-Lo Script, dato in input un file che corrisponde all'estrazione di un dump della coda pn-ec-tracker-pec-errori-queue-DLQ.fifo, verifica se per un detereminato requestId si sono verificati tutti gli eventi previsti.
+Lo Script, dato in input un file che ad una serie di IUN, ne estrae le informazioni di denomination e senderPaID
 
 ## Installazione
 
@@ -30,5 +30,5 @@ aws sso login --profile <profile>
 node index.js --envName <envName> --fileName <fileName>
 ```
 Dove:
-- `<envName>` è l'environment nel quale si intende effettuare il controllo;
-- `<fileName>` è il path del file che contiene il dump della coda.
+- `<envName>` è l'environment nel quale si intende eseguire lo script;
+- `<fileName>` è il path del file che contiene la serie di IUN da ricercare;
