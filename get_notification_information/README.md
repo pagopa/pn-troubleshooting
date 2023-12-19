@@ -112,135 +112,135 @@ Le tabelle sono mostrate suddivise per Account AWS (indipendente dall'ambiente) 
 
 ##### PnSsTableDocumentiStreamMetadati 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-ss
+ - **Descrizione funzionale**: cursori degli stream dynamo di Safe Storage
+ - **Referente tecnico**: Bing, TPM ff
 
 ##### pn-AuditStorage 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-logsaver
+ - **Descrizione funzionale**: tabella contenente le chiavi S3 dei file di log
+ - **Referente tecnico**: mi
 
 ##### pn-ConfidentialObjects 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-datavault
+ - **Descrizione funzionale**: pseoudo anonimizzazione
+ - **Referente tecnico**: vr / mv
 
 ##### pn-EcAnagrafica 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-ec (External Channel)
+ - **Descrizione funzionale**: elenco microservizi che possono invocare pn-ec
+ - **Referente tecnico**: ff / mi
 
 ##### pn-EcRichieste 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-ec
+ - **Descrizione funzionale**: richieste effettuate a pn-ec
+ - **Referente tecnico**: ff / mi
 
 ##### pn-EcRichiesteMetadati 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-ec
+ - **Descrizione funzionale**: proggressione dell'andamento delle risposte alle richieste fatte (cartaceo e PEC)
+ - **Referente tecnico**: ff / mi
 
 ##### pn-ExtChannels 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: mock pn-ec
+ - **Descrizione funzionale**: tabella in viene registrato il contenuto dei messaggi inviati dal mock di ec
+ - **Referente tecnico**: vr
 
 ##### pn-SmStates 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-statemachinemanager
+ - **Descrizione funzionale**: diagramma degli stati per PEC, cartaceo e documenti su safestorage
+ - **Referente tecnico**: ff / mi
 
 ##### pn-SsAnagraficaClient 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-ss
+ - **Descrizione funzionale**: elenco microservizi che possono invocare pn-ss
+ - **Referente tecnico**: ff / mi
 
 ##### pn-SsDocumenti 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-ss
+ - **Descrizione funzionale**: elenco documenti contenuti in safestorage
+ - **Referente tecnico**: ff / mi
 
 ##### pn-SsTipologieDocumenti 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-ss
+ - **Descrizione funzionale**: configurazioni del ciclo di vita dei documenti contenuti in safestorage
+ - **Referente tecnico**: ff / mi
 
 ##### pn-VerificationCode2 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: mock pn-ec
+ - **Descrizione funzionale**: non lo so
+ - **Referente tecnico**: vr
 
 ##### pn-addressManager-AnagraficaClient 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: elenco microservizi che possono invocare pn-address-manager
+ - **Referente tecnico**: ff
 
 ##### pn-addressManager-Cap 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: tabella dei cap supportati da SeND per le spedizioni
+ - **Referente tecnico**: ff
 
 ##### pn-addressManager-Country 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: tabella degli stati esteri supportati da SeND per le spedizioni
+ - **Referente tecnico**: ff
 
 ##### pn-addressManager-NormalizzatoreBatch 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: tabella dei "batch di polling" utilizzati per ottenere le risposte da IniPEC
+ - **Referente tecnico**: ff
 
 ##### pn-addressManager-NormalizzatoreBatch-Test 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: non so
+ - **Referente tecnico**: ff
 
 ##### pn-addressManager-PNRequest 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: non so
+ - **Referente tecnico**: ff
 
 ##### pn-addressManager-PNRequest-Test 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: non so
+ - **Referente tecnico**: ff
 
 ##### pn-addressManager-ShedLock 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: non so
+ - **Referente tecnico**: ff
 
 ##### pn-legal-conservation-request 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-cn
+ - **Descrizione funzionale**: elenco richieste di conservazione a norma in corso di esecuzione
+ - **Referente tecnico**: fd
 
 ##### pn-legal-conservation-request-history 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO
+ - **Microservizio**: pn-cn 
+ - **Descrizione funzionale**: elenco richieste di conservazione a norma eseguite
+ - **Referente tecnico**: fd
 
 ---
 
@@ -248,231 +248,231 @@ Le tabelle sono mostrate suddivise per Account AWS (indipendente dall'ambiente) 
 
 ##### Downtime-DowntimeLogs 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-downtime-logs
+ - **Descrizione funzionale**: lassi di tempo in cui c'è stato un down della piattaforma
+ - **Referente tecnico**: vm
 
 ##### Downtime-Event 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-downtime-logs
+ - **Descrizione funzionale**: lassi di tempo in cui c'è stato un evento down o up della piattaforma
+ - **Referente tecnico**: vm
 
 ##### pn-Action 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery-push
+ - **Descrizione funzionale**: azioni eseguite, o in esecuzione.
+ - **Referente tecnico**: sr / fl
 
 ##### pn-AuditStorage 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-logsaver-be
+ - **Descrizione funzionale**: elenco dei file salvati su safestorage (si, è installato in entrambe gli account)
+ - **Referente tecnico**: mi
 
 ##### pn-Clients 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: elenco microservizi che possono invocare paper channel 
+ - **Referente tecnico**: ff / vr
 
 ##### pn-CostComponents 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-external-registries
+ - **Descrizione funzionale**: elenco dei costi inviati a pagoPA nella modalità di integrazione async
+ - **Referente tecnico**: sr
 
 ##### pn-CostUpdateResult 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-external-registries
+ - **Descrizione funzionale**: elenco dei tentativi di invio costi a pagoPA nella modalità di integrazione async
+ - **Referente tecnico**: sr
 
 ##### pn-DocumentCreationRequestTable 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery-push
+ - **Descrizione funzionale**: elenco dei file di cui pn-delivery-push ha richiesto il salvataggio a pn-ss
+ - **Referente tecnico**: sr
 
 ##### pn-ExtChannels 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: mock pn-ec
+ - **Descrizione funzionale**: tabella in viene registrato il contenuto dei messaggi inviati dal mock di ec
+ - **Referente tecnico**: vr
 
 ##### pn-F24File 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-f24
+ - **Descrizione funzionale**: informazioni del singolo f24 (credo)
+ - **Referente tecnico**: fl / ntt
 
 ##### pn-F24MetadataSet 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-f24
+ - **Descrizione funzionale**: informazioni di validazione di un set di f24
+ - **Referente tecnico**: fl / ntt
 
 ##### pn-FutureAction 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery-push
+ - **Descrizione funzionale**: passi del workflow della notifica da effettuare nel futuro 
+ - **Referente tecnico**: sr
 
 ##### pn-IOMessages 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-external-registries
+ - **Descrizione funzionale**: elenco messaggi inviati al backend di AppIO
+ - **Referente tecnico**: vr / mt
 
 ##### pn-LastPollForFutureActionTable 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery-push
+ - **Descrizione funzionale**: timestamp mantenuto da pn-delivery-push per definire quali azioni vanno schedulate
+ - **Referente tecnico**: sr
 
 ##### pn-Mandate 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-mandate
+ - **Descrizione funzionale**: tabelle delle deleghe
+ - **Referente tecnico**: fl
 
 ##### pn-MandateHistory 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-mandate 
+ - **Descrizione funzionale**: tabelle delle deleghe scadute
+ - **Referente tecnico**: fl
 
 ##### pn-NotificationDelegationMetadata 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery
+ - **Descrizione funzionale**: "vista dematerializzata" utilizzata per permettere le ricerche delle PG tra le notifiche ad esse delegate
+ - **Referente tecnico**: am
 
 ##### pn-Notifications 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery
+ - **Descrizione funzionale**: tabelal contenente i metadati delle notifiche
+ - **Referente tecnico**: am 
 
 ##### pn-NotificationsCost 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery
+ - **Descrizione funzionale**: tabella che associa gli IUV agli IUN
+ - **Referente tecnico**: am 
 
 ##### pn-NotificationsMetadata 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery
+ - **Descrizione funzionale**: vista dematerializzata" utilizzata per permettere le ricerche ad ogni dstinatario, delle sue notifiche
+ - **Referente tecnico**: am
 
 ##### pn-NotificationsQR 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery
+ - **Descrizione funzionale**: associazione tra notifiche e QR code presenti negli AAR
+ - **Referente tecnico**: am
 
 ##### pn-OnboardInstitutions 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-external-registires
+ - **Descrizione funzionale**: elenco degli enti / AOO /UO che hanno fatto onboarding in PN
+ - **Referente tecnico**: vr / mt
 
 ##### pn-OptInSent 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-external-registires
+ - **Descrizione funzionale**: elenco messaggi di OptIn inviati al back-end di AppIO
+ - **Referente tecnico**: vr / mt
 
 ##### pn-PaperAddress 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: elenco indirizzi contenuti nelle richieste cartacee
+ - **Referente tecnico**: ff / vr
 
 ##### pn-PaperCap 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: elenco cap ammessi da SeND
+ - **Referente tecnico**: ff / vr
 
 ##### pn-PaperCost 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: elenco costi degli invii cartacei
+ - **Referente tecnico**: ff / vr
 
 ##### pn-PaperDeliveryDriver 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: elenco recapitisti avvisi cartacei
+ - **Referente tecnico**: ff / vr
 
 ##### pn-PaperDeliveryFile 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: file contenenti le informazioni delle gare di recapito e consolidamento
+ - **Referente tecnico**: ff / vr
 
 ##### pn-PaperEvents 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: eventi relativi agli invii cartacei calcolati da logiche di business SeND
+ - **Referente tecnico**: ff / vr
 
 ##### pn-PaperNotificationFailed 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery-push
+ - **Descrizione funzionale**: associazione IUN delle notifiche per cui un destinatario è risultato irreperibile totale
+ - **Referente tecnico**: sr / fl 
 
 ##### pn-PaperRequestDelivery 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: richieste ricevute da pn-paper-channel
+ - **Referente tecnico**: ff / vr
 
 ##### pn-PaperRequestError 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: rifiuti tecnici delle spedizioni cartacee (pdf non stampabili, smarrimenti e deterioramenti )
+ - **Referente tecnico**: ff / vr + fd / vv (per il meccanismo di redrive)
 
 ##### pn-PaperTender 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: tabella delle gare d'appalto
+ - **Referente tecnico**: ff / vr
 
 ##### pn-PaperZone 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-paper-channel
+ - **Descrizione funzionale**: elenco degli stati per ogni zona di consegna estera
+ - **Referente tecnico**: ff / vr
 
 ##### pn-PnActivityReport 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-usage-estimates
+ - **Descrizione funzionale**: tutto il microservizio è in standby
+ - **Referente tecnico**: ff / mv
 
 ##### pn-PnDeliveryPushShedLock 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery-push
+ - **Descrizione funzionale**: persistenza per lock distibuito
+ - **Referente tecnico**: sr / fl
 
 ##### pn-PnEstimate 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-usage-estimates
+ - **Descrizione funzionale**: tutto il microservizio è in standby
+ - **Referente tecnico**: ff / mv 
 
 ##### pn-PnProfilation 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-usage-estimates
+ - **Descrizione funzionale**: tutto il microservizio è in standby
+ - **Referente tecnico**: ff / mv
 
 ##### pn-PnServiceDeskAddress 
 
@@ -482,150 +482,150 @@ Le tabelle sono mostrate suddivise per Account AWS (indipendente dall'ambiente) 
 
 ##### pn-PnServiceDeskClient 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-service-desk
+ - **Descrizione funzionale**: elenco microservizi che possono invocare il microservizio pn-service-desk
+ - **Referente tecnico**: vr
 
 ##### pn-PnServiceDeskOperationFileKey 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-service-desk
+ - **Descrizione funzionale**: elenco file video caricati dal "call senter evoluto"
+ - **Referente tecnico**: vr
 
 ##### pn-PnServiceDeskOperations 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-service-desk
+ - **Descrizione funzionale**: elenco operazioni di "call center evoluto o non evoluto"
+ - **Referente tecnico**: vr
 
 ##### pn-ProgressionSensorData 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-progression-sendor
+ - **Descrizione funzionale**: attività in corso da parte di SeND e violazioni (attività avvenute in un tempo superiore alle SLA)
+ - **Referente tecnico**: mi / mv
 
 ##### pn-Timelines 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery-push
+ - **Descrizione funzionale**: la timeline delle notifiche
+ - **Referente tecnico**: sr / fl
 
 ##### pn-TimelinesCounters 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery-push
+ - **Descrizione funzionale**: contatori dei retry digitali fatti da pn-delivery-push
+ - **Referente tecnico**: sr / fl
 
 ##### pn-TimelinesForInvoicing 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-progression-sensor
+ - **Descrizione funzionale**: righe di timeline fatturabili
+ - **Referente tecnico**: mi / mv
 
 ##### pn-UserAttributes 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-user-attrivutes
+ - **Descrizione funzionale**: recapiti e domicili digitali di un utente
+ - **Referente tecnico**: vr / mt
 
 ##### pn-VerificationCode2 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: mock pn-ec
+ - **Descrizione funzionale**: esiste anche nell'altro 
+ - **Referente tecnico**: vr
 
 ##### pn-WebhookEvents 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery-push
+ - **Descrizione funzionale**: eventi degli "stream" degli eventi di timeline da inviare alle PA
+ - **Referente tecnico**: sr / fl
 
 ##### pn-WebhookStreams 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-delivery-push
+ - **Descrizione funzionale**: stream di eventi da inviare alle PA
+ - **Referente tecnico**: sr / fl
 
 ##### pn-address-manager-apikey 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: elenco client che possono invocare pn-address-manager
+ - **Referente tecnico**: ff / mi
 
 ##### pn-address-manager-batch-request 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: raggruppamenti di richieste fatte al validatore degli indirizzi
+ - **Referente tecnico**: ff / mi 
 
 ##### pn-address-manager-cap 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: elenco cap supportati da SeND
+ - **Referente tecnico**: ff / mi 
 
 ##### pn-address-manager-country 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: elenco cap supportati da address manager
+ - **Referente tecnico**: ff / mi 
 
 ##### pn-address-manager-postel-batch 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-address-manager
+ - **Descrizione funzionale**: raggruppamenti di richieste fatte al validatore degli indirizzi; risposte da postel
+ - **Referente tecnico**: ff / mi 
 
 ##### pn-aggregates 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-apikey-manager
+ - **Descrizione funzionale**: aggregazioni di enti che condividono lo stesso throttling
+ - **Referente tecnico**: mv / ntt
 
 ##### pn-apiKey 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-apikey-manager
+ - **Descrizione funzionale**: api key degli enti
+ - **Referente tecnico**: mv / ntt
 
 ##### pn-batchPolling 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-national-registries
+ - **Descrizione funzionale**: dati di polling verso IniPec
+ - **Referente tecnico**: mv / ff 
 
 ##### pn-batchRequests 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-national-registries
+ - **Descrizione funzionale**: raggruppamenti richieste nei confronti di IniPEC
+ - **Referente tecnico**: mv / ff
 
 ##### pn-counter 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-national-registires
+ - **Descrizione funzionale**: contatore delle richieste fatte a IniPEC .... vogliono un contatore monotono crescente
+ - **Referente tecnico**: mv / ff
 
 ##### pn-document-ready 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-fsu-bff
+ - **Descrizione funzionale**: microservizio in standby
+ - **Referente tecnico**: ntt
 
 ##### pn-operations-iuns 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-radd-fsu
+ - **Descrizione funzionale**: microservizio in standby
+ - **Referente tecnico**: mv / vr
 
 ##### pn-paAggregations 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-apikey-manager
+ - **Descrizione funzionale**: tabella di aggregazione tra enti e aggregazioni di enti
+ - **Referente tecnico**: mv / ntt
 
 ##### pn-radd-transaction 
 
- - **Microservizio**: // TODO 
- - **Descrizione funzionale**: // TODO 
- - **Referente tecnico**: // TODO 
+ - **Microservizio**: pn-radd-fsu
+ - **Descrizione funzionale**: microservizio in standby
+ - **Referente tecnico**: mv / vr
