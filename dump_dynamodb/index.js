@@ -58,15 +58,22 @@ async function main() {
 
   _checkingParameters(args, values)
   const awsClient = new AwsClientsWrapper( awsProfile );
-  
-  const res = await awsClient._scanRequest(tableName);
-  var test = res.sort((a, b) => {
-    console.log(a)
-    a.name.S.localeCompare(b.name.S)
+  let first = true;
+  var results = []
+  var lastEvaluatedKey = null
+  while(first || lastEvaluatedKey != null) {
+    var res = await awsClient._scanRequest(tableName, lastEvaluatedKey);
+    if(res.LastEvaluatedKey) {
+      lastEvaluatedKey = res.LastEvaluatedKey
+    } 
+    else {
+      lastEvaluatedKey = null;
+      first = false;
+    }
+    results = results.concat(res.Items);
   }
-  );
-  await _writeInFile(test, res.length+"_"+tableName+"_"+awsProfile)
-  console.log('Sono stati memorizzati n° ' + res.length + ' elementi.');
+  await _writeInFile(results, results.length+"_"+tableName+"_"+awsProfile)
+  console.log('Sono stati memorizzati n° ' + results.length + ' elementi.');
 
 }
 

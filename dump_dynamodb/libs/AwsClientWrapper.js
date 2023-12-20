@@ -24,13 +24,14 @@ class AwsClientsWrapper {
     console.log("Configuring aws client...")
   }
 
-  async _scanRequest(tableName){
+  async _scanRequest(tableName, lastEvaluatedKey){
     const input = { // ScanInputno
       TableName: tableName, // required
     };
+    lastEvaluatedKey ? input['ExclusiveStartKey'] = lastEvaluatedKey : null
     const command = new ScanCommand(input);
     const response = await this._dynamoClient.send(command);
-    return response.Items
+    return response
   }
 
   
