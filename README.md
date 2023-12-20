@@ -160,9 +160,15 @@ Vuoi effettuare delle richieste di recupero su glacier tramite file in input per
 node index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--expiration <expiration> --tier <tier>]
 ```
 
+
 ### check_pec_events
 Vuoi verificare se un requestId di una PEC contiene tutti gli eventi previsti?
 ```bash
 node index.js --envName <envName> --fileName <fileName>
->>>>>>> 02ce4c3 (check_pec_events)
+```
+
+### sla_violations_start_workflow
+Vuoi avviare il workflow di notifiche per le quali non è stato consegnato l'evento sul DynamoDB Stream?
+```bash  
+node index.js --awsCoreProfile <aws-profile> --file <json-file>
 ```
