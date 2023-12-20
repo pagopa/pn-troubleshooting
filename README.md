@@ -154,12 +154,17 @@ Vuoi rigenerare le informazioni da inserire nei file di backup delle tabelle dyn
 node index.js --envName <envName> --folderPath <folderPath>
 ```
 
+### check_pec_events
+Vuoi verificare se un requestId di una PEC contiene tutti gli eventi previsti?
+```bash
+node index.js --envName <envName> --fileName <fileName>
+```
+
 ### retrieve_glacier_s3
 Vuoi effettuare delle richieste di recupero su glacier tramite file in input per una serie di documenti?
 ```bash  
 node index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--expiration <expiration> --tier <tier>]
 ```
-
 
 ### check_pec_events
 Vuoi verificare se un requestId di una PEC contiene tutti gli eventi previsti?
