@@ -91,9 +91,10 @@ AWS.config.update({region: 'eu-south-1'});
 const sqs = new AWS.SQS();
 
 
-async function _writeInFile(result, filename ) {
+async function _writeInFile(result) {
   fs.mkdirSync("result", { recursive: true });
-  fs.writeFileSync('result/' + filename+'.json', JSON.stringify(result, null, 4), 'utf-8')
+  const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
+  fs.writeFileSync('result/dump' +'_'+queueName+'_'+dateIsoString+'.json', JSON.stringify(result, null, 4), 'utf-8')
 }
 
 async function dumpSQS() {
@@ -155,7 +156,7 @@ async function dumpSQS() {
       extraction = elementsElaborated
     }
     console.log("NUMBER OF MESSAGE: " + extraction.length)
-    await _writeInFile(extraction, "ElaboratedMessages")
+    await _writeInFile(extraction)
 
     if (remove) {
       extraction.forEach(async (e) => {
