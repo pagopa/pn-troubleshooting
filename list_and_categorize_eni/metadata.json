@@ -3,7 +3,7 @@
     "account":"confinfo",
     "title": "EfsTargets",
     "resource": "pn-infra/runtime-infra/pn-ipc.yaml MountFargateEfsTarget[123]",
-    "regexp": "^infra-prod-EFSSecurityGroup.*$",
+    "regexp": "^infra-hotfix-EFSSecurityGroup.*$",
     "regexpOn": "grpName"
   }, 
   {
@@ -17,14 +17,14 @@
     "account":"confinfo",
     "title": "spidhub external ALB",
     "resource": "pn-hub-spid-login-aws/scripts/deploy/stacks/orchestrator.yaml ExternalApplicationLoadBalancer",
-    "regexp": "^spidhub-prod-Orchestrator.*ExternalAlbSecurityGroup.*$",
+    "regexp": "^spidhub-hotfix-Orchestrator.*ExternalAlbSecurityGroup.*$",
     "regexpOn": "grpName"
   }, 
   {
     "account":"confinfo",
     "title": "conservazione norma SafeStorage listener Lambda",
     "resource": "pn-cn/scripts/aws/cfn/microservice.yml SafeStorageListenerLambda",
-    "regexp": "^pn-cn-microsvc-prod-SafeStorageListenerLambdaSecGroup.*$",
+    "regexp": "^pn-cn-microsvc-hotfix-SafeStorageListenerLambdaSecGroup.*$",
     "regexpOn": "grpName"
   }, 
   {
@@ -38,14 +38,14 @@
     "account":"confinfo",
     "title": "spidhub ecs service",
     "resource": "pn-hub-spid-login-aws/scripts/deploy/stacks/hub-login.yaml Service",
-    "regexp": "^spidhub-prod-HubLogin.*$",
+    "regexp": "^spidhub-hotfix-HubLogin.*$",
     "regexpOn": "grpName"
   }, 
   {
     "account":"confinfo",
     "title": "Spidhub redis cache",
     "resource": "pn-hub-spid-login-aws/scripts/deploy/stacks/cache.yaml Redis",
-    "regexp": "^spidhub-prod-Cache.*$",
+    "regexp": "^spidhub-hotfix-Cache.*$",
     "regexpOn": "grpName"
   }, 
   {
@@ -59,7 +59,7 @@
     "account":"confinfo",
     "title": "spidhub Internal ALB",
     "resource": "pn-hub-spid-login-aws/scripts/deploy/stacks/orchestrator.yaml InternalApplicationLoadBalancer",
-    "regexp": "^spidhub-prod-Orchestrator.*InternalAlbSecurityGroup.*$",
+    "regexp": "^spidhub-hotfix-Orchestrator.*InternalAlbSecurityGroup.*$",
     "regexpOn": "grpName"
   }, 
   {
@@ -87,7 +87,7 @@
     "account":"confinfo",
     "title": "conservazione norma presigned url lambda ",
     "resource": "pn-cn/scripts/aws/cfn/microservice.yml  PreSignedUrlGeneratorLambda",
-    "regexp": "^pn-cn-microsvc-prod-PreSignedUrlGeneratorLambdaSecGroup.*$",
+    "regexp": "^pn-cn-microsvc-hotfix-PreSignedUrlGeneratorLambdaSecGroup.*$",
     "regexpOn": "grpName"
   }, 
   {
@@ -217,7 +217,7 @@
     "account":"core",
     "title": "pn-delivery ecs ms",
     "resource": "pn-delivery/scripts/aws/cfn/microservice.yml Microservice",
-    "regexp": "^pn-delivery-microsvc-prod-DeliveryMicroservice-.*$",
+    "regexp": "^pn-delivery-microsvc-hotfix-DeliveryMicroservice-.*$",
     "regexpOn": "grpName"
   },
   {
@@ -231,7 +231,7 @@
     "account":"core",
     "title": "pn-user-attributes ecs ms",
     "resource": "pn-user-attributes/scripts/aws/cfn/microservice.yml Microservice",
-    "regexp": "^pn-user-attributes-microsvc-prod-UserAttributesMicroservice-.*$",
+    "regexp": "^pn-user-attributes-microsvc-hotfix-UserAttributesMicroservice-.*$",
     "regexpOn": "grpName"
   },
   {
@@ -245,56 +245,56 @@
     "account":"core",
     "title": "pn-delivery retrocompatibilita",
     "resource": "pn-delivery/scripts/aws/cfn/microservice.yml VersioningV1V2GetNotificationLambda",
-    "regexp": "^pn-delivery-microsvc-prod-VersioningV1V2GetNotificationSecGroup*$",
+    "regexp": "^pn-delivery-microsvc-hotfix-VersioningV1V2GetNotificationSecGroup*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "EFS mount target",
     "resource": "pn-infra/runtime-infra/pn-ipc.yaml MountFargateEfsTarget[123]",
-    "regexp": "^pn-ipc-prod-EFSSecurityGroup*$",
+    "regexp": "^pn-ipc-hotfix-EFSSecurityGroup*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "pn-external-registries ecs ms",
     "resource": "pn-external-registries/scripts/aws/cfn/microservice.yml Microservice",
-    "regexp": "^pn-external-registries-microsvc-prod-ExternalRegistryMicroservice-.*$",
+    "regexp": "^pn-external-registries-microsvc-hotfix-ExternalRegistryMicroservice-.*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "pn-delivery-push ecs ms",
     "resource": "pn-delivery-push/scripts/aws/cfn/microservice.yml Microservice",
-    "regexp": "^pn-delivery-push-microsvc-prod-DeliveryPushMicroservice-.*$",
+    "regexp": "^pn-delivery-push-microsvc-hotfix-DeliveryPushMicroservice-.*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "pn-ec mock ecs ms",
     "resource": "pn-external-channels/scripts/aws/cfn/microservice.yml Microservice",
-    "regexp": "^pn-external-channels-microsvc-prod-ExternalChannelsMicroservic-.*$",
+    "regexp": "^pn-external-channels-microsvc-hotfix-ExternalChannelsMicroservic-.*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "pn-national-registries ecs ms",
     "resource": "pn-national-registries/scripts/aws/cfn/microservice.yml Microservice",
-    "regexp": "^pn-national-registries-microsvc-prod-NationalRegistryMicroservice-.*$",
+    "regexp": "^pn-national-registries-microsvc-hotfix-NationalRegistryMicroservice-.*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "pn-radd-fsu ecs ms",
     "resource": "pn-radd-fsu/scripts/aws/cfn/microservice.yml Microservice",
-    "regexp": "^pn-radd-fsu-microsvc-prod-RaddMicroservice-.*$",
+    "regexp": "^pn-radd-fsu-microsvc-hotfix-RaddMicroservice-.*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "pn-apikey-manager ecs ms",
     "resource": "pn-apikey-manager/scripts/aws/cfn/microservice.yml Microservice",
-    "regexp": "^pn-apikey-manager-microsvc-prod-ApikeyManagerMicroservice-.*$",
+    "regexp": "^pn-apikey-manager-microsvc-hotfix-ApikeyManagerMicroservice-.*$",
     "regexpOn": "grpName"
   },
   {
@@ -315,35 +315,35 @@
     "account":"core",
     "title": "Io authorizer lambda",
     "resource": "pn-auth-fleet/scripts/aws/cfn/microservice.yml IoAuthorizerLambda",
-    "regexp": "^pn-auth-fleet-microsvc-prod-DataVaultServiceSecurityGroup.*$",
+    "regexp": "^pn-auth-fleet-microsvc-hotfix-DataVaultServiceSecurityGroup.*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "pn-paper-channel ecs ms",
     "resource": "pn-paper-channel/scripts/aws/cfn/microservice.yml PaperChannelMicroservice",
-    "regexp": "^pn-paper-channel-microsvc-prod-PaperChannelMicroservice.*$",
+    "regexp": "^pn-paper-channel-microsvc-hotfix-PaperChannelMicroservice.*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "pn-service-desk ecs ms",
     "resource": "pn-service-desk/scripts/aws/cfn/microservice.yml ServiceDeskMicroservice",
-    "regexp": "^pn-service-desk-microsvc-prod-ServiceDeskMicroservice.*$",
+    "regexp": "^pn-service-desk-microsvc-hotfix-ServiceDeskMicroservice.*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "pn-kafka-bridge ecs ms",
     "resource": "pn-kafka-bridge/scripts/aws/cfn/microservice.yml KafkaBridgeMicroservice",
-    "regexp": "^pn-kafka-bridge-microsvc-prod-KafkaBridgeMicroservice.*$",
+    "regexp": "^pn-kafka-bridge-microsvc-hotfix-KafkaBridgeMicroservice.*$",
     "regexpOn": "grpName"
   },
   {
     "account":"core",
     "title": "lambda per invio log ad opensearch",
     "resource": "pn-infra/runtime-infra/pn-logs-export.yaml LogsToOpenSearch",
-    "regexp": "^pn-logs-export-prod-LogsToOpenSearch.*$",
+    "regexp": "^pn-logs-export-hotfix-LogsToOpenSearch.*$",
     "regexpOn": "grpName"
   },
   {
