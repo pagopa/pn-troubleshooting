@@ -159,3 +159,9 @@ Vuoi avviare il workflow di notifiche per le quali non è stato consegnato l'eve
 ```bash  
 node index.js --awsCoreProfile <aws-profile> --file <json-file>
 ```
+
+### retrieve_sender_CON996
+Vuoi recuperare informazioni riguardanti la PA mittente di uno IUN?
+```bash  
+node index.js --envName <envName> --fileName <fileName>
+```
