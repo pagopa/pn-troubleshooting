@@ -10,7 +10,8 @@ Script che recupera denomination e senderPaID di uno IUN
 
 ## Descrizione
 
-Lo Script, dato in input un file che ad una serie di IUN, ne estrae le informazioni di denomination e senderPaID
+Lo Script, dato in input un file che ad una serie di IUN, ne estrae le informazioni di denomination e senderPaID.
+Il file è un .txt con gli IUN separati da "newline".
 
 ## Installazione
 
