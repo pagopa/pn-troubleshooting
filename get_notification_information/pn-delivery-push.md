@@ -23,23 +23,23 @@ erDiagram
     pn-PaperNotificationFailed
     pn-DocumentCreationRequestTable
 
-    pn-Timelines ||--|| pn-TimelinesCounters: hasRetryCounters
+    pn-Timelines ||--|| pn-TimelinesCounters: ""
 
-    pn-Timelines ||--o{ pn-DocumentCreationRequestTable: HasDocuments
+    pn-Timelines ||--o{ pn-DocumentCreationRequestTable: ""
     
-    pn-WebhookStreams ||--o{ pn-WebhookEvents: HasEvents
+    pn-WebhookStreams ||--o{ pn-WebhookEvents: ""
 
-    pn-Notifications ||--o{ pn-WebhookEvents: HasEvents
+    pn-Notifications ||--o{ pn-WebhookEvents: ""
 
-    pn-Notifications ||--|{ pn-Timelines: HasDocuments
+    pn-Notifications ||--|{ pn-Timelines: ""
 
-    pn-Notifications ||--o{ pn-DocumentCreationRequestTable: HasDocuments
+    pn-Notifications ||--o{ pn-DocumentCreationRequestTable: ""
 
-    pn-Notifications ||--o{ pn-FutureAction: HasFutureActions
+    pn-Notifications ||--o{ pn-FutureAction: ""
 
-    pn-Notifications ||--o{ pn-Action: HasActions
+    pn-Notifications ||--o{ pn-Action: ""
 
-    pn-Notifications ||--o{ pn-PaperNotificationFailed: HasAnalogFails
+    pn-Notifications ||--o{ pn-PaperNotificationFailed: ""
 
 ```
 
