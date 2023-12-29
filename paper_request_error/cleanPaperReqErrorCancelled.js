@@ -134,10 +134,8 @@ async function deletePaperRequestError(item) {
   //console.log("params", params);
   dynamoDB.delete(params, function(err, data) {
     if (err) {
-      console.log("Error", err);
-    } else {
-      console.log("Success", data);
-    }
+      console.error(err);
+    } 
   });
 }
 
