@@ -28,6 +28,7 @@ if(awsProfile.indexOf('sso_')>=0){ // sso profile
 } else { // IAM profile
   config = { credentials: fromIni({profile:awsProfile}), region: "eu-south-1" };
 }
+const dynamoDB = DynamoDBDocument.from(new DynamoDB(config));
 
 const filterKey = 'created'; // Sostituisci con il nome del tuo attributo di chiave primaria
 const startFilterValue = cmdLineArgs[3];
@@ -44,7 +45,7 @@ async function sleep( ms ) {
 }
 
 async function getCancelledTimeline(iun) {
-    const dynamoDB = DynamoDBDocument.from(new DynamoDB(config));
+    
     const timelineElementId='NOTIFICATION_CANCELLED.IUN_'+iun;
     const timelineQueryParam = {
       TableName: 'pn-Timelines',
@@ -85,7 +86,6 @@ async function getPaperRequestErrors(startKey) {
     ExclusiveStartKey: startKey
   };
 
-  const dynamoDB = DynamoDBDocument.from(new DynamoDB(config));
   try {
     const scan_results = await dynamoDB.scan(paperRequestErrorQueryParam);
     const filtered_result = scan_results.Items;
@@ -123,7 +123,6 @@ async function processPaperRequestErrorItem(item) {
 }
 
 async function deletePaperRequestError(item) {
-  const dynamoDB = DynamoDBDocument.from(new DynamoDB(config));
   const params = {
     TableName: "pn-PaperRequestError",
     Key: {
