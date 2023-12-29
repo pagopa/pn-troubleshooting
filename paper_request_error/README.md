@@ -11,6 +11,8 @@ Script per la pulizia della tabella pn-PaperRequestError
   - [Utilizzo](#utilizzo)
     - [Step preliminare](#step-preliminare)
     - [Esecuzione](#esecuzione)
+  - [Per trasformare il json il file di output](#per-trasformare-il-json-il-file-di-output)
+  - [Per trasfomare il file json in CVS](#per-trasfomare-il-file-json-in-cvs)
 
 ## Descrizione
 
@@ -44,3 +46,18 @@ Dove:
 - `<aws-core-profile>` è il profilo dell'account AWS core;
 - `<start-date>` è la data inizio rispetto l'elemento created; 
 - `<end-date>` è la data fine rispetto l'elemento created;
+
+## Per trasformare il json il file di output
+
+```bash
+OUTPUT=paperRequestError_deleted_backup2023-12-29T09:26:45.951Z.json
+sed -i '' '1s/^/[/' $OUTPUT
+sed -i '' '$s/$/]/' $OUTPUT
+sed -i '' 's/}{/},{/g' $OUTPUT
+```
+## Per trasfomare il file json in CVS
+
+```bash
+OUTPUT=paperRequestError_deleted_backup2023-12-29T09:26:45.951Z
+jq -r '(map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows | $cols, $rows[] | @csv' $OUTPUT.json > $OUTPUT.csv
+``````

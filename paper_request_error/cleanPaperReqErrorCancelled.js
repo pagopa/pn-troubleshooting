@@ -1,5 +1,5 @@
 import { fromIni, fromSSO } from "@aws-sdk/credential-providers";
-import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocument, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import { writeFile, appendFile } from 'fs';
 import { EOL } from 'os';
@@ -113,7 +113,7 @@ async function processPaperRequestErrorItem(item) {
   } else {
     //console.log("Cancelled: ", requestId, iun, timelineElement.timestamp);
     console.log(" -", requestId, "Cancelled", iun);
-    //deletePaperRequestError(requestId)
+    deletePaperRequestError(item)
     appendFile(filename, JSON.stringify(item, null, 2), err => {
       if (err) {
         console.error(err);
@@ -122,14 +122,16 @@ async function processPaperRequestErrorItem(item) {
   }
 }
 
-async function deletePaperRequestError(requestId) {
+async function deletePaperRequestError(item) {
   const dynamoDB = DynamoDBDocument.from(new DynamoDB(config));
-  const command = new DeleteCommand({
+  const params = {
     TableName: "pn-PaperRequestError",
     Key: {
-      requestId: requestId,
-    },
-  });
+      "requestId": item.requestId,
+      "created": item.created
+    }
+  };
+  //console.log("params", params);
   dynamoDB.delete(params, function(err, data) {
     if (err) {
       console.log("Error", err);
