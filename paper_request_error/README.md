@@ -17,7 +17,7 @@ Script per la pulizia della tabella pn-PaperRequestError
 ## Descrizione
 
 Lo Script, dato in input un intervallo di date sul quale filtrare gli elementi della tabella
-in base alla data del campo `created`:
+`pn-PaperRequestError` con error='CON996' (allegati rifiutati in stampa) in base al range specificato della data del campo `created`:
 
 1) Cancella l'elemento dalla tabella se la notifica correlata è stata annullata.
 2) ....
