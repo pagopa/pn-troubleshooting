@@ -150,15 +150,15 @@ async function main() {
       res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
       if ('MD5OfMessageBody' in res) {
         console.log("RequestId " + requestId + " sent successfully!!!")
-        res = await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
-        if('ConsumedCapacity' in res) {
+        await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
+        /*if('ConsumedCapacity' in res) {
           if(res.ConsumedCapacity.CapacityUnits == 1) {
             console.log("RequestId " + requestId + " deleted successfully!!!")
           }
           else {
             console.error("Problem to delete from pn-PaperRequestError " + requestId)
           }
-        }
+        }*/
       }
       else {
         failedRequestIds.push({ requestId: requestId, error: res })
@@ -192,15 +192,15 @@ async function main() {
       console.log(result)
       await ApiClient.sendNationalRegistriesRequest(result.taxId, result.correlationId, result.receiverType)
 
-      res = await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
-      if('ConsumedCapacity' in res) {
+      await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
+      /*if('ConsumedCapacity' in res) {
         if(res.ConsumedCapacity.CapacityUnits == 1) {
           console.log("RequestId " + requestId + " deleted successfully!!!")
         }
         else {
           console.error("Problem to delete from pn-PaperRequestError " + requestId)
         }
-      }
+      }*/
 
     }
   }

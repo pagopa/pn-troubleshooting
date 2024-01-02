@@ -60,7 +60,8 @@ class AwsClientsWrapper {
     };
     const command = new DeleteItemCommand(input);
     const response = await this._dynamoClient.send(command);
-    return unmarshall(response.Items[0])
+    return response;
+//    return unmarshall(response.Items[0])
   }
 
   async _sendEventToSQS(queueUrl, data, attributes) {
