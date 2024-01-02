@@ -12,7 +12,7 @@ async function sendNationalRegistriesRequest(taxId, correlationId, receiverType)
             "taxId": taxId,
             "referenceRequestDate": new Date().toISOString(),
             "correlationId": correlationId,
-            "domicileType": receiverType
+            "domicileType": 'PHYSICAL'
         }
     };
 

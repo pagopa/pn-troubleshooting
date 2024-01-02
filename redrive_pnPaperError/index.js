@@ -73,7 +73,7 @@ function _prepareAttributes(requestId){
       "DataType": "String"
     },
     "x-client-id" : {
-      "StringValue": "",
+      "StringValue": "pn-delivery-push",
       "DataType": "String"
     },
     attempt : {
@@ -200,7 +200,7 @@ async function main() {
         else {
           console.error("Problem to delete from pn-PaperRequestError " + requestId)
         }
-      } 
+      }
 
     }
   }

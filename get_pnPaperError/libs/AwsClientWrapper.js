@@ -24,7 +24,7 @@ class AwsClientsWrapper {
     console.log("Configuring aws client...")
   }
 
-  async _scanRequest(tableName){
+  async _scanRequest(tableName, lastEvaluatedKey){
     const input = { // ScanInput
       TableName: tableName, // required
       ProjectionExpression: "#K, #C",
@@ -41,10 +41,12 @@ class AwsClientsWrapper {
         ":e2": { S: "L’indirizzo non è presente a DB" },
       }
     };
-    lastEvaluatedKey ? input['ExclusiveStartKey'] = lastEvaluatedKey : null
+    if(lastEvaluatedKey){
+      input['ExclusiveStartKey'] = lastEvaluatedKey
+    }
     const command = new ScanCommand(input);
     const response = await this._dynamoClient.send(command);
-    return response.Items
+    return response
   }
 }
 
