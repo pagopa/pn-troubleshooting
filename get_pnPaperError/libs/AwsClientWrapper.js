@@ -28,7 +28,7 @@ class AwsClientsWrapper {
     const input = { // ScanInput
       TableName: tableName, // required
       ProjectionExpression: "#K, #C",
-      FilterExpression : "not contains(#E, :e1) AND not contains(#E, :e2) AND #F = :f1",
+      FilterExpression : "not contains(#E, :e1) AND not contains(#E, :e2) AND not contains(#E, :e3) AND #F = :f1",
       ExpressionAttributeNames: { // ExpressionAttributeNameMap
         "#K": "requestId",
         "#C": "created",
@@ -39,6 +39,7 @@ class AwsClientsWrapper {
         ":f1": { S: "CHECK_ADDRESS_FLOW" },
         ":e1": { S: "PNADDR002" },
         ":e2": { S: "L’indirizzo non è presente a DB" },
+        ":e3": { S: "Country not found" },
       }
     };
     if(lastEvaluatedKey){
