@@ -18,7 +18,7 @@ create or replace temporary view all_paper_metadata_with_synthetic_select_list_n
                           ELSE 0
                      END
         ),
-        e -> array_join(array( trim(e.paperProg_statusCode), trim(e.paperProg_deliveryFailureCause)), '_')
+        e -> trim(e.paperProg_statusCode)
       ),
       ' '
     ))
@@ -83,6 +83,19 @@ create or replace temporary view all_paper_metadata_with_synthetic_select_list_n
       ' '
     )
       as deliveryFailureCause,
+    array_join(
+        array_distinct(
+          flatten(
+            transform(
+                filter(
+                  event_list, 
+                  e -> e.paperProg_statusCode rlike '(REC.*B)|(REC.*E)'
+                ).paperProg_attachments,
+              e -> e.documentType
+            )
+          )
+        ),
+      ' ') as attachments,
     requestId
   FROM
     ec_metadta__fromfile

@@ -29,6 +29,20 @@
           'paperProg_productType', get_json_object(x, '$.paperProgrStatus.M.productType.S'),
           'paperProg_status', get_json_object(x, '$.paperProgrStatus.M.status.S'),
           'paperProg_statusCode', get_json_object(x, '$.paperProgrStatus.M.statusCode.S'),
+          'paperProg_attachments', if (
+            json_array_length( get_json_object(x, '$.paperProgrStatus.M.attachments.L')) > 0,
+            transform(
+              transform(
+                sequence(1, json_array_length( get_json_object(x, '$.paperProgrStatus.M.attachments.L')) ,1),
+                y  -> get_json_object(x, concat('$.paperProgrStatus.M.attachments.L[', y-1, '].M'))
+              ),
+              y  -> named_struct(
+                'documentType', get_json_object(y, concat('$.documentType.S')),
+                'id', get_json_object(y, concat('$.id.S'))
+              )
+            ),
+            array()
+          ),
 
           'digProgr_eventCode', get_json_object(x, '$.digProgrStatus.M.eventCode.S'),
           'digProgr_generatedMessage_location', get_json_object(x, '$.digProgrStatus.M.generatedMessage.M.location.S'),
