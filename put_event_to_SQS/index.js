@@ -4,7 +4,7 @@ const fs = require('fs');
 
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --profile <profile> --queueUrl <queueUrl> --fileName <fileName> [--from [ec_events]]"
+  const usage = "Usage: index.js --profile <profile> --queueUrl <queueUrl> --fileName <fileName> [--from [ec_events] --persist]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -36,9 +36,10 @@ async function main() {
     { name: "queueUrl", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
     { name: "from", mandatory: false, subcommand: [] },
+    { name: "persist", mandatory: false, subcommand: [] },
   ]
   const values = {
-    values: { profile, queueUrl, fileName, from},
+    values: { profile, queueUrl, fileName, from, persist},
   } = parseArgs({
     options: {
       profile: {
@@ -53,11 +54,14 @@ async function main() {
       from: {
         type: "string", short: "f", default: "dump_sqs"
       },
+      persist: {
+        type: "boolean", short: "w", default: false
+      },
     },
   });  
 
-  async function handleEventToSQS(queueUrl, id, body, attributes){
-    const res = await awsClient._sendEventToSQS(queueUrl, body, attributes);
+  async function handleEventToSQS(queueUrl, id, body, attributes, persist){
+    const res = await awsClient._sendEventToSQS(queueUrl, body, attributes, persist);
     if ('MD5OfMessageBody' in res) {
       console.log("Event " + id + " sent successfully!!!")
     }
@@ -83,7 +87,7 @@ async function main() {
     const eventsToRepublish = formatFile;
     for (i = 0; i < eventsToRepublish.length; i++) {
       let json = eventsToRepublish[i]
-      await handleEventToSQS(queueUrl, json.MessageId, json.Body, json.MessageAttributes)
+      await handleEventToSQS(queueUrl, json.MessageId, json.Body, json.MessageAttributes, persist)
     }
   }
   // File obtained by check_ec_events script
@@ -91,7 +95,7 @@ async function main() {
     const eventsToRepublish = Object.values(formatFile);
     for (i = 0; i < eventsToRepublish.length; i++) {
       let json = eventsToRepublish[i]
-      await handleEventToSQS(queueUrl, json.requestIdx, json, undefined)
+      await handleEventToSQS(queueUrl, json.requestIdx, json, undefined, persist)
     }
   }
   else {

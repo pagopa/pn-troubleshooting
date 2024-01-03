@@ -130,7 +130,19 @@ Vuoi inserire dati in una tabella dynamo a partire da un file?
 node index.js --profile <profile> --tableName <tableName> --fileName <fileName> [--batchDimension <batchDimension]
 ```
 
-### compare-config
+### get-pnPaperError
+Vuoi recuperare i requestId della table pn-paperError in base ad un filtro?
+```bash
+node scan_dynamo.js --awsProfile <aws-profile> --tableName <dynamodb-table> --filter <filter>
+```
+
+### redrive-pnPaperError
+Vuoi risottomettere gli eventi recuperati da get-pnPaperError?
+```bash
+node index.js --envName <envName> --fileName <fileName>
+```
+
+### compare-conf-environment
 Vuoi comparare le configurazioni tra due ambienti?
 ```bash
 node index.js <envA>  <envB>  <pnConfigurationPath>
@@ -152,6 +164,12 @@ node index.js --envName <envName> --fileName <fileName>
 Vuoi effettuare delle richieste di recupero su glacier tramite file in input per una serie di documenti?
 ```bash  
 node index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--expiration <expiration> --tier <tier>]
+```
+
+### check_pec_events
+Vuoi verificare se un requestId di una PEC contiene tutti gli eventi previsti?
+```bash
+node index.js --envName <envName> --fileName <fileName>
 ```
 
 ### sla_violations_start_workflow
