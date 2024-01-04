@@ -87,23 +87,15 @@ if ( [ ! -z "${aws_region}" ] ) then
 fi
 echo ${aws_command_base_args}
 
-echo
-echo
-echo "################################################################################"
-echo "### BEFORE PROCEEDING, DEPLOY FE COURTESY PAGES ON PORTALS ###"
-echo "################################################################################"
-echo
-echo
-
 echo "create output directory if not exist"
 
 mkdir -p output
 
-read -p "Do you really want to proceed to stop services on the account $aws_profile? <y/N> " prompt
+read -p "Do you really want to proceed to start services on the account $aws_profile? <y/N> " prompt
 if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]
    then
-    echo "FIRST STEP = > LAMBDA SET CONCURRENT EXECUTION TO ZERO" && sleep 3; 
-        #Stop Lambda section
+    echo "FIRST STEP = > REMOVE THROTTLING ON LAMBDA" && sleep 3; 
+        #Start Lambda section
         echo "For multiselection press TAB on each lambda in the list" && sleep 5
 
         # Get Lambda List
@@ -112,14 +104,14 @@ if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]
         # Execute multiselection
         selection=$(echo "$lambdas" | fzf -m)
 
-        # Stop all selected Lambda
+        # Remove throttling in all selected Lambda
         for lambda in $selection; do
-        aws ${aws_command_base_args} lambda put-function-concurrency --reserved-concurrent-executions 0 --function-name "$lambda"  && echo "The lambda $lambda was stopped"  >> output/output_shutdown_lambda.log ;
+        aws ${aws_command_base_args} lambda delete-function-concurrency  --function-name "$lambda"  && echo "The function-concurrency on $lambda was deleted"  >> output/output_startup_lambda.log ;
         done
-        echo "All Lambdas are been stopped check the output log"
+        echo "All function-concurrency are been removed check the output log"
     
-    echo "SECOND STEP = > SET DESIRE COUNT TO ZERO IN ALL MICROSERVICE IN A CLUSTER" && sleep 3;
-        #Stop Microservice section
+    echo "SECOND STEP = > SET DESIRE COUNT TO THE MINIUM DESIRE TASK IN ALL MICROSERVICE IN A CLUSTER" && sleep 3;
+        #Start Microservice section
         echo "For multiselection press TAB on each cluster in the list" && sleep 5
 
         # Get Cluster ECS list
@@ -128,9 +120,20 @@ if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]
         # Execute multiselection
         selection_c=$(echo "$cluster" | fzf -m)
 
-        # Stop all microservices within the selected ECS clusters
+        # Start all microservices within the selected ECS clusters
         for cluster in $selection_c; do
-        aws ${aws_command_base_args} ecs list-services --cluster $cluster  --output text  | awk '{print $2}'  | cut -d "/" -f 3 | while read -r service; do aws ${aws_command_base_args} ecs update-service --cluster $cluster  --service $service --desired-count 0 >> output/output_shutdown_ecs.log; done ; echo "All microservices of the $cluster are stopped, check the output"
+           aws ${aws_command_base_args} ecs list-services --cluster $cluster  --output text  | awk '{print $2}'  | cut -d ":" -f 6 | while read -r service; 
+              do aws ${aws_command_base_args} application-autoscaling describe-scalable-targets --service-namespace ecs --resource-ids $service  |  jq -r '.ScalableTargets[].MinCapacity // "empty"' | while read -r mintasks; do
+                 #if scalable-targets isn't present, set desire count to 1
+                 if [ "$mintasks" = "empty" ] ; then
+                 aws ${aws_command_base_args} ecs update-service --cluster $cluster  --service $(echo "$service" | cut -d "/" -f 3) --desired-count 1  >> output/output_startup_ecs.log ; 
+                 #else set desire count like minium number of task
+                 else
+                 aws ${aws_command_base_args} ecs update-service --cluster $cluster  --service $(echo "$service" | cut -d "/" -f 3) --desired-count $mintasks >> output/output_startup_ecs.log; 
+                 fi
+                 done; 
+              done; 
+        echo "Desire tasks for all microservices of the $cluster are been set like minium task number, check the output"
         done
     else
       exit 0

@@ -1,0 +1,6 @@
+The function-concurrency on pn-preSignedUrlGenerator was deleted
+The function-concurrency on pn-ApiKeyAuthorizerV2Lambda was deleted
+The function-concurrency on pn-tokenExchangeLambda was deleted
+The function-concurrency on pn-jwtAuthorizerLambda was deleted
+The function-concurrency on pn-backofficeAuthorizerLambda was deleted
+The function-concurrency on PnCoreEventBusMatchedEventLogger was deleted
