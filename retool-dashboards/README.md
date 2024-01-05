@@ -21,13 +21,14 @@ Nel caso in cui il token di sessione AWS scada, è possibile rinnovarlo eseguend
 ```
 
 Il servizio è disponibile su [localhost:3000](http://localhost:3000). 
+
 Utilizzare le seguenti credenziali: email send@pagopa.it e password send1234.
 
 ## Scripts
 ### `docker_up_profile.sh`
-Questo script è utilizzato per avviare il deployment di Retool con la possibilità di ripristinare il database. Sostituisci <aws-profile> con l'account SSO desiderato (ad esempio, sso_pn-core-dev). L'opzione --restore_db è facoltativa e consente di eseguire il ripristino del database.
+Avvia il deployment di Retool con la possibilità di ripristinare il database da `./pg_backups/backup.sql`. Sostituire `<SSO_PROFILE>` con l'account SSO desiderato (ad esempio, sso_pn-core-dev).
 
-Usage: `./docker_up_profile.sh <aws-profile> [--restore_db]`
+Usage: `./docker_up_profile.sh <SSO_PROFILE> [--restore_db]`
 
 
 ### `docker_setup.sh`
