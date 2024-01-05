@@ -136,10 +136,15 @@ public class CostMap {
 
                 CostDTO costDTO = new CostDTO();
                 costDTO.setDriverCode(costEntry.getRecapitista().contains("FSU") ? "FSU": costEntry.getRecapitista().replaceAll("[^\\w]", "").toUpperCase());
-                costDTO.setPrice(costEntry.getCostoRecapitistaPerPeso().get(20).divide(new BigDecimal(100)));
-                costDTO.setPriceAdditional(costEntry.getConsolidatoreCostoFogliOltreIlPrimo().divide(new BigDecimal(100)));
+                costDTO.setPrice(toEuroFromEuroCent(costEntry.getCostoRecapitistaPerPeso().get(20)));
+                costDTO.setPrice50(toEuroFromEuroCent(costEntry.getCostoRecapitistaPerPeso().get(50)));
+                costDTO.setPrice100(toEuroFromEuroCent(costEntry.getCostoRecapitistaPerPeso().get(100)));
+                costDTO.setPrice250(toEuroFromEuroCent(costEntry.getCostoRecapitistaPerPeso().get(250)));
+                costDTO.setPrice350(toEuroFromEuroCent(costEntry.getCostoRecapitistaPerPeso().get(350)));
+                costDTO.setPrice1000(toEuroFromEuroCent(costEntry.getCostoRecapitistaPerPeso().get(1000)));
+                costDTO.setPrice2000(toEuroFromEuroCent(costEntry.getCostoRecapitistaPerPeso().get(2000)));
+                costDTO.setPriceAdditional(toEuroFromEuroCent(costEntry.getConsolidatoreCostoFogliOltreIlPrimo()));
                 costDTO.setProductType(ProductTypeEnumDto.fromValue(costEntry.getSvcType()));
-                //TODO: fix altro peso
                 distinctMap.put(key, costDTO);
 
             }
@@ -153,6 +158,10 @@ public class CostMap {
 
         }
         return distinctMap;
+    }
+
+    private BigDecimal toEuroFromEuroCent(BigDecimal euro){
+        return euro.divide(new BigDecimal(100));
     }
 
     private String computeTenderKey(PaperCostsOneProductType cost) {

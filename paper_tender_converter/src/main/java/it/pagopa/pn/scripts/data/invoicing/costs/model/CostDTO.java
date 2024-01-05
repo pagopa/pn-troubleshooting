@@ -17,6 +17,24 @@ public class CostDTO   {
     @JsonProperty("price")
     private BigDecimal price;
 
+    @JsonProperty("price50")
+    private BigDecimal price50;
+
+    @JsonProperty("price100")
+    private BigDecimal price100;
+
+    @JsonProperty("price250")
+    private BigDecimal price250;
+
+    @JsonProperty("price350")
+    private BigDecimal price350;
+
+    @JsonProperty("price1000")
+    private BigDecimal price1000;
+
+    @JsonProperty("price2000")
+    private BigDecimal price2000;
+
     @JsonProperty("priceAdditional")
     private BigDecimal priceAdditional;
 
@@ -139,4 +157,51 @@ public class CostDTO   {
         this.driverCode = driverCode;
     }
 
+    public BigDecimal getPrice50() {
+        return price50;
+    }
+
+    public void setPrice50(BigDecimal price50) {
+        this.price50 = price50;
+    }
+
+    public BigDecimal getPrice100() {
+        return price100;
+    }
+
+    public void setPrice100(BigDecimal price100) {
+        this.price100 = price100;
+    }
+
+    public BigDecimal getPrice250() {
+        return price250;
+    }
+
+    public void setPrice250(BigDecimal price250) {
+        this.price250 = price250;
+    }
+
+    public BigDecimal getPrice350() {
+        return price350;
+    }
+
+    public void setPrice350(BigDecimal price350) {
+        this.price350 = price350;
+    }
+
+    public BigDecimal getPrice1000() {
+        return price1000;
+    }
+
+    public void setPrice1000(BigDecimal price1000) {
+        this.price1000 = price1000;
+    }
+
+    public BigDecimal getPrice2000() {
+        return price2000;
+    }
+
+    public void setPrice2000(BigDecimal price2000) {
+        this.price2000 = price2000;
+    }
 }
