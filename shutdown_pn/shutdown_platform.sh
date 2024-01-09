@@ -95,6 +95,9 @@ echo "##########################################################################
 echo
 echo
 
+echo "create output directory if not exist"
+
+mkdir -p output
 
 read -p "Do you really want to proceed to stop services on the account $aws_profile? <y/N> " prompt
 if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]
