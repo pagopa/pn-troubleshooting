@@ -180,7 +180,14 @@ async function processSingleFile(file){
         await removeDeletionMarkerIfNeeded(fileKey)
         console.log("Deletion marker removed for file " + fileKey)
       } catch(err){
-        console.log("Deletion marker not found for file " + fileKey)
+        if(err.message.indexOf('Deletion marker not found ')===0){
+          console.log("Deletion marker not found for file " + fileKey)
+        } else {
+          throw err;
+        }
+      } finally {
+        await scheduleActions(json.iun)
+        console.log("Scheduled action for iun " + json.iun)
       }
     }
   }
