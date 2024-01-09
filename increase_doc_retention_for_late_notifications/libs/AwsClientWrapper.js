@@ -1,6 +1,6 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { S3Client, HeadObjectCommand, RestoreObjectCommand } = require("@aws-sdk/client-s3"); 
+const { S3Client, HeadObjectCommand, ListObjectVersionsCommand, RestoreObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3"); 
 const { DynamoDBClient, GetItemCommand  } = require("@aws-sdk/client-dynamodb");
 const { unmarshall } = require("@aws-sdk/util-dynamodb")
 
@@ -75,6 +75,34 @@ class AwsClientsWrapper {
     catch (error) {
       return error
     }
+  }
+
+  async _getDeletionMarkerVersion(bucketName, fileKey){
+    const input = {
+      Bucket: bucketName,
+      Key: fileKey
+    }
+    const command = new ListObjectVersionsCommand(input)
+    const res = await this._s3Client.send(command)
+
+    if(res.Versions && res.Versions.length > 0){
+      const version = res.Versions.find(el => el.IsLatest && el.IsDeleteMarker)
+      if(version){
+        return version.VersionId
+      }
+    }
+    return null
+  }
+
+  async _removeDeletionMarker(bucketName, fileKey, versionId){
+    const input = {
+      Bucket: bucketName,
+      Key: fileKey,
+      VersionId: versionId
+    }
+    const command = new DeleteObjectCommand(input)
+    const res = await this._s3Client.send(command)
+    return res
   }
 }
 
