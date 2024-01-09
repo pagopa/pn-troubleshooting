@@ -104,6 +104,51 @@ class AwsClientsWrapper {
     const res = await this._s3Client.send(command)
     return res
   }
+
+  async _updateItem(tableName, keyName, keyValue, updateExpression, expressionAttributeValues, envType = 'core'){
+    const input = {
+      TableName: tableName,
+      Key: {
+        [keyName]: keyValue
+      },
+      UpdateExpression: updateExpression,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ReturnValues: 'ALL_NEW'
+    }
+    const command = new UpdateItemCommand(input)
+    const dbClient = envType === 'confinfo' ? this._dynamoConfinfoClient : this._dynamoCoreClient
+    const res = await dbClient.send(command)
+    return res
+  }
+
+  async _createFutureActions(futureAction, action){
+    // wrap put item of futureAction in pn-FutureAction and action in pn-Action in a transaction 
+    // to ensure that both items are created or none of them
+
+    // putItems only if primary key does not exist
+    const input = {
+      TransactItems: [
+        {
+          Put: {
+            TableName: 'pn-FutureAction',
+            Item: futureAction,
+            ConditionExpression: 'attribute_not_exists(#timeSlot) and attribute_not_exists(#actionId)',
+          }
+        },
+        {
+          Put: {
+            TableName: 'pn-Action',
+            Item: action,
+            ConditionExpression: 'attribute_not_exists(#actionId)',
+          }
+        }
+      ]
+    }
+
+    const command = new TransactWriteItemsCommand(input)
+    const res = await this._dynamoConfinfoClient.send(command)
+    return res
+  }
 }
 
 exports.AwsClientsWrapper = AwsClientsWrapper;
