@@ -1,11 +1,11 @@
 package it.pagopa.pn.scripts.commands.datafixes.source_channel_details;
 
 import it.pagopa.pn.scripts.commands.CommandsMain;
-import it.pagopa.pn.scripts.commands.datafixes.CdcFixFunction;
+import it.pagopa.pn.scripts.commands.datafixes.JsonTransformFunction;
 import it.pagopa.pn.scripts.commands.utils.CdcFileParsedData;
 import it.pagopa.pn.scripts.commands.utils.LoadAndSaveCdcFile;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
-import it.pagopa.pn.scripts.commands.s3client.S3FileLister;
+import it.pagopa.pn.scripts.commands.aws.s3client.S3FileLister;
 import it.pagopa.pn.scripts.commands.utils.DateHoursStream;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -99,7 +99,7 @@ public class SourceChannelDetailsRedoCommand implements Callable<Integer> {
         return 0;
     }
 
-    private static CdcFileParsedData fixCdcData(CdcFileParsedData cdcData, CdcFixFunction fixer) {
+    private static CdcFileParsedData fixCdcData(CdcFileParsedData cdcData, JsonTransformFunction fixer) {
         List<List<JSONObject>> fixedCdcData = cdcData.stream()
                 .map( (line) ->
                     line.stream()

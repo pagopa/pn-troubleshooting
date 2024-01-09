@@ -13,6 +13,11 @@
     ),
     decoded_string AS (
       SELECT
+        get_json_object( json_string, '$.eventID') as kinesis_eventID,
+        json_string as kinesis_fullEvent,
+        get_json_object( json_string, '$.eventName') as kinesis_eventName,
+        get_json_object( json_string, '$.tableName') as kinesis_tableName,
+        get_json_object( json_string, '$.dynamodb.ApproximateCreationDateTime') as kinesis_dynamodb_ApproximateCreationDateTime,
         get_json_object( img, '$.iun.S') as iun,
         get_json_object( img, '$.cancelledByIun.S') as cancelledByIun,
         get_json_object( img, '$.cancelledIun.S') as cancelledIun,
@@ -69,16 +74,16 @@
                 'noticeCode', get_json_object(y, '$.noticeCode.S'),
                 'creditorTaxId', get_json_object(y, '$.creditorTaxId.S'),
                 'applyCost', get_json_object(y, '$.applyCost.BOOL'),
-                'pagoPaForm_contentType', get_json_object(x, '$.pagoPaForm.M.contentType.S'),
-                'pagoPaForm_digests_sha256', get_json_object(x, '$.pagoPaForm.M.digests.M.sha256.S'),
-                'pagoPaForm_ref_key', get_json_object(x, '$.pagoPaForm.M.ref.M.key.S'),
-                'pagoPaForm_ref_versionToken', get_json_object(x, '$.pagoPaForm.M.ref.M.versionToken.S'),
-                'f24_title', get_json_object(x, '$.f24.M.title.S'),
-                'f24_applyCost', get_json_object(x, '$.f24.M.applyCost.BOOL'),
-                'f24_contentType', get_json_object(x, '$.f24.M.metadataAttachment.M.contentType.S'),
-                'f24_digests_sha256', get_json_object(x, '$.f24.M.metadataAttachment.M.digests.M.sha256.S'),
-                'f24_ref_key', get_json_object(x, '$.f24.M.metadataAttachment.M.ref.M.key.S'),
-                'f24_ref_versionToken', get_json_object(x, '$.f24.M.metadataAttachment.M.ref.M.versionToken.S')
+                'pagoPaForm_contentType', get_json_object(y, '$.pagoPaForm.M.contentType.S'),
+                'pagoPaForm_digests_sha256', get_json_object(y, '$.pagoPaForm.M.digests.M.sha256.S'),
+                'pagoPaForm_ref_key', get_json_object(y, '$.pagoPaForm.M.ref.M.key.S'),
+                'pagoPaForm_ref_versionToken', get_json_object(y, '$.pagoPaForm.M.ref.M.versionToken.S'),
+                'f24_title', get_json_object(y, '$.f24.M.title.S'),
+                'f24_applyCost', get_json_object(y, '$.f24.M.applyCost.BOOL'),
+                'f24_contentType', get_json_object(y, '$.f24.M.metadataAttachment.M.contentType.S'),
+                'f24_digests_sha256', get_json_object(y, '$.f24.M.metadataAttachment.M.digests.M.sha256.S'),
+                'f24_ref_key', get_json_object(y, '$.f24.M.metadataAttachment.M.ref.M.key.S'),
+                'f24_ref_versionToken', get_json_object(y, '$.f24.M.metadataAttachment.M.ref.M.versionToken.S')
               )
             ), array() ),
             'recipientId', get_json_object(x, '$.recipientId.S'),
@@ -108,6 +113,69 @@
     ),
     decoded_string AS (
       SELECT
+        get_json_object( json_string, '$.eventID') as kinesis_eventID,
+        json_string as kinesis_fullEvent,
+        get_json_object( json_string, '$.eventName') as kinesis_eventName,
+        get_json_object( json_string, '$.tableName') as kinesis_tableName,
+        get_json_object( json_string, '$.dynamodb.ApproximateCreationDateTime') as kinesis_dynamodb_ApproximateCreationDateTime,
+        get_json_object( img, '$.iun.S') as iun,
+        get_json_object( img, '$.timelineElementId.S') as timelineElementId,
+        get_json_object( img, '$.category.S') as category,
+        get_json_object( img, '$.details.M') as details_str,
+        get_json_object( img, '$.notificationSentAt.S') as notificationSentAt,
+        get_json_object( img, '$.paId.S') as paId,
+        get_json_object( img, '$.timestamp.S') as tech_timestamp,
+        get_json_object( img, '$.statusInfo.M.actual.S') as statusInfo_actual,
+        get_json_object( img, '$.statusInfo.M.statusChanged.BOOL') as statusInfo_statusChanged,
+        get_json_object( img, '$.statusInfo.M.statusChangeTimestamp.S') as statusInfo_statusChangeTimestamp,
+        if(
+          json_array_length( get_json_object( img, '$.legalFactId.L')) > 0,
+          transform(
+            transform(
+              sequence(1, json_array_length( get_json_object( img, '$.legalFactId.L')) ,1),
+              x  -> get_json_object( img, concat('$.legalFactId.L[', x-1, '].M'))
+            ),
+            x -> named_struct(
+              "category", get_json_object(x, '$.category.S'),
+              "key", get_json_object(x, '$.key.S')
+            )
+          ),
+          array()
+        )
+         as legalFactIds
+      FROM
+        only_timeline_strings
+    )
+  SELECT
+    *
+  FROM
+    decoded_string
+;
+
+
+
+----------------------------------------------------------------------------
+-- pn-TimelinesForInvoicing
+  WITH
+    only_timeline_strings AS (
+      SELECT
+        json_string,
+        get_json_object(json_string, '$.dynamodb.NewImage') as img
+      FROM
+        json_objects_cdc
+    ),
+    decoded_string AS (
+      SELECT
+        get_json_object( json_string, '$.eventID') as kinesis_eventID,
+        json_string as kinesis_fullEvent,
+        get_json_object( json_string, '$.eventName') as kinesis_eventName,
+        get_json_object( json_string, '$.tableName') as kinesis_tableName,
+        get_json_object( json_string, '$.dynamodb.ApproximateCreationDateTime') as kinesis_dynamodb_ApproximateCreationDateTime,
+        get_json_object( img, '$.paId_invoicingDay.S') as paId_invoicingDay,
+        get_json_object( img, '$.invoincingTimestamp_timelineElementId.S') as invoincingTimestamp_timelineElementId,
+        get_json_object( img, '$.invoicingDay.S') as invoicingDay,
+        get_json_object( img, '$.invoincingTimestamp.S') as invoincingTimestamp,
+        get_json_object( img, '$.ttl.N') as ttl,
         get_json_object( img, '$.iun.S') as iun,
         get_json_object( img, '$.timelineElementId.S') as timelineElementId,
         get_json_object( img, '$.category.S') as category,

@@ -58,3 +58,24 @@
     FROM
       json_objects
 ;
+
+
+
+----------------------------------------------------------------------------
+-- pn-SsDocumenti
+    SELECT
+      get_json_object(json_string, '$.Metadata_WriteTimestampMicros') as Metadata_WriteTimestampMicros,
+      get_json_object(json_string, '$.Item.documentKey.S') as documentKey,
+      get_json_object(json_string, '$.Item.contentType.S') as contentType,
+      get_json_object(json_string, '$.Item.clientShortCode.S') as clientShortCode,
+      get_json_object(json_string, '$.Item.retentionUntil.S') as retentionUntil,
+      get_json_object(json_string, '$.Item.documentState.S') as documentState,
+      get_json_object(json_string, '$.Item.lastStatusChangeTimestamp.S') as lastStatusChangeTimestamp,
+      get_json_object(json_string, '$.Item.documentLogicalState.S') as documentLogicalState,
+      get_json_object(json_string, '$.Item.checkSum.S') as checkSum,
+      get_json_object(json_string, '$.Item.contentLenght.N') as contentLenght,
+      get_json_object(json_string, '$.Item.version.N') as version,
+      get_json_object(json_string, '$.Item.documentType.M.tipoDocumento.S') as documentType_tipoDocumento
+    FROM
+      json_objects
+;
