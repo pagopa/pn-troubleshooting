@@ -84,10 +84,8 @@ async function removeDeletionMarkerIfNeeded(fileKey){
   const isFileAvailable = await isFileAvailableInS3(bucketName, fileKey)
   if(!isFileAvailable){
     await removeDeletionMarker(fileKey, bucketName)
-    console.log('removed deletion marker for file ' + fileKey)
     await awsClient._updateItem('pn-SsDocumenti', 'documentKey', fileKey, 'set documentState = :documentState', { ':documentState': { 'S': 'attached' } }, 'confinfo')
-    console.log('updated pn-SsDocumenti ' + fileKey)
-    
+
     return {
       fileKey: fileKey,
       deletionMarkerRemoved: true
@@ -144,7 +142,7 @@ pn-Action
 */
 async function scheduleActions(iun){
   // not before is the current date pluse 30 minutes
-  const notBefore = new Date(new Date() + 30 * 60 * 1000).toISOString()
+  const notBefore = new Date(new Date().getTime() + 30 * 60 * 1000).toISOString()
   const timeSlot = notBefore.substring(0, 16)
   // epoch timestamp 365 days from now
   const ttl = Math.floor(new Date(new Date().setFullYear(new Date().getFullYear() + 1)).getTime() / 1000) 
@@ -169,6 +167,10 @@ async function scheduleActions(iun){
   )
 }
 
+function appendJsonToFile(fileName, jsonData){
+  fs.appendFileSync(fileName, JSON.stringify(jsonData) + "\n")
+}
+
 async function processSingleFile(file){
   // the file is a \n separated json objects
   const fileContent = fs.readFileSync(file)
@@ -180,17 +182,24 @@ async function processSingleFile(file){
       const json = JSON.parse(line)
       const fileKey = json.fileKey
       try{
-        await removeDeletionMarkerIfNeeded(fileKey)
-        console.log("Deletion marker removed for file " + fileKey)
+        const delMarkerRes = await removeDeletionMarkerIfNeeded(fileKey)
+        appendJsonToFile('./files/log.json', delMarkerRes)
       } catch(err){
         if(err.message.indexOf('Deletion marker not found ')===0){
-          console.log("Deletion marker not found for file " + fileKey)
+          appendJsonToFile('./files/log.json', {
+            fileKey: fileKey,
+            deletionMarkerRemoved: false,
+            error: err.message
+          })
         } else {
           throw err;
         }
       } finally {
         await scheduleActions(json.iun)
-        console.log("Scheduled action for iun " + json.iun)
+        appendJsonToFile('./files/log.json', {
+          iun: json.iun,
+          scheduledAction: true
+        })
       }
     }
   }

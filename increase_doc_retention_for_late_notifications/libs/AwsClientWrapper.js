@@ -129,23 +129,16 @@ class AwsClientsWrapper {
       TransactItems: [
         {
           Put: {
-            TableName: 'pn-FutureAction',
-            Item: marshall(futureAction),
-            /*ConditionExpression: 'attribute_not_exists(#timeSlot) and attribute_not_exists(#actionId)',
-            ExpressionAttributeNames: {
-              '#timeSlot': 'timeSlot',
-              '#actionId': 'actionId'
-            }*/
+            TableName: 'pn-Action',
+            Item: marshall(action),
+            ConditionExpression: 'attribute_not_exists(actionId)'
           }
         },
         {
           Put: {
-            TableName: 'pn-Action',
-            Item: marshall(action),
-            /*ConditionExpression: 'attribute_not_exists(#actionId)',
-            ExpressionAttributeNames: {
-              '#actionId': 'actionId'
-            }*/
+            TableName: 'pn-FutureAction',
+            Item: marshall(futureAction),
+            ConditionExpression: 'attribute_not_exists(timeSlot) and attribute_not_exists(actionId)',
           }
         }
       ]
