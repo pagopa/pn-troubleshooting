@@ -59,7 +59,7 @@ const awsClient = new AwsClientsWrapper( envName );
 
 async function isFileAvailableInS3(bucketName, fileKey){
   try {
-    awsClient._checkS3Exists(bucketName, fileKey)
+    await awsClient._checkS3Exists(bucketName, fileKey)
     return true
   } catch(err){
     if(err.name == 'NotFound'){
@@ -76,15 +76,18 @@ async function removeDeletionMarker(fileKey, bucketName){
       throw new Error("Deletion marker not found for file " + fileKey)
   }
 
-  await awsClient._removeDeletionMarker(fileKey, bucketName, version)
+  await awsClient._removeDeletionMarker(bucketName, fileKey, version)
 }
 
 
 async function removeDeletionMarkerIfNeeded(fileKey){
   const isFileAvailable = await isFileAvailableInS3(bucketName, fileKey)
   if(!isFileAvailable){
-    await removeDeletionMarker(awsClient, fileKey, bucketName)
-    await awsClient._updateItem('pn-SsDocumenti', 'documentKey', fileKey, 'set documentState = :documentState', { ':documentState': 'attached' }, 'confinfo')
+    await removeDeletionMarker(fileKey, bucketName)
+    console.log('removed deletion marker for file ' + fileKey)
+    await awsClient._updateItem('pn-SsDocumenti', 'documentKey', fileKey, 'set documentState = :documentState', { ':documentState': { 'S': 'attached' } }, 'confinfo')
+    console.log('updated pn-SsDocumenti ' + fileKey)
+    
     return {
       fileKey: fileKey,
       deletionMarkerRemoved: true
@@ -203,7 +206,7 @@ async function main() {
 
   for(let i = 0; i < jsonFiles.length; i++){
     const file = jsonFiles[i]
-    await processSingleFile(file)
+    await processSingleFile(directory+'/'+file)
   }
 }
 

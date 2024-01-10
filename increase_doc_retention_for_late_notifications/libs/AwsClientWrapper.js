@@ -1,8 +1,8 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { S3Client, HeadObjectCommand, ListObjectVersionsCommand, RestoreObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3"); 
-const { DynamoDBClient, GetItemCommand  } = require("@aws-sdk/client-dynamodb");
-const { unmarshall } = require("@aws-sdk/util-dynamodb")
+const { DynamoDBClient, GetItemCommand, UpdateItemCommand, TransactWriteItemsCommand  } = require("@aws-sdk/client-dynamodb");
+const { unmarshall, marshall } = require("@aws-sdk/util-dynamodb")
 
 function awsClientCfg( profile ) {
   const self = this;
@@ -80,18 +80,14 @@ class AwsClientsWrapper {
   async _getDeletionMarkerVersion(bucketName, fileKey){
     const input = {
       Bucket: bucketName,
-      Key: fileKey
+      Prefix: fileKey
     }
     const command = new ListObjectVersionsCommand(input)
     const res = await this._s3Client.send(command)
 
-    if(res.Versions && res.Versions.length > 0){
-      const version = res.Versions.find(el => el.IsLatest && el.IsDeleteMarker)
-      if(version){
-        return version.VersionId
-      }
-    }
-    return null
+    const versionId = res.DeleteMarkers?.find(el => el.Key === fileKey && el.IsLatest === true )?.VersionId
+    console.log('versionId', versionId)
+    return versionId
   }
 
   async _removeDeletionMarker(bucketName, fileKey, versionId){
@@ -102,6 +98,7 @@ class AwsClientsWrapper {
     }
     const command = new DeleteObjectCommand(input)
     const res = await this._s3Client.send(command)
+    console.log('res', res)
     return res
   }
 
@@ -109,12 +106,14 @@ class AwsClientsWrapper {
     const input = {
       TableName: tableName,
       Key: {
-        [keyName]: keyValue
+        [keyName]: marshall(keyValue)
       },
       UpdateExpression: updateExpression,
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: 'ALL_NEW'
     }
+
+    console.log('input', input)
     const command = new UpdateItemCommand(input)
     const dbClient = envType === 'confinfo' ? this._dynamoConfinfoClient : this._dynamoCoreClient
     const res = await dbClient.send(command)
@@ -131,22 +130,29 @@ class AwsClientsWrapper {
         {
           Put: {
             TableName: 'pn-FutureAction',
-            Item: futureAction,
-            ConditionExpression: 'attribute_not_exists(#timeSlot) and attribute_not_exists(#actionId)',
+            Item: marshall(futureAction),
+            /*ConditionExpression: 'attribute_not_exists(#timeSlot) and attribute_not_exists(#actionId)',
+            ExpressionAttributeNames: {
+              '#timeSlot': 'timeSlot',
+              '#actionId': 'actionId'
+            }*/
           }
         },
         {
           Put: {
             TableName: 'pn-Action',
-            Item: action,
-            ConditionExpression: 'attribute_not_exists(#actionId)',
+            Item: marshall(action),
+            /*ConditionExpression: 'attribute_not_exists(#actionId)',
+            ExpressionAttributeNames: {
+              '#actionId': 'actionId'
+            }*/
           }
         }
       ]
     }
 
     const command = new TransactWriteItemsCommand(input)
-    const res = await this._dynamoConfinfoClient.send(command)
+    const res = await this._dynamoCoreClient.send(command)
     return res
   }
 }
