@@ -79,7 +79,7 @@ def get_timelines(iuns: list[str]) -> list:
         if len(items) > 0:
             # for each item in the timeline, add it to the new_element["timeline"] array
             for item in items:
-                if older_than and time_older_than[:10] >= item['timestamp']['S'][:10]:
+                if older_than and time_older_than[:10] > item['timestamp']['S'][:10]:
                     continue
                 timeline_element_id = item['timelineElementId']['S']
                 category = item['category']['S']
