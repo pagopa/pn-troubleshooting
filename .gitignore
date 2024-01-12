@@ -57,3 +57,7 @@ data_extractor/results
 replace_certificate/backup
 
 legal_conservation_error_extractor/result
+**/backup
+**/file
+**/result
+**/results

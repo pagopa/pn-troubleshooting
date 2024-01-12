@@ -183,3 +183,9 @@ Vuoi recuperare informazioni riguardanti la PA mittente di uno IUN?
 ```bash  
 node index.js --envName <envName> --fileName <fileName>
 ```
+
+### retrieve_iun_from_file
+Vuoi recuperare gli iun e Sender Denomination di una lista di filename?
+```bash  
+node index.js --envName <envName> --fileName <fileName> [--timing]
+```
