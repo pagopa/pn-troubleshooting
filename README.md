@@ -189,3 +189,10 @@ Vuoi recuperare gli iun e Sender Denomination di una lista di filename?
 ```bash  
 node index.js --envName <envName> --fileName <fileName> [--timing]
 ```
+
+### retrieve_taxid_by_ipacode
+Vuoi recuperare i taxid per una lista di ipacode fornita?
+```bash  
+node index.js --fileNameIpa <fileNameIpa> --fileNameDump <fileNameDump>
+```
+
