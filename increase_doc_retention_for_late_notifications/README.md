@@ -1,8 +1,8 @@
 # Increase doc retention
 
-Script che, dato in input un csv con la lista di IUN non perfezionati e la data di notifica:
-- verifica se vi sono documenti da ripristinare su s3 o per i quali è necessario allungare la retention
-- esegue l'operazione di ripristino o allungamento retention
+Script che, dato in input un json con la lista di IUN, la data di notifica e la lista di attachments:
+- verifica se vi sono documenti eliminati su s3 o per i quali è necessario allungare rimuovere il "deletion marker"
+- inserisce le azioni in pn-Action e pn-FutureAction affinché Delivery Push verifichi e allunghi la retention dei suddetti file
 
 ## Tabella dei Contenuti
 
@@ -12,15 +12,11 @@ Script che, dato in input un csv con la lista di IUN non perfezionati e la data 
 
 ## Descrizione
 
-Lo Script recupera, per ogni IUN, la lista di attachments e, per ognuno di essi, tramite una HeadObject sul bucket S3 fornito in input (il bucket di SafeStorage), verifica se il file sia ancora presente su s3.
-
-L'output dello script sono due file:
-- "notFound.json" che conterrà al lista di documenti non più disponibili su S3.
-- "s3.json" che conterrà la lista di documenti ancora disponibili su s3, indicando ancora l'expiration come riportata dalla chiamata ad S3
-
-Lo script, per i doc presenti in notFound.json, dovrà:
+Lo Script recupera, per ogni attachment, tramite una HeadObject sul bucket S3 fornito in input (il bucket di SafeStorage), verifica se il file sia ancora presente su s3. Nel caso in cui il documento sia eliminato, lo script:
 - eliminare il deletion marker su S3
 - aggiornare la tabella pn-SsDocumenti impostando la property documentState al valore "attached"
+
+Se il parametro scheduleAction è impostato, vengono anche creati i record in pn-Action e pn-FutureAction per l'azione CHECK_ATTACHMENT_RETENTION. Questo lascerà a Delivery Push l'onere di verificare la retention degli allegati e l'eventuale allungamento, oltre che la rischedulazione delle azioni.
 
 ## Installazione
 
@@ -37,10 +33,11 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash  
-node index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> --expiration <expiration>
+node index.js --envName <envName> --bucketName <bucketName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]
 ```
 Dove:
 - `<envName>` è l'environment si intende eseguire la procedura;
 - `<bucketName>` è il nome del bucket in cui si trovano i documenti;
-- `<fileName>` è il file-path del file che riporta gli IUN e i documenti associati;
-- `<expiration>` numeri di giorni per il quale si vuole allungare la retention (solo per i doc ancora su S3)
+- `<directory>` è la directory all'interno della quale inserire i file json;
+- `<delayOffset>` numero di minuti a partire dai quali programmare la action di Delivery Push
+- `<scheduleAction>` se impostato, verranno inserite le action in pn-FutureAction e pn-Action

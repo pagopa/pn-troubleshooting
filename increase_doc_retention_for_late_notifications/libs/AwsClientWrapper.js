@@ -1,6 +1,6 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { S3Client, HeadObjectCommand, ListObjectVersionsCommand, RestoreObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3"); 
+const { S3Client, HeadObjectCommand, ListObjectVersionsCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3"); 
 const { DynamoDBClient, GetItemCommand, UpdateItemCommand, TransactWriteItemsCommand  } = require("@aws-sdk/client-dynamodb");
 const { unmarshall, marshall } = require("@aws-sdk/util-dynamodb")
 
@@ -56,27 +56,6 @@ class AwsClientsWrapper {
     return res
   }
 
-  async _retrieveFromGlacier(bucketName, file, expiration, tier) {
-    const input = { // RestoreObjectRequest
-      Bucket: bucketName, // required
-      Key: file, // required
-      RestoreRequest: { // RestoreRequest
-        Days: expiration,
-        GlacierJobParameters: { // GlacierJobParameters
-          Tier: tier, // required
-        },
-      },
-    };
-    try {
-      const command = new RestoreObjectCommand(input);
-      const res = await this._s3Client.send(command);
-      return res;
-    }
-    catch (error) {
-      return error
-    }
-  }
-
   async _getDeletionMarkerVersion(bucketName, fileKey){
     const input = {
       Bucket: bucketName,
@@ -86,7 +65,6 @@ class AwsClientsWrapper {
     const res = await this._s3Client.send(command)
 
     const versionId = res.DeleteMarkers?.find(el => el.Key === fileKey && el.IsLatest === true )?.VersionId
-    console.log('versionId', versionId)
     return versionId
   }
 
@@ -98,7 +76,6 @@ class AwsClientsWrapper {
     }
     const command = new DeleteObjectCommand(input)
     const res = await this._s3Client.send(command)
-    console.log('res', res)
     return res
   }
 
@@ -113,7 +90,6 @@ class AwsClientsWrapper {
       ReturnValues: 'ALL_NEW'
     }
 
-    console.log('input', input)
     const command = new UpdateItemCommand(input)
     const dbClient = envType === 'confinfo' ? this._dynamoConfinfoClient : this._dynamoCoreClient
     const res = await dbClient.send(command)
