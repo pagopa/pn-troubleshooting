@@ -26,9 +26,9 @@ nel file `bi_or_not_bi/rstudio-server/.env`
 
 ##### FOR MAC M1 ONLY ######
 
-installare colima:  brew install colima
+installare colima:  "brew install colima"
 
-effettuare lo start di colima nel modo seguente:  colima start --arch aarch64 --vm-type=vz --vz-rosetta
+effettuare lo start di colima nel modo seguente:  "colima start --arch aarch64 --vm-type=vz --vz-rosetta"
 
-avviare il container
+avviare il container con la compatiblita' amd: "docker run --platform linux/amd64 --rm......"
 
