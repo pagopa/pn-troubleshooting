@@ -35,11 +35,11 @@ Dove:
 - `<timing>` indica se nel file è presente anche un time.
 
 il file deve essere fornito senza --timing 
-<FileName-0>
-<FileName-1>
-<FileName-2>
+PN_LEGAL_FACTS-a37e919ffa9c412sb82f1e7082c1bf13.pdf
+PN_LEGAL_FACTS-a37e919ffa9c412sb82f1e7082c1bqwe.pdf
+PN_LEGAL_FACTS-a37e919ffa9c412sb82f1e7082c1b123.pdf
 
 il file deve essere fornito con --timing 
-<FileName-0>|<timing-0>
-<FileName-1>|<timing-1>
-<FileName-2>|<timing-2>
+PN_LEGAL_FACTS-a37e919ffa9c412sb82f1e7082c1bf13.pdf|2024-01-12 13:17:51.097
+PN_LEGAL_FACTS-a37e919ffa9c4234b82f1e7082c1bf13.pdf|2024-01-09 13:17:51.097
+PN_LEGAL_FACTS-a37e919ffa9c4xsfb82f1e7082c1bf13.pdf|2024-01-07 13:17:51.097
