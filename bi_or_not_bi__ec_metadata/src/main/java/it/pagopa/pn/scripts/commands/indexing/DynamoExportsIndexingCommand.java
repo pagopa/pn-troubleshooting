@@ -2,7 +2,7 @@ package it.pagopa.pn.scripts.commands.indexing;
 
 import it.pagopa.pn.scripts.commands.CommandsMain;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
-import it.pagopa.pn.scripts.commands.s3client.S3FileLister;
+import it.pagopa.pn.scripts.commands.aws.s3client.S3FileLister;
 import it.pagopa.pn.scripts.commands.sparksql.SparkSqlWrapper;
 import it.pagopa.pn.scripts.commands.sparksql.SqlQueryMap;
 import it.pagopa.pn.scripts.commands.utils.DateHoursStream;
@@ -35,8 +35,8 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
 
     @ParentCommand
     CommandsMain parent;
-    @Option(names = {"--aws-profile"})
-    private String awsProfileName = "sso_pn-confinfo-prod";
+    @Option(names = {"--aws-profile"}, arity = "1")
+    private String awsProfileName = null;
 
     @Option(names = {"--aws-region"})
     private String awsRegionCode = "eu-south-1";
@@ -44,16 +44,19 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
     @Option(names = {"--data-chunk-size"})
     private int chunkSize = 100 * 1000;
 
-    @Option(names = {"--aws-bucket"})
-    private String bucketName = "dynamodb-export-350578575906-eu-south-1";
+    @Option(names = {"--aws-bucket"}, arity = "1")
+    private String bucketName = null;
 
-    @Option(names = {"--aws-folder-prefix"})
-    private String dynamoExportsAwsFolderPrefix = "pn-EcRichiesteMetadati/exports/inc2024/";
+    @Option(names = {"--aws-dynexport-folder-prefix"})
+    private String dynamoExportsAwsFolderPrefix = "%s/exports/inc2024/";
+    private String getIncrementalDynamoExportFolder( String incrementalName) {
+        return dynamoExportsAwsFolderPrefix.formatted( tableName ) + incrementalName + "/";
+    }
 
     @Option(names = {"--aws-full-export-folder-suffix"})
     private String fullDynamoExportFolderSuffix = "start";
     private String getFullDynamoExportFolder() {
-        return dynamoExportsAwsFolderPrefix + fullDynamoExportFolderSuffix + "/";
+        return getIncrementalDynamoExportFolder( fullDynamoExportFolderSuffix );
     }
 
     @Option(names = {"--aws-full-export-date"})
@@ -121,7 +124,7 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
             dates.forEachOrdered( date -> {
                 Stream<String> s3ContentsStream = s3.listObjectsWithPrefixAndRegExpContent(
                         bucketName,
-                        dynamoExportsAwsFolderPrefix + date.toString(""),
+                        getIncrementalDynamoExportFolder( date.toString("") ),
                         DYNAMO_EXPORT_DATA_FILE
                     );
 

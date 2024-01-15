@@ -1,5 +1,7 @@
 package it.pagopa.pn.scripts.commands;
 
+import it.pagopa.pn.scripts.commands.datafixes.JsonTransformFactoryCommand;
+import it.pagopa.pn.scripts.commands.datafixes.JsonTrasfromationHolder;
 import it.pagopa.pn.scripts.commands.datafixes.source_channel_details.SourceChannelDetailsRedoCommand;
 import it.pagopa.pn.scripts.commands.exports.ec_metadata.EcRichiesteMetadatiExportCommand;
 import it.pagopa.pn.scripts.commands.indexing.DoCdcIndexingCommand;
@@ -15,7 +17,8 @@ import java.nio.file.Paths;
         DynamoExportsIndexingCommand.class,
         EcRichiesteMetadatiExportCommand.class,
         DoCdcIndexingCommand.class,
-        SourceChannelDetailsRedoCommand.class
+        SourceChannelDetailsRedoCommand.class,
+        JsonTransformFactoryCommand.class
 })
 public class CommandsMain {
 
@@ -30,6 +33,10 @@ public class CommandsMain {
         return new CommandLine(new CommandsMain()).execute(args);
     }
 
+    private final JsonTrasfromationHolder jsonTransformations = new JsonTrasfromationHolder();
+    public JsonTrasfromationHolder getJsonTransformations() {
+        return jsonTransformations;
+    }
 
     @Option( names = {"--dynexp-indexed-data-folder"})
     private Path dynamoExportsIndexedOutputFolder =  Paths.get( "./out/indexed/dynexp" );

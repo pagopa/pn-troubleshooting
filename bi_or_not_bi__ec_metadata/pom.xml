@@ -39,7 +39,7 @@
                             --add-opens java.base/sun.nio.ch=ALL-UNNAMED
                             --add-opens java.base/sun.security.action=ALL-UNNAMED
                             --add-opens java.base/sun.util.calendar=ALL-UNNAMED
-                            -Xmx4g
+                            -Xmx8g
                         </argLine>
                     </configuration>
                 </plugin>
@@ -80,6 +80,11 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>cloudwatchlogs</artifactId>
+            <version>2.20.109</version>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>dynamodb</artifactId>
             <version>2.20.109</version>
         </dependency>
 

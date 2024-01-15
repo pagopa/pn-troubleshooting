@@ -3,6 +3,7 @@ package it.pagopa.pn.scripts.commands.datafixes.source_channel_details;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Objects;
 
@@ -13,7 +14,8 @@ public record IunDataFromLogEntry(
         boolean uidAreEquals,
         String sourceChannelDetails,
         boolean resolved,
-        String traceId
+        String traceId,
+        String logTimestamp
 ) {
 
     private static final String NOT_AVAILABLE_STRING = "N/A";
@@ -54,6 +56,10 @@ public record IunDataFromLogEntry(
                 resolved = true;
             }
 
+            Instant start = rowTimestampFieldToInstant( row, "start_time" );
+            Instant end = rowTimestampFieldToInstant( row, "end_time" );
+            String logTimestamp = start + " --- " + end;
+
             return new IunDataFromLogEntry(
                     notificationRequestId,
                     iun,
@@ -61,12 +67,17 @@ public record IunDataFromLogEntry(
                     uidAreEquals,
                     sourceChannelDetails,
                     resolved,
-                    row.getString("trace_id")
+                    row.getString("trace_id"),
+                    logTimestamp
             );
         }
         catch (JSONException exc ) {
             throw new RuntimeException( exc );
         }
+    }
+
+    private static Instant rowTimestampFieldToInstant(JSONObject row, String field) throws JSONException {
+        return Instant.ofEpochMilli(Long.parseLong(row.getString(field)));
     }
 
 }

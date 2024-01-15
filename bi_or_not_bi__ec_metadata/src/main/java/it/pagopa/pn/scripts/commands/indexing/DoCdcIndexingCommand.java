@@ -1,10 +1,11 @@
 package it.pagopa.pn.scripts.commands.indexing;
 
 import it.pagopa.pn.scripts.commands.CommandsMain;
+import it.pagopa.pn.scripts.commands.datafixes.JsonTrasfromationHolder;
 import it.pagopa.pn.scripts.commands.sparksql.SparkSqlWrapper;
 import it.pagopa.pn.scripts.commands.sparksql.SqlQueryMap;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
-import it.pagopa.pn.scripts.commands.s3client.S3FileLister;
+import it.pagopa.pn.scripts.commands.aws.s3client.S3FileLister;
 import it.pagopa.pn.scripts.commands.utils.DateHoursStream;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -26,14 +27,18 @@ public class DoCdcIndexingCommand implements Callable<Integer> {
     public static final String INDEXING_QUERIES_RESOURCE = "cdc_indexing_queries.sql";
     @ParentCommand
     CommandsMain parent;
-    @Option(names = {"--aws-profile"})
-    private String awsProfileName = "sso_pn-core-prod";
+    private JsonTrasfromationHolder getJsonTransformations() {
+        return this.parent.getJsonTransformations();
+    }
+
+    @Option(names = {"--aws-profile"}, arity = "1")
+    private String awsProfileName = null;
 
     @Option(names = {"--aws-region"})
     private String awsRegionCode = "eu-south-1";
 
-    @Option(names = {"--aws-bucket"})
-    private String bucketName = "pn-logs-bucket-eu-south-1-510769970275-001";
+    @Option(names = {"--aws-bucket"}, arity = "1")
+    private String bucketName = null;
 
     @Option(names = {"--aws-folder-prefix"})
     private String cdcFolderPrefix = "cdcTos3/TABLE_NAME_";
@@ -97,6 +102,7 @@ public class DoCdcIndexingCommand implements Callable<Integer> {
                 System.out.println( "## " + d.toString("-") + "_" + chunkId + " SIZE: " + dataChunk.size());
 
                 if (dataChunk.size() > 0) {
+                    dataChunk = getJsonTransformations().applyTransformation( dataChunk );
                     Runnable job = jobFactory.newJob(tableName, d, dataChunk, chunkId);
 
                     String jobName = tableName + "_" + d.toString("") + "_" + chunkId;
@@ -109,4 +115,5 @@ public class DoCdcIndexingCommand implements Callable<Integer> {
 
         return 0;
     }
+
 }

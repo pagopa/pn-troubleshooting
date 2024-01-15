@@ -1,29 +1,17 @@
 package it.pagopa.pn.scripts.commands.datafixes.source_channel_details;
 
-import it.pagopa.pn.scripts.commands.CommandsMain;
-import it.pagopa.pn.scripts.commands.datafixes.CdcFixFunction;
-import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
-import it.pagopa.pn.scripts.commands.s3client.S3FileLister;
+import it.pagopa.pn.scripts.commands.datafixes.JsonTransformFunction;
 import it.pagopa.pn.scripts.commands.utils.CdcFileParsedData;
-import it.pagopa.pn.scripts.commands.utils.DateHoursStream;
-import it.pagopa.pn.scripts.commands.utils.LoadAndSaveCdcFile;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-import picocli.CommandLine;
-import software.amazon.awssdk.services.s3.model.S3Object;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.stream.Stream;
 
-public class SourceChannelDetailsFixFunction implements CdcFixFunction {
+public class SourceChannelDetailsFixFunction implements JsonTransformFunction {
 
     private final SourceChannelDetailsFromLogCache logs;
 
@@ -35,9 +23,14 @@ public class SourceChannelDetailsFixFunction implements CdcFixFunction {
     public JSONObject apply( JSONObject inJsonObj ) {
         JSONObject result;
         try {
-            String iun = CdcFileParsedData.getNestedProperty( inJsonObj, "dynamodb.NewImage.iun.S");
+            String iun = "##";
+            if( CdcFileParsedData.checkNestedProperty( inJsonObj, "dynamodb.NewImage") ) {
+                iun = CdcFileParsedData.getNestedProperty( inJsonObj, "dynamodb.NewImage.iun.S");
+            }
 
             if( ! iun.contains("##") ) {
+
+                String sentAt = CdcFileParsedData.getNestedProperty( inJsonObj, "dynamodb.NewImage.sentAt.S");
 
                 String sourceChannel = CdcFileParsedData.getNestedProperty( inJsonObj, "dynamodb.NewImage.sourceChannel.S");
 
@@ -49,12 +42,12 @@ public class SourceChannelDetailsFixFunction implements CdcFixFunction {
 
                 if( "WEB".equals( sourceChannel) ) {
                     if( sourceChannelDetails != null ) {
-                        System.out.println( "== " + iun + " need to BE REMOVED");
+                        System.out.println( "== " + iun + " (sentAt: " + sentAt + ") need to BE REMOVED");
                         result = new JSONObject( inJsonObj.toString() );
                         CdcFileParsedData.removeNestedProperty( result, "dynamodb.NewImage.sourceChannelDetails" );
                     }
                     else {
-                        System.out.println( "== " + iun + " DO NOT need update" );
+                        System.out.println( "== " + iun + " (sentAt: " + sentAt + ") DO NOT need update" );
                         result = inJsonObj;
                     }
                 }
@@ -63,7 +56,7 @@ public class SourceChannelDetailsFixFunction implements CdcFixFunction {
                         result = updateSourceChannelDetails( inJsonObj, iun );
                     }
                     else {
-                        System.out.println( "== " + iun + " DO NOT need update" );
+                        System.out.println( "== " + iun + " (sentAt: " + sentAt + ") DO NOT need update" );
                         result = inJsonObj;
                     }
                 }
@@ -93,11 +86,11 @@ public class SourceChannelDetailsFixFunction implements CdcFixFunction {
 
             if( newSourceChannelDetails.isPresent() ) {
                 String newSourceChannelDetailsVal = newSourceChannelDetails.get();
-                System.out.println( "== " + iun + " need update to " + newSourceChannelDetailsVal );
+                System.out.println( "== " + iun + " (sentAt: " + sentAtString + ") need update to " + newSourceChannelDetailsVal );
                 CdcFileParsedData.setNestedProperty(jsonObj, "dynamodb.NewImage.sourceChannelDetails", newSourceChannelDetailsVal );
             }
             else {
-                System.out.println( "== " + iun + " need to BE REMOVED");
+                System.out.println( "== " + iun + " (sentAt: " + sentAtString + ") need to BE REMOVED");
                 CdcFileParsedData.removeNestedProperty(jsonObj, "dynamodb.NewImage.sourceChannelDetails");
             }
         }
