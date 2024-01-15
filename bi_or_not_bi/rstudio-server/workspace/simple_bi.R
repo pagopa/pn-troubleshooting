@@ -40,7 +40,7 @@ sdf_sql(sc, "
     json_apikey
 ")
 
-spark_read_csv( sc, "pdnd_purpouse_data", "file:///home/rstudio/workspace/data/pdnd__iscritti_pn.csv")
+spark_read_csv( sc, "pdnd_purpouse_data", "file:///home/rstudio/workspace/data/send_aggiornamento_comuni.csv")
 
 enti = sdf_collect( sdf_sql(sc, "
 SELECT
@@ -63,7 +63,7 @@ FROM
     WHERE
         a.pdnd = 'true'
       AND
-        instr(upper( f.stato_finalita), 'ATTIVO' ) > 0
+        instr(upper( f.stato_finalita_migliore), 'ATTIVO' ) > 0
   )
    as all_api_keys
 GROUP BY

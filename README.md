@@ -190,6 +190,12 @@ Vuoi recuperare gli iun e Sender Denomination di una lista di filename?
 node index.js --envName <envName> --fileName <fileName> [--timing]
 ```
 
+### increase_doc_retention_for_late_notifications
+Vuoi allungare la retention degli allegati di una o più notifiche? 
+```bash  
+node index.js --envName <envName> --bucketName <bucketName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]
+```
+
 ### retrieve_taxid_by_ipacode
 Vuoi recuperare i taxid per una lista di ipacode fornita?
 ```bash  
