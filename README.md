@@ -183,3 +183,9 @@ Vuoi recuperare informazioni riguardanti la PA mittente di uno IUN?
 ```bash  
 node index.js --envName <envName> --fileName <fileName>
 ```
+
+### increase_doc_retention_for_late_notifications
+Vuoi allungare la retention degli allegati di una o più notifiche? 
+```bash  
+node index.js --envName <envName> --bucketName <bucketName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]
+```
