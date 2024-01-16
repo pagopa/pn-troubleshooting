@@ -14,7 +14,14 @@ Parameters:
   Prefix:
     Type: String
     Description: String Prefix after S3Prefix
-    Default: export
+    Default: incremental2024
+  KmsDbArn:
+    Type: String
+    Default: "-"
+    Description: Kms key used by table
+
+Conditions:
+  HasKmsDbArn: !Not [ !Equals [ !Ref KmsDbArn, '-' ] ]
 
 Resources:
   ExportFunction:
@@ -36,10 +43,11 @@ Resources:
               dynamodb = boto3.client('dynamodb')
               dynamo_table_arn = os.environ['DynamoDBTableArn']
               current_date = datetime.now().strftime('%Y%m%d')
+              yesterday_date= (datetime.strptime(current_date, '%Y%m%d') - timedelta(days=1)).strftime('%Y%m%d')
               s3_bucket = os.environ['S3Bucket']
               s3_prefix = os.environ['S3Prefix']
               prefix = os.environ['Prefix']
-              s3_full_prefix = s3_prefix + "/" + prefix + "/" + current_date
+              s3_full_prefix = s3_prefix + "/" + prefix + "/" + yesterday_date
               now = datetime.now()
               to_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
               from_time = to_time - timedelta(days=1)
@@ -106,7 +114,14 @@ Resources:
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
                 Resource: arn:aws:logs:*:*:*
-
+              - 'Fn::If':
+                  - HasKmsDbArn
+                  - Effect: Allow
+                    Action:
+                      - "kms:Decrypt"
+                    Resource:
+                      - !Ref KmsDbArn
+                  - !Ref AWS::NoValue
 
   Schedule:
     Type: AWS::Events::Rule
@@ -127,7 +142,7 @@ Resources:
 
   ExportFunctionLogroup:
     Type: AWS::Logs::LogGroup
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
     UpdateReplacePolicy : Delete
     Properties:
       LogGroupName: !Sub "/aws/lambda/${ExportFunction}"
