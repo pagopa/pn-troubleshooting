@@ -54,11 +54,11 @@ async function main() {
 
   _checkingParameters(args, values)
   const awsClient = new AwsClientsWrapper( envName );
+  const tableName = 'pn-SsDocumenti'
   const filesKey = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
   const listBuckets = await awsClient._getBucketLists();
   const usefullBucket = listBuckets.Buckets.filter((x) => x.Name.indexOf("safestorage")>0);
   for(file of filesKey) {
-    console.log("Verify " + file)
     var temp = {}
     for(bucket of usefullBucket) {
       try {
@@ -74,9 +74,21 @@ async function main() {
         return;
       }
       else {
-        console.log("Error! " + file)
+        console.log("Error S3! " + file)
       }
     })
+    try {
+      const d = await awsClient._queryRequest(tableName, 'documentKey', file, 'documentLogicalState, documentState')
+      if(d.Items[0].documentLogicalState.S == "SAVED" && d.Items[0].documentState.S == "available") {
+        console.log(file + " handled correctly!")
+      }
+      else {
+        console.log("Error Dynamo! " + file)
+      }
+    }
+    catch (e) {
+      console.log("Error Dynamo! " + e)
+    }
   }
 }
 
