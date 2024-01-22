@@ -67,6 +67,7 @@ public class EcRichiesteMetadatiExportCommand implements Callable<Integer> {
 
         // - Read indexed data
         spark.readParquetTable( parent.getEcMetadataIndexedOutputFolder(), "ec_metadata__fromfile" );
+        spark.readParquetTable( parent.getCdcIndexedOutputFolder().resolve("pn-Timelines"), "timelines" );
 
         // - Execute all queries present in SQL file
         for( String queryName: queries.getQueriesNames() ) {
@@ -91,6 +92,18 @@ public class EcRichiesteMetadatiExportCommand implements Callable<Integer> {
         }
         categorizedSequencesTree.writeToJson( categorizedSequencesTreePath );
 
+        // - Export to parquet
+        spark.writeTableToParquet(
+                "all_paper_metadata_with_synthetic_select_list",
+                extractionOutputFolder.resolve("parquet")
+        );
+
+        // - Used saved parquet as a materialized view
+        spark.readParquetTable(
+                extractionOutputFolder.resolve("parquet"),
+                "all_paper_metadata_with_synthetic_select_list"
+            );
+
 
         // - Compute product and day cardinality; usefull for export aggregation
         Map<String, List<EcRichiesteMetadatiExportDayAggregator.CardinalityByProductAndDayRow>> daySummaries = spark
@@ -106,12 +119,6 @@ public class EcRichiesteMetadatiExportCommand implements Callable<Integer> {
         // - Decide which extraction have to do. Balancing number of files and file dimension
         Map<String, List<EcRichiesteMetadatiExportDayAggregator.ExtractionInterval>> extractionsByProduct;
         extractionsByProduct = extractionPolicy.computeExtractionsListFromSummary(daySummaries);
-
-        // - Export to parquet
-        spark.writeTableToParquet(
-                "all_paper_metadata_with_synthetic_select_list",
-                extractionOutputFolder.resolve("parquet")
-            );
 
         // - Do exports
         EcRichiesteMetadatiExportJobFactory jobFactory = EcRichiesteMetadatiExportJobFactory

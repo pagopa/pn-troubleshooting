@@ -30,7 +30,10 @@ function _checkingParameters(args, values){
 
 async function _writeInFile(result, filename ) {
   fs.mkdirSync("result", { recursive: true });
-  fs.writeFileSync('result/' + filename+'.json', JSON.stringify(result, null, 4), 'utf-8')
+  const str = result.map(el => {
+    return JSON.stringify(el, null)
+  }).join('\n')
+  fs.writeFileSync('result/' + filename+'.json', str, 'utf-8')
 }
 
 async function main() {

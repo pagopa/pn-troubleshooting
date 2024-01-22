@@ -23,7 +23,7 @@ public class SourceChannelDetailsFromLogCache {
 
             List<IunDataFromLogEntry> logs = logsClient.extractSourceChannelDetailsMassive(
                     creationTime.minusSeconds( 60 ),
-                    creationTime.plusSeconds( 15 * 60)
+                    creationTime.plusSeconds( 30 * 60)
             );
 
             logs.stream()

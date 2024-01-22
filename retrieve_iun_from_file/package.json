@@ -1,0 +1,15 @@
+{
+  "name": "retrieve_iun_from_file",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.473.0",
+    "@aws-sdk/util-dynamodb": "^3.473.0"
+  }
+}

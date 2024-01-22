@@ -16,12 +16,38 @@ create or replace temporary view all_paper_metadata_with_synthetic_select_list_n
     ec_metadata_last_update AS (
       SELECT
           l.ts,
-          e.*
+          e.*,
+          regexp_replace(
+            regexp_replace(
+              regexp_replace(
+                regexp_replace(
+                  e.requestId,
+                  '[^~]*~',
+                  ''
+                ),
+                'PREPARE_ANALOG',
+                'SEND_ANALOG'
+              ),
+              'PREPARE_SIMPLE_',
+              'SEND_SIMPLE_'
+            ),
+            '.PCRETRY_[0-9]+',
+            ''
+          )
+           as timelineElementId_computed
         FROM
           last_modification_by_request_id l
           LEFT JOIN ec_metadata__fromfile e
                  ON e.requestId = l.requestId
                     and l.ts = coalesce( cast(e.Metadata_WriteTimestampMicros as long), 0)
+    ),
+    ec_metadata_last_update_with_timeline AS (
+      select
+        e.*,
+        t.*
+      from
+        ec_metadata_last_update e
+        left join timelines t on e.timelineElementId_computed = t.timelineElementId
     )
   SELECT
     requestTimestamp,
@@ -116,9 +142,15 @@ create or replace temporary view all_paper_metadata_with_synthetic_select_list_n
           )
         ),
       ' ') as attachments,
-    requestId
+    requestId,
+    timelineElementId,
+    category,
+    cast( get_json_object( details_str, '$.numberOfPages.N') as integer)  as timeline_num_pages,
+    cast( get_json_object( details_str, '$.envelopeWeight.N') as integer) as timeline_weight,
+    get_json_object( details_str, '$.physicalAddress.M.zip.S') as timeline_zip,
+    get_json_object( details_str, '$.physicalAddress.M.foreignState.S') as timeline_state
   FROM
-    ec_metadata_last_update
+    ec_metadata_last_update_with_timeline
   WHERE
     paperMeta_productType is not null
 ;
@@ -146,7 +178,13 @@ create or replace temporary view all_paper_metadata_with_synthetic_select_list a
     a.fine_recapito_status,
     a.deliveryFailureCause,
     a.statuses_string,
-    a.requestId
+    a.requestId,
+    a.timelineElementId,
+    a.category,
+    a.timeline_num_pages,
+    a.timeline_weight,
+    a.timeline_zip,
+    a.timeline_state
   FROM
     all_paper_metadata_with_synthetic_select_list_no_class a
     LEFT JOIN categorized_sequences_no_arr c ON c.product = a.paperMeta_productType

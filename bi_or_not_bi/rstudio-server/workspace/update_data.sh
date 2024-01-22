@@ -33,7 +33,7 @@ aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
   --max-items 50000 \
   | jq -r '.Items| .[] | tojson' > apikey.jsons
 
-echo "- Download new CDC"
-aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
-    s3 sync "s3://${LOG_BUCKET}/cdcTos3/" cdc
+#echo "- Download new CDC"
+#aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
+#    s3 sync "s3://${LOG_BUCKET}/cdcTos3/" cdc
 
