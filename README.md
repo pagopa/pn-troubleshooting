@@ -202,3 +202,8 @@ Vuoi recuperare i taxid per una lista di ipacode fornita?
 node index.js --fileNameIpa <fileNameIpa> --fileNameDump <fileNameDump>
 ```
 
+### verify_ss_file_events
+Vuoi verificare che un file abbia seguito il corretto flusso di eventi in safestorage?
+```bash  
+node index.js --envName <envName> --fileName <fileName> 
+```
