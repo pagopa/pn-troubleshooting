@@ -193,7 +193,7 @@ node index.js --envName <envName> --fileName <fileName> [--timing]
 ### increase_doc_retention_for_late_notifications
 Vuoi allungare la retention degli allegati di una o più notifiche? 
 ```bash  
-node index.js --envName <envName> --bucketName <bucketName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]
+node index.js --envName <envName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]
 ```
 
 ### retrieve_taxid_by_ipacode
@@ -204,6 +204,12 @@ node index.js --fileNameIpa <fileNameIpa> --fileNameDump <fileNameDump>
 
 ### verify_ss_file_events
 Vuoi verificare che un file abbia seguito il corretto flusso di eventi in safestorage?
+```bash  
+node index.js --envName <envName> --fileName <fileName> 
+```
+
+### retrieve_attachments_from_iun
+Vuoi recuperare tutti gli attachments a partire da una lista di iun?
 ```bash  
 node index.js --envName <envName> --fileName <fileName> 
 ```

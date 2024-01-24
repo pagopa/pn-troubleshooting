@@ -4,7 +4,7 @@ const fs = require('fs');
 
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <envName> --bucketName <bucketName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]"
+  const usage = "Usage: index.js --envName <envName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -29,25 +29,23 @@ function _checkingParameters(args, values){
 }
 
 function appendJsonToFile(fileName, jsonData){
+  if(!fs.existsSync("files"))
+    fs.mkdirSync("files", { recursive: true });
   fs.appendFileSync(fileName, JSON.stringify(jsonData) + "\n")
 }
 
 const args = [
   { name: "envName", mandatory: true, subcommand: [] },
-  { name: "bucketName", mandatory: true, subcommand: [] },
   { name: "directory", mandatory: true, subcommand: [] },
   { name: "delayOffset", mandatory: false, subcommand: [] },
   { name: "scheduleAction", mandatory: false, subcommand: [] },
 ]
 const values = {
-  values: { envName, bucketName, directory, delayOffset, scheduleAction },
+  values: { envName, directory, delayOffset, scheduleAction },
 } = parseArgs({
   options: {
     envName: {
       type: "string", short: "e", default: undefined
-    },
-    bucketName: {
-      type: "string", short: "b", default: undefined
     },
     directory: {
       type: "string", short: "d", default: undefined
@@ -90,6 +88,8 @@ async function removeDeletionMarker(fileKey, bucketName){
 
 
 async function removeDeletionMarkerIfNeeded(fileKey){
+  const listBuckets = await awsClient._getBucketLists();
+  const bucketName = listBuckets.Buckets.filter((x) => x.Name.indexOf("safestorage")>0 && x.Name.indexOf("staging")<0)[0].Name;
   const isFileAvailable = await isFileAvailableInS3(bucketName, fileKey)
   if(!isFileAvailable){
     await removeDeletionMarker(fileKey, bucketName)
@@ -175,10 +175,6 @@ async function scheduleActions(iun, lineNumber){
     futureAction,
     action
   )
-}
-
-function appendJsonToFile(fileName, jsonData){
-  fs.appendFileSync(fileName, JSON.stringify(jsonData) + "\n")
 }
 
 async function processSingleFile(file){

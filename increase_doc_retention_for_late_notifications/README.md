@@ -33,11 +33,10 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash  
-node index.js --envName <envName> --bucketName <bucketName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]
+node index.js --envName <envName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]
 ```
 Dove:
 - `<envName>` è l'environment si intende eseguire la procedura;
-- `<bucketName>` è il nome del bucket in cui si trovano i documenti;
 - `<directory>` è la directory all'interno della quale inserire i file json;
 - `<delayOffset>` numero di minuti a partire dai quali programmare la action di Delivery Push
 - `<scheduleAction>` se impostato, verranno inserite le action in pn-FutureAction e pn-Action
