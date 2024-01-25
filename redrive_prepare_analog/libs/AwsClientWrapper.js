@@ -40,22 +40,26 @@ class AwsClientsWrapper {
     const command = new QueryCommand(input);
     return await this._dynamoClient.send(command);
   }
-  
-  async _sendSQSMessage(sqsName, message, delay){
+
+  async _getQueueURL(sqsName){
     const getUrlCommand = new GetQueueUrlCommand({ // SendMessageRequest
-        QueueName: sqsName, // required
-      });
-    const getUrlRes = await this._sqsClient.send(getUrlCommand);
-    if(getUrlRes['$metadata'].httpStatusCode == 200) {
-      const input = { // SendMessageRequest
-        QueueUrl: getUrlRes.QueueUrl, // required
-        MessageBody: JSON.stringify(message), // required
-        DelaySeconds: delay
-      }
-      const command = new SendMessageCommand(input);
-      //const response = await this._sqsClient.send(command);
-      //return response;
+      QueueName: sqsName, // required
+    });
+    const result = await this._sqsClient.send(getUrlCommand);
+    return result.QueueUrl
+  }
+
+  
+  async _sendSQSMessage(sqsUrl, message, delay){
+    const input = { // SendMessageRequest
+      QueueUrl: sqsUrl, // required
+      MessageBody: JSON.stringify(message), // required
+      DelaySeconds: delay
     }
+    console.log(input)
+    const command = new SendMessageCommand(input);
+    const response = await this._sqsClient.send(command);
+    return response;
   }
 }
 

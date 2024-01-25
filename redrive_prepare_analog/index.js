@@ -84,21 +84,27 @@ async function main() {
   _checkingParameters(args, values)
   const awsClient = new AwsClientsWrapper( envName );
   const requestIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
+  const batchSize = Math.floor( requestIds.length / (14*60));
+  const sqsUrl = await awsClient._getQueueURL("pn-external_channel_to_paper_channel");
+  let delay = 0;
   let index = 0;
   for(const requestId of requestIds ) {
-    index = index + 1;
-    const delay = Math.floor(index/10) * 10;
+    if(index%batchSize == 0) {
+      delay++
+    }
     const metadati = (await awsClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId, 'eventsList')).Items[0];
     for(const e of unmarshall(metadati).eventsList ) {
       if(e.paperProgrStatus.statusCode == 'RECAG012') {
         
-        const message = _prepareMessage(requestId, e.paperProgrStatus) //verificare se va bene 2024-01-25T14:30:48.228Z invece di 2024-01-18T11:37:15.157677598Z
-        if(dryrun){
-          await awsClient._sendSQSMessage("pn-external_channel_to_paper_channel", message, delay)
+        const message = _prepareMessage(requestId, e.paperProgrStatus); //verificare se va bene 2024-01-25T14:30:48.228Z invece di 2024-01-18T11:37:15.157677598Z
+        if(!dryrun){
+          await awsClient._sendSQSMessage(sqsUrl, message, delay);
         }
         appendJsonToFile("log.json", message)
+        break;
       }
     }
+    index = index + 1;
   }
 }
 
