@@ -4,7 +4,7 @@ const fs = require('fs');
 const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <envName> --fileName <fileName>"
+  const usage = "Usage: index.js --envName <envName> --fileName <fileName> [--dryrun]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -54,7 +54,7 @@ function _prepareMessage(requestId, event) {
 
 function appendJsonToFile(fileName, jsonData){
   fs.mkdirSync("results", { recursive: true });
-  fs.appendFileSync(fileName, JSON.stringify(jsonData) + "\n")
+  fs.appendFileSync("results/" + fileName, JSON.stringify(jsonData) + "\n")
 }
 
 
@@ -62,10 +62,11 @@ async function main() {
 
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
-    { name: "fileName", mandatory: true, subcommand: [] }
+    { name: "fileName", mandatory: true, subcommand: [] },
+    { name: "dryrun", mandatory: false, subcommand: [] }
   ]
   const values = {
-    values: { envName, fileName, timing },
+    values: { envName, fileName, dryrun },
   } = parseArgs({
     options: {
       envName: {
@@ -73,6 +74,9 @@ async function main() {
       },
       fileName: {
         type: "string", short: "f", default: undefined
+      },
+      dryrun: {
+        type: "boolean", short: "d", default: false
       }
     },
   });  
@@ -89,7 +93,9 @@ async function main() {
       if(e.paperProgrStatus.statusCode == 'RECAG012') {
         
         const message = _prepareMessage(requestId, e.paperProgrStatus) //verificare se va bene 2024-01-25T14:30:48.228Z invece di 2024-01-18T11:37:15.157677598Z
-        await awsClient._sendSQSMessage("pn-external_channel_to_paper_channel", message, delay)
+        if(dryrun){
+          await awsClient._sendSQSMessage("pn-external_channel_to_paper_channel", message, delay)
+        }
         appendJsonToFile("log.json", message)
       }
     }

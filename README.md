@@ -211,5 +211,5 @@ node index.js --envName <envName> --fileName <fileName>
 ### redrive_prepare_analog
 Vuoi reinviare eventi che sono bloccati con evento RECAG012?
 ```bash  
-node index.js --envName <envName> --fileName <fileName> 
+node index.js --envName <envName> --fileName <fileName> [--dryrun]
 ```
