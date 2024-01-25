@@ -60,7 +60,7 @@ async function main() {
     if (iun === '')
       continue
     try {
-      const attachments = (await awsClient._queryRequest("pn-Notifications", 'iun', iun, 'documents')).Items[0];
+      const attachments = (await awsClient._queryRequest("pn-Notifications", 'iun', iun, 'documents,recipients')).Items[0];
       const temp = {
         "iun": iun,
         "attachments": []
@@ -68,7 +68,17 @@ async function main() {
       for(const doc of unmarshall(attachments).documents) {
         temp.attachments.push(doc.ref.key)
       }
-      appendJsonToFile("results/attachments.txt", temp)
+      
+      for(const recipient of unmarshall(attachments).recipients) {
+        
+        if(recipient.payments != null) {
+          for(const payment of recipient.payments) {
+            payment.pagoPaForm ? temp.attachments.push(payment.pagoPaForm.ref.key) : null
+          }
+        }
+          
+      }
+      appendJsonToFile("results/attachments.json", temp)
     }
     catch (e) {
       console.log('IUN ' + iun + ' not present in pn-Notifications')
