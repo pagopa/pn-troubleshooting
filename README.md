@@ -207,3 +207,9 @@ Vuoi verificare che un file abbia seguito il corretto flusso di eventi in safest
 ```bash  
 node index.js --envName <envName> --fileName <fileName> 
 ```
+
+### redrive_prepare_analog
+Vuoi reinviare eventi che sono bloccati con evento RECAG012?
+```bash  
+node index.js --envName <envName> --fileName <fileName> 
+```
