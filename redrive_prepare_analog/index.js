@@ -52,11 +52,11 @@ function _prepareMessage(requestId, event) {
 
 }
 
-async function _writeInFile(result) {
-  fs.mkdirSync("result", { recursive: true });
-  const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
-  fs.writeFileSync('result/result.json', JSON.stringify(result, null, 4), 'utf-8')
+function appendJsonToFile(fileName, jsonData){
+  fs.mkdirSync("results", { recursive: true });
+  fs.appendFileSync(fileName, JSON.stringify(jsonData) + "\n")
 }
+
 
 async function main() {
 
@@ -83,14 +83,14 @@ async function main() {
   let index = 0;
   for(const requestId of requestIds ) {
     index = index + 1;
-    const delay = (index/10) * 2;
+    const delay = Math.floor(index/10) * 10;
     const metadati = (await awsClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId, 'eventsList')).Items[0];
     for(const e of unmarshall(metadati).eventsList ) {
       if(e.paperProgrStatus.statusCode == 'RECAG012') {
         
         const message = _prepareMessage(requestId, e.paperProgrStatus) //verificare se va bene 2024-01-25T14:30:48.228Z invece di 2024-01-18T11:37:15.157677598Z
-        console.log(message)
         await awsClient._sendSQSMessage("pn-external_channel_to_paper_channel", message, delay)
+        appendJsonToFile("log.json", message)
       }
     }
   }

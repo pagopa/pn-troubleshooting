@@ -53,9 +53,8 @@ class AwsClientsWrapper {
         DelaySeconds: delay
       }
       const command = new SendMessageCommand(input);
-      console.log(input)
-      //const response = await this._sqsClient.send(command);
-      //return response;
+      const response = await this._sqsClient.send(command);
+      return response;
     }
   }
 }
