@@ -28,7 +28,7 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash  
-node index.js --envName <envName> --fileName <fileName> 
+node index.js --envName <envName> --fileName <fileName> [--dryrun] 
 ```
 Dove:
 - `<envName>` è l'environment si intende eseguire la procedura;

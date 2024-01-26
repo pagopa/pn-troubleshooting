@@ -63,10 +63,11 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "dryrun", mandatory: false, subcommand: [] }
+    { name: "dryrun", mandatory: false, subcommand: [] },
+    { name: "test", mandatory: false, subcommand: [] }
   ]
   const values = {
-    values: { envName, fileName, dryrun },
+    values: { envName, fileName, dryrun, test },
   } = parseArgs({
     options: {
       envName: {
@@ -77,6 +78,9 @@ async function main() {
       },
       dryrun: {
         type: "boolean", short: "d", default: false
+      },
+      test: {
+        type: "boolean", short: "t", default: false
       }
     },
   });  
@@ -86,23 +90,42 @@ async function main() {
   const requestIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
   const batchSize = Math.floor( requestIds.length / (14*60));
   const sqsUrl = await awsClient._getQueueURL("pn-external_channel_to_paper_channel");
+  const date = new Date().toISOString();
   let delay = 0;
   let index = 0;
   for(const requestId of requestIds ) {
+    console.log("elaborating request id: " + requestId)
     if(index%batchSize == 0) {
       delay++
     }
     const metadati = (await awsClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId, 'eventsList')).Items[0];
-    for(const e of unmarshall(metadati).eventsList ) {
-      if(e.paperProgrStatus.statusCode == 'RECAG012') {
-        
-        const message = _prepareMessage(requestId, e.paperProgrStatus); //verificare se va bene 2024-01-25T14:30:48.228Z invece di 2024-01-18T11:37:15.157677598Z
-        if(!dryrun){
-          await awsClient._sendSQSMessage(sqsUrl, message, delay);
-        }
-        appendJsonToFile("log.json", message)
-        break;
+    const eventsList = unmarshall(metadati).eventsList
+    const idxResult = eventsList
+      .map((e, idx) => ({ e, idx }))
+      .filter(({ e }) => e.paperProgrStatus.statusCode == 'RECAG012')
+      .map(({ idx }) => idx);
+    if(test && index == 0) {
+      eventsList.push(eventsList[idxResult[0]])
+      idxResult.push(eventsList.length-1)
+    }
+    if(idxResult.length > 1) {
+      let messages = []
+      for( let i of idxResult) {
+        const message = _prepareMessage(requestId, eventsList[i].paperProgrStatus)
+        messages.push(message)
       }
+      const res = {
+        [requestId]: messages,
+      }
+      appendJsonToFile("mp" + envName + "_" + date + ".json", res)
+    }
+    else {
+      const e = eventsList[0]
+      const message = _prepareMessage(requestId, e.paperProgrStatus); 
+      if(!dryrun){
+        //await awsClient._sendSQSMessage(sqsUrl, message, delay);
+      }
+      appendJsonToFile("se" + envName + "_" + date + ".json", message)
     }
     index = index + 1;
   }
