@@ -1,6 +1,6 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { S3Client, HeadObjectCommand, ListObjectVersionsCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3"); 
+const { S3Client, HeadObjectCommand, ListObjectVersionsCommand, DeleteObjectCommand, ListBucketsCommand } = require("@aws-sdk/client-s3"); 
 const { DynamoDBClient, GetItemCommand, UpdateItemCommand, TransactWriteItemsCommand  } = require("@aws-sdk/client-dynamodb");
 const { unmarshall, marshall } = require("@aws-sdk/util-dynamodb")
 
@@ -94,6 +94,11 @@ class AwsClientsWrapper {
     const dbClient = envType === 'confinfo' ? this._dynamoConfinfoClient : this._dynamoCoreClient
     const res = await dbClient.send(command)
     return res
+  }
+
+  async _getBucketLists(){
+    const command = new ListBucketsCommand({});
+    return await this._s3Client.send(command);
   }
 
   async _createFutureActions(futureAction, action){
