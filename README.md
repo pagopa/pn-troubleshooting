@@ -213,3 +213,9 @@ Vuoi recuperare tutti gli attachments a partire da una lista di iun?
 ```bash  
 node index.js --envName <envName> --fileName <fileName> 
 ```
+
+# prepare_certificates_package
+Vuoi generare i file con i certificati da fornire ad AdE e InfoCamere?
+```bash  
+./index.sh <envName>
+```
