@@ -1,0 +1,16 @@
+{
+  "name": "retrieve_attachments_from_iun",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.496.0",
+    "@aws-sdk/credential-provider-ini": "^3.496.0",
+    "@aws-sdk/util-dynamodb": "^3.496.0"
+  }
+}

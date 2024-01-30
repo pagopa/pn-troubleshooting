@@ -193,7 +193,7 @@ node index.js --envName <envName> --fileName <fileName> [--timing]
 ### increase_doc_retention_for_late_notifications
 Vuoi allungare la retention degli allegati di una o più notifiche? 
 ```bash  
-node index.js --envName <envName> --bucketName <bucketName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]
+node index.js --envName <envName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]
 ```
 
 ### retrieve_taxid_by_ipacode
@@ -212,4 +212,16 @@ node index.js --envName <envName> --fileName <fileName>
 Vuoi reinviare eventi che sono bloccati con evento RECAG012?
 ```bash  
 node index.js --envName <envName> --fileName <fileName> [--dryrun]
+```
+
+### retrieve_attachments_from_iun
+Vuoi recuperare tutti gli attachments a partire da una lista di iun?
+```bash  
+node index.js --envName <envName> --fileName <fileName> 
+```
+
+# prepare_certificates_package
+Vuoi generare i file con i certificati da fornire ad AdE e InfoCamere?
+```bash  
+./index.sh <envName>
 ```

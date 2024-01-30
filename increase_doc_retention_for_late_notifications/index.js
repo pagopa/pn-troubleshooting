@@ -4,7 +4,7 @@ const fs = require('fs');
 
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <envName> --bucketName <bucketName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]"
+  const usage = "Usage: index.js --envName <envName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -29,25 +29,23 @@ function _checkingParameters(args, values){
 }
 
 function appendJsonToFile(fileName, jsonData){
+  if(!fs.existsSync("files"))
+    fs.mkdirSync("files", { recursive: true });
   fs.appendFileSync(fileName, JSON.stringify(jsonData) + "\n")
 }
 
 const args = [
   { name: "envName", mandatory: true, subcommand: [] },
-  { name: "bucketName", mandatory: true, subcommand: [] },
   { name: "directory", mandatory: true, subcommand: [] },
   { name: "delayOffset", mandatory: false, subcommand: [] },
   { name: "scheduleAction", mandatory: false, subcommand: [] },
 ]
 const values = {
-  values: { envName, bucketName, directory, delayOffset, scheduleAction },
+  values: { envName, directory, delayOffset, scheduleAction },
 } = parseArgs({
   options: {
     envName: {
       type: "string", short: "e", default: undefined
-    },
-    bucketName: {
-      type: "string", short: "b", default: undefined
     },
     directory: {
       type: "string", short: "d", default: undefined
@@ -89,7 +87,8 @@ async function removeDeletionMarker(fileKey, bucketName){
 }
 
 
-async function removeDeletionMarkerIfNeeded(fileKey){
+async function removeDeletionMarkerIfNeeded(fileKey, bucketName){
+  
   const isFileAvailable = await isFileAvailableInS3(bucketName, fileKey)
   if(!isFileAvailable){
     await removeDeletionMarker(fileKey, bucketName)
@@ -177,15 +176,12 @@ async function scheduleActions(iun, lineNumber){
   )
 }
 
-function appendJsonToFile(fileName, jsonData){
-  fs.appendFileSync(fileName, JSON.stringify(jsonData) + "\n")
-}
-
 async function processSingleFile(file){
   // the file is a \n separated json objects
   const fileContent = fs.readFileSync(file)
   const lines = fileContent.toString().split("\n")
-
+  const listBuckets = await awsClient._getBucketLists();
+  const bucketName = listBuckets.Buckets.filter((x) => x.Name.indexOf("safestorage")>0 && x.Name.indexOf("staging")<0)[0].Name;
   for(let i = 0; i < lines.length; i++){
     const line = lines[i]
     if(line.length > 0){
@@ -193,7 +189,7 @@ async function processSingleFile(file){
       for(let j=0; j<json.attachments.length; j++){
         const fileKey = json.attachments[j]
         try{
-          const delMarkerRes = await removeDeletionMarkerIfNeeded(fileKey)
+          const delMarkerRes = await removeDeletionMarkerIfNeeded(fileKey, bucketName)
           appendJsonToFile('./files/log.json', delMarkerRes)
         } catch(err){
           if(err.message.indexOf('Deletion marker not found ')===0){
