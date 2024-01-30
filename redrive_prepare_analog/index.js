@@ -67,7 +67,7 @@ async function main() {
     { name: "test", mandatory: false, subcommand: [] }
   ]
   const values = {
-    values: { envName, fileName, dryrun, test },
+    values: { envName, fileName, dryrun },
   } = parseArgs({
     options: {
       envName: {
@@ -79,9 +79,6 @@ async function main() {
       dryrun: {
         type: "boolean", short: "d", default: false
       },
-      test: {
-        type: "boolean", short: "t", default: false
-      }
     },
   });  
 
@@ -104,10 +101,6 @@ async function main() {
       .map((e, idx) => ({ e, idx }))
       .filter(({ e }) => e.paperProgrStatus.statusCode == 'RECAG012')
       .map(({ idx }) => idx);
-    if(test && index == 0) {
-      eventsList.push(eventsList[idxResult[0]])
-      idxResult.push(eventsList.length-1)
-    }
     if(idxResult.length > 1) {
       let messages = []
       for( let i of idxResult) {
@@ -119,13 +112,16 @@ async function main() {
       }
       appendJsonToFile("mp" + envName + "_" + date + ".json", res)
     }
-    else {
+    else if (idxResult.lenght == 1) {
       const e = eventsList[0]
       const message = _prepareMessage(requestId, e.paperProgrStatus); 
       if(!dryrun){
-        //await awsClient._sendSQSMessage(sqsUrl, message, delay);
+        await awsClient._sendSQSMessage(sqsUrl, message, delay);
       }
       appendJsonToFile("se" + envName + "_" + date + ".json", message)
+    }
+    else {
+      console.log("No RECAG012 found for requestID: " + requestId)
     }
     index = index + 1;
   }
