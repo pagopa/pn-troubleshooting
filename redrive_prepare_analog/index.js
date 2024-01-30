@@ -101,6 +101,7 @@ async function main() {
       .map((e, idx) => ({ e, idx }))
       .filter(({ e }) => e.paperProgrStatus.statusCode == 'RECAG012')
       .map(({ idx }) => idx);
+
     if(idxResult.length > 1) {
       let messages = []
       for( let i of idxResult) {
@@ -112,8 +113,8 @@ async function main() {
       }
       appendJsonToFile("mp" + envName + "_" + date + ".json", res)
     }
-    else if (idxResult.lenght == 1) {
-      const e = eventsList[0]
+    else if (idxResult.length == 1) {
+      const e = eventsList[idxResult[0]]
       const message = _prepareMessage(requestId, e.paperProgrStatus); 
       if(!dryrun){
         await awsClient._sendSQSMessage(sqsUrl, message, delay);
