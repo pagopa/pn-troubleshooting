@@ -47,7 +47,13 @@ def get_timelines(iuns: list[str]) -> list:
     read_from_db = []
     
     def read_info_for_one_iun_from_db( iun_and_index: dict) -> dict:
-        iun = iun_and_index['iun'].strip() # for removing spaces or newlines at ends
+        if "|" in iun_and_index['iun'].strip():
+            older_than = True
+            iun = iun_and_index['iun'].strip().split('|')[0]
+            time_older_than = iun_and_index['iun'].strip().split('|')[1]
+        else:
+            older_than = False
+            iun = iun_and_index['iun'].strip() # for removing spaces or newlines at ends
         idx = iun_and_index['idx']
         iuns_quantity = iun_and_index['tot']
         try:
@@ -73,6 +79,8 @@ def get_timelines(iuns: list[str]) -> list:
         if len(items) > 0:
             # for each item in the timeline, add it to the new_element["timeline"] array
             for item in items:
+                if older_than and time_older_than[:10] > item['timestamp']['S'][:10]:
+                    continue
                 timeline_element_id = item['timelineElementId']['S']
                 category = item['category']['S']
                 timestamp = item['timestamp']['S']
