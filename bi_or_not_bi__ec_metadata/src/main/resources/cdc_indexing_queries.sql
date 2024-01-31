@@ -39,7 +39,10 @@
         get_json_object( img, '$.subject.S') as subject,
         get_json_object( img, '$.taxonomyCode.S') as taxonomyCode,
         get_json_object( img, '$.amount.N') as amount,
-        get_json_object( img, '$.version.N') as version,
+        coalesce(
+          cast( get_json_object( img, '$.version.N') as varchar(10) ),
+          get_json_object( img, '$.version.S')
+        ) as version,
         transform(
           transform(
             sequence(1, json_array_length( get_json_object( img, '$.documents.L')) ,1),
@@ -191,7 +194,7 @@
           transform(
             transform(
               sequence(1, json_array_length( get_json_object( img, '$.legalFactId.L')) ,1),
-              x  -> get_json_object( img, concat('$.legalFactId.L[', x-1, '].M'))
+              x -> get_json_object( img, concat('$.legalFactId.L[', x-1, '].M'))
             ),
             x -> named_struct(
               "category", get_json_object(x, '$.category.S'),

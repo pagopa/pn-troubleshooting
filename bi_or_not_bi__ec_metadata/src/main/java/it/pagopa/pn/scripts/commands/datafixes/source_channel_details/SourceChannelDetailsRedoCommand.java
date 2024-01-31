@@ -5,7 +5,7 @@ import it.pagopa.pn.scripts.commands.datafixes.JsonTransformFunction;
 import it.pagopa.pn.scripts.commands.utils.CdcFileParsedData;
 import it.pagopa.pn.scripts.commands.utils.LoadAndSaveCdcFile;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
-import it.pagopa.pn.scripts.commands.aws.s3client.S3FileLister;
+import it.pagopa.pn.scripts.commands.aws.s3client.S3ClientWrapper;
 import it.pagopa.pn.scripts.commands.utils.DateHoursStream;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -61,7 +61,7 @@ public class SourceChannelDetailsRedoCommand implements Callable<Integer> {
     public Integer call() throws Exception {
         MsgListenerImpl logger = new MsgListenerImpl();
 
-        S3FileLister s3 = new S3FileLister( awsProfileName, awsRegionCode );
+        S3ClientWrapper s3 = new S3ClientWrapper( awsProfileName, awsRegionCode );
         s3.addListener(logger);
 
         SourceChannelDetailsFixFunction fixer = new SourceChannelDetailsFixFunction( awsProfileName, awsRegionCode  );
@@ -70,7 +70,8 @@ public class SourceChannelDetailsRedoCommand implements Callable<Integer> {
         Stream<DateHoursStream.DateHour> dates = DateHoursStream.stream(
                 DateHoursStream.DateHour.valueOf( fromDate, "-", true ),
                 DateHoursStream.DateHour.valueOf( toDate, "-", true ),
-                DateHoursStream.TimeUnitStep.HOUR
+                DateHoursStream.TimeUnitStep.HOUR,
+                true
         );
 
 

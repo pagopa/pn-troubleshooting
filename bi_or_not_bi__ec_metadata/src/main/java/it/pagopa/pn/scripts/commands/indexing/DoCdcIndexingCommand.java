@@ -5,14 +5,18 @@ import it.pagopa.pn.scripts.commands.datafixes.JsonTrasfromationHolder;
 import it.pagopa.pn.scripts.commands.sparksql.SparkSqlWrapper;
 import it.pagopa.pn.scripts.commands.sparksql.SqlQueryMap;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
-import it.pagopa.pn.scripts.commands.aws.s3client.S3FileLister;
+import it.pagopa.pn.scripts.commands.aws.s3client.S3ClientWrapper;
 import it.pagopa.pn.scripts.commands.utils.DateHoursStream;
+import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ParentCommand;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -27,12 +31,20 @@ public class DoCdcIndexingCommand implements Callable<Integer> {
     public static final String INDEXING_QUERIES_RESOURCE = "cdc_indexing_queries.sql";
     @ParentCommand
     CommandsMain parent;
+
+    @Option(names = {"--result-upload-url"})
+    private String baseUploadUrl = null;
+
     private JsonTrasfromationHolder getJsonTransformations() {
         return this.parent.getJsonTransformations();
     }
 
     @Option(names = {"--aws-profile"}, arity = "1")
     private String awsProfileName = null;
+
+    @Option(names = {"--not-after-today"} )
+    private boolean notAfterToday = true;
+
 
     @Option(names = {"--aws-region"})
     private String awsRegionCode = "eu-south-1";
@@ -69,7 +81,7 @@ public class DoCdcIndexingCommand implements Callable<Integer> {
         SparkSqlWrapper spark = SparkSqlWrapper.localMultiCore("CDC Indexing");
         spark.addListener(logger);
 
-        S3FileLister s3 = new S3FileLister(awsProfileName, awsRegionCode);
+        S3ClientWrapper s3 = new S3ClientWrapper(awsProfileName, awsRegionCode);
         //s3.addListener(logger);
 
         Path indexedOutputFolderPath = parent.getCdcIndexedOutputFolder();
@@ -79,41 +91,104 @@ public class DoCdcIndexingCommand implements Callable<Integer> {
         Stream<DateHoursStream.DateHour> dates = DateHoursStream.stream(
                 DateHoursStream.DateHour.valueOf( fromDate, "-" ),
                 DateHoursStream.DateHour.valueOf( toDate, "-" ),
-                DateHoursStream.TimeUnitStep.DAY
+                DateHoursStream.TimeUnitStep.DAY,
+                notAfterToday
             );
 
         dates.forEachOrdered( (d) -> {
             System.out.println(" ################ cdc indexing " + tableName + " " + d.toString("-"));
-            String prefix = cdcFolderPrefix + tableName + "/" + d.toString("/");
 
-            Stream<String> s3ContentsStream = s3.listObjectsWithPrefixAndRegExpContent(
-                    bucketName, prefix, ".*pn-cdcTos3.*" );
-            Stream<List<String>> chunkedJsonStream = chunkedStream(
-                    oneJsonObjectPerLine(s3ContentsStream),
-                    chunkSize
-            );
+            if( isMissingFromUploadDestination( jobFactory, d, s3) ) {
 
-            AtomicInteger chunkNumber = new AtomicInteger(0);
+                String prefix = cdcFolderPrefix + tableName + "/" + d.toString("/");
 
-            chunkedJsonStream.forEach(dataChunk -> {
+                Stream<String> s3ContentsStream = s3.listObjectsWithPrefixAndRegExpContent(
+                        bucketName, prefix, ".*pn-cdcTos3.*" );
+                Stream<List<String>> chunkedJsonStream = chunkedStream(
+                        oneJsonObjectPerLine(s3ContentsStream),
+                        chunkSize
+                );
 
-                String chunkId = "" + chunkNumber.getAndIncrement();
+                AtomicInteger chunkNumber = new AtomicInteger(0);
 
-                System.out.println( "## " + d.toString("-") + "_" + chunkId + " SIZE: " + dataChunk.size());
+                chunkedJsonStream.forEach(dataChunk -> {
 
-                if (dataChunk.size() > 0) {
-                    dataChunk = getJsonTransformations().applyTransformation( dataChunk );
-                    Runnable job = jobFactory.newJob(tableName, d, dataChunk, chunkId);
+                    String chunkId = "" + chunkNumber.getAndIncrement();
 
-                    String jobName = tableName + "_" + d.toString("") + "_" + chunkId;
-                    spark.addJob(jobName, job);
-                }
-            });
+                    System.out.println( "## " + d.toString("-") + "_" + chunkId + " SIZE: " + dataChunk.size());
+
+                    if (dataChunk.size() > 0) {
+                        dataChunk = getJsonTransformations().applyTransformation( dataChunk );
+                        JobWithOutput job = jobFactory.newJob(tableName, d, dataChunk, chunkId);
+
+                        String jobName = tableName + "_" + d.toString("") + "_" + chunkId;
+                        job = wrapWithUpload( job, s3 );
+                        spark.addJob(jobName, job);
+                    }
+                });
+            }
+
+
         });
 
         spark.shutdown( 5, TimeUnit.HOURS );
 
         return 0;
+    }
+
+    private boolean isMissingFromUploadDestination(CdcIndexingJobFactory jobFactory, DateHoursStream.DateHour d, S3ClientWrapper s3) {
+        Path outputPath = forecastOutputFolder( jobFactory, d );
+
+        boolean result;
+        if( StringUtils.isNotBlank( baseUploadUrl )) {
+            String destinationS3Url = computes3Url(outputPath);
+            if( ! destinationS3Url.endsWith("/") ) {
+                destinationS3Url += "/";
+            }
+
+            boolean isPresent = s3.listObjectsWithPrefix( destinationS3Url ).findAny().isPresent();
+            result = ! isPresent;
+        }
+        else {
+            result = true;
+        }
+        return result;
+    }
+
+
+    private JobWithOutput wrapWithUpload(JobWithOutput job, S3ClientWrapper s3) {
+        return new JobWithOutput() {
+            @Override
+            public Path outputFolder() {
+                return job.outputFolder();
+            }
+
+            @Override
+            public void run() {
+                job.run();
+
+                Path outputPath = job.outputFolder();
+                if( StringUtils.isNotBlank( baseUploadUrl ) ) {
+
+                    String destinationS3Url = computes3Url(outputPath);
+                    s3.upload(outputPath, destinationS3Url );
+                }
+            }
+        };
+    }
+
+    private Path forecastOutputFolder( CdcIndexingJobFactory jobFactory, DateHoursStream.DateHour d) {
+        return jobFactory.newJob(tableName, d, Collections.emptyList(), "0").outputFolder();
+    }
+
+    @NotNull
+    private String computes3Url(Path outputPath) {
+        String destinationS3Url = baseUploadUrl.trim();
+        if( ! baseUploadUrl.endsWith("/") ) {
+            destinationS3Url += "/";
+        }
+        destinationS3Url += getCdcIndexedOutputFolder().relativize(outputPath);
+        return destinationS3Url;
     }
 
 }

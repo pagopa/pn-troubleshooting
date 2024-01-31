@@ -35,14 +35,14 @@ public class CdcIndexingJobFactory {
         this.outputFolder = outputFolder;
     }
 
-    public Runnable newJob(String table, DateHoursStream.DateHour date, List<String> dataChunk, String chunkId ) {
+    public JobWithOutput newJob(String table, DateHoursStream.DateHour date, List<String> dataChunk, String chunkId ) {
         String tableOutputFolder = outputFolder + File.separator + table;
         String query = queries.getQuery( table );
 
         return new CdcIndexingJob( tableOutputFolder, table, date, dataChunk, chunkId, query, spark );
     }
 
-    private static class CdcIndexingJob implements Runnable {
+    private static class CdcIndexingJob implements JobWithOutput {
 
         private final String outputFolder;
         private final String table;
@@ -54,6 +54,8 @@ public class CdcIndexingJobFactory {
 
         private final String query;
 
+        private final Path partitionFolder;
+
         private final SparkSqlWrapper spark;
 
         public CdcIndexingJob(String outputFolder, String table, DateHoursStream.DateHour date, List<String> dataChunk, String chunkId, String query, SparkSqlWrapper spark) {
@@ -64,6 +66,17 @@ public class CdcIndexingJobFactory {
             this.chunkId = chunkId;
             this.query = query;
             this.spark = spark;
+
+            this.partitionFolder = Paths.get(outputFolder + File.separator +
+                    String.format(
+                            "cdcYear=%d%scdcMonth=%d%scdcDay=%d%s" ,
+                            date.getYear(),
+                            File.separator,
+                            date.getMonth(),
+                            File.separator,
+                            date.getDay(),
+                            File.separator
+                    ));
         }
 
         @Override
@@ -86,17 +99,7 @@ public class CdcIndexingJobFactory {
 
             try {
                 if( chunkId.equals("0") ) {
-                    String partitionFolder = outputFolder + File.separator +
-                            String.format(
-                                    "cdcYear=%d%scdcMonth=%d%scdcDay=%d%s" ,
-                                    date.getYear(),
-                                    File.separator,
-                                    date.getMonth(),
-                                    File.separator,
-                                    date.getDay(),
-                                    File.separator
-                            );
-                    PathsUtils.cleanFolder( Paths.get( partitionFolder) );
+                    PathsUtils.cleanFolder( partitionFolder );
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -113,6 +116,11 @@ public class CdcIndexingJobFactory {
 
             spark.removeTable( parsedDataTableName );
             spark.removeTable( jsonStringsTableName );
+        }
+
+        @Override
+        public Path outputFolder() {
+            return partitionFolder;
         }
     }
 }

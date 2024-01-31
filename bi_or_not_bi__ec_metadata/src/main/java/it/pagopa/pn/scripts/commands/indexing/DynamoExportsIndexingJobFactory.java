@@ -40,11 +40,11 @@ public class DynamoExportsIndexingJobFactory {
         this.outputFolder = outputFolder;
     }
 
-    public Runnable newJob( String dynamoExportName, int chunkId, List<String> dataChunk ) {
+    public JobWithOutput newJob( String dynamoExportName, int chunkId, List<String> dataChunk ) {
         return new DynamoExportsIndexingJob( outputFolder, chunkId, dataChunk, queries, spark, tableName, dynamoExportName );
     }
 
-    private static class DynamoExportsIndexingJob implements Runnable {
+    private static class DynamoExportsIndexingJob implements JobWithOutput {
 
         private final String outputFolder;
         private final int chunkId;
@@ -58,6 +58,8 @@ public class DynamoExportsIndexingJobFactory {
 
         private final String dynamoExportName;
 
+        private final Path exportFolder;
+
         DynamoExportsIndexingJob(String outputFolder, int chunkId, List<String> dataChunk, SqlQueryMap queries, SparkSqlWrapper spark, String tableName, String dynamoExportName) {
             this.outputFolder = outputFolder;
             this.chunkId = chunkId;
@@ -66,6 +68,7 @@ public class DynamoExportsIndexingJobFactory {
             this.spark = spark;
             this.tableName = tableName;
             this.dynamoExportName = dynamoExportName;
+            this.exportFolder = Paths.get( outputFolder ).resolve("dynamoExportName=" + dynamoExportName );
         }
 
 
@@ -91,7 +94,7 @@ public class DynamoExportsIndexingJobFactory {
 
             if( chunkId == 0 ) {
                 try {
-                    cleanFolder( Paths.get( outputFolder ).resolve("dynamoExportName=" + dynamoExportName ) );
+                    cleanFolder( exportFolder );
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -106,6 +109,11 @@ public class DynamoExportsIndexingJobFactory {
 
             spark.removeTable( parsedDataTableName );
             spark.removeTable( jsonStringsTableName );
+        }
+
+        @Override
+        public Path outputFolder() {
+            return exportFolder;
         }
     }
 }

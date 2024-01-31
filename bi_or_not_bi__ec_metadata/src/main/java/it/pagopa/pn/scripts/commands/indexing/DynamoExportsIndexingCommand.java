@@ -2,7 +2,7 @@ package it.pagopa.pn.scripts.commands.indexing;
 
 import it.pagopa.pn.scripts.commands.CommandsMain;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
-import it.pagopa.pn.scripts.commands.aws.s3client.S3FileLister;
+import it.pagopa.pn.scripts.commands.aws.s3client.S3ClientWrapper;
 import it.pagopa.pn.scripts.commands.sparksql.SparkSqlWrapper;
 import it.pagopa.pn.scripts.commands.sparksql.SqlQueryMap;
 import it.pagopa.pn.scripts.commands.utils.DateHoursStream;
@@ -60,7 +60,10 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
     }
 
     @Option(names = {"--aws-full-export-date"})
-    private String fullDynamoExportDate = "2023-12-31";
+    private String fullDynamoExportDate = null;
+
+    @Option(names = {"--not-after-today"} )
+    private boolean notAfterToday = true;
 
 
     @CommandLine.Parameters(index = "0", description = "Table Name")
@@ -83,7 +86,7 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
         SparkSqlWrapper spark = SparkSqlWrapper.localMultiCore( tableName + " Indexing");
         spark.addListener(logger);
 
-        S3FileLister s3 = new S3FileLister(awsProfileName, awsRegionCode);
+        S3ClientWrapper s3 = new S3ClientWrapper(awsProfileName, awsRegionCode);
         s3.addListener(logger);
 
         Path indexedOutputFolderPath = parent.getDynamoExportsIndexedOutputFolder();
@@ -118,7 +121,8 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
             Stream<DateHoursStream.DateHour> dates = DateHoursStream.stream(
                     incrementalFromDate,
                     DateHoursStream.DateHour.valueOf( toDate, "-" ),
-                    DateHoursStream.TimeUnitStep.DAY
+                    DateHoursStream.TimeUnitStep.DAY,
+                    notAfterToday
                 );
 
             dates.forEachOrdered( date -> {

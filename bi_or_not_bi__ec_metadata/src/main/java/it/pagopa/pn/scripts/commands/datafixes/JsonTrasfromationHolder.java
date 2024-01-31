@@ -3,26 +3,35 @@ package it.pagopa.pn.scripts.commands.datafixes;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class JsonTrasfromationHolder {
 
-    private final Map<String, JsonTransformFunction> transformations = new LinkedHashMap<>();
+    private final Map<String, JsonTransformInfo> transformations = new LinkedHashMap<>();
 
     public void remove( String transformationName ) {
         this.transformations.remove( transformationName );
     }
 
-    public void add( String transformationName, JsonTransformFunction jtf) {
-        this.transformations.put( transformationName, jtf );
+    public void add(String transformationName, JsonTransformFunction jtf, Collection<JsonTransformFlag> flags) {
+        this.transformations.put( transformationName, new JsonTransformInfo( jtf, new HashSet<>(flags)));
     }
 
     public JSONObject applyTransformation( JSONObject in ) {
         JSONObject result = in;
-        for( Map.Entry<String, JsonTransformFunction> entry: this.transformations.entrySet() ) {
-            result = entry.getValue().apply( result );
+        for( Map.Entry<String, JsonTransformInfo> entry: this.transformations.entrySet() ) {
+            JsonTransformInfo transformInfo = entry.getValue();
+            if( transformInfo.isLenient() ) {
+                try {
+                    result = transformInfo.function().apply( result );
+                }
+                catch ( RuntimeException exc ) {
+                    exc.printStackTrace();
+                }
+            }
+            else {
+                result = transformInfo.function().apply( result );
+            }
         }
         return result;
     }
@@ -48,6 +57,13 @@ public class JsonTrasfromationHolder {
         }
 
         return result;
+    }
+
+    private record JsonTransformInfo( JsonTransformFunction function, Set<JsonTransformFlag> flags ) {
+
+        public boolean isLenient() {
+            return flags != null && flags.contains( JsonTransformFlag.LENIENT );
+        }
     }
 
 }

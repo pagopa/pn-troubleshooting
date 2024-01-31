@@ -29,8 +29,11 @@ public class MainTest {
                 "dynamoExportsIndexing " +
                   "--aws-profile sso_pn-confinfo-prod " +
                   "--aws-bucket dynamodb-export-350578575906-eu-south-1 " +
-                  "pn-EcRichiesteMetadati";
-        String commandLine = indexEcMetadata + " 2024-1-7 2024-1-8 " ;
+                  "--aws-full-export-date 2024-1-15 " +
+                  "--aws-dynexport-folder-prefix %s/incremental202401/ " +
+                "pn-EcRichiesteMetadati";
+
+        String commandLine = indexEcMetadata + " 2024-1-1 2024-1-29 " ;
 
         int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
 
@@ -49,11 +52,10 @@ public class MainTest {
     @Test
     public void indexAndExportCdc() throws IOException {
         String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-prod --aws-bucket pn-logs-bucket-eu-south-1-510769970275-001";
-        String commandLine = indexCdcCore + " pn-Notifications 2024-1-7 2024-1-8 " +
-                indexCdcCore + " pn-Timelines 2024-1-7 2024-1-8 " ;
+        String commandLine = indexCdcCore + " pn-Notifications 2024-1-7 2024-1-15 " +
+                indexCdcCore + " pn-Timelines 2024-1-7 2024-1-15 " ;
 
         int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
-
         Assert.assertEquals( exitCode, 0 );
     }
 
@@ -76,7 +78,7 @@ public class MainTest {
                 "jsonTransform --aws-profile sso_pn-core-prod + fixSourceChannelDetails " +
                 indexCdcCore + " pn-Notifications 2023-12-1 2024-1-5 " +
                 "jsonTransform - fixSourceChannelDetails " +
-                indexCdcCore + " pn-Notifications 2024-1-5 2024-1-8 ";
+                indexCdcCore + " pn-Notifications 2024-1-5 2024-1-16 ";
 
         int exitCode = CommandsMain.doMain( repeatSubcommand.trim().split(" +"));
 
@@ -85,7 +87,8 @@ public class MainTest {
 
     //@Test
     public void exportTimelineWithFix() throws IOException {
-        String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-prod --aws-bucket pn-logs-bucket-eu-south-1-510769970275-001 ";
+        //String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-prod --aws-bucket pn-logs-bucket-eu-south-1-510769970275-001 ";
+        String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-dev --aws-bucket pn-logs-bucket-eu-south-1-830192246553-001 ";
 
         String repeatSubcommand = " --cdc-indexed-data-folder ./out/prove/cdc " +
                 "jsonTransform --aws-profile sso_pn-confinfo-prod + fixGeoKey " +

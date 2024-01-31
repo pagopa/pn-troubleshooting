@@ -5,7 +5,10 @@ import it.pagopa.pn.scripts.commands.datafixes.geokey_if_absent.GeoKeyFixFunctio
 import it.pagopa.pn.scripts.commands.datafixes.source_channel_details.SourceChannelDetailsFixFunction;
 import picocli.CommandLine;
 
+import java.util.Arrays;
+import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 @CommandLine.Command( name = "jsonTransform")
 public class JsonTransformFactoryCommand implements Callable<Integer> {
@@ -29,6 +32,15 @@ public class JsonTransformFactoryCommand implements Callable<Integer> {
     @CommandLine.Parameters( index = "1", description = "Transformation name")
     private String transformationName;
 
+    @CommandLine.Option( names = {"--flags"}, description = "Comma separated, no spaced, list of flags.\n LENIENT means \"ignore exceptions\"")
+    private String flags = "";
+
+    private Set<JsonTransformFlag> getFlagsSet() {
+        return Arrays.asList( flags.split(",")).stream()
+                .map( JsonTransformFlag::valueOf)
+                .collect(Collectors.toSet());
+    }
+
     @Override
     public Integer call() throws Exception {
         System.out.println("JsonTransformFactoryCommand " + operation + " " + transformationName);
@@ -37,7 +49,7 @@ public class JsonTransformFactoryCommand implements Callable<Integer> {
             case "-" -> getTransformationHolder().remove( transformationName );
             case "+" -> {
                 JsonTransformFunction jtf = newTransformationInstance( transformationName );
-                getTransformationHolder().add( transformationName, jtf);
+                getTransformationHolder().add( transformationName, jtf, getFlagsSet() );
             }
             default -> throw new IllegalArgumentException("Operation not supported: " + operation);
         }

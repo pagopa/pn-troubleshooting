@@ -16,6 +16,20 @@ public class Msg {
         return msg;
     }
 
+    public static Msg fileUploadStart( String fileName ) {
+        Msg msg = new Msg();
+        msg.msgType = MsgType.FILE_UPLOAD_START;
+        msg.text = fileName;
+        return msg;
+    }
+
+    public static Msg fileUploadEnd( String fileName ) {
+        Msg msg = new Msg();
+        msg.msgType = MsgType.FILE_UPLOAD_END;
+        msg.text = fileName;
+        return msg;
+    }
+
 
     public static Msg jobScheduled( String jobName ) {
         Msg msg = new Msg();
@@ -64,7 +78,9 @@ public class Msg {
         JOB_SCHEDULED,
         JOB_START,
         JOB_DONE,
-        CAPACITY_POLLING;
+        CAPACITY_POLLING,
+        FILE_UPLOAD_START,
+        FILE_UPLOAD_END;
     }
 
 }

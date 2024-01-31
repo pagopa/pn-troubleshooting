@@ -3,6 +3,7 @@ package it.pagopa.pn.scripts.commands.utils;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -12,16 +13,27 @@ import java.util.stream.Stream;
 
 public class DateHoursStream {
 
-    public static Stream<DateHour> stream(DateHour from, DateHour to, TimeUnitStep step ) {
+    public static Stream<DateHour> stream(DateHour from, DateHour to, TimeUnitStep step, boolean notAfterNow ) {
         if( from.hour < 0 && to.hour >= 0 || from.hour >= 0 && to.hour < 0 ) {
-            throw new IllegalArgumentException("Both date must be day trucated or not!");
+            throw new IllegalArgumentException("Both date must be day truncated or not!");
         }
+
+        LocalDateTime localNow = LocalDateTime.now();
+        DateHour now = DateHour.valueOf(
+                localNow.getYear(),
+                localNow.getMonthValue(),
+                localNow.getDayOfMonth(),
+                TimeUnitStep.HOUR.equals( step ) ? localNow.getHour() : 0
+            );
 
         LinkedList<DateHour> result = new LinkedList<>();
 
         DateHour cursor = from;
         while ( !cursor.equals( to ) ) {
-            result.add( cursor );
+
+            if( !notAfterNow || now.compareTo( cursor ) > 0 ) {
+                result.add( cursor );
+            }
             cursor = cursor.nextStep( step );
         }
 
