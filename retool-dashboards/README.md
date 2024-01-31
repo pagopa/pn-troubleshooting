@@ -12,7 +12,7 @@ Deployment Retool con restore database (sostituire `<SSO_PROFILE>` con l'account
 ```sh
 ./docker_up_profile.sh <SSO_PROFILE> --restore_db 
 ```
-Il backup `./pg_backups/backup.sql` contiene gli utenti e le dashboard salvate.
+Il backup `./pg_backups/backup.sql` contiene gli utenti e le risorse preconfigurate.
 
 Nel caso in cui il token di sessione AWS scada, è possibile rinnovarlo eseguendo nuovamente lo script senza l'opzione `--restore_db`. 
 
@@ -23,6 +23,8 @@ Nel caso in cui il token di sessione AWS scada, è possibile rinnovarlo eseguend
 Il servizio è disponibile su [localhost:3000](http://localhost:3000). 
 
 Utilizzare le seguenti credenziali: email send@pagopa.it e password send1234.
+
+Una volta autenticati, posizionarsi sul tab "Apps" e creare la dashboard da file JSON selezionando i file in `./dashboards`.
 
 ## Scripts
 ### `docker_up_profile.sh`
