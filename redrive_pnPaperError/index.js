@@ -132,10 +132,11 @@ async function main() {
   console.log('Reading from file...')
 
 
-  const fileData = JSON.parse(fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }));
-  for(let i = 0; i < fileData.length; i++){  //reinserire lunghezza di data.length
-    const requestId = fileData[i].requestId.S
-    const created = fileData[i].created.S
+  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+  for(let i = 0; i < fileRows.length; i++){
+    const fileData = JSON.parse(fileRows[i])
+    const requestId = fileData.requestId.S
+    const created = fileData.created.S
     console.log('Handling requestId: ' + requestId)
     let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
     if(res.addressType == 'DISCOVERED_ADDRESS'){
