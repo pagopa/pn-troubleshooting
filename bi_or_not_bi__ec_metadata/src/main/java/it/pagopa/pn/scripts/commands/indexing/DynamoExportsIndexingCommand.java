@@ -8,6 +8,7 @@ import it.pagopa.pn.scripts.commands.sparksql.SqlQueryMap;
 import it.pagopa.pn.scripts.commands.utils.DateHoursStream;
 import it.pagopa.pn.scripts.commands.utils.DateHoursStream.DateHour;
 import it.pagopa.pn.scripts.commands.utils.DateHoursStream.TimeUnitStep;
+import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import picocli.CommandLine;
@@ -17,7 +18,9 @@ import picocli.CommandLine.Option;
 
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -29,7 +32,7 @@ import static it.pagopa.pn.scripts.commands.utils.StreamUtils.chunkedStream;
 import static it.pagopa.pn.scripts.commands.utils.StreamUtils.oneJsonObjectPerLine;
 
 @Command(name = "dynamoExportsIndexing")
-public class DynamoExportsIndexingCommand implements Callable<Integer> {
+public class DynamoExportsIndexingCommand extends AbstractUploadSupport implements Callable<Integer> {
     public static final String INDEXING_QUERIES_RESOURCE = "dynamo_export_indexing_queries.sql";
     public static final String DYNAMO_EXPORT_DATA_FILE = "^.*/data/[^/]*.json.gz$";
 
@@ -47,6 +50,14 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
     @Option(names = {"--aws-bucket"}, arity = "1")
     private String bucketName = null;
 
+    @Option(names = {"--result-upload-url"})
+    private String baseUploadUrl = null;
+    @Override
+    protected String getBaseUploadUrl() {
+        return baseUploadUrl;
+    }
+
+
     @Option(names = {"--aws-dynexport-folder-prefix"})
     private String dynamoExportsAwsFolderPrefix = "%s/exports/inc2024/";
     private String getIncrementalDynamoExportFolder( String incrementalName) {
@@ -57,6 +68,11 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
     private String fullDynamoExportFolderSuffix = "start";
     private String getFullDynamoExportFolder() {
         return getIncrementalDynamoExportFolder( fullDynamoExportFolderSuffix );
+    }
+
+    @Override
+    protected Path getBaseOutputFolder() {
+        return parent.getDynamoExportsIndexedOutputFolder();
     }
 
     @Option(names = {"--aws-full-export-date"})
@@ -106,7 +122,7 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
                     chunkSize
             );
 
-            indexOneChunkedStream( spark, jobFactory, chunkedJsonStream, "full_export" );
+            indexOneChunkedStream( spark, jobFactory, chunkedJsonStream, "full_export", s3 );
         }
 
         if( endDateIsAfterFullExportDate() ) {
@@ -138,7 +154,7 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
                     );
 
                 String dynExpName = "inc_export_" + date.toString("");
-                indexOneChunkedStream( spark, jobFactory, chunkedJsonStream, dynExpName);
+                indexOneChunkedStream( spark, jobFactory, chunkedJsonStream, dynExpName, s3);
             });
 
 
@@ -183,17 +199,33 @@ public class DynamoExportsIndexingCommand implements Callable<Integer> {
             SparkSqlWrapper spark,
             DynamoExportsIndexingJobFactory jobFactory,
             Stream<List<String>> chunkedJsonStream,
-            String dynamoExportName
+            String dynamoExportName,
+            S3ClientWrapper s3
     ) {
         AtomicInteger chunkNumber = new AtomicInteger(0);
 
-        chunkedJsonStream.forEach(dataChunk -> {
+        if( isMissingFromUploadDestination( jobFactory, dynamoExportName, s3) ) {
 
-            int chunkId = chunkNumber.getAndAdd(1 );
+            chunkedJsonStream.forEach(dataChunk -> {
 
-            String jobName = tableName + " " + dynamoExportName + " chunk " + chunkId;
+                int chunkId = chunkNumber.getAndAdd(1 );
 
-            spark.addJob(jobName, jobFactory.newJob(dynamoExportName, chunkId, dataChunk));
-        });
+                String jobName = tableName + " " + dynamoExportName + " chunk " + chunkId;
+
+                JobWithOutput job = jobFactory.newJob(dynamoExportName, chunkId, dataChunk);
+                spark.addJob(jobName, wrapWithUpload( job, s3 ));
+            });
+        }
     }
+
+    private Path forecastOutputFolder( DynamoExportsIndexingJobFactory jobFactory, String dynamoExportName) {
+        return jobFactory.newJob( dynamoExportName, 0, Collections.emptyList()).outputFolder();
+    }
+
+    private boolean isMissingFromUploadDestination(DynamoExportsIndexingJobFactory jobFactory, String dynamoExportName, S3ClientWrapper s3) {
+        Path outputPath = forecastOutputFolder( jobFactory, dynamoExportName );
+
+        return super.isMissingFromUploadDestination( outputPath, s3 );
+    }
+
 }

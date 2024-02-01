@@ -27,4 +27,25 @@ public class DevTest {
     }
 
 
+    @Test
+    public void exportEcMetadata() throws IOException {
+
+        String indexEcMetadata = "" +
+                "dynamoExportsIndexing " +
+                "--aws-profile sso_pn-confinfo-hotfix-rw " +
+                "--aws-bucket dynamo-export-dailytest " +
+                "--aws-full-export-date 2024-1-14 " +
+                "--aws-dynexport-folder-prefix %s/incremental2024/ " +
+                "--result-upload-url s3://dynamo-export-dailytest/parquet/ " +
+                "pn-EcRichiesteMetadati";
+
+        String commandLine = " --dynexp-indexed-data-folder ./out/prove_dev/dynExp " +
+                indexEcMetadata + " 2024-1-1 2025-1-1 " ;
+
+        int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
+
+        Assert.assertEquals( exitCode, 0 );
+    }
+
+
 }

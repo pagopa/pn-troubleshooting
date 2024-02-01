@@ -1,8 +1,16 @@
 library(sparklyr)
 
 local_spark <- function() {
-  spark_install(version = "3.3.3", hadoop_version = "3")
-  spark_connect(master = "local", version = "3.3.3", hadoop_version = "3")
+  #spark_install(version = "3.3.3", hadoop_version = "3")
+  
+  conf <- spark_config()
+  conf$spark.driver.memory <- "8G"
+  conf$spark.driver.cores <- 1
+  conf$spark.executor.memory <- "8G"
+  conf$spark.executor.cores <- 1
+  conf$spark.dynamicAllocation.enabled <- "false"
+  
+  spark_connect(master = "local", version = "3.3.3", hadoop_version = "3", config = conf)
 }
 
 prepare_json_strings_from_cdc <- function( sc, raw_files_table_name, json_strings_table_name, path ) {
@@ -10,6 +18,7 @@ prepare_json_strings_from_cdc <- function( sc, raw_files_table_name, json_string
     sc = sc, 
     name = raw_files_table_name, 
     path = path, 
+    memory = FALSE,
     options = list(recursiveFileLookup = "true") 
   )
   

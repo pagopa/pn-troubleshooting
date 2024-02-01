@@ -1,6 +1,88 @@
 source( "common.R")
 
+spark_disconnect_all()
 sc = local_spark()
+prepare_json_strings_from_cdc( sc, "raw_cdc_timeline", "json_objects_timeline", "file:///home/rstudio/workspace/data/cdc_compat/TABLE_NAME_pn-Timelines/" )
+sdf_sql(sc, " 
+  create or replace temporary view cdc_objects_timeline as 
+  SELECT /*+ REBALANCE */
+    get_json_object(json_string, '$.tableName') as tableName,
+    get_json_object(json_string, '$.eventName') as operationType,
+    get_json_object(json_string, '$.dynamodb.ApproximateCreationDateTime') as dynamoTsEpoch,
+    get_json_object(json_string, '$.eventID') as kinesysEvtId,
+    get_json_object(json_string, '$.dynamodb.NewImage') as newImg,
+    get_json_object(json_string, '$.dynamodb.OldImage') as oldImg
+  FROM
+    json_objects_timeline
+")
+
+sdf_sql(sc, "
+  create or replace temporary view timestamps_deltas as 
+  WITH 
+    timestamps AS(
+      SELECT 
+        kinesysEvtId,
+        get_json_object( newImg, '$.timelineElementId.S' ) as timelineElementId,
+        get_json_object( newImg, '$.iun.S' ) as iun,
+        get_json_object( newImg, '$.category.S' ) as category,
+        dynamoTsEpoch,
+        get_json_object( newImg, '$.timestamp.S' ) as appTs,
+        to_unix_timestamp( 
+          cast( get_json_object( newImg, '$.timestamp.S' ) as timestamp) 
+        ) * 1000 
+          as appTsEpoch
+      FROM
+        cdc_objects_timeline
+      WHERE
+          tableName = 'pn-Timelines'
+        and 
+          operationType = 'INSERT'
+    )
+  SELECT
+    kinesysEvtId,
+    timelineElementId,
+    category,
+    appTs,
+    dynamoTsEpoch,
+    appTsEpoch,
+    dynamoTsEpoch - appTsEpoch as delta_ms
+  FROM
+    timestamps
+")
+
+spark_write_parquet( sdf_sql(sc, "select * from timestamps_deltas"), "data/timestamps_deltas/")
+spark_read_parquet( sc, "timestamps_deltas_fromfile", "data/timestamps_deltas/")
+
+timestamp_deltas = sdf_collect( sdf_sql(sc, "
+  SELECT
+    category,
+    min(delta_ms) as min_delta,
+    max(delta_ms) as max_delta,
+    avg(delta_ms) as avg_delta,
+    count(*) as category_quantity,
+    approx_percentile( delta_ms, array(0.01, 0.1, 0.5, 0.9, 0.99), 100 ) as quantiles
+  FROM 
+    timestamps_deltas_fromfile
+  GROUP BY
+    category
+"))
+
+notification_viewed_hight = sdf_collect( sdf_sql(sc, "
+  SELECT
+    regexp_replace( timelineElementId, '.*IUN_(.*).RECINDEX_[0-9][0-9]*', '$1') as iun,
+    *
+  FROM
+    timestamps_deltas_fromfile
+  WHERE
+      category = 'NOTIFICATION_VIEWED'
+    and
+      delta_ms > ( 60 * 1000 )
+"))
+notification_viewed_hight$delta_s = round( notification_viewed_hight$delta_ms / 1000, 0)
+notification_viewed_hight$delta_h = round( notification_viewed_hight$delta_s / 3600, 0)
+
+write.csv(notification_viewed_hight, "data/notification_viewed_more_than_one_minute.csv", row.names=FALSE)
+
 
 # Download Enti
 # aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
@@ -78,7 +160,7 @@ write.csv(enti, "data/out-onBoardingTech.csv", row.names=FALSE)
 # Download CDC
 # aws --profile "$AWS_PROFILE" --region "$AWS_REGION" \
 #.    s3 sync  s3://${LOG_BUCKET}/cdcTos3/ cdc
-prepare_json_strings_from_cdc( sc, "raw_cdc", "json_objects", "file:///home/rstudio/workspace/data/cdc/" )
+prepare_json_strings_from_cdc( sc, "raw_cdc", "json_objects", "file:///home/rstudio/workspace/data/cdc_compat/" )
 
 sdf_sql(sc, " 
   create or replace temporary view cdc_objects as 

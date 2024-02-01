@@ -27,13 +27,17 @@ import static it.pagopa.pn.scripts.commands.utils.StreamUtils.chunkedStream;
 import static it.pagopa.pn.scripts.commands.utils.StreamUtils.oneJsonObjectPerLine;
 
 @Command(name = "cdcIndexing")
-public class DoCdcIndexingCommand implements Callable<Integer> {
+public class DoCdcIndexingCommand extends AbstractUploadSupport implements Callable<Integer> {
     public static final String INDEXING_QUERIES_RESOURCE = "cdc_indexing_queries.sql";
     @ParentCommand
     CommandsMain parent;
 
     @Option(names = {"--result-upload-url"})
     private String baseUploadUrl = null;
+    @Override
+    protected String getBaseUploadUrl() {
+        return baseUploadUrl;
+    }
 
     private JsonTrasfromationHolder getJsonTransformations() {
         return this.parent.getJsonTransformations();
@@ -58,6 +62,12 @@ public class DoCdcIndexingCommand implements Callable<Integer> {
     private Path getCdcIndexedOutputFolder() {
         return parent.getCdcIndexedOutputFolder();
     }
+
+    @Override
+    protected Path getBaseOutputFolder() {
+        return getCdcIndexedOutputFolder();
+    }
+
 
     @Option(names = {"--data-chunk-size"})
     private int chunkSize = 500 * 1000;
@@ -139,56 +149,12 @@ public class DoCdcIndexingCommand implements Callable<Integer> {
     private boolean isMissingFromUploadDestination(CdcIndexingJobFactory jobFactory, DateHoursStream.DateHour d, S3ClientWrapper s3) {
         Path outputPath = forecastOutputFolder( jobFactory, d );
 
-        boolean result;
-        if( StringUtils.isNotBlank( baseUploadUrl )) {
-            String destinationS3Url = computes3Url(outputPath);
-            if( ! destinationS3Url.endsWith("/") ) {
-                destinationS3Url += "/";
-            }
-
-            boolean isPresent = s3.listObjectsWithPrefix( destinationS3Url ).findAny().isPresent();
-            result = ! isPresent;
-        }
-        else {
-            result = true;
-        }
-        return result;
+        return super.isMissingFromUploadDestination( outputPath, s3 );
     }
 
 
-    private JobWithOutput wrapWithUpload(JobWithOutput job, S3ClientWrapper s3) {
-        return new JobWithOutput() {
-            @Override
-            public Path outputFolder() {
-                return job.outputFolder();
-            }
-
-            @Override
-            public void run() {
-                job.run();
-
-                Path outputPath = job.outputFolder();
-                if( StringUtils.isNotBlank( baseUploadUrl ) ) {
-
-                    String destinationS3Url = computes3Url(outputPath);
-                    s3.upload(outputPath, destinationS3Url );
-                }
-            }
-        };
-    }
-
-    private Path forecastOutputFolder( CdcIndexingJobFactory jobFactory, DateHoursStream.DateHour d) {
+    private Path forecastOutputFolder(CdcIndexingJobFactory jobFactory, DateHoursStream.DateHour d) {
         return jobFactory.newJob(tableName, d, Collections.emptyList(), "0").outputFolder();
-    }
-
-    @NotNull
-    private String computes3Url(Path outputPath) {
-        String destinationS3Url = baseUploadUrl.trim();
-        if( ! baseUploadUrl.endsWith("/") ) {
-            destinationS3Url += "/";
-        }
-        destinationS3Url += getCdcIndexedOutputFolder().relativize(outputPath);
-        return destinationS3Url;
     }
 
 }
