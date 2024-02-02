@@ -5,7 +5,7 @@ Gli script contenuti in questa directory permettono di eseguire un deployment di
 ## Prerequisiti
 
 * Docker
-* AWS CLI
+* AWS CLI >= 2.13.38
 
 ## Quick start
 Deployment Retool con restore database (sostituire `<SSO_PROFILE>` con l'account SSO desiderato es. `sso_pn-core-dev`).

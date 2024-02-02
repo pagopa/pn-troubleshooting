@@ -1,6 +1,8 @@
 #!/bin/sh
 
 env_file='./docker.env'
+aws_min_version="2.13.38"
+retool_url="http://localhost:3000"
 restore_db=false
 
 get_credentials() {
@@ -47,6 +49,26 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
+# Controllo se Docker è in esecuzione
+if ! docker info >/dev/null 2>&1; then
+    echo "Il demone Docker non è attivo."
+    exit 1
+fi
+
+# Controllo la versione dell'AWS CLI
+aws_version=$(aws --version 2>&1 | cut -d/ -f2 | cut -d ' ' -f1)
+
+# Funzione per il confronto delle versioni
+version_lt() {
+    test "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$2";
+}
+
+# Confronto delle versioni
+if version_lt "$aws_version" "$aws_min_version"; then
+    echo "La versione dell'AWS CLI ($aws_version) è inferiore a $aws_min_version."
+    exit 1
+fi
+
 profile=$1
 shift
 
@@ -69,4 +91,4 @@ if [ "$restore_db" = true ]; then
 fi
 
 docker compose up --build --detach
-echo "Retool is up at http://localhost:3000"
+echo "Retool is up at $retool_url"
