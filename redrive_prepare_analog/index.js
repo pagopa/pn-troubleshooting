@@ -30,7 +30,7 @@ function _checkingParameters(args, values){
 
 function sleep(ms) {
   return new Promise(resolve => {
-    console.log("I'm going to sleep! " + new Date().toISOString())
+    console.log("Sleep for " + ms / 60 / 1000 + "minutes at " + new Date().toISOString())
     setTimeout(resolve, ms)
   });
 
@@ -107,7 +107,7 @@ async function main() {
     let delay = 0;
     if(index != 0) {
       await sleep(15*60*1000)
-      console.log("Woke up! " + new Date().toISOString())
+      console.log("Ready to next! " + new Date().toISOString())
     }
     for(const requestId of listPars ) {
       console.log("elaborating request id: " + requestId)
@@ -131,7 +131,7 @@ async function main() {
           messages.push(message)
         }
         if(!dryrun){
-          //await awsClient._sendSQSMessage(sqsUrl, event, delay);
+          await awsClient._sendSQSMessage(sqsUrl, event, delay);
         }
         console.log(event)
         const res = {
