@@ -28,6 +28,14 @@ function _checkingParameters(args, values){
   })
 }
 
+function sleep(ms) {
+  return new Promise(resolve => {
+    console.log("Sleep for " + ms / 60 / 1000 + "minutes at " + new Date().toISOString())
+    setTimeout(resolve, ms)
+  });
+
+}
+
 function _prepareMessage(requestId, event) {
   const message = {
     digitalCourtesy: null,
@@ -53,8 +61,9 @@ function _prepareMessage(requestId, event) {
 }
 
 function appendJsonToFile(fileName, jsonData){
-  fs.mkdirSync("results", { recursive: true });
-  fs.appendFileSync("results/" + fileName, JSON.stringify(jsonData) + "\n")
+  //fs.mkdirSync("results", { recursive: true });
+  //fs.appendFileSync("results/" + fileName, JSON.stringify(jsonData) + "\n")
+  console.log(JSON.stringify(jsonData))
 }
 
 
@@ -63,8 +72,7 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "dryrun", mandatory: false, subcommand: [] },
-    { name: "test", mandatory: false, subcommand: [] }
+    { name: "dryrun", mandatory: false, subcommand: [] }
   ]
   const values = {
     values: { envName, fileName, dryrun },
@@ -88,43 +96,54 @@ async function main() {
   const batchSize = Math.floor( requestIds.length / (14*60));
   const sqsUrl = await awsClient._getQueueURL("pn-external_channel_to_paper_channel");
   const date = new Date().toISOString();
-  let delay = 0;
   let index = 0;
-  for(const requestId of requestIds ) {
-    console.log("elaborating request id: " + requestId)
-    if(index%batchSize == 0) {
-      delay++
+  const chunkSize = 2500;
+  const parser = []
+  for (let i = 0; i < requestIds.length; i += chunkSize) {
+    const chunk = requestIds.slice(i, i + chunkSize);
+    parser.push(chunk)
+  }
+  for(const listPars of parser ) {
+    let delay = 0;
+    if(index != 0) {
+      await sleep(15*60*1000)
+      console.log("Ready to next! " + new Date().toISOString())
     }
-    const metadati = (await awsClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId, 'eventsList')).Items[0];
-    const eventsList = unmarshall(metadati).eventsList
-    const idxResult = eventsList
-      .map((e, idx) => ({ e, idx }))
-      .filter(({ e }) => e.paperProgrStatus.statusCode == 'RECAG012')
-      .map(({ idx }) => idx);
+    for(const requestId of listPars ) {
+      console.log("elaborating request id: " + requestId)
+      if(index%batchSize == 0) {
+        delay++
+      }
+      const metadati = (await awsClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId, 'eventsList')).Items[0];
+      const eventsList = unmarshall(metadati).eventsList
+      const idxResult = eventsList
+        .map((e, idx) => ({ e, idx }))
+        .filter(({ e }) => e.paperProgrStatus.statusCode == 'RECAG012')
+        .map(({ idx }) => idx);
 
-    if(idxResult.length > 1) {
-      let messages = []
-      for( let i of idxResult) {
-        const message = _prepareMessage(requestId, eventsList[i].paperProgrStatus)
-        messages.push(message)
+      if(idxResult.length > 0) {
+        let messages = []
+        let event = null;
+        for(let i of idxResult) {
+          const message = _prepareMessage(requestId, eventsList[i].paperProgrStatus)
+          event == null ? event = message : null
+          event.analogMail.clientRequestTimeStamp < message.analogMail.clientRequestTimeStamp ? event = message : null
+          messages.push(message)
+        }
+        if(!dryrun){
+          await awsClient._sendSQSMessage(sqsUrl, event, delay);
+        }
+        console.log(event)
+        const res = {
+          [requestId]: messages,
+        }
+        appendJsonToFile(envName + "_" + date + ".json", res)
       }
-      const res = {
-        [requestId]: messages,
+      else {
+        console.log("No RECAG012 found for requestID: " + requestId)
       }
-      appendJsonToFile("mp" + envName + "_" + date + ".json", res)
+      index = index + 1;
     }
-    else if (idxResult.length == 1) {
-      const e = eventsList[idxResult[0]]
-      const message = _prepareMessage(requestId, e.paperProgrStatus); 
-      if(!dryrun){
-        await awsClient._sendSQSMessage(sqsUrl, message, delay);
-      }
-      appendJsonToFile("se" + envName + "_" + date + ".json", message)
-    }
-    else {
-      console.log("No RECAG012 found for requestID: " + requestId)
-    }
-    index = index + 1;
   }
 }
 
