@@ -56,7 +56,7 @@ class AwsClientsWrapper {
       MessageBody: JSON.stringify(message), // required
       DelaySeconds: delay
     }
-    console.log(input)
+    //console.log(input)
     const command = new SendMessageCommand(input);
     const response = await this._sqsClient.send(command);
     return response;
