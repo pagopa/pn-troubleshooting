@@ -2,26 +2,20 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Template for day by day incremental export of dynamoDB table
 
 Parameters:
-  DynamoDBTableArn:
+  DynamoDbTableNames:
     Type: String
-    Description: Dynamo table Arn
+    Default: "pn-SsDocumenti,pn-EcRichiesteMetadati"
+    Description: DynamoDB List of Table to export
+
   S3Bucket:
     Type: String
+    Default: "dynamo-export-dailytest"
     Description: Bucket Name
-  S3Prefix:
-    Type: String
-    Description: Bucket Prefix
+
   Prefix:
     Type: String
     Description: String Prefix after S3Prefix
     Default: incremental2024
-  KmsDbArn:
-    Type: String
-    Default: "-"
-    Description: Kms key used by table
-
-Conditions:
-  HasKmsDbArn: !Not [ !Equals [ !Ref KmsDbArn, '-' ] ]
 
 Resources:
   ExportFunction:
@@ -29,8 +23,7 @@ Resources:
     Properties:
       Runtime: python3.12
       Handler: index.lambda_handler
-      FunctionName:
-        Fn::Sub: lambda-export-table-${S3Prefix}
+      FunctionName: Lambda-DailyExport-DynamoDbTable
       Code:
         ZipFile: |
           import boto3
@@ -41,42 +34,48 @@ Resources:
           
           def lambda_handler(event, context):
               dynamodb = boto3.client('dynamodb')
-              dynamo_table_arn = os.environ['DynamoDBTableArn']
+              dynamo_table_names = os.environ['DynamoDbTableNames'].split(',')
+              s3_bucket = os.environ['S3Bucket']
+              prefix = os.environ['Prefix']
+              region = os.environ['Region']
+              accountid = os.environ['AccountID']
               current_date = datetime.now().strftime('%Y%m%d')
               yesterday_date= (datetime.strptime(current_date, '%Y%m%d') - timedelta(days=1)).strftime('%Y%m%d')
-              s3_bucket = os.environ['S3Bucket']
-              s3_prefix = os.environ['S3Prefix']
-              prefix = os.environ['Prefix']
-              s3_full_prefix = s3_prefix + "/" + prefix + "/" + yesterday_date
-              now = datetime.now()
-              to_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
-              from_time = to_time - timedelta(days=1)
-              try:
-                  dynamodb.export_table_to_point_in_time(
-                              TableArn=dynamo_table_arn,
-                              S3Bucket=s3_bucket,
-                              S3Prefix=s3_full_prefix,
-                              ExportFormat='DYNAMODB_JSON',
-                              ExportType='INCREMENTAL_EXPORT',
-                              IncrementalExportSpecification={
-                                  'ExportFromTime': from_time,
-                                  'ExportToTime': to_time,
-                                  'ExportViewType': 'NEW_IMAGE'
-                              }
-                          )
-              except Exception as e:
-                  print(e)
+
+              for dynamo_table_name in dynamo_table_names:
+                  dynamo_table_arn = f"arn:aws:dynamodb:{region}:{accountid}:table/{dynamo_table_name}"
+                  s3_full_prefix = dynamo_table_name + "/" + prefix + "/" + yesterday_date
+                  now = datetime.now()
+                  to_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                  from_time = to_time - timedelta(days=1)
+                  try:
+                      dynamodb.export_table_to_point_in_time(
+                                  TableArn=dynamo_table_arn,
+                                  S3Bucket=s3_bucket,
+                                  S3Prefix=s3_full_prefix,
+                                  ExportFormat='DYNAMODB_JSON',
+                                  ExportType='INCREMENTAL_EXPORT',
+                                  IncrementalExportSpecification={
+                                      'ExportFromTime': from_time,
+                                      'ExportToTime': to_time,
+                                      'ExportViewType': 'NEW_IMAGE'
+                                  }
+                              )
+                      print(f"Tabella '{dynamo_table_name}' export start.")
+                  except Exception as e:
+                      print(f"Error during l'export of table '{dynamo_table_name}': {e}")
 
       Environment:
         Variables:
-          DynamoDBTableArn:
-            Ref: DynamoDBTableArn
+          DynamoDbTableNames:
+            Ref: DynamoDbTableNames
           S3Bucket:
             Ref: S3Bucket
-          S3Prefix:
-            Ref: S3Prefix
           Prefix:
             Ref: Prefix
+          Region: !Ref AWS::Region
+          AccountID: !Ref AWS::AccountId
+
 
       Role:
         Fn::GetAtt:
@@ -102,8 +101,7 @@ Resources:
                 Action:
                   - dynamodb:Scan
                   - dynamodb:ExportTableToPointInTime
-                Resource:
-                  - !Ref DynamoDBTableArn
+                Resource: arn:aws:dynamodb:*:*:*
               - Effect: Allow
                 Action:
                   - s3:PutObject
@@ -114,14 +112,10 @@ Resources:
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
                 Resource: arn:aws:logs:*:*:*
-              - 'Fn::If':
-                  - HasKmsDbArn
-                  - Effect: Allow
-                    Action:
-                      - "kms:Decrypt"
-                    Resource:
-                      - !Ref KmsDbArn
-                  - !Ref AWS::NoValue
+              - Effect: Allow
+                Action:
+                  - "kms:Decrypt"
+                Resource: "*"
 
   Schedule:
     Type: AWS::Events::Rule
