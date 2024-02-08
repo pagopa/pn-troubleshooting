@@ -139,7 +139,7 @@ node scan_dynamo.js --awsProfile <aws-profile> --tableName <dynamodb-table> --fi
 ### redrive-pnPaperError
 Vuoi risottomettere gli eventi recuperati da get-pnPaperError?
 ```bash
-node index.js --envName <envName> --fileName <fileName> [--update]
+node index.js --envName <envName> --fileName <fileName>
 ```
 
 ### compare-conf-environment

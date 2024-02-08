@@ -7,7 +7,7 @@ require('dotenv').config()
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> [--update]"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -106,7 +106,6 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "update", mandatory: false, subcommand: [] },
   ]
   const values = {
     values: { envName, fileName, update },
@@ -117,9 +116,6 @@ async function main() {
       },
       fileName: {
         type: "string", short: "t", default: undefined
-      },
-      update: {
-        type: "boolean", short: "u", default: false
       },
     },
   });  
@@ -183,11 +179,9 @@ async function main() {
       res = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
       console.log(res)
       const paperRequestDeliveryData = unmarshall(res[0])
-      if(update) {
-        let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
-        data.statusCode != "PC002" ? data.statusCode = "PC002" : null
-        await awsClient._putRequest("pn-PaperRequestDelivery", data)
-      }
+      let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
+      data.statusCode != "PC002" ? data.statusCode = "PC002" : null
+      await awsClient._putRequest("pn-PaperRequestDelivery", data)
       let taxId;
       if(paperRequestDeliveryData.receiverType == 'PF') {
         res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlPDV, secrets.apiKeyPF)

@@ -20,7 +20,7 @@ npm install
 ```
 
 ## Utilizzo
-### Step preliminare
+### Step preliminare 
 
 ```bash
 aws sso login --profile <core-profile>
@@ -35,9 +35,8 @@ Aggiornare o creare il file .env con il valore ALB_BASE_URL in base alla porta l
 
 ### Esecuzione
 ```bash
-node index.js --envName <envName> --fileName <fileName> [--update]
+node index.js --envName <envName> --fileName <fileName>
 ```
 Dove:
 - `<envName>` è l'environment sul quale si intende effettuare la risottomissione; (prod e uat)
 - `<fileName>` è il path del file che contiene i requestId. (ottenibile eseguendo lo script get_pnPaperError)
-- `<update>` update è un campo obbligatorio per poter far proseguire il flusso national registries
