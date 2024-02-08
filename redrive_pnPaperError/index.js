@@ -4,7 +4,7 @@ const fs = require('fs');
 const { ApiClient } = require("../redrive_pnPaperError/libs/api");
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config()
-
+const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function _checkingParameters(args, values){
   const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
@@ -89,6 +89,10 @@ const urls = {
     pdv: 'https://api.uat.tokenizer.pdv.pagopa.it',
     selfcare: 'https://api.uat.selfcare.pagopa.it'
   },
+  hotfix: {
+    pdv: 'https://api.uat.tokenizer.pdv.pagopa.it',
+    selfcare: 'https://api.uat.selfcare.pagopa.it'
+  },
   prod: {
     pdv: 'https://api.tokenizer.pdv.pagopa.it',
     selfcare: 'https://api.selfcare.pagopa.it'
@@ -139,7 +143,11 @@ async function main() {
     const created = fileData.created.S
     console.log('Handling requestId: ' + requestId)
     let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
-    if(res.addressType == 'DISCOVERED_ADDRESS'){
+    let isDiscoveredAddress = res.some((e) => {
+      return unmarshall(e).addressType == 'DISCOVERED_ADDRESS'
+    })
+    console.log(isDiscoveredAddress)
+    if(isDiscoveredAddress){
       console.log("Postal Flow. Preparing data...")
       const data = _prepareQueueData(requestId)
       const attributes = _prepareAttributes(requestId)
@@ -168,7 +176,12 @@ async function main() {
     }
     else {
       console.log("Registry Flow. Retrieving taxId..")
-      const paperRequestDeliveryData = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
+      res = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
+      console.log(res)
+      const paperRequestDeliveryData = unmarshall(res[0])
+      let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
+      data.statusCode != "PC002" ? data.statusCode = "PC002" : null
+      await awsClient._putRequest("pn-PaperRequestDelivery", data)
       let taxId;
       if(paperRequestDeliveryData.receiverType == 'PF') {
         res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlPDV, secrets.apiKeyPF)

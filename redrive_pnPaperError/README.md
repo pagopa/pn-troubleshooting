@@ -20,7 +20,7 @@ npm install
 ```
 
 ## Utilizzo
-### Step preliminare
+### Step preliminare 
 
 ```bash
 aws sso login --profile <core-profile>

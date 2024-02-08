@@ -1,9 +1,9 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { DynamoDBClient, QueryCommand, DeleteItemCommand  } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, QueryCommand, DeleteItemCommand, PutItemCommand } = require("@aws-sdk/client-dynamodb");
 const { SQSClient, SendMessageCommand, GetQueueUrlCommand } = require("@aws-sdk/client-sqs");
 const { SecretsManagerClient, GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager"); 
-const { unmarshall } = require("@aws-sdk/util-dynamodb")
+const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function awsClientCfg( profile ) {
   const self = this;
@@ -43,7 +43,16 @@ class AwsClientsWrapper {
     };
     const command = new QueryCommand(input);
     const response = await this._dynamoClient.send(command);
-    return unmarshall(response.Items[0])
+    return response.Items
+  }
+
+  async _putRequest(tableName, item){
+    const input = { // PutItemInput
+      TableName: tableName, // required
+      Item: marshall(item)
+    };
+    const command = new PutItemCommand(input);
+    await this._dynamoClient.send(command);
   }
 
   async _deleteRequest(tableName, requestId, created){
