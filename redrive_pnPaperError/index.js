@@ -108,7 +108,7 @@ async function main() {
     { name: "fileName", mandatory: true, subcommand: [] },
   ]
   const values = {
-    values: { envName, fileName, update },
+    values: { envName, fileName },
   } = parseArgs({
     options: {
       envName: {
