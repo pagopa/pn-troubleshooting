@@ -15,12 +15,13 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
 usage() {
       cat <<EOF
-    Usage: $(basename "${BASH_SOURCE[0]}") [-h] --account-type <account-type> --env-type <env-type> --export-bucket-name <export-bucket-name>
+    Usage: $(basename "${BASH_SOURCE[0]}") [-h] --account-type <account-type> --env-type <env-type> --export-bucket-name <export-bucket-name> --logs-bucket-name <logs-bucket-name>
 
     [-h]                                       : this help message
     --account-type <account-type>              : "confinfo" or "core"
     --env-type <env-type>                      : "dev", "test", "uat", "hotfix", "prod"
-    --export-bucket-name <export-bucket-name>  : Bucket where dump are present.
+    --export-bucket-name <export-bucket-name>  : Bucket where dump are present
+    --logs-bucket-name                         : Bucket where cdc are written
     
 EOF
   exit 1
@@ -31,6 +32,7 @@ parse_params() {
   account_type=""
   env_type=""
   export_bucket_name=""
+  logs_bucket_name=""
   
   while :; do
     case "${1-}" in
@@ -47,6 +49,10 @@ parse_params() {
       export_bucket_name="${2-}"
       shift
       ;;
+    --logs-bucket-name) 
+      logs_bucket_name="${2-}"
+      shift
+      ;;
     -?*) die "Unknown option: $1" ;;
     *) break ;;
     esac
@@ -59,6 +65,7 @@ parse_params() {
   [[ -z "${account_type-}" ]] && usage 
   [[ -z "${env_type-}" ]] && usage
   [[ -z "${export_bucket_name-}" ]] && usage
+  [[ -z "${logs_bucket_name-}" ]] && usage
   return 0
 }
 
@@ -69,6 +76,7 @@ dump_params(){
   echo "Account Type:                ${account_type}"
   echo "Environment Type:            ${env_type}"
   echo "Dynamo Exports Bucket Name:  ${export_bucket_name}"
+  echo "Cdc Bucket Name:             ${logs_bucket_name}"
 
 }
 
@@ -96,5 +104,23 @@ if ([ $account_type == "confinfo" ]); then
   ARGUMENTS=$( echo $COMMANDLINE | sed -e 's/  */,/g' )
   ./mvnw compile
   ./mvnw exec:java "-Dexec.arguments=${ARGUMENTS}"
+
+elif ([ $account_type == "core" ]); then
+  
+  COMMANDLINE=" --cdc-indexed-data-folder ./out/prove_dev/cdc \
+    cdcIndexing \
+      --aws-bucket ${logs_bucket_name} \
+      --result-upload-url s3://${logs_bucket_name}/parquet/ \
+      pn-Notifications 2023-06-1 2023-12-1 "
+
+  export MAVEN_OPTS="-Xmx8g \
+    --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
+    --add-opens java.base/sun.security.action=ALL-UNNAMED \
+    --add-opens java.base/sun.util.calendar=ALL-UNNAMED"
+
+  ARGUMENTS=$( echo $COMMANDLINE | sed -e 's/  */,/g' )
+  ./mvnw compile
+  ./mvnw exec:java "-Dexec.arguments=${ARGUMENTS}"
+
 fi
 
