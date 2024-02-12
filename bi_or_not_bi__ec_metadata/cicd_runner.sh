@@ -1,7 +1,101 @@
 #! /bin/bash -e
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+#!/usr/bin/env bash
+    
+set -Eeuo pipefail
+trap cleanup SIGINT SIGTERM ERR EXIT
+
+cleanup() {
+  trap - SIGINT SIGTERM ERR EXIT
+  # script cleanup here
+}
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
 
-echo $* 
+usage() {
+      cat <<EOF
+    Usage: $(basename "${BASH_SOURCE[0]}") [-h] --account-type <account-type> --env-type <env-type> --export-bucket-name <export-bucket-name>
+
+    [-h]                                       : this help message
+    --account-type <account-type>              : "confinfo" or "core"
+    --env-type <env-type>                      : "dev", "test", "uat", "hotfix", "prod"
+    --export-bucket-name <export-bucket-name>  : Bucket where dump are present.
+    
+EOF
+  exit 1
+}
+
+parse_params() {
+  # default values of variables set from params
+  account_type=""
+  env_type=""
+  export_bucket_name=""
+  
+  while :; do
+    case "${1-}" in
+    -h | --help) usage ;;
+    --account-type) 
+      account_type="${2-}"
+      shift
+      ;;
+    --env-type) 
+      env_type="${2-}"
+      shift
+      ;;
+    --export-bucket-name) 
+      export_bucket_name="${2-}"
+      shift
+      ;;
+    -?*) die "Unknown option: $1" ;;
+    *) break ;;
+    esac
+    shift
+  done
+
+  args=("$@")
+
+  # check required params and arguments
+  [[ -z "${account_type-}" ]] && usage 
+  [[ -z "${env_type-}" ]] && usage
+  [[ -z "${export_bucket_name-}" ]] && usage
+  return 0
+}
+
+dump_params(){
+  echo ""
+  echo "######      PARAMETERS      ######"
+  echo "##################################"
+  echo "Account Type:                ${account_type}"
+  echo "Environment Type:            ${env_type}"
+  echo "Dynamo Exports Bucket Name:  ${export_bucket_name}"
+
+}
+
+
+# START SCRIPT
+
+parse_params "$@"
+dump_params
+
+
+if ([ $account_type == "confinfo" ]); then
+                    
+  COMMANDLINE=" --dynexp-indexed-data-folder ./out/indexing/dynExp \
+    dynamoExportsIndexing \
+    --aws-bucket ${export_bucket_name} \
+    --aws-full-export-date 2024-1-14 \
+    --aws-dynexport-folder-prefix %s/incremental2024/ \
+    --result-upload-url s3://${export_bucket_name}/parquet/ \
+    pn-EcRichiesteMetadati 2024-1-1 3035-1-1 "
+
+  export MAVEN_OPTS="-Xmx8g \
+    --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
+    --add-opens java.base/sun.security.action=ALL-UNNAMED \
+    --add-opens java.base/sun.util.calendar=ALL-UNNAMED"
+
+  ARGUMENTS=$( echo $COMMANDLINE | sed -e 's/  */,/g' )
+  ./mvnw compile
+  ./mvnw exec:java "-Dexec.arguments=${ARGUMENTS}"
+fi
 
