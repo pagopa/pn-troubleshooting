@@ -33,7 +33,7 @@ public class MainTest {
                   "--aws-dynexport-folder-prefix %s/incremental202401/ " +
                 "pn-EcRichiesteMetadati";
 
-        String commandLine = indexEcMetadata + " 2024-1-1 2024-1-29 " ;
+        String commandLine = indexEcMetadata + " 2024-2-4 2055-1-1 " ;
 
         int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
 

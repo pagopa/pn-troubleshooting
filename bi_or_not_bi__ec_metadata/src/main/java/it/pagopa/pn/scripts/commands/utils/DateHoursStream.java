@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 
 public class DateHoursStream {
 
-    public static Stream<DateHour> stream(DateHour from, DateHour to, TimeUnitStep step, boolean notAfterNow ) {
+    public static Stream<DateHour> stream(DateHour from, DateHour to, TimeUnitStep step, boolean notTodayOrAfter ) {
         if( from.hour < 0 && to.hour >= 0 || from.hour >= 0 && to.hour < 0 ) {
             throw new IllegalArgumentException("Both date must be day truncated or not!");
         }
@@ -23,7 +23,7 @@ public class DateHoursStream {
                 localNow.getYear(),
                 localNow.getMonthValue(),
                 localNow.getDayOfMonth(),
-                TimeUnitStep.HOUR.equals( step ) ? localNow.getHour() : 0
+                TimeUnitStep.HOUR.equals( step ) ? localNow.getHour() : -1
             );
 
         LinkedList<DateHour> result = new LinkedList<>();
@@ -31,7 +31,7 @@ public class DateHoursStream {
         DateHour cursor = from;
         while ( !cursor.equals( to ) ) {
 
-            if( !notAfterNow || now.compareTo( cursor ) > 0 ) {
+            if( !notTodayOrAfter || now.compareTo( cursor ) > 0 ) {
                 result.add( cursor );
             }
             cursor = cursor.nextStep( step );

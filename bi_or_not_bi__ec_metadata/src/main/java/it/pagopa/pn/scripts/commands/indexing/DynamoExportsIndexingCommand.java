@@ -52,6 +52,8 @@ public class DynamoExportsIndexingCommand extends AbstractUploadSupport implemen
 
     @Option(names = {"--result-upload-url"})
     private String baseUploadUrl = null;
+    private S3ClientWrapper s3;
+
     @Override
     protected String getBaseUploadUrl() {
         return baseUploadUrl;
@@ -70,16 +72,43 @@ public class DynamoExportsIndexingCommand extends AbstractUploadSupport implemen
         return getIncrementalDynamoExportFolder( fullDynamoExportFolderSuffix );
     }
 
+    private String fullDynamoExportDate = null;
+    private String getFullDynamoExportDate() {
+        if( fullDynamoExportDate == null ) {
+            initializeExportMetadata();
+        }
+        return fullDynamoExportDate;
+    }
+
+    private void initializeExportMetadata() {
+        try {
+            JSONObject exportMetadata = getExportMetadataJsonObj();
+            this.fullDynamoExportDate = exportMetadata.getString("fullExportDate");
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private JSONObject getExportMetadataJsonObj() throws JSONException {
+        String exportFolder = getFullDynamoExportFolder();
+        if( ! exportFolder.endsWith("/") ) {
+            exportFolder += "/";
+        }
+        String metadataS3ObjKey =  exportFolder + "_meta.json";
+
+        String jsonMetadataStr = this.s3.getObjectContetAsString( bucketName, metadataS3ObjKey);
+
+        return new JSONObject( jsonMetadataStr );
+    }
+
+
     @Override
     protected Path getBaseOutputFolder() {
         return parent.getDynamoExportsIndexedOutputFolder();
     }
 
-    @Option(names = {"--aws-full-export-date"})
-    private String fullDynamoExportDate = null;
-
-    @Option(names = {"--not-after-today"} )
-    private boolean notAfterToday = true;
+    @Option(names = {"--not-today-or-after"} )
+    private boolean notTodayOrAfter = true;
 
 
     @CommandLine.Parameters(index = "0", description = "Table Name")
@@ -102,7 +131,7 @@ public class DynamoExportsIndexingCommand extends AbstractUploadSupport implemen
         SparkSqlWrapper spark = SparkSqlWrapper.localMultiCore( tableName + " Indexing");
         spark.addListener(logger);
 
-        S3ClientWrapper s3 = new S3ClientWrapper(awsProfileName, awsRegionCode);
+        s3 = new S3ClientWrapper(awsProfileName, awsRegionCode);
         s3.addListener(logger);
 
         Path indexedOutputFolderPath = parent.getDynamoExportsIndexedOutputFolder();
@@ -126,7 +155,7 @@ public class DynamoExportsIndexingCommand extends AbstractUploadSupport implemen
         }
 
         if( endDateIsAfterFullExportDate() ) {
-            DateHour fullDynamoExportDatePlusOne = DateHour.valueOf( fullDynamoExportDate, "-")
+            DateHour fullDynamoExportDatePlusOne = DateHour.valueOf( getFullDynamoExportDate(), "-")
                                                      .nextStep( TimeUnitStep.DAY );
 
             DateHour fromDateObj = DateHour.valueOf( fromDate, "-");
@@ -138,7 +167,7 @@ public class DynamoExportsIndexingCommand extends AbstractUploadSupport implemen
                     incrementalFromDate,
                     DateHoursStream.DateHour.valueOf( toDate, "-" ),
                     DateHoursStream.TimeUnitStep.DAY,
-                    notAfterToday
+                    notTodayOrAfter
                 );
 
             dates.forEachOrdered( date -> {
@@ -169,11 +198,11 @@ public class DynamoExportsIndexingCommand extends AbstractUploadSupport implemen
     }
 
     private boolean startDateIsBeforeOrEqualFullExportDate() {
-        return fromDate.compareTo(fullDynamoExportDate) <= 0;
+        return fromDate.compareTo(getFullDynamoExportDate()) <= 0;
     }
 
     private boolean endDateIsAfterFullExportDate() {
-        return toDate.compareTo( fullDynamoExportDate) > 0;
+        return toDate.compareTo( getFullDynamoExportDate()) > 0;
     }
 
     private Stream<String> newImageOnly(Stream<String> oneJsonObjectPerLine) {

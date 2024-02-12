@@ -84,7 +84,6 @@ if ([ $account_type == "confinfo" ]); then
   COMMANDLINE=" --dynexp-indexed-data-folder ./out/indexing/dynExp \
     dynamoExportsIndexing \
     --aws-bucket ${export_bucket_name} \
-    --aws-full-export-date 2024-1-14 \
     --aws-dynexport-folder-prefix %s/incremental2024/ \
     --result-upload-url s3://${export_bucket_name}/parquet/ \
     pn-EcRichiesteMetadati 2024-1-1 3035-1-1 "

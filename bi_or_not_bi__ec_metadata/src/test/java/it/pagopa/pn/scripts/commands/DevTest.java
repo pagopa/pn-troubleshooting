@@ -1,5 +1,6 @@
 package it.pagopa.pn.scripts.commands;
 
+import it.pagopa.pn.scripts.commands.utils.DateHoursStream;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -47,5 +48,16 @@ public class DevTest {
         Assert.assertEquals( exitCode, 0 );
     }
 
+
+    @Test
+    void pippo() {
+        DateHoursStream.stream(
+                DateHoursStream.DateHour.valueOf( 2024,02, 07),
+                DateHoursStream.DateHour.valueOf( 3024,02, 07),
+                DateHoursStream.TimeUnitStep.DAY,
+                true
+            )
+                .forEach( h -> System.out.println( h.toString("-") ));
+    }
 
 }

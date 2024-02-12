@@ -190,8 +190,7 @@ public class S3ClientWrapper extends MsgSenderSupport {
         });
     }
 
-    public String getObjectContetAsString(String bucket, S3Object s3Obj) {
-        String s3ObjKey = s3Obj.key();
+    public String getObjectContetAsString(String bucket, String s3ObjKey) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket( bucket )
                 .key(s3ObjKey)
@@ -205,7 +204,7 @@ public class S3ClientWrapper extends MsgSenderSupport {
         PresignedGetObjectRequest presignedRequest = presigner.presignGetObject( presignRequest );
 
         try(BufferedReader br = new BufferedReader(new InputStreamReader(
-                                    buildUnzippedS3ObjInputStream(s3ObjKey, presignedRequest)))) {
+                buildUnzippedS3ObjInputStream(s3ObjKey, presignedRequest)))) {
 
             fireMessage(Msg.readFileStart(s3ObjKey));
 
@@ -214,6 +213,10 @@ public class S3ClientWrapper extends MsgSenderSupport {
         } catch (IOException exc) {
             throw new RuntimeException( exc );
         }
+    }
+
+    public String getObjectContetAsString(String bucket, S3Object s3Obj) {
+        return getObjectContetAsString( bucket, s3Obj.key() );
     }
 
     @NotNull
