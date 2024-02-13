@@ -3,6 +3,7 @@ package it.pagopa.pn.scripts.commands.datafixes;
 import it.pagopa.pn.scripts.commands.CommandsMain;
 import it.pagopa.pn.scripts.commands.datafixes.geokey_if_absent.GeoKeyFixFunction;
 import it.pagopa.pn.scripts.commands.datafixes.source_channel_details.SourceChannelDetailsFixFunction;
+import org.apache.commons.lang3.StringUtils;
 import picocli.CommandLine;
 
 import java.util.Arrays;
@@ -37,6 +38,7 @@ public class JsonTransformFactoryCommand implements Callable<Integer> {
 
     private Set<JsonTransformFlag> getFlagsSet() {
         return Arrays.asList( flags.split(",")).stream()
+                .filter( s -> StringUtils.isNotBlank( s ))
                 .map( JsonTransformFlag::valueOf)
                 .collect(Collectors.toSet());
     }
