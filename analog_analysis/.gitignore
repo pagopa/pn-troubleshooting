@@ -1,0 +1,7 @@
+/spark-venv
+
+# Resource files
+**/input
+**/output
+
+**/__pycache__
