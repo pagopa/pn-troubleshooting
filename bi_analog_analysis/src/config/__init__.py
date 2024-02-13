@@ -1,8 +1,13 @@
 import pathlib
+import os.path
 
 from configparser import ConfigParser
 
 config_ini_path = pathlib.Path(__file__).parent.absolute() / 'config.ini'
+
+if not os.path.exists(config_ini_path):
+    raise FileNotFoundError('Could not find config.ini file. You have to create it locally before starting spark job')
+
 config_parser = ConfigParser()
 config_parser.read(config_ini_path)
 
