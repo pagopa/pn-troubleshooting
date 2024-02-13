@@ -225,3 +225,9 @@ Vuoi generare i file con i certificati da fornire ad AdE e InfoCamere?
 ```bash  
 ./index.sh <envName>
 ```
+
+# false_negative_paper_error
+Vuoi rimuovere da pn-ec-tracker-cartaceo-errori-queue-DLQ.fifo i falsi negativi?
+```bash
+node index.js --envName <envName> --fileName <fileName> [--dryrun]
+```
