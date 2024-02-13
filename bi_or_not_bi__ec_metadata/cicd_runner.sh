@@ -110,8 +110,14 @@ elif ([ $account_type == "core" ]); then
   COMMANDLINE=" --cdc-indexed-data-folder ./out/prove_dev/cdc \
     cdcIndexing \
       --aws-bucket ${logs_bucket_name} \
-      --result-upload-url s3://${logs_bucket_name}/parquet/ \
-      pn-Notifications 2023-06-1 2023-12-1 "
+      --result-upload-url s3://${export_bucket_name}/parquet/ \
+      pn-Notifications 2023-06-1 2023-12-1 \
+    jsonTransform --flags LENIENT + fixSourceChannelDetails \
+    cdcIndexing \
+      --aws-bucket ${logs_bucket_name} \
+      --result-upload-url s3://${export_bucket_name}/parquet/ \
+      pn-Notifications 2023-12-1 2024-1-5 \
+    "
 
   export MAVEN_OPTS="-Xmx8g \
     --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
