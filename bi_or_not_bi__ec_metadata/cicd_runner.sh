@@ -112,16 +112,18 @@ elif ([ $account_type == "core" ]); then
       --aws-bucket ${logs_bucket_name} \
       --result-upload-url s3://${export_bucket_name}/parquet/ \
       pn-Notifications 2023-06-1 2023-12-1 \
+    jsonTransform --flags LENIENT + fixSourceChannelDetails \
     cdcIndexing \
       --aws-bucket ${logs_bucket_name} \
       --result-upload-url s3://${export_bucket_name}/parquet/ \
       pn-Notifications 2023-12-1 2024-1-5 \
+    jsonTransform - fixSourceChannelDetails \
     cdcIndexing \
       --aws-bucket ${logs_bucket_name} \
       --result-upload-url s3://${export_bucket_name}/parquet/ \
       pn-Notifications 2024-1-5 3055-1-1 \
     "
-  
+
   export MAVEN_OPTS="-Xmx8g \
     --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
     --add-opens java.base/sun.security.action=ALL-UNNAMED \
