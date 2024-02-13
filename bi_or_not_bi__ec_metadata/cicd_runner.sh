@@ -122,6 +122,19 @@ elif ([ $account_type == "core" ]); then
       --aws-bucket ${logs_bucket_name} \
       --result-upload-url s3://${export_bucket_name}/parquet/ \
       pn-Notifications 2024-1-5 3055-1-1 \
+    \
+    \
+    \
+    jsonTransform + fixGeoKey \
+    cdcIndexing \
+      --aws-bucket ${logs_bucket_name} \
+      --result-upload-url s3://${export_bucket_name}/parquet/ \
+      pn-Timelines 2023-6-1 2023-9-21 \
+    jsonTransform - fixGeoKey \
+    cdcIndexing \
+      --aws-bucket ${logs_bucket_name} \
+      --result-upload-url s3://${export_bucket_name}/parquet/ \
+      pn-Timelines 2023-9-21 3055-1-1 \
     "
 
   export MAVEN_OPTS="-Xmx8g \
