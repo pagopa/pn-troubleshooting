@@ -1,5 +1,7 @@
 /spark-venv
 
+**/config/config.ini
+
 # Resource files
 **/input
 **/output
