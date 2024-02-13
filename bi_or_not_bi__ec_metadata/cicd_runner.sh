@@ -125,7 +125,7 @@ elif ([ $account_type == "core" ]); then
     \
     \
     \
-    jsonTransform + fixGeoKey \
+    jsonTransform - fixGeoKey \
     cdcIndexing \
       --aws-bucket ${logs_bucket_name} \
       --result-upload-url s3://${export_bucket_name}/parquet/ \
