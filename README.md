@@ -231,3 +231,9 @@ Vuoi rimuovere da pn-ec-tracker-cartaceo-errori-queue-DLQ.fifo i falsi negativi?
 ```bash
 node index.js --envName <envName> --fileName <fileName> [--dryrun]
 ```
+
+### retrieve_attachments_from_requestId
+Vuoi recuperare tutti i documenti allegati ad un requestId?
+```bash  
+node index.js --envName <envName> --fileName <fileName> 
+```
