@@ -72,6 +72,7 @@ public class DynamoExportsIndexingCommand extends AbstractUploadSupport implemen
         return getIncrementalDynamoExportFolder( fullDynamoExportFolderSuffix );
     }
 
+    @Option(names = {"--aws-full-export-date"})
     private String fullDynamoExportDate = null;
     private String getFullDynamoExportDate() {
         if( fullDynamoExportDate == null ) {
