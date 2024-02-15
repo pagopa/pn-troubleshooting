@@ -110,8 +110,8 @@ The ```output``` section is related to the output of the Spark job
 
 The output regardless of the format will follow the structure (grouped by sequence and attachments):
 
-| sequence | attachments | count | requestInformationSet |
-|----------|-------------|-------|-----------------------|
+| sequence | attachments | count | requestInformationSet | category |
+|----------|-------------|-------|-----------------------|----------|
 
 - *sequence*: represents the status code history sequence for the cluster
 - *attachments*: represents the received attachments until the last event
@@ -120,3 +120,19 @@ The output regardless of the format will follow the structure (grouped by sequen
   - *requestId* with PCRETRY
   - *paperRequestId* without PCRETRY
   - *registeredLetterCode*
+- *category*: represents the issue category related to the sequence-based cluster
+
+Moreover, the output is partitioned through Spark `partitionBy(column)` built-in method
+using the `action` column that identifies the remediation actions to perform in order to
+unlock data.
+
+**__How processing is able to assign category and action to each cluster?__**
+It simply refers to a custom `csv` file located in `resources/` that contains the label for each discovered sequence;
+obviously this file may grow based-on sequence-based cluster and has to be updated each time new
+cluster issue is found.
+
+## Improvements
+
+- [ ] Better way to manage `<issue, action>` mapping
+- [ ] Take data directly from S3 instead importing all in local machine
+- [ ] Data pipeline optimizations
