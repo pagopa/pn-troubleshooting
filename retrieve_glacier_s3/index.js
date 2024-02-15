@@ -4,7 +4,7 @@ const fs = require('fs');
 
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--days <days> --tier <tier>]"
+  const usage = "Usage: index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--expiration <expiration> --tier <tier>]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -61,7 +61,7 @@ async function main() {
   });  
   
   _checkingParameters(args, values)
-  days = parseInt(days)
+  expiration = parseInt(expiration)
   const awsClient = new AwsClientsWrapper( envName );
   const keys = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' });
   const value = keys.split("\n")
