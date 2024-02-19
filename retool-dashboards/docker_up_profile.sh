@@ -51,7 +51,7 @@ fi
 
 # Controllo se Docker è in esecuzione
 if ! docker info >/dev/null 2>&1; then
-    echo "Il demone Docker non è attivo."
+    echo "The Docker daemon is not active."
     exit 1
 fi
 
@@ -65,7 +65,7 @@ version_lt() {
 
 # Confronto delle versioni
 if version_lt "$aws_version" "$aws_min_version"; then
-    echo "La versione dell'AWS CLI ($aws_version) è inferiore a $aws_min_version."
+    echo "The AWS CLI version ($aws_version) is lower than $aws_min_version."
     exit 1
 fi
 
