@@ -142,10 +142,6 @@ elif ([ $account_type == "core" ]); then
       cdcIndexing \
         --aws-bucket ${logs_bucket_name} \
         --result-upload-url s3://${export_bucket_name}/parquet/ \
-        pn-Notifications 2023-06-1 2023-12-1 \
-      cdcIndexing \
-        --aws-bucket ${logs_bucket_name} \
-        --result-upload-url s3://${export_bucket_name}/parquet/ \
         pn-Notifications 2024-1-1 3055-1-1 \
       \
       \
