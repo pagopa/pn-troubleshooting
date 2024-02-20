@@ -11,7 +11,8 @@ function _checkStatusRequest(statusRequest) {
         statusRequest == "RECRSI005" ||  
         statusRequest == "RECRS013" ||  
         statusRequest == "RECRN013" ||  
-        statusRequest == "RECAG013" 
+        statusRequest == "RECAG013" ||
+        statusRequest == "PN999"
 }
 function _checkingParameters(args, values){
   const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> [--dryrun]"
