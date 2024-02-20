@@ -30,10 +30,8 @@ aws sso login --profile sso_pn-confinfo-<env>
 node index.js --envName <env-name> --fileName <file-name>
 ```
 Dove:
-- `<aws-profile-dev>` è il profilo dell'account AWS dev;
-- `<aws-profile-conf>` è il profilo dell'account AWS confinfo;
-- `<request-id>` è il request id del messaggio desiderato;
-- `<format>` è il formato dell'output, può essere "raw" o "compact"
+- `<env-name>` l'ambiente su cui verrà eseguito lo script;
+- `<file-name>` file che contiene i requestId completi di PC_RETRY;
 
-
+IMPORTANTE: è necessario avviare il tunnel sull'ambiente di riferimento rif. https://pagopa.atlassian.net/wiki/spaces/PN/pages/706183466/Bastion+Host+SSM
 
