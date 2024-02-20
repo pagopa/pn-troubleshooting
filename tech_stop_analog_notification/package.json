@@ -1,0 +1,21 @@
+{
+  "name": "tech_stop_analog_notification",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.462.0",
+    "@aws-sdk/client-secrets-manager": "^3.465.0",
+    "@aws-sdk/client-sqs": "^3.462.0",
+    "@aws-sdk/lib-dynamodb": "^3.464.0",
+    "@aws-sdk/util-dynamodb": "^3.462.0",
+    "aws-sdk": "2.1369.0",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1"
+  }
+}
