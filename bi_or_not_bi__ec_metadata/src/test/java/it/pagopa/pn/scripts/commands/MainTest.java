@@ -29,11 +29,11 @@ public class MainTest {
                 "dynamoExportsIndexing " +
                   "--aws-profile sso_pn-confinfo-prod " +
                   "--aws-bucket dynamodb-export-350578575906-eu-south-1 " +
-                  "--aws-full-export-date 2024-1-15 " +
+                  //"--aws-full-export-date 2024-1-15 " +
                   "--aws-dynexport-folder-prefix %s/incremental202401/ " +
                 "pn-EcRichiesteMetadati";
 
-        String commandLine = indexEcMetadata + " 2024-2-4 2055-1-1 " ;
+        String commandLine = indexEcMetadata + " 2024-2-7 2055-1-1 " ;
 
         int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
 
@@ -78,23 +78,32 @@ public class MainTest {
                 "jsonTransform --aws-profile sso_pn-core-prod + fixSourceChannelDetails " +
                 indexCdcCore + " pn-Notifications 2023-12-1 2024-1-5 " +
                 "jsonTransform - fixSourceChannelDetails " +
-                indexCdcCore + " pn-Notifications 2024-1-5 2024-1-16 ";
+                indexCdcCore + " pn-Notifications 2024-1-5 20255-1-1 ";
 
         int exitCode = CommandsMain.doMain( repeatSubcommand.trim().split(" +"));
 
         Assert.assertEquals( exitCode, 0 );
     }
 
-    //@Test
+    @Test
     public void exportTimelineWithFix() throws IOException {
+        String env = "test";
+        String awsAccountId = "151559006927";
+
+        System.setProperty("dumpToTmp", "true");
+
         //String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-prod --aws-bucket pn-logs-bucket-eu-south-1-510769970275-001 ";
-        String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-dev --aws-bucket pn-logs-bucket-eu-south-1-830192246553-001 ";
+        String indexCdcCore = "cdcIndexing " +
+                              " --aws-profile sso_pn-core-" + env + " " +
+                              " --aws-bucket pn-logs-bucket-eu-south-1-" + awsAccountId + "-001 " +
+                              //" --result-upload-url s3://pn-datamonitoring-eu-south-1-" + awsAccountId + "/parquet/ " +
+                              "";
 
         String repeatSubcommand = " --cdc-indexed-data-folder ./out/prove/cdc " +
-                "jsonTransform --aws-profile sso_pn-confinfo-prod + fixGeoKey " +
-                indexCdcCore + " pn-Timelines 2023-6-1 2023-9-21 " +
+                "jsonTransform --aws-profile sso_pn-confinfo-" + env + " + fixGeoKey " +
+                indexCdcCore + " pn-Timelines 2023-06-1 2023-9-21 " +
                 "jsonTransform - fixGeoKey " +
-                indexCdcCore + " pn-Timelines 2023-9-21 2024-1-5 ";
+                indexCdcCore + " pn-Timelines 2023-9-21 2055-1-1 ";
 
         int exitCode = CommandsMain.doMain( repeatSubcommand.trim().split(" +"));
 

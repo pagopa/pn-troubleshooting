@@ -53,7 +53,7 @@ public class GeoKeyFixFunction implements JsonTransformFunction {
                     result = fixTimelineElement( inJsonObj, confInfo, timelineElementId );
                 }
                 else {
-                    System.out.println( timelineElementId + " do NOT need update");
+                    //System.out.println( timelineElementId + " do NOT need update");
                     result = inJsonObj;
                 }
             }
@@ -81,7 +81,7 @@ public class GeoKeyFixFunction implements JsonTransformFunction {
             setNestedProperty( result, "dynamodb.NewImage.details.M.physicalAddress.M.foreignState", newForeignState );
         }
 
-        System.out.println( timelineElementId + " do UPDATE to zip=" + newZipCode + " state=" + newForeignState );
+        //System.out.println( timelineElementId + " do UPDATE to zip=" + newZipCode + " state=" + newForeignState );
 
         return result;
     }

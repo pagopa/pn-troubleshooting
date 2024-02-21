@@ -107,35 +107,51 @@ if ([ $account_type == "confinfo" ]); then
 
 elif ([ $account_type == "core" ]); then
   
-  COMMANDLINE=" --cdc-indexed-data-folder ./out/prove_dev/cdc \
-    cdcIndexing \
-      --aws-bucket ${logs_bucket_name} \
-      --result-upload-url s3://${export_bucket_name}/parquet/ \
-      pn-Notifications 2023-06-1 2023-12-1 \
-    jsonTransform --flags LENIENT + fixSourceChannelDetails \
-    cdcIndexing \
-      --aws-bucket ${logs_bucket_name} \
-      --result-upload-url s3://${export_bucket_name}/parquet/ \
-      pn-Notifications 2023-12-1 2024-1-5 \
-    jsonTransform - fixSourceChannelDetails \
-    cdcIndexing \
-      --aws-bucket ${logs_bucket_name} \
-      --result-upload-url s3://${export_bucket_name}/parquet/ \
-      pn-Notifications 2024-1-5 3055-1-1 \
-    \
-    \
-    \
-    jsonTransform - fixGeoKey \
-    cdcIndexing \
-      --aws-bucket ${logs_bucket_name} \
-      --result-upload-url s3://${export_bucket_name}/parquet/ \
-      pn-Timelines 2023-6-1 2023-9-21 \
-    jsonTransform - fixGeoKey \
-    cdcIndexing \
-      --aws-bucket ${logs_bucket_name} \
-      --result-upload-url s3://${export_bucket_name}/parquet/ \
-      pn-Timelines 2023-9-21 3055-1-1 \
-    "
+  if ([ $env_type == "prod" ]); then
+    COMMANDLINE=" --cdc-indexed-data-folder ./out/prove_dev/cdc \
+      cdcIndexing \
+        --aws-bucket ${logs_bucket_name} \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-Notifications 2023-06-1 2023-12-1 \
+      jsonTransform --flags LENIENT + fixSourceChannelDetails \
+      cdcIndexing \
+        --aws-bucket ${logs_bucket_name} \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-Notifications 2023-12-1 2024-1-5 \
+      jsonTransform - fixSourceChannelDetails \
+      cdcIndexing \
+        --aws-bucket ${logs_bucket_name} \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-Notifications 2024-1-5 3055-1-1 \
+      \
+      \
+      \
+      jsonTransform + fixGeoKey \
+      cdcIndexing \
+        --aws-bucket ${logs_bucket_name} \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-Timelines 2023-6-1 2023-9-21 \
+      jsonTransform - fixGeoKey \
+      cdcIndexing \
+        --aws-bucket ${logs_bucket_name} \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-Timelines 2023-9-21 3055-1-1 \
+      "
+  else
+    COMMANDLINE=" --cdc-indexed-data-folder ./out/prove_dev/cdc \
+      cdcIndexing \
+        --aws-bucket ${logs_bucket_name} \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-Notifications 2024-1-1 3055-1-1 \
+      \
+      \
+      \
+      cdcIndexing \
+        --aws-bucket ${logs_bucket_name} \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-Timelines 2024-1-1 3055-1-1 \
+      "
+  fi
 
   export MAVEN_OPTS="-Xmx8g \
     --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
