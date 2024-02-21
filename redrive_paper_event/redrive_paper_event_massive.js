@@ -151,8 +151,31 @@ async function checkIfCanceled(requestId){
 function appendJSONToFile(file, json){
     fs.appendFileSync(file, JSON.stringify(json)+'\n');
 }
+// PREPARE_ANALOG_DOMICILE.IUN_EXEU-XZKY-DPKU-202310-K-1.RECINDEX_0.ATTEMPT_0.PCRETRY_2
+function getExpectedPcRetry(requestId){
+    const parts = requestId.split('.')
+    const pcRetry = parts[parts.length-1]
+    if(pcRetry.indexOf('PCRETRY_')!=0){
+        return null;
+    }
+    return pcRetry.split('_')[1]
+}
+
+function getRequestIdWithoutPcRetry(requestId){
+    const parts = requestId.split('.')
+    parts.pop()
+    return parts.join('.')
+}
 
 async function redriveMessageToSqs(queueUrl, requestId, delaySeconds){
+
+    const expectedPcRetry = getExpectedPcRetry(requestId)
+    if(expectedPcRetry){
+        requestId = getRequestIdWithoutPcRetry(requestId)
+    }
+
+    console.log('PCRetry '+expectedPcRetry+' for requestId '+requestId)
+
     // async check is canceled
     const isCanceled = await checkIfCanceled(requestId)
     if(isCanceled){
@@ -162,10 +185,22 @@ async function redriveMessageToSqs(queueUrl, requestId, delaySeconds){
             requestId: requestId,
             status: "CANCELED"
         })
-        return
+        return false
     }
 
     const value = await createSqsMessage(requestId)
+    if(value.Body.newPcRetry!=expectedPcRetry){
+        // append to file
+        const errorFile = 'error.json'
+        appendJSONToFile(errorFile, {
+            requestId: requestId,
+            status: "ERROR",
+            expectedPcRetry: expectedPcRetry,
+            newPcRetry: value.Body.newPcRetry
+        })
+        return false
+    }
+
     await sendSQSMessage(queueUrl, value, delaySeconds)
     const okFile = 'ok.json'
     appendJSONToFile(okFile, {
@@ -218,7 +253,6 @@ async function createSqsMessage(requestId){
     return sqsMex
 }
 
-
 async function run(){
     const getUrlCommand = new GetQueueUrlCommand({ // SendMessageRequest
         QueueName: 'pn-paper_channel_requests', // required
@@ -232,14 +266,18 @@ async function run(){
         return l.trim().replace('"', '').replace('"', '');
     });
 
-    const lines = allLines.splice(1);
+    const lines = allLines;
     let delaySeconds = 0
     for(let i=0; i<lines.length; i++){
         if(delaySeconds>900){
             throw new Error("Delay seconds is too high ", delaySeconds)
         }
-        await redriveMessageToSqs(getUrlRes.QueueUrl, lines[i], delaySeconds)
-        console.log('redrive of line '+i+' with delay '+delaySeconds+' seconds')
+        const ret = await redriveMessageToSqs(getUrlRes.QueueUrl, lines[i], delaySeconds)
+        if(ret){
+            console.log('redrive of line '+i+' with delay '+delaySeconds+' seconds')
+        } else {
+            console.log('skipped redrive of line '+i+' with delay '+delaySeconds+' seconds')
+        }
         if(i%20==0){
             delaySeconds++
         }
