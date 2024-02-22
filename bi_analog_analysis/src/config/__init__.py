@@ -32,6 +32,7 @@ APP_CONFIG = {
     },
     'input': {
         'path.metadataRequest': config_parser['input']['path.metadataRequest'],
+        'path.notifications': config_parser['input']['path.notifications'],
         'path.analyzeFile': config_parser['input']['path.analyzeFile']
     },
     'output': {
