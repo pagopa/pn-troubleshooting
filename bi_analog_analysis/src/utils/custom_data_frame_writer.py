@@ -40,6 +40,8 @@ class CustomDataFrameWriter:
 
         if output_format == Format.CSV.value:
             CustomDataFrameWriter._write_csv(dataframe_writer=dataframe_writer, output_path=output_path)
+        elif output_format == Format.TXT.value:
+            CustomDataFrameWriter._write_txt(dataframe_writer=dataframe_writer, output_path=output_path)
         else:
             CustomDataFrameWriter._write_parquet(dataframe_writer=dataframe_writer, output_path=output_path)
 
@@ -50,3 +52,7 @@ class CustomDataFrameWriter:
     @staticmethod
     def _write_parquet(dataframe_writer: DataFrameWriter, output_path: str) -> None:
         dataframe_writer.parquet(output_path)
+
+    @staticmethod
+    def _write_txt(dataframe_writer: DataFrameWriter, output_path: str) -> None:
+        dataframe_writer.options(header='False').text(output_path)
