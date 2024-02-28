@@ -89,10 +89,10 @@ async function main() {
     if(_checkStatusRequest(metadati.statusRequest)) {
       if(dryrun) {
         console.log("DRY RUN mode active!!!")
-        console.log("Removing message with requestId: " + requestId )
+        console.log("Removing all messages with requestId: " + requestId )
       } else {
         nRemoved += requestIdsMap[requestId].length
-        console.log("Removing message with requestId: " + requestId )
+        console.log("Removing all messages with requestId: " + requestId )
         for ( const receiptHandle of requestIdsMap[requestId] ) {
           awsClient._deleteFromQueueMessage(queueUrl, receiptHandle)
         }
