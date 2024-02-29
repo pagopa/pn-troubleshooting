@@ -70,11 +70,12 @@ async function main() {
 
   console.log('Reading from file...')
 
-  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+  const fileRows = JSON.parse(fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }))
   let requestIdsMap = {};
   let nRemoved = 0;
   for( let i = 0; i < fileRows.length; i++ ){
-    const fileData = JSON.parse(fileRows[i])
+    console.log(fileRows[i])
+    const fileData = JSON.parse(JSON.stringify(fileRows[i]))
     const body = JSON.parse(fileData.Body)
     if (!requestIdsMap[body.xpagopaExtchCxId + "~" + body.requestIdx]) {
       requestIdsMap[body.xpagopaExtchCxId + "~" + body.requestIdx] = []
@@ -91,8 +92,8 @@ async function main() {
         console.log("Removing all messages with requestId: " + requestId )
       } else {
         nRemoved += requestIdsMap[requestId].length
+        console.log("Removing all messages with requestId: " + requestId )
         for ( const receiptHandle of requestIdsMap[requestId] ) {
-          console.log("Removing all messages with requestId: " + requestId )
           awsClient._deleteFromQueueMessage(queueUrl, receiptHandle)
         }
       } 
