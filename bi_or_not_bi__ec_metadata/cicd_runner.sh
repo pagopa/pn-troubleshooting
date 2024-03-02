@@ -91,11 +91,18 @@ if ([ $account_type == "confinfo" ]); then
                     
   COMMANDLINE=" --dynexp-indexed-data-folder ./out/indexing/dynExp \
     dynamoExportsIndexing \
-    --aws-bucket ${export_bucket_name} \
-    --aws-dynexport-folder-prefix %s/incremental2024/ \
-    --result-upload-url s3://${export_bucket_name}/parquet/ \
-    pn-EcRichiesteMetadati  2023-6-1 3035-1-1 \
-    pn-SsDocumenti          2023-6-1 3035-1-1 "
+      --aws-bucket ${export_bucket_name} \
+      --aws-dynexport-folder-prefix %s/incremental2024/ \
+      --result-upload-url s3://${export_bucket_name}/parquet/ \
+      pn-EcRichiesteMetadati 2023-6-1 3035-1-1 \
+    \
+    \
+    dynamoExportsIndexing \
+      --aws-bucket ${export_bucket_name} \
+      --aws-dynexport-folder-prefix %s/incremental2024/ \
+      --result-upload-url s3://${export_bucket_name}/parquet/ \
+      pn-SsDocumenti 2023-6-1 3035-1-1 "
+    
 
   export MAVEN_OPTS="-Xmx8g \
     --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
