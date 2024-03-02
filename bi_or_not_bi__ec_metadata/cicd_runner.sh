@@ -94,7 +94,8 @@ if ([ $account_type == "confinfo" ]); then
     --aws-bucket ${export_bucket_name} \
     --aws-dynexport-folder-prefix %s/incremental2024/ \
     --result-upload-url s3://${export_bucket_name}/parquet/ \
-    pn-EcRichiesteMetadati 2024-1-1 3035-1-1 "
+    pn-EcRichiesteMetadati  2023-6-1 3035-1-1 \
+    pn-SsDocumenti          2023-6-1 3035-1-1 "
 
   export MAVEN_OPTS="-Xmx8g \
     --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
