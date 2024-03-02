@@ -13,10 +13,10 @@
     ),
     decoded_string AS (
       SELECT
-        get_json_object( json_string, '$.eventID') as kinesis_eventID,
-        json_string as kinesis_fullEvent,
-        get_json_object( json_string, '$.eventName') as kinesis_eventName,
-        get_json_object( json_string, '$.tableName') as kinesis_tableName,
+        get_json_object( json_string, '$.eventID') as eventid,
+        json_string as fullEvent_json,
+        get_json_object( json_string, '$.eventName') as eventname,
+        get_json_object( json_string, '$.tableName') as tablename,
         get_json_object( json_string, '$.dynamodb.ApproximateCreationDateTime') as kinesis_dynamodb_ApproximateCreationDateTime,
         get_json_object( img, '$.iun.S') as iun,
         get_json_object( img, '$.cancelledByIun.S') as cancelledByIun,
@@ -116,21 +116,24 @@
     ),
     decoded_string AS (
       SELECT
-        get_json_object( json_string, '$.eventID') as kinesis_eventID,
-        json_string as kinesis_fullEvent,
-        get_json_object( json_string, '$.eventName') as kinesis_eventName,
-        get_json_object( json_string, '$.tableName') as kinesis_tableName,
+        get_json_object( json_string, '$.eventID') as eventid,
+        json_string as fullEvent_json,
+        get_json_object( json_string, '$.eventName') as eventname,
+        get_json_object( json_string, '$.tableName') as tablename,
         get_json_object( json_string, '$.dynamodb.ApproximateCreationDateTime') as kinesis_dynamodb_ApproximateCreationDateTime,
         get_json_object( img, '$.iun.S') as iun,
-        get_json_object( img, '$.timelineElementId.S') as timelineElementId,
+        get_json_object( img, '$.timelineElementId.S') as timelineelementid,
+        get_json_object( img, '$.timestamp.S') as timestamp,
         get_json_object( img, '$.category.S') as category,
-        get_json_object( img, '$.details.M') as details_str,
-        get_json_object( img, '$.notificationSentAt.S') as notificationSentAt,
-        get_json_object( img, '$.paId.S') as paId,
-        get_json_object( img, '$.timestamp.S') as tech_timestamp,
-        get_json_object( img, '$.statusInfo.M.actual.S') as statusInfo_actual,
-        get_json_object( img, '$.statusInfo.M.statusChanged.BOOL') as statusInfo_statusChanged,
-        get_json_object( img, '$.statusInfo.M.statusChangeTimestamp.S') as statusInfo_statusChangeTimestamp,
+        get_json_object( img, '$.details.M') as details,
+        get_json_object( img, '$.notificationSentAt.S') as notificationsentat,
+        get_json_object( img, '$.paId.S') as paid,
+        named_struct (
+          'actual', get_json_object( img, '$.statusInfo.M.actual.S'),
+          'statusChanged', get_json_object( img, '$.statusInfo.M.statusChanged.BOOL'),
+          'statusChangeTimestamp', get_json_object( img, '$.statusInfo.M.statusChangeTimestamp.S')
+        )
+         as statusinfo,
         if(
           json_array_length( get_json_object( img, '$.legalFactId.L')) > 0,
           transform(

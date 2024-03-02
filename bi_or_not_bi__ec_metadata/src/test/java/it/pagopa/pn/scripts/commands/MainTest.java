@@ -87,12 +87,11 @@ public class MainTest {
 
     @Test
     public void exportTimelineWithFix() throws IOException {
-        String env = "test";
-        String awsAccountId = "151559006927";
+        String env = "prod";
+        String awsAccountId = "510769970275";
 
         System.setProperty("dumpToTmp", "true");
 
-        //String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-prod --aws-bucket pn-logs-bucket-eu-south-1-510769970275-001 ";
         String indexCdcCore = "cdcIndexing " +
                               " --aws-profile sso_pn-core-" + env + " " +
                               " --aws-bucket pn-logs-bucket-eu-south-1-" + awsAccountId + "-001 " +
@@ -100,10 +99,10 @@ public class MainTest {
                               "";
 
         String repeatSubcommand = " --cdc-indexed-data-folder ./out/prove/cdc " +
-                "jsonTransform --aws-profile sso_pn-confinfo-" + env + " + fixGeoKey " +
-                indexCdcCore + " pn-Timelines 2023-06-1 2023-9-21 " +
-                "jsonTransform - fixGeoKey " +
-                indexCdcCore + " pn-Timelines 2023-9-21 2055-1-1 ";
+                //"jsonTransform --aws-profile sso_pn-confinfo-" + env + " + fixGeoKey " +
+                //indexCdcCore + " pn-Timelines 2023-06-1 2023-9-21 " +
+                //"jsonTransform - fixGeoKey " +
+                indexCdcCore + " pn-Timelines 2024-2-16 2055-1-1 ";
 
         int exitCode = CommandsMain.doMain( repeatSubcommand.trim().split(" +"));
 
