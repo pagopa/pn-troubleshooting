@@ -28,10 +28,10 @@ public class MainTest {
         String indexEcMetadata = "" +
                 "dynamoExportsIndexing " +
                   "--aws-profile sso_pn-confinfo-prod " +
-                  "--aws-bucket dynamodb-export-350578575906-eu-south-1 " +
+                  "--aws-bucket pn-datamonitoring-eu-south-1-350578575906 " +
                   //"--aws-full-export-date 2024-1-15 " +
-                  "--aws-dynexport-folder-prefix %s/incremental202401/ " +
-                "pn-EcRichiesteMetadati";
+                  "--aws-dynexport-folder-prefix %s/incremental2024/ " +
+                "pn-SsDocumenti";
 
         String commandLine = indexEcMetadata + " 2024-2-7 2055-1-1 " ;
 

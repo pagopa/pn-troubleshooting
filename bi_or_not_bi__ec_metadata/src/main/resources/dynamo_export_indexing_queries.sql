@@ -84,7 +84,7 @@
         json_array_length( get_json_object(json_string, '$.Item.documentType.M.transformations.L')) > 0,
         transform(
           sequence(1, json_array_length( get_json_object(json_string, '$.Item.documentType.M.transformations.L')) ,1),
-          x  -> get_json_object(x, concat('$.Item.documentType.M.transformations.L[', x-1, '].S'))
+          x  -> get_json_object(json_string, concat('$.Item.documentType.M.transformations.L[', x-1, '].S'))
         ),
         array()
       )
