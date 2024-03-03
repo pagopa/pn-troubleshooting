@@ -3,6 +3,7 @@ package it.pagopa.pn.scripts.commands.utils;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -120,13 +121,14 @@ public class DateHoursStream {
                 default -> throw new IllegalStateException("BUG!!!!!!");
             }
 
+
             if ( result.hour >= 24 ) {
                 result.day += result.hour / 24;
                 result.hour = result.hour % 24;
             }
 
-            while ( result.day >= MAX_DAYS[result.month] ) {
-                result.day -= MAX_DAYS[result.month];
+            while ( result.day >= getMaxDays(result.year, result.month) ) {
+                result.day -= getMaxDays(result.year, result.month);
                 result.month += 1;
 
                 if( result.month >= 12 ) {
@@ -138,6 +140,13 @@ public class DateHoursStream {
             return result;
         }
 
+        private static int getMaxDays( int year, int month ) {
+            int maxDayInMonth = MAX_DAYS[ month ];
+            if( month == 1 && year % 4 == 0 ) {
+                maxDayInMonth = 29;
+            }
+            return maxDayInMonth;
+        }
         private static final int[] MAX_DAYS = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
         @Override

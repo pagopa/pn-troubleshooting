@@ -17,7 +17,7 @@ public class DevTest {
 
         String fullCommand = " --cdc-indexed-data-folder ./out/prove_dev/cdc " +
                 indexCdcCore + " pn-Notifications 2023-06-1 2023-12-1 " +
-                "jsonTransform --aws-profile sso_pn-core-dev --flags LENIENT + fixSourceChannelDetails " +
+                "jsonTransform --aws-profile sso_pn-core-dev + fixSourceChannelDetails " +
                 indexCdcCore + " pn-Notifications 2023-12-1 2024-1-5 " +
                 "jsonTransform - fixSourceChannelDetails " +
                 indexCdcCore + " pn-Notifications 2024-1-5 2025-1-1 ";

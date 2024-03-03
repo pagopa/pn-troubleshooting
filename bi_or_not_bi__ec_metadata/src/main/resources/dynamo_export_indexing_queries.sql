@@ -75,7 +75,21 @@
       get_json_object(json_string, '$.Item.checkSum.S') as checkSum,
       get_json_object(json_string, '$.Item.contentLenght.N') as contentLenght,
       get_json_object(json_string, '$.Item.version.N') as version,
-      get_json_object(json_string, '$.Item.documentType.M.tipoDocumento.S') as documentType_tipoDocumento
+      get_json_object(json_string, '$.Item.documentType.M.tipoDocumento.S') as documentType_tipoDocumento,
+      get_json_object(json_string, '$.Item.documentType.M.checksum.S') as documentType_checksum,
+      get_json_object(json_string, '$.Item.documentType.M.informationClassification.S') as documentType_informationClassification,
+      get_json_object(json_string, '$.Item.documentType.M.initialStatus.S') as documentType_initialStatus,
+      get_json_object(json_string, '$.Item.documentType.M.timeStamped.S') as documentType_timeStamped,
+      if (
+        json_array_length( get_json_object(json_string, '$.Item.documentType.M.transformations.L')) > 0,
+        transform(
+          sequence(1, json_array_length( get_json_object(json_string, '$.Item.documentType.M.transformations.L')) ,1),
+          x  -> get_json_object(x, concat('$.Item.documentType.M.transformations.L[', x-1, '].S'))
+        ),
+        array()
+      )
+       as documentType_transformations,
+      get_json_object(json_string, '$.Item.documentType.M.statuses.M') as documentType_statuses
     FROM
       json_objects
 ;

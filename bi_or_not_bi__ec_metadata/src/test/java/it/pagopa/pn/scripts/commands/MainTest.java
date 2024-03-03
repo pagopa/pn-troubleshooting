@@ -40,6 +40,7 @@ public class MainTest {
         Assert.assertEquals( exitCode, 0 );
     }
 
+
     @Test
     public void exportEcMetadata() throws IOException {
         String commandLine = " exportEcRichiesteMetadati";
@@ -74,11 +75,11 @@ public class MainTest {
         String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-prod --aws-bucket pn-logs-bucket-eu-south-1-510769970275-001 ";
 
         String repeatSubcommand = " --cdc-indexed-data-folder ./out/prove/cdc " +
-                indexCdcCore + " pn-Notifications 2023-06-1 2023-12-1 " +
+                indexCdcCore + " pn-Notifications 2023-6-1 2023-12-1 " +
                 "jsonTransform --aws-profile sso_pn-core-prod + fixSourceChannelDetails " +
                 indexCdcCore + " pn-Notifications 2023-12-1 2024-1-5 " +
                 "jsonTransform - fixSourceChannelDetails " +
-                indexCdcCore + " pn-Notifications 2024-1-5 20255-1-1 ";
+                indexCdcCore + " pn-Notifications 2024-1-5 2055-1-1 ";
 
         int exitCode = CommandsMain.doMain( repeatSubcommand.trim().split(" +"));
 
@@ -99,10 +100,10 @@ public class MainTest {
                               "";
 
         String repeatSubcommand = " --cdc-indexed-data-folder ./out/prove/cdc " +
-                //"jsonTransform --aws-profile sso_pn-confinfo-" + env + " + fixGeoKey " +
-                //indexCdcCore + " pn-Timelines 2023-06-1 2023-9-21 " +
-                //"jsonTransform - fixGeoKey " +
-                indexCdcCore + " pn-Timelines 2024-2-16 2055-1-1 ";
+                "jsonTransform --aws-profile sso_pn-confinfo-" + env + " + fixGeoKey " +
+                indexCdcCore + " pn-Timelines 2023-06-1 2023-9-21 " +
+                "jsonTransform - fixGeoKey " +
+                indexCdcCore + " pn-Timelines 2023-9-21 2055-1-1 ";
 
         int exitCode = CommandsMain.doMain( repeatSubcommand.trim().split(" +"));
 
