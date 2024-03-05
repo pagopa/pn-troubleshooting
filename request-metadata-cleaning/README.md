@@ -38,5 +38,9 @@ Dove:
 
 - `<aws-profile>` è il profilo dell'account AWS;
 - `<exclusive-start-key>` settare questo parametro permette di cominciare la prima scan a partire dalla primary key
-  indicata; `OPZIONALE`
-- `<scan-limit>` è il numero massimo di record reperibili da una singola scan; `OPZIONALE`
+  indicata. Se non inserito, la prima scan partirà dall'inizio della tabella; `OPZIONALE`
+- `<scan-limit>` è il numero massimo di record reperibili da una singola scan. Come default, vengono reperiti record
+  fino a che non viene raggiunta la soglia massima (definita da AWS) di 1MB per singola scan. `OPZIONALE`
+
+Alla fine del processo di bonifica, verrà generato un file _"failures.csv"_ contenente i requestId dei record
+su cui l'update è andato in errore.
