@@ -8,10 +8,11 @@ const args = [
   { name: "awsProfile", mandatory: true },
   { name: "exclusiveStartKey", mandatory: false },
   { name: "scanLimit", mandatory: false },
+  { name: "test", mandatory: false }
 ]
 
 const values = {
-  values: { awsProfile, scanLimit, exclusiveStartKey },
+  values: { awsProfile, scanLimit, exclusiveStartKey, test },
 } = parseArgs({
   options: {
     awsProfile: {
@@ -23,6 +24,9 @@ const values = {
     exclusiveStartKey: {
       type: "string",
     },
+    test: {
+      type: "boolean"
+    }
   },
 });
 
@@ -46,6 +50,9 @@ var itemFailures = 0;
 var itemUpdates = 0;
 var totalScannedRecords = 0;
 
+if (test)
+  scanLimit = 10;
+
 async function recordsCleaning() {
   var hasRecords = true;
   var input = {
@@ -66,13 +73,12 @@ async function recordsCleaning() {
       .then(
         function (data) {
           totalScannedRecords += data.ScannedCount;
-          if (data.LastEvaluatedKey == null) {
+          if (data.LastEvaluatedKey == null || test) {
             hasRecords = false;
           }
           else {
             exclusiveStartKey = data.LastEvaluatedKey.requestId;
           }
-          console.log(`Total scanned records : ${totalScannedRecords}.`);
           return Promise.all(data.Items.map(async (record) => {
             await updateRecord(record);
           }));
@@ -87,7 +93,6 @@ async function recordsCleaning() {
 }
 
 async function getRecords(input) {
-  console.log(`Scanning table with input : ${JSON.stringify(input)}`);
   const command = new ScanCommand(input);
   return dynamoDbDocumentClient.send(command);
 }
@@ -172,6 +177,9 @@ async function updateRecord(record) {
         input.UpdateExpression += ", #elKey = :elValue"
       }
 
+      if (test)
+        fs.appendFileSync("test-records.csv", requestId.toString() + "\r\n");
+
       const command = new UpdateCommand(input);
       await dynamoDbDocumentClient.send(command);
     }
@@ -183,9 +191,11 @@ async function updateRecord(record) {
   catch (error) {
     console.warn(`Error while updating record "${requestId}" : ${error}`);
     itemFailures++;
-    fs.appendFileSync("failures.csv", requestId.toString() + "\r\n");
+    fs.appendFileSync("failures.csv", requestId.toString() + "," + error + "\r\n");
     return;
   }
+  if (test)
+      fs.appendFileSync("test-records.csv", requestId.toString() + "\r\n");
   itemUpdates++;
   return;
 }
@@ -194,10 +204,10 @@ recordsCleaning()
   .then(
     function (data) {
       console.log("Successful operation, ending process.");
-      console.log(`Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
+      console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
       return;
     },
     function (error) {
       console.error(`* FATAL * Error in process : ${error}`);
-      console.log(`Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
+      console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
     });

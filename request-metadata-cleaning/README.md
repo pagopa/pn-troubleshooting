@@ -31,7 +31,7 @@ aws sso login --profile sso_pn-confinfo-<env>
 ### Esecuzione
 
 ```bash
-node index.js --awsProfile <aws-profile> --exclusiveStartKey <exclusive-start-key> --scanLimit <scan-limit>
+node index.js --awsProfile <aws-profile> --exclusiveStartKey <exclusive-start-key> --scanLimit <scan-limit> --test
 ```
 
 Dove:
@@ -41,6 +41,11 @@ Dove:
   indicata. Se non inserito, la prima scan partirà dall'inizio della tabella; `OPZIONALE`
 - `<scan-limit>` è il numero massimo di record reperibili da una singola scan. Come default, vengono reperiti record
   fino a che non viene raggiunta la soglia massima (definita da AWS) di 1MB per singola scan. `OPZIONALE`
+- `<test>` se inserito, attiva la modalità test. In questa modalità, viene eseguita una singola scan di 10 record dalla
+  tabella. `OPZIONALE`
 
 Alla fine del processo di bonifica, verrà generato un file _"failures.csv"_ contenente i requestId dei record
-su cui l'update è andato in errore.
+su cui l'update è andato in eccezione e la causa dell'errore.
+
+Se è attiva la modalità test, verrà anche generato un file _"test-records.csv"_ contenente i requestId dei record
+che sono stati aggiornati.
