@@ -243,3 +243,15 @@ Vuoi bloccare una notifica in stato PN999 nel flusso cartaceo?
 ```bash  
 node index.js --envName <envName> --fileName <fileName> 
 ```
+
+### remove_from_paper_error
+Vuoi rimuovere dalla tabella pn-paperRequestError dei requestId?
+```bash  
+node index.js --envName <envName> --fileName <fileName> 
+```
+
+### verify_if_exist_or_stolen
+Vuoi verificare se un requestId è stato scartato e il suo tentativo precedente è in uno stato di furto?
+```bash
+node index.js --envName <envName> --fileName <fileName>
+```
