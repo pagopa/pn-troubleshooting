@@ -4,6 +4,7 @@ const fs = require('fs');
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function _checkStatusRequest(statusRequest) {
+  console.log("status request is " + statusRequest)
   return statusRequest == "RECRS006" || 
         statusRequest == "RECRN006" ||  
         statusRequest == "RECAG004" ||  

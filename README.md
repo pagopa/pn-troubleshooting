@@ -247,7 +247,7 @@ node index.js --envName <envName> --fileName <fileName>
 ### remove_from_paper_error
 Vuoi rimuovere dalla tabella pn-paperRequestError dei requestId?
 ```bash  
-node index.js --envName <envName> --fileName <fileName> 
+node index.js --envName <envName> --fileName <fileName> [--dryrun] 
 ```
 
 ### verify_if_exist_or_stolen

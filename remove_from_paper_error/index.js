@@ -11,7 +11,7 @@ function appendJsonToFile(fileName, data){
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> [--dryrun] "
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -40,16 +40,20 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
+    { name: "dryrun", mandatory: false, subcommand: [] },
   ]
   const values = {
-    values: { envName, fileName },
+    values: { envName, fileName, dryrun },
   } = parseArgs({
     options: {
       envName: {
-        type: "string", short: "p", default: undefined
+        type: "string", short: "e", default: undefined
       },
       fileName: {
-        type: "string", short: "t", default: undefined
+        type: "string", short: "f", default: undefined
+      },
+      dryrun: {
+        type: "boolean", short: "d", default: false
       },
     },
   });  
@@ -58,6 +62,7 @@ async function main() {
   const awsClient = new AwsClientsWrapper( envName );
   
   console.log('Reading from file...')
+  let counter = 0
   const requestIdx = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
   for( let i = 0; i < requestIdx.length; i++ ){
     const requestId = requestIdx[i]
@@ -65,14 +70,22 @@ async function main() {
     if(res.length > 0) {
       for( let j = 0; j < res.length; j++ ){
         let paperError = unmarshall(res[j])
-        await awsClient._deleteRequest("pn-PaperRequestError", requestId, paperError.created)
-        console.log("Element " + requestId + " with timestamp " + paperError.created + " removed")
+        if(dryrun) {
+          counter = counter + 1
+          console.log("Dryrun Removing " + requestId + " " + paperError.created)
+        }
+        else {
+          counter = counter + 1
+          await awsClient._deleteRequest("pn-PaperRequestError", requestId, paperError.created)
+          console.log("Element " + requestId + " with timestamp " + paperError.created + " removed")
+        }
       }
     }
     else {
       console.log("Element " + requestId + " not found")
     }  
   }
+  console.log("Removed " + counter + " elements")
 }
 
 main()
