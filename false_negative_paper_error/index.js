@@ -5,15 +5,11 @@ const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function _checkStatusRequest(statusRequest) {
   console.log("status request is " + statusRequest)
-  return statusRequest == "RECRS006" || 
-        statusRequest == "RECRN006" ||  
-        statusRequest == "RECAG004" ||  
-        statusRequest == "RECRI005" ||  
-        statusRequest == "RECRSI005" ||  
-        statusRequest == "RECRS013" ||  
-        statusRequest == "RECRN013" ||  
-        statusRequest == "RECAG013" ||
-        statusRequest == "PN999"
+  let statusRequests = ["RECRS006", "RECRN006", "RECAG004", "RECRI005", "RECRSI005", "RECRS013", "RECRN013", "RECAG013", "PN999"]
+  if (statusRequests.indexOf(statusRequest)) {
+    return true;
+  }
+  return false;
 }
 function _checkingParameters(args, values){
   const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> [--dryrun]"
