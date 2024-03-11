@@ -1,6 +1,7 @@
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const { parseArgs } = require('util');
 const fs = require('fs');
+const path = require('path');
 const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
 
 function _checkingParameters(args, values){
@@ -55,6 +56,7 @@ async function main() {
 
   _checkingParameters(args, values)
   const awsClient = new AwsClientsWrapper( envName );
+  const resultPath = path.join(__dirname, "results/attachments.json");
   const data = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
   for (iun of data) {
     if (iun === '')
@@ -78,7 +80,7 @@ async function main() {
         }
           
       }
-      appendJsonToFile("results/attachments.json", temp)
+      appendJsonToFile(resultPath, temp)
     }
     catch (e) {
       console.log('IUN ' + iun + ' not present in pn-Notifications')

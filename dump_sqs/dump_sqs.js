@@ -1,12 +1,13 @@
 const { AwsClientsWrapper } = require("./lib/AwsClientWrapper");
 const fs = require('fs');
 const { parseArgs } = require('util');
-
+const path = require('path');
 
 async function _writeInFile(result) {
   fs.mkdirSync("result", { recursive: true });
   const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
-  fs.writeFileSync('result/dump' +'_'+queueName+'_'+dateIsoString+'.json', JSON.stringify(result, null, 4), 'utf-8')
+  const resultPath = path.join(__dirname, 'result/dump' +'_'+queueName+'_'+dateIsoString+'.json');
+  fs.writeFileSync(resultPath, JSON.stringify(result, null, 4), 'utf-8')
 }
 
 async function dumpSQS() {
@@ -87,7 +88,7 @@ async function dumpSQS() {
 
   const awsClient = new AwsClientsWrapper( awsProfile );
   const queueUrl = await awsClient._getQueueUrl(queueName);
-  let maxNumberOfMessages = queueName.includes(".fifo") ? 1: 10;
+  let maxNumberOfMessages = queueName.includes(".fifo") ? 10: 10;
   try {
     let hasNext = true;
 
