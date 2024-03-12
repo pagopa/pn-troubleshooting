@@ -93,3 +93,27 @@
     FROM
       json_objects
 ;
+
+
+----------------------------------------------------------------------------
+-- pn-PaperRequestError
+    SELECT
+      get_json_object(json_string, '$.Metadata_WriteTimestampMicros') as Metadata_WriteTimestampMicros,
+      if( get_json_object(json_string, '$.Item') is null, 'REMOVE', 'INSERT/MODIFY') as Metadata_Operation,
+
+      coalesce(
+        get_json_object(json_string, '$.Keys.requestId.S'),
+        get_json_object(json_string, '$.Item.requestId.S')
+      )
+       as requestId,
+      coalesce(
+        get_json_object(json_string, '$.Keys.created.S'),
+        get_json_object(json_string, '$.Item.created.S')
+      ) as created,
+
+      get_json_object(json_string, '$.Item.author.S') as author,
+      get_json_object(json_string, '$.Item.error.S') as error,
+      get_json_object(json_string, '$.Item.flowThrow.S') as flowThrow
+    FROM
+      json_objects
+;

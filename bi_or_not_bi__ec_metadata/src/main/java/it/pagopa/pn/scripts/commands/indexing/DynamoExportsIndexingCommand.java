@@ -213,9 +213,13 @@ public class DynamoExportsIndexingCommand extends AbstractUploadSupport implemen
 
                 String writeMs = obj.getJSONObject("Metadata")
                         .getJSONObject("WriteTimestampMicros").getString("N");
+                JSONObject keys = obj.getJSONObject("Keys");
 
                 JSONObject result = new JSONObject();
-                result.put("Item", obj.getJSONObject("NewImage"));
+                result.put("Keys", keys );
+                if( obj.has( "NewImage" )) {
+                    result.put("Item", obj.getJSONObject("NewImage"));
+                }
                 result.put("Metadata_WriteTimestampMicros", Long.parseLong( writeMs ) );
                 return result.toString();
             } catch (JSONException e) {

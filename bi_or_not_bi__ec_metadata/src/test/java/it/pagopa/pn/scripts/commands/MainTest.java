@@ -2,81 +2,33 @@ package it.pagopa.pn.scripts.commands;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.StsClientBuilder;
+import software.amazon.awssdk.utils.StringUtils;
 
 import java.io.*;
+import java.util.function.BiFunction;
 
 public class MainTest {
 
     @Test
-    public void indexSsDocuments() throws IOException {
-        String indexEcMetadata = "" +
-                "dynamoExportsIndexing " +
-                "--aws-profile sso_pn-confinfo-prod " +
-                "--aws-bucket dynamodb-export-350578575906-eu-south-1 " +
-                "--aws-dynexport-folder-prefix %s/exports/ " +
-                "--aws-full-export-folder-suffix 20240108 " +
-                "pn-SsDocumenti";
-        String commandLine = indexEcMetadata + " 2023-1-1 2023-1-1" ;
-
-        int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
-
-        Assert.assertEquals( exitCode, 0 );
-    }
-
-    @Test
-    public void indexEcMetadata() throws IOException {
-        String indexEcMetadata = "" +
-                "dynamoExportsIndexing " +
-                  "--aws-profile sso_pn-confinfo-prod " +
-                  "--aws-bucket pn-datamonitoring-eu-south-1-350578575906 " +
-                  //"--aws-full-export-date 2024-1-15 " +
-                  "--aws-dynexport-folder-prefix %s/incremental2024/ " +
-                "pn-SsDocumenti";
-
-        String commandLine = indexEcMetadata + " 2024-2-7 2055-1-1 " ;
-
-        int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
-
-        Assert.assertEquals( exitCode, 0 );
-    }
-
-
-    @Test
-    public void exportEcMetadata() throws IOException {
-        String commandLine = " exportEcRichiesteMetadati";
-
-        int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
-
-        Assert.assertEquals( exitCode, 0 );
-    }
-
-    @Test
-    public void indexAndExportCdc() throws IOException {
-        String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-prod --aws-bucket pn-logs-bucket-eu-south-1-510769970275-001";
-        String commandLine = indexCdcCore + " pn-Notifications 2024-1-7 2024-1-15 " +
-                indexCdcCore + " pn-Timelines 2024-1-7 2024-1-15 " ;
-
-        int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
-        Assert.assertEquals( exitCode, 0 );
-    }
-
-
-    //@Test
-    public void incrementalRedoSourceChannelDetails() throws IOException {
-        String commandLine = "redoSourceChannelDetails 2024-1-5 2024-1-7 ";
-
-        int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
-
-        Assert.assertEquals( exitCode, 0 );
-    }
-
-    @Test
     public void exportNotificationWithFix() throws IOException {
-        String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-prod --aws-bucket pn-logs-bucket-eu-south-1-510769970275-001 ";
+        String env = "prod";
+        String profile = "sso_pn-core-" + env;
+        String awsAccountId = this.getAwsAccountId( profile );
+
+        System.setProperty("dumpToTmp", "false");
+
+        String indexCdcCore = "cdcIndexing " +
+                " --aws-profile " + profile + " " +
+                " --aws-bucket pn-logs-bucket-eu-south-1-" + awsAccountId + "-001 " +
+                //" --result-upload-url s3://pn-datamonitoring-eu-south-1-" + awsAccountId + "/parquet/ " +
+                "";
 
         String repeatSubcommand = " --cdc-indexed-data-folder ./out/prove/cdc " +
                 indexCdcCore + " pn-Notifications 2023-6-1 2023-12-1 " +
-                "jsonTransform --aws-profile sso_pn-core-prod + fixSourceChannelDetails " +
+                "jsonTransform --aws-profile " + profile + " + fixSourceChannelDetails " +
                 indexCdcCore + " pn-Notifications 2023-12-1 2024-1-5 " +
                 "jsonTransform - fixSourceChannelDetails " +
                 indexCdcCore + " pn-Notifications 2024-1-5 2055-1-1 ";
@@ -89,12 +41,13 @@ public class MainTest {
     @Test
     public void exportTimelineWithFix() throws IOException {
         String env = "prod";
-        String awsAccountId = "510769970275";
+        String profile = "sso_pn-core-" + env;
+        String awsAccountId = this.getAwsAccountId( profile );
 
         System.setProperty("dumpToTmp", "true");
 
         String indexCdcCore = "cdcIndexing " +
-                              " --aws-profile sso_pn-core-" + env + " " +
+                              " --aws-profile " + profile + " " +
                               " --aws-bucket pn-logs-bucket-eu-south-1-" + awsAccountId + "-001 " +
                               //" --result-upload-url s3://pn-datamonitoring-eu-south-1-" + awsAccountId + "/parquet/ " +
                               "";
@@ -110,7 +63,41 @@ public class MainTest {
         Assert.assertEquals( exitCode, 0 );
     }
 
+
     @Test
+    public void exportDynamoTables() throws IOException {
+        String env = "test";
+
+        System.setProperty("dumpToTmp", "false");
+
+        BiFunction<String, String, String> baseCommandGen = (String account, String amb) -> {
+            String profile = "sso_pn-" + account + "-" + amb;
+            String awsAccountId = this.getAwsAccountId( profile );
+
+            return "dynamoExportsIndexing "
+                    + " --aws-profile " + profile + " "
+                    + " --aws-bucket pn-datamonitoring-eu-south-1-" + awsAccountId + " "
+                    + " --aws-dynexport-folder-prefix %s/incremental2024/ "
+                    //+ "--result-upload-url s3://dynamo-export-dailytest/parquet/ "
+                    ;
+        };
+        String indexConfinfoDynamo = baseCommandGen.apply( "confinfo", env);
+        String indexCoreDynamo = baseCommandGen.apply( "core", env);
+
+
+        String commandLine = " --dynexp-indexed-data-folder ./out/prove_dev/dynExp "
+                + indexConfinfoDynamo + " pn-EcRichiesteMetadati 2024-1-1 2025-1-1 "
+                + indexConfinfoDynamo + " pn-SsDocumenti 2024-1-1 2025-1-1 "
+                + indexCoreDynamo + " pn-PaperRequestError 2024-1-1 2025-1-1 "
+                ;
+
+        int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
+
+        Assert.assertEquals( exitCode, 0 );
+    }
+
+
+    //@Test TO BE FIXED
     public void exportTimelineForInvoicingWithFix() throws IOException {
         String indexCdcCore = "cdcIndexing --aws-profile sso_pn-core-prod --aws-bucket pn-logs-bucket-eu-south-1-510769970275-001 ";
 
@@ -122,4 +109,27 @@ public class MainTest {
 
         Assert.assertEquals( exitCode, 0 );
     }
+
+
+    // @Test TO BE EXTENDED FOR GENERIC SCRIPT RUNNING
+    public void exportEcMetadata() throws IOException {
+        String commandLine = " exportEcRichiesteMetadati";
+
+        int exitCode = CommandsMain.doMain( commandLine.trim().split(" +"));
+
+        Assert.assertEquals( exitCode, 0 );
+    }
+
+    private String getAwsAccountId(String profileName) {
+        StsClientBuilder builder = StsClient.builder();
+
+        if( StringUtils.isNotBlank( profileName )) {
+            builder.credentialsProvider( ProfileCredentialsProvider.create( profileName ));
+        }
+
+        StsClient sts = builder.build();
+
+        return sts.getCallerIdentity().account();
+    }
+
 }
