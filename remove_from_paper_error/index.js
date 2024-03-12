@@ -40,10 +40,11 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
+    { name: "condition", mandatory: false, subcommand: [] },
     { name: "dryrun", mandatory: false, subcommand: [] },
   ]
   const values = {
-    values: { envName, fileName, dryrun },
+    values: { envName, fileName, condition, dryrun },
   } = parseArgs({
     options: {
       envName: {
@@ -51,6 +52,9 @@ async function main() {
       },
       fileName: {
         type: "string", short: "f", default: undefined
+      },
+      condition: {
+        type: "string", short: "c", default: undefined
       },
       dryrun: {
         type: "boolean", short: "d", default: false
@@ -66,7 +70,7 @@ async function main() {
   const requestIdx = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
   for( let i = 0; i < requestIdx.length; i++ ){
     const requestId = requestIdx[i]
-    const res = await awsClient._queryRequest("pn-PaperRequestError", requestId)
+    const res = await awsClient._queryRequest("pn-PaperRequestError", requestId, condition)
     if(res.length > 0) {
       for( let j = 0; j < res.length; j++ ){
         let paperError = unmarshall(res[j])
