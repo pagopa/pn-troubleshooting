@@ -66,7 +66,7 @@ echo "STARTING EXECUTION"
 echo "DUMPING SQS..."
 cd "$work_dir"
 queue_name='pn-ec-tracker-cartaceo-errori-queue-DLQ.fifo'
-node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-confinfo-$env_name --queueName $queue_name --visibilityTimeout 30
+node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-confinfo-$env_name --queueName $queue_name --visibilityTimeout 300
 dumped_file=$(find ./dump_sqs/result -type f -exec ls -t1 {} + | head -1)
 echo "$dumped_file"
 
