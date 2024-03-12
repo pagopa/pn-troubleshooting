@@ -1,0 +1,18 @@
+{
+  "name": "request-metadata-cleaning",
+  "version": "1.0.0",
+  "description": "Script for data-cleaning in requestMetadata table.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.523.0",
+    "@aws-sdk/credential-provider-sso": "^3.525.0",
+    "@aws-sdk/lib-dynamodb": "^3.523.0",
+    "@shelf/dynamodb-parallel-scan": "^3.7.0",
+    "util": "^0.12.5"
+  }
+}

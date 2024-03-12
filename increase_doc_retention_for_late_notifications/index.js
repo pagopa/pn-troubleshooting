@@ -1,7 +1,7 @@
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const { parseArgs } = require('util');
 const fs = require('fs');
-
+const path = require('path');
 
 function _checkingParameters(args, values){
   const usage = "Usage: index.js --envName <envName> --directory <directory> [--delayOffset <delayOffset>] [--scheduleAction]"
@@ -178,6 +178,7 @@ async function scheduleActions(iun, lineNumber){
 
 async function processSingleFile(file){
   // the file is a \n separated json objects
+  const resultPath = path.join(__dirname, "files/log.json");
   const fileContent = fs.readFileSync(file)
   const lines = fileContent.toString().split("\n")
   const listBuckets = await awsClient._getBucketLists();
@@ -190,10 +191,10 @@ async function processSingleFile(file){
         const fileKey = json.attachments[j]
         try{
           const delMarkerRes = await removeDeletionMarkerIfNeeded(fileKey, bucketName)
-          appendJsonToFile('./files/log.json', delMarkerRes)
+          appendJsonToFile(resultPath, delMarkerRes)
         } catch(err){
           if(err.message.indexOf('Deletion marker not found ')===0){
-            appendJsonToFile('./files/log.json', {
+            appendJsonToFile(resultPath, {
               fileKey: fileKey,
               deletionMarkerRemoved: false,
               error: err.message
@@ -206,7 +207,7 @@ async function processSingleFile(file){
       }
       if(scheduleAction){
         await scheduleActions(json.iun, rowsNumber++)
-        appendJsonToFile('./files/log.json', {
+        appendJsonToFile(resultPath, {
           iun: json.iun,
           scheduledAction: true
         })
