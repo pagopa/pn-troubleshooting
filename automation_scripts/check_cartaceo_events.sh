@@ -16,7 +16,6 @@ usage() {
     Usage: $(basename "${BASH_SOURCE[0]}") [-h] -e <env-name> -q <queue-name> -w <work-dir>
     [-h]                      : this help message
     -e <env-name>             : env name
-    -q <queue-name>           : queue name
     -w <work-dir>             : work directory
     
 EOF
@@ -25,7 +24,6 @@ EOF
 
 parse_params() {
   # default values of variables set from params
-  queue_name=""
   work_dir=$HOME
   env_name=""
 
@@ -34,10 +32,6 @@ parse_params() {
     -h | --help) usage ;;
     -e | --env-name) 
       env_name="${2-}"
-      shift
-      ;;
-    -q | --queue-name) 
-      queue_name="${2-}"
       shift
       ;;
     -w | --work-dir) 
@@ -59,7 +53,6 @@ dump_params(){
   echo "######      PARAMETERS      ######"
   echo "##################################"
   echo "Env:                ${env_name}"
-  echo "Queue Name:         ${queue_name}"
   echo "Work directory:     ${work_dir}"
 }
 
@@ -72,33 +65,24 @@ echo "STARTING EXECUTION"
 
 echo "DUMPING SQS..."
 cd "$work_dir"
-node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-core-$env_name --queueName $queue_name
+queue_name='pn-ec-tracker-cartaceo-errori-queue-DLQ.fifo'
+node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-confinfo-$env_name --queueName $queue_name --visibilityTimeout 30
 dumped_file=$(find ./dump_sqs/result -type f -exec ls -t1 {} + | head -1)
 echo "$dumped_file"
 
-echo "RETRIEVING IUN..."
-iuns_file="./dump_sqs/result/iuns.txt"
-if [[ "$queue_name" == *"actions"* ]]; then
-  cat $dumped_file | jq -r '.[] | .Body | fromjson | select(.type == "REFINEMENT_NOTIFICATION") | .iun' > $iuns_file 
-else
-  cat $dumped_file | jq -r '.[] | .MessageAttributes | select(.eventType.StringValue == "NOTIFICATION_VIEWED") | .iun.StringValue' > $iuns_file
-fi
+echo "CHECKING EVENTS..."
+node ./false_negative_paper_error/index.js --envName $env_name --fileName $dumped_file --dryrun
 
-attachments_path="./retrieve_attachments_from_iun/results/"
-echo "RETRIEVING ATTACHMENT..."
-if [[ -f $attachments_path/attachments.json ]]; then
-  echo "cleaning attachments path"
-  rm $attachments_path/attachments.json
-fi
-node ./retrieve_attachments_from_iun/index.js --envName $env_name-ro --fileName $iuns_file
+while true; do
+    read -p "Do you want remove false negative events? [y/n]" response
+    case $response in
+        [Yy]* ) echo "Removing false negative events."; break;;
+        [Nn]* ) echo "END EXECUTION."; exit;;
+        * ) echo "please, 'y' or 'n'.";;
+    esac
+done
 
-result_file="./increase_doc_retention_for_late_notifications/files/log.json"
-echo "REMOVING DELETE MARKER..."
-if [[ -f $result_file ]]; then
-  echo "cleaning result path"
-  rm $result_file
-fi
-node increase_doc_retention_for_late_notifications/index.js --envName $env_name --directory $attachments_path
+node ./false_negative_paper_error/index.js --envName $env_name --fileName $dumped_file
 
 echo "EXECUTION COMPLETE"
 
