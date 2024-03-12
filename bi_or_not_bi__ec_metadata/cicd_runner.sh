@@ -144,6 +144,14 @@ elif ([ $account_type == "core" ]); then
         --aws-bucket ${logs_bucket_name} \
         --result-upload-url s3://${export_bucket_name}/parquet/ \
         pn-Timelines 2023-9-21 3055-1-1 \
+      \
+      \
+      \
+      dynamoExportsIndexing \
+      --aws-bucket ${export_bucket_name} \
+      --aws-dynexport-folder-prefix %s/incremental2024/ \
+      --result-upload-url s3://${export_bucket_name}/parquet/ \
+      pn-PaperRequestError 2023-6-1 3035-1-1 \
       "
   else
     COMMANDLINE=" --cdc-indexed-data-folder ./out/prove_dev/cdc \
@@ -158,6 +166,14 @@ elif ([ $account_type == "core" ]); then
         --aws-bucket ${logs_bucket_name} \
         --result-upload-url s3://${export_bucket_name}/parquet/ \
         pn-Timelines 2024-1-1 3055-1-1 \
+      \
+      \
+      \
+      dynamoExportsIndexing \
+      --aws-bucket ${export_bucket_name} \
+      --aws-dynexport-folder-prefix %s/incremental2024/ \
+      --result-upload-url s3://${export_bucket_name}/parquet/ \
+      pn-PaperRequestError 2024-1-1 3035-1-1 \
       "
   fi
 
