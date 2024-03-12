@@ -31,13 +31,13 @@ class AwsClientsWrapper {
     console.log("Configuring aws client...")
   }
 
-  async _queryRequest(tableName, key){
+  async _queryRequest(tableName, key, value){
     const input = { // QueryInput
       TableName: tableName, // required
-      KeyConditionExpression: "requestId = :k",
+      KeyConditionExpression: key + " = :k",
       ExpressionAttributeValues: {
         ":k": {
-          "S": key
+          "S": value
         }
       },
     };

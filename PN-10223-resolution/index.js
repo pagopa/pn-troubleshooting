@@ -3,7 +3,24 @@ const { parseArgs } = require('util');
 const fs = require('fs');
 const { ApiClient } = require("./libs/api");
 const { v4: uuidv4 } = require('uuid');
-const { unmarshall } = require("@aws-sdk/util-dynamodb")
+const { unmarshall } = require("@aws-sdk/util-dynamodb");
+const { time } = require("console");
+
+function _getLatestTimelineEvent(timelineEvents){
+  let tmp = null;
+  for (q=0; q < timelineEvents.length; q++) {
+    let timelineEvent = unmarshall(timelineEvents[q]);
+    if(tmp == null) {
+      tmp = timelineEvent
+    }
+    else {
+      if(tmp.timestamp < timelineEvent.timestamp) {
+        tmp = timelineEvent
+      }
+    }
+  }
+  return tmp;
+}
 
 function _checkingParameters(args, values){
   const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
@@ -129,8 +146,16 @@ async function main() {
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   for(let i = 0; i < fileRows.length; i++){
     const requestId = fileRows[i]
+    const iun = requestId.split('IUN_')[1].split('.')[0]    
     console.log('Handling requestId: ' + requestId)
-    let res = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
+    let timelineEvents = await awsClient._queryRequest("pn-Timelines", "iun", iun)
+    let latestTimelineEvent = _getLatestTimelineEvent(timelineEvents);
+    if(latestTimelineEvent.timelineElementId !== requestId) {
+      console.log("not latest timeline event " + requestId)
+      console.log(latestTimelineEvent)
+      continue;
+    }
+    let res = await awsClient._queryRequest("pn-PaperRequestDelivery", "requestId", requestId)
     if(res.length > 0) {
         for(let j = 0; j < res.length; j++) {
             const item = unmarshall(res[j])
@@ -143,6 +168,8 @@ async function main() {
             res = await ApiClient.decodeUID(item.fiscalCode, baseUrlSelfcare, secrets.apiKeyPG)
             data["fiscalCode"] = res.taxCode
             }
+            console.log(data)
+            console.log(attributes)
             res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
             if ('MD5OfMessageBody' in res) {
                 console.log("RequestId " + requestId + " sent successfully!!!")
