@@ -28,6 +28,7 @@ aws sso login --profile sso_pn-confinfo-<env>
 ### Esecuzione
 ```bash
 node index.js --envName <envName> --fileName <fileName>
+node index.js --envName prod --fileName pn_10114_2.txt --condition "{\"created\": {\"operator\": \"<\", \"value\": \"2024-03-12T00:00:00.247877189Z\"}}"
 ```
 Dove:
 - `<envName>` l'env dove viene eseguito lo script;
@@ -37,3 +38,4 @@ formato del file
 PREPARE_ANALOG_DOMICILE.IUN_XXXX-XXXX-XXXX-202310-L-1.RECINDEX_0.ATTEMPT_0
 PREPARE_ANALOG_DOMICILE.IUN_XXXX-XXXX-XXXX-202310-U-1.RECINDEX_0.ATTEMPT_0
 PREPARE_ANALOG_DOMICILE.IUN_XXXX-XXXX-XXXX-202310-K-1.RECINDEX_0.ATTEMPT_0
+

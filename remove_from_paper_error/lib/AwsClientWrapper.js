@@ -36,14 +36,14 @@ class AwsClientsWrapper {
         "created": { // AttributeValue Union: only one key present
           S: created,
         }
-      }
+      },
     };
     const command = new DeleteItemCommand(input);
     const response = await this._dynamoClient.send(command);
     return response;
   }
 
-  async _queryRequest(tableName, key){
+  async _queryRequest(tableName, key, condition){
     const input = { // QueryInput
       TableName: tableName, // required
       KeyConditionExpression: "requestId = :k",
@@ -53,6 +53,13 @@ class AwsClientsWrapper {
         }
       },
     };
+    const conditionParsed = JSON.parse(condition)
+    console.log(input)
+    if (Object.keys(conditionParsed)[0].indexOf('created') >= 0) {
+      input.KeyConditionExpression = input.KeyConditionExpression + " AND created " + conditionParsed.created.operator + " :valore";
+      input.ExpressionAttributeValues[":valore"] = { "S": conditionParsed.created.value }
+    }
+    console.log(input)
     const command = new QueryCommand(input);
     const response = await this._dynamoClient.send(command);
     return response.Items
