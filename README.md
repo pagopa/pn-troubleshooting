@@ -255,3 +255,9 @@ Vuoi verificare se un requestId è stato scartato e il suo tentativo precedente 
 ```bash
 node index.js --envName <envName> --fileName <fileName>
 ```
+
+### verify_if_exist_or_stolen
+Vuoi sottomettere un evento di prepare_analog_domicile per riavviare il flusso iniziale?
+```bash
+node index.js --envName <envName> --fileName <fileName> [--dryrun]
+```
