@@ -1,0 +1,99 @@
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.uploadWorkDirToS3 = exports.pathJoin = exports.isDirMade = exports.basePath = exports.S3BucketNotDefinedError = void 0;
+var _utils = require("./utils.cjs");
+var _awsAuth = require("./awsAuth.cjs");
+var _uuid = require("uuid");
+var _clientS = require("@aws-sdk/client-s3");
+var _s3RequestPresigner = require("@aws-sdk/s3-request-presigner");
+var _env = require("./env.cjs");
+var _path = _interopRequireDefault(require("path"));
+var _fs = _interopRequireDefault(require("fs"));
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+const S3BucketNotDefinedError = exports.S3BucketNotDefinedError = (0, _utils.createCustomError)("S3BucketNotDefinedError", 500);
+const executionTime = formatToUTC(Date.now());
+const uuid = (0, _uuid.v4)();
+const localBaseDir = "./out";
+const lambdaBaseDir = "/tmp";
+const localBasePath = _path.default.join(localBaseDir, executionTime);
+const lambdaBasePath = _path.default.join(lambdaBaseDir, executionTime);
+const s3objectKey = () => `${(0, _utils.getFunctionName)()}_${executionTime}_${uuid}.zip`;
+const bucketName = (0, _env.getS3Bucket)();
+const presignedUrlExpiresInSeconds = (0, _env.getPresignedUrlSeconds)() ?? 86400; // 24 hr
+let dirMade = false;
+
+/**
+ * Formats a timestamp into an UTC ISO string (without : - .).
+ * @param {number} timestamp - The timestamp to format, UNIX epoch.
+ * @returns {string} A string representing the formatted UTC date and time.
+ */
+const formatToUTC = timestamp => {
+  const date = new Date(timestamp);
+  // Padding per garantire che i componenti della data siano sempre in formato a due cifre
+  const pad = num => num.toString().padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = pad(date.getUTCMonth() + 1);
+  const day = pad(date.getUTCDate());
+  const hours = pad(date.getUTCHours());
+  const minutes = pad(date.getUTCMinutes());
+  const seconds = pad(date.getUTCSeconds());
+  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+};
+const basePath = () => {
+  const path = (0, _utils.isLocalEnvironment)() ? localBasePath : lambdaBasePath;
+  if (!dirMade && !_fs.default.existsSync(path)) {
+    dirMade = true;
+    _fs.default.mkdirSync(path, {
+      recursive: true
+    });
+  }
+  return path;
+};
+exports.basePath = basePath;
+const pathJoin = (...paths) => {
+  return _path.default.join(basePath(), ...paths);
+};
+exports.pathJoin = pathJoin;
+const uploadToS3 = async (key, filePath) => {
+  if (!bucketName) {
+    throw new S3BucketNotDefinedError("S3 bucket name not defined in env vars.");
+  }
+  const client = new _clientS.S3Client((0, _awsAuth.awsClientConfig)("core"));
+  const fileStream = _fs.default.createReadStream(filePath);
+  const uploadParams = {
+    Bucket: bucketName,
+    Key: key,
+    Body: fileStream
+  };
+  const data = await client.send(new _clientS.PutObjectCommand(uploadParams));
+  // Creazione dell'URL presigned per il download del file
+  const url = await (0, _s3RequestPresigner.getSignedUrl)(client, new _clientS.GetObjectCommand({
+    Bucket: bucketName,
+    Key: key
+  }), {
+    expiresIn: presignedUrlExpiresInSeconds
+  });
+  return url;
+};
+const uploadWorkDirToS3 = async () => {
+  if (!dirMade || !_fs.default.existsSync(basePath())) {
+    return;
+  }
+  const key = s3objectKey();
+  const baseDir = (0, _utils.isLocalEnvironment)() ? localBaseDir : lambdaBaseDir;
+  let outPath = _path.default.join(baseDir, key);
+  try {
+    await (0, _utils.createZip)(basePath(), outPath);
+    const presignedUrl = await uploadToS3(key, outPath);
+    _fs.default.rmSync(outPath);
+    return presignedUrl;
+  } catch (e) {
+    console.error(e);
+  }
+};
+exports.uploadWorkDirToS3 = uploadWorkDirToS3;
+const isDirMade = () => dirMade;
+exports.isDirMade = isDirMade;
