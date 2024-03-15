@@ -1,4 +1,4 @@
-const { AwsClientsWrapper } = require("../redrive_prepare_analog_address/lib/AwsClientWrapper");
+const { AwsClientsWrapper } = require("./lib/AwsClientWrapper");
 const { parseArgs } = require('util');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
@@ -55,10 +55,8 @@ function _prepareQueueData(requestId){
     "correlationId": null,
     "isAddressRetry":false,
     "attempt":0,
-    "clientId":""
-  }
-  if (envName == 'uat') {
-    data['isF24Flow'] = false
+    "clientId":"",
+    "isF24Flow": false
   }
   return data
 }

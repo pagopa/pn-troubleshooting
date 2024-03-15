@@ -1,9 +1,7 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { DynamoDBClient, QueryCommand, DeleteItemCommand, PutItemCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, QueryCommand } = require("@aws-sdk/client-dynamodb");
 const { SQSClient, SendMessageCommand, GetQueueUrlCommand } = require("@aws-sdk/client-sqs");
-const { SecretsManagerClient, GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager"); 
-const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function awsClientCfg( profile ) {
   const self = this;
