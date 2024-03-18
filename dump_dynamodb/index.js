@@ -1,7 +1,7 @@
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const { parseArgs } = require('util');
 const fs = require('fs');
-
+const { unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function _checkingParameters(args, values){
   const usage = "Usage: node index.js --awsProfile <aws-profile> --tableName <table-name> --filter <filter>"
@@ -31,7 +31,7 @@ function _checkingParameters(args, values){
 async function _writeInFile(result, filename ) {
   fs.mkdirSync("result", { recursive: true });
   const str = result.map(el => {
-    return JSON.stringify(el, null)
+    return JSON.stringify(unmarshall(el))
   }).join('\n')
   fs.writeFileSync('result/' + filename+'.json', str, 'utf-8')
 }
