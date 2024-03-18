@@ -126,12 +126,11 @@ const printUsage = (schema, scriptName = '<script>') => {
  */
 exports.printUsage = printUsage;
 const processArgvToObject = argv => {
+  // Helper function to assign a value to a nested object based on a path array
   const assignValueByPath = (obj, pathArray, value) => {
     const key = pathArray.shift();
     if (pathArray.length > 0) {
-      if (!obj[key]) {
-        obj[key] = {};
-      }
+      obj[key] = obj[key] || {};
       assignValueByPath(obj[key], pathArray, value);
     } else {
       obj[key] = value;
@@ -146,6 +145,13 @@ const processArgvToObject = argv => {
         value = "true";
       }
       if (value && !value.startsWith('--')) {
+        let valueNext = self[index + 2];
+        // If the next value is not a flag, gather all consecutive non-flag values into an array
+        value = valueNext && !valueNext.startsWith('--') ? [value] : value;
+        // Add consecutive non-flag values to the array
+        for (let i = 2; self[index + i] && !self[index + i].startsWith('--'); i++) {
+          value.push(self[index + i]);
+        }
         assignValueByPath(result, path.split('.'), value);
       }
     }
@@ -163,7 +169,6 @@ const processArgvToObject = argv => {
 exports.processArgvToObject = processArgvToObject;
 const handleLocalCLI = schema => {
   const inputObject = processArgvToObject(process.argv, schema.input);
-  console.log(inputObject);
   if ('help' in inputObject) {
     const scriptName = _path.default.basename(process.argv[1]);
     printUsage(schema, scriptName);
