@@ -118,6 +118,7 @@ export const printUsage = (schema, scriptName = '<script>') => {
   console.log(`${underline('Synopsys:')}\n`);
   console.log(`  $ node ${scriptName} [OPTIONS]\n`);
   console.log(`  $ node ${scriptName} --help\n`);
+  console.log(`  $ node ${scriptName} --getManifest\n`);
   console.log(`${underline('Options:')}\n`);
   console.log(generateUsage(schema.input, '  '));
 };
