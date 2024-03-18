@@ -66,7 +66,7 @@ async function main() {
         type: "string", short: "f", default: undefined
       },
       json: {
-        type: "string", short: "m", default: false
+        type: "boolean", short: "m", default: false
       },
     },
   });  
