@@ -261,3 +261,9 @@ Vuoi sottomettere un evento di prepare_analog_domicile per riavviare il flusso i
 ```bash
 node index.js --envName <envName> --fileName <fileName> [--dryrun]
 ```
+
+### dump_sla_violation
+Vuoi recuperare tutte le notifiche che hanno violato una determinata tipologia di SLA?
+```bash
+node index.js --awsProfile <awsProfile> --slaViolation <slaViolation>"
+```
