@@ -3,11 +3,13 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.processArgvToObject = exports.printUsage = exports.handleLocalCLI = exports.HelpArgError = void 0;
+exports.processArgvToObject = exports.printUsage = exports.handleLocalCLI = exports.PayloadTypeError = exports.HelpArgError = void 0;
 var _utils = require("./utils.cjs");
 var _path = _interopRequireDefault(require("path"));
+var _fs = _interopRequireDefault(require("fs"));
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 const HelpArgError = exports.HelpArgError = (0, _utils.createCustomError)('HelpArgError');
+const PayloadTypeError = exports.PayloadTypeError = (0, _utils.createCustomError)('PayloadTypeError');
 const maxDescriptionLen = 50;
 const descriptionCol = 50;
 
@@ -160,11 +162,23 @@ const processArgvToObject = argv => {
  */
 exports.processArgvToObject = processArgvToObject;
 const handleLocalCLI = schema => {
-  if (process.argv.includes('--help')) {
+  const inputObject = processArgvToObject(process.argv, schema.input);
+  console.log(inputObject);
+  if ('help' in inputObject) {
     const scriptName = _path.default.basename(process.argv[1]);
     printUsage(schema, scriptName);
     throw new HelpArgError('--help in args!');
   }
-  return processArgvToObject(process.argv, schema.input);
+  if ('inputPayloadFile' in inputObject) {
+    inputObject.inputPayload = _fs.default.readFileSync(inputObject.inputPayloadFile, 'utf8');
+  }
+  if ('inputPayload' in inputObject) {
+    const jsonInput = JSON.parse(inputObject.inputPayload);
+    if (typeof jsonInput !== 'object') {
+      throw new PayloadTypeError('Payload input string must be of type object');
+    }
+    return jsonInput;
+  }
+  return inputObject;
 };
 exports.handleLocalCLI = handleLocalCLI;

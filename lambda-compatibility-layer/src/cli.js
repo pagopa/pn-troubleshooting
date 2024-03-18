@@ -1,7 +1,9 @@
 import { createCustomError } from './utils.js';
 import path from 'path'
+import fs from "fs";
 
 export const HelpArgError = createCustomError('HelpArgError');
+export const PayloadTypeError = createCustomError('PayloadTypeError');
 
 const maxDescriptionLen = 50;
 const descriptionCol = 50;
@@ -167,10 +169,22 @@ export const processArgvToObject = (argv) => {
  * @throws {HelpArgError} When --help is present in the arguments.
  */
 export const handleLocalCLI = (schema) => {
-  if (process.argv.includes('--help')) {
+  const inputObject = processArgvToObject(process.argv, schema.input);
+  console.log(inputObject);
+  if ('help' in inputObject) {
     const scriptName = path.basename(process.argv[1]);
     printUsage(schema, scriptName);
     throw new HelpArgError('--help in args!');
   }
-  return processArgvToObject(process.argv, schema.input);
+  if ('inputPayloadFile' in inputObject) {
+    inputObject.inputPayload = fs.readFileSync(inputObject.inputPayloadFile, 'utf8');
+  }
+  if ('inputPayload' in inputObject) {
+    const jsonInput = JSON.parse(inputObject.inputPayload)
+    if(typeof jsonInput !== 'object') {
+      throw new PayloadTypeError('Payload input string must be of type object');
+    }
+    return jsonInput;
+  }
+  return inputObject;
 };
