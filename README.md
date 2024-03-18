@@ -256,6 +256,12 @@ Vuoi verificare se un requestId è stato scartato e il suo tentativo precedente 
 node index.js --envName <envName> --fileName <fileName>
 ```
 
+### redrive_prepare_analog_start_event
+Vuoi sottomettere un evento di prepare_analog_domicile per riavviare il flusso iniziale?
+```bash
+node index.js --envName <envName> --fileName <fileName> [--dryrun]
+```
+
 ### dump_sla_violation
 Vuoi recuperare tutte le notifiche che hanno violato una determinata tipologia di SLA?
 ```bash

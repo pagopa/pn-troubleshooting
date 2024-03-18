@@ -6,7 +6,7 @@ const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb")
 function _checkStatusRequest(statusRequest) {
   console.log("status request is " + statusRequest)
   let statusRequests = ["RECRS006", "RECRN006", "RECAG004", "RECRI005", "RECRSI005", "RECRS013", "RECRN013", "RECAG013", "PN999"]
-  if (statusRequests.indexOf(statusRequest)) {
+  if (statusRequests.indexOf(statusRequest) >= 0) {
     return true;
   }
   return false;
