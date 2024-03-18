@@ -255,3 +255,9 @@ Vuoi verificare se un requestId è stato scartato e il suo tentativo precedente 
 ```bash
 node index.js --envName <envName> --fileName <fileName>
 ```
+
+### dump_sla_violation
+Vuoi recuperare tutte le notifiche che hanno violato una determinata tipologia di SLA?
+```bash
+node index.js --awsProfile <awsProfile> --slaViolation <slaViolation>"
+```
