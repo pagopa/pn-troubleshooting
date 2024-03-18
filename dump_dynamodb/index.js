@@ -28,11 +28,19 @@ function _checkingParameters(args, values){
   })
 }
 
-async function _writeInFile(result, filename ) {
+async function _writeInFile(result, filename, json ) {
   fs.mkdirSync("result", { recursive: true });
-  const str = result.map(el => {
-    return JSON.stringify(unmarshall(el))
-  }).join('\n')
+  let str;
+  if(json) {
+    str = result.map(el => {
+      return JSON.stringify(unmarshall(el))
+    }).join('\n')
+  }
+  else {
+    str = result.map(el => {
+      return JSON.stringify(el, null)
+    }).join('\n')
+  }
   fs.writeFileSync('result/' + filename+'.json', str, 'utf-8')
 }
 
@@ -42,9 +50,10 @@ async function main() {
     { name: "awsProfile", mandatory: true, subcommand: [] },
     { name: "tableName", mandatory: true, subcommand: [] },
     { name: "filter", mandatory: false, subcommand: [] },
+    { name: "json", mandatory: false, subcommand: [] },
   ]
   const values = {
-    values: { awsProfile, tableName, filter },
+    values: { awsProfile, tableName, filter, json },
   } = parseArgs({
     options: {
       awsProfile: {
@@ -55,6 +64,9 @@ async function main() {
       },
       filter: {
         type: "string", short: "f", default: undefined
+      },
+      json: {
+        type: "string", short: "m", default: false
       },
     },
   });  
@@ -75,7 +87,7 @@ async function main() {
     }
     results = results.concat(res.Items);
   }
-  await _writeInFile(results, results.length+"_"+tableName+"_"+awsProfile)
+  await _writeInFile(results, results.length+"_"+tableName+"_"+awsProfile, json)
   console.log('Sono stati memorizzati n° ' + results.length + ' elementi.');
 
 }
