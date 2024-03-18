@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.makeResponse = exports.makeErrorResponse = exports.isLocalEnvironment = exports.getFunctionName = exports.createZip = exports.createCustomError = void 0;
+exports.makeResponse = exports.makeErrorResponse = exports.isLocalEnvironment = exports.getFunctionName = exports.formatToUTC = exports.createZip = exports.createCustomError = void 0;
 var _archiver = _interopRequireDefault(require("archiver"));
 var _fs = _interopRequireDefault(require("fs"));
 var _validator = require("./validator.cjs");
@@ -108,4 +108,23 @@ const getFunctionName = () => {
   const function_name = (0, _env.getLambdaFunctionName)();
   return !function_name ? (0, _validator.getSchema)().name : function_name;
 };
+
+/**
+ * Formats a timestamp into an UTC ISO string (without : - .).
+ * @param {number} timestamp - The timestamp to format, UNIX epoch.
+ * @returns {string} A string representing the formatted UTC date and time.
+ */
 exports.getFunctionName = getFunctionName;
+const formatToUTC = timestamp => {
+  const date = new Date(timestamp);
+  // Padding per garantire che i componenti della data siano sempre in formato a due cifre
+  const pad = num => num.toString().padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = pad(date.getUTCMonth() + 1);
+  const day = pad(date.getUTCDate());
+  const hours = pad(date.getUTCHours());
+  const minutes = pad(date.getUTCMinutes());
+  const seconds = pad(date.getUTCSeconds());
+  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+};
+exports.formatToUTC = formatToUTC;

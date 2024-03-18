@@ -97,3 +97,22 @@ export const getFunctionName = () => {
   const function_name = getLambdaFunctionName();
   return !function_name ? getSchema().name : function_name;
 };
+
+/**
+ * Formats a timestamp into an UTC ISO string (without : - .).
+ * @param {number} timestamp - The timestamp to format, UNIX epoch.
+ * @returns {string} A string representing the formatted UTC date and time.
+ */
+export const formatToUTC = (timestamp) => {
+  const date = new Date(timestamp);
+  // Padding per garantire che i componenti della data siano sempre in formato a due cifre
+  const pad = (num) => num.toString().padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = pad(date.getUTCMonth() + 1);
+  const day = pad(date.getUTCDate());
+  const hours = pad(date.getUTCHours());
+  const minutes = pad(date.getUTCMinutes());
+  const seconds = pad(date.getUTCSeconds());
+
+  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+};

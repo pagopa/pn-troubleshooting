@@ -14,7 +14,7 @@ var _path = _interopRequireDefault(require("path"));
 var _fs = _interopRequireDefault(require("fs"));
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 const S3BucketNotDefinedError = exports.S3BucketNotDefinedError = (0, _utils.createCustomError)("S3BucketNotDefinedError", 500);
-const executionTime = formatToUTC(Date.now());
+const executionTime = (0, _utils.formatToUTC)(Date.now());
 const uuid = (0, _uuid.v4)();
 const localBaseDir = "./out";
 const lambdaBaseDir = "/tmp";
@@ -24,24 +24,6 @@ const s3objectKey = () => `${(0, _utils.getFunctionName)()}_${executionTime}_${u
 const bucketName = (0, _env.getS3Bucket)();
 const presignedUrlExpiresInSeconds = (0, _env.getPresignedUrlSeconds)() ?? 86400; // 24 hr
 let dirMade = false;
-
-/**
- * Formats a timestamp into an UTC ISO string (without : - .).
- * @param {number} timestamp - The timestamp to format, UNIX epoch.
- * @returns {string} A string representing the formatted UTC date and time.
- */
-const formatToUTC = timestamp => {
-  const date = new Date(timestamp);
-  // Padding per garantire che i componenti della data siano sempre in formato a due cifre
-  const pad = num => num.toString().padStart(2, "0");
-  const year = date.getUTCFullYear();
-  const month = pad(date.getUTCMonth() + 1);
-  const day = pad(date.getUTCDate());
-  const hours = pad(date.getUTCHours());
-  const minutes = pad(date.getUTCMinutes());
-  const seconds = pad(date.getUTCSeconds());
-  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
-};
 const basePath = () => {
   const path = (0, _utils.isLocalEnvironment)() ? localBasePath : lambdaBasePath;
   if (!dirMade && !_fs.default.existsSync(path)) {
