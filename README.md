@@ -267,3 +267,15 @@ Vuoi recuperare tutte le notifiche che hanno violato una determinata tipologia d
 ```bash
 node index.js --awsProfile <awsProfile> --slaViolation <slaViolation>"
 ```
+
+### retrieve_info_sender_from_requestId
+Vuoi recuperare senderId, PA mittente e notificationSentAt di una serie di requestId?
+```bash
+node index.js --envName <envName> --fileName <fileName>"
+```
+
+### diff_document_template
+Vuoi verificare se ci sono state delle modifiche nei template della generazione dei documenti?
+```bash
+node index.js --tags <tags> [--files]
+```

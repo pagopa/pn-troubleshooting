@@ -10,7 +10,7 @@ function _isAnalogCategory(category) {
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --awsProfile <aws-profile> --fileName <file-name>"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> [--outputFolder <output-folder>]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
