@@ -121,6 +121,8 @@ export const printUsage = (schema, scriptName = '<script>') => {
   console.log(`  $ node ${scriptName} [OPTIONS]\n`);
   console.log(`  $ node ${scriptName} --help\n`);
   console.log(`  $ node ${scriptName} --getManifest\n`);
+  console.log(`  $ node ${scriptName} --inputPayload [JSON input string]\n`);
+  console.log(`  $ node ${scriptName} --inputPayloadFile [JSON input file]\n`);
   console.log(`${underline('Options:')}\n`);
   console.log(generateUsage(schema.input, '  '));
 };
