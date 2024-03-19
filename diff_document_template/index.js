@@ -41,14 +41,18 @@ function _checkingParameters(args, values){
 async function main() {
 
     const args = [
-        { name: "tags", mandatory: true, subcommand: [] },
+        { name: "from", mandatory: true, subcommand: [] },
+        { name: "to", mandatory: true, subcommand: [] },
         { name: "files", mandatory: false, subcommand: [] },
     ]
     const values = {
-        values: { tags, files },
+        values: { from, to, files },
     } = parseArgs({
         options: {
-        tags: {
+        from: {
+            type: "string", short: "t", default: undefined
+        },
+        to: {
             type: "string", short: "t", default: undefined
         },
         files: {
@@ -62,9 +66,8 @@ async function main() {
     const tmpPath = path.join(__dirname, 'tmp');
     const diffPath = "src/main/resources/documents_composition_templates"
     const git = simpleGit().clean(CleanOptions.FORCE);
-    tags = tags.split(",");
-    if(tags.length != 2) {
-        console.log("Param <tags> should be <tag1>,<tag2>")
+    if(from.length <= 0 && to.length <= 0) {
+        console.log("Param <from> and <to> cannot be ''")
         process.exit(1)
     }
     if(fs.existsSync(tmpPath)) {
@@ -73,9 +76,7 @@ async function main() {
     fs.mkdirSync(tmpPath, { recursive: true });
     git.clone("https://github.com/pagopa/pn-delivery-push.git", tmpPath)
     git.cwd(tmpPath)
-    tags.push(diffPath)
-    console.log(tags)
-    git.diff(tags).then(x=> {
+    git.diff([from, to, diffPath]).then(x=> {
         if(x.length != 0) {
             let result = ""
             if(files) {

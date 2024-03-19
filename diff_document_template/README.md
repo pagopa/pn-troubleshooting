@@ -21,11 +21,14 @@ npm install
 ## Utilizzo
 ### Esecuzione
 ```bash
-node index.js --tags <tags> [--files]
+node index.js --from <from> -to <to> [--files]
 ```
+
 Dove:
-- `<tags>` sono i tags sul quale si vuole eseguire la diff;
+- `<from>` sono i tags sul quale si vuole eseguire la diff;
+- `<to>` sono i tags sul quale si vuole eseguire la diff;
 - `<files>` (opzionale) se si vogliono conoscere solo i file modificati;
 
 **ESEMPIO ESECUZIONE**:
-node index.js --tags v2.5.3,v2.5.2
+node index.js --from v2.5.3 --to v2.5.2 --files
+node index.js --from v2.5.3 --to v2.5.2 

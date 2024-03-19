@@ -277,5 +277,5 @@ node index.js --envName <envName> --fileName <fileName>"
 ### diff_document_template
 Vuoi verificare se ci sono state delle modifiche nei template della generazione dei documenti?
 ```bash
-node index.js --tags <tags> [--files]
+node index.js --from <from> -to <to> [--files]
 ```
