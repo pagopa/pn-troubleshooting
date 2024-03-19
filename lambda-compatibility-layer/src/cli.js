@@ -76,13 +76,13 @@ const generateUsage = (schema, indent = '', prefix = '', required = false) => {
     if (required) {
       optionLine += `(required) `;
     }
-    if (schema.default) {
+    if (schema.default !== undefined) {
       optionLine += `(default: ${schema.default}) `;
     }
-    if (schema.maximum) {
+    if (schema.maximum !== undefined) {
       optionLine += `(maximum: ${schema.maximum}) `;
     }
-    if (schema.minimum) {
+    if (schema.minimum !== undefined) {
       optionLine += `(minimum: ${schema.minimum}) `;
     }
     options += indentDescription(
