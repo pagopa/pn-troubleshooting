@@ -35,6 +35,20 @@ const validateData = async (schema, data) => {
     coerceTypes: isLocalEnvironment(),
   });
 
+  ajv.addKeyword({
+    keyword: "dataClassification",
+    type: "string",
+    metaSchema: {
+      type: "string",
+      enum: [
+        "PUBLIC",
+        "CONFIDENTIAL",
+        "HIGHLY_CONFIDENTIAL",
+        "RESTRICTED"
+      ]
+    }
+  })
+
   const isDataValid = ajv.validate(schema, data);
   if (!isDataValid) {
     console.error("Data is invalid:", JSON.stringify(ajv.errors));
