@@ -5,14 +5,15 @@ const { parseArgs } = require('util');
 const fs = require('fs');
 
 const args = [
-  { name: "awsProfile", mandatory: true },
+  { name: "awsProfile", mandatory: false },
   { name: "exclusiveStartKey", mandatory: false },
   { name: "scanLimit", mandatory: false },
-  { name: "test", mandatory: false }
+  { name: "test", mandatory: false },
+  { name: "dryrun", mandatory: false }
 ]
 
 const values = {
-  values: { awsProfile, scanLimit, exclusiveStartKey, test },
+  values: { awsProfile, scanLimit, exclusiveStartKey, test, dryrun },
 } = parseArgs({
   options: {
     awsProfile: {
@@ -26,19 +27,19 @@ const values = {
     },
     test: {
       type: "boolean"
+    },
+    dryrun: {
+      type: "boolean"
     }
   },
 });
 
-args.forEach(k => {
-  if (k.mandatory && !values.values[k.name]) {
-    console.log("Parameter '" + k.name + "' is not defined")
-    console.log("Usage: index.js --awsProfile <aws-profile>")
-    process.exit(1)
-  }
-});
 
-const confinfoCredentials = fromSSO({ profile: awsProfile })();
+if (dryrun) { test = true; }
+
+var confinfoCredentials;
+if (awsProfile != null) { confinfoCredentials = fromSSO({ profile: awsProfile })(); }
+
 const dynamoDbClient = new DynamoDBClient({
     credentials: confinfoCredentials,
     region: 'eu-south-1'
@@ -180,8 +181,10 @@ async function updateRecord(record) {
       if (test)
         fs.appendFileSync("test-records.csv", requestId.toString() + "\r\n");
 
-      const command = new UpdateCommand(input);
-      await dynamoDbDocumentClient.send(command);
+      if (!dryrun) {
+        const command = new UpdateCommand(input);
+        await dynamoDbDocumentClient.send(command);
+      }
     }
     else {
       console.warn(`No events for record "${requestId}"`);
@@ -194,8 +197,6 @@ async function updateRecord(record) {
     fs.appendFileSync("failures.csv", requestId.toString() + "," + error + "\r\n");
     return;
   }
-  if (test)
-      fs.appendFileSync("test-records.csv", requestId.toString() + "\r\n");
   itemUpdates++;
   return;
 }
