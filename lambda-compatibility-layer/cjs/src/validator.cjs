@@ -55,7 +55,7 @@ const preHandler = async event => {
     const eventFromArgs = (0, _cli.handleLocalCLI)(functionSchema);
     Object.assign(event, eventFromArgs);
   }
-  console.log(event);
+  //console.log(event);
   if (event.getManifest) {
     return (0, _utils.makeResponse)(200, functionSchema);
   }

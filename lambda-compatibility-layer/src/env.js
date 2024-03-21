@@ -16,13 +16,12 @@ export const getLambdaFunctionName = () =>
   getEnvironmentVariable("AWS_LAMBDA_FUNCTION_NAME");
 
 /**
- * Retrieves the confinfo region from environment variables.
+ * Retrieves the current region from environment variables.
  *
- * @return {string} The configuration information region, or undefined if not
- * set.
+ * @return {string} The current region, or undefined if not set.
  */
-export const getConfinfoRegion = () =>
-  getEnvironmentVariable("COMPAT_CONFINFO_REGION");
+export const getCurrentRegion = () =>
+  getEnvironmentVariable("AWS_REGION");
 
 /**
  * Retrieves the ARN for an assumed role from environment variables.

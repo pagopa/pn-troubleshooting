@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.getS3Bucket = exports.getPresignedUrlSeconds = exports.getLambdaFunctionName = exports.getConfinfoRegion = exports.getAssumeRoleConfinfoArn = void 0;
+exports.getS3Bucket = exports.getPresignedUrlSeconds = exports.getLambdaFunctionName = exports.getCurrentRegion = exports.getAssumeRoleConfinfoArn = void 0;
 /**
  * Retrieves the value of an environment variable.
  *
@@ -21,13 +21,12 @@ const getEnvironmentVariable = env => process.env[env];
 const getLambdaFunctionName = () => getEnvironmentVariable("AWS_LAMBDA_FUNCTION_NAME");
 
 /**
- * Retrieves the confinfo region from environment variables.
+ * Retrieves the current region from environment variables.
  *
- * @return {string} The configuration information region, or undefined if not
- * set.
+ * @return {string} The current region, or undefined if not set.
  */
 exports.getLambdaFunctionName = getLambdaFunctionName;
-const getConfinfoRegion = () => getEnvironmentVariable("COMPAT_CONFINFO_REGION");
+const getCurrentRegion = () => getEnvironmentVariable("AWS_REGION");
 
 /**
  * Retrieves the ARN for an assumed role from environment variables.
@@ -35,7 +34,7 @@ const getConfinfoRegion = () => getEnvironmentVariable("COMPAT_CONFINFO_REGION")
  * @return {string} The ARN for the assume role configuration, or undefined if
  * not set.
  */
-exports.getConfinfoRegion = getConfinfoRegion;
+exports.getCurrentRegion = getCurrentRegion;
 const getAssumeRoleConfinfoArn = () => getEnvironmentVariable("COMPAT_CONFINFO_ASSUME_ROLE_ARN");
 
 /**
