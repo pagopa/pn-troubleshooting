@@ -1,7 +1,13 @@
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const { parseArgs } = require('util');
+const cliProgress = require('cli-progress');
+const progressBar = new cliProgress.SingleBar({
+  barCompleteChar: '\u2588',
+  barIncompleteChar: '\u2591',
+  hideCursor: true
+});
 const fs = require('fs');
 
 const args = [
@@ -55,6 +61,8 @@ if (test)
   scanLimit = 10;
 
 async function recordsCleaning() {
+  const totalRecords = await getTotalRecords();
+  progressBar.start(totalRecords, 0);
   var hasRecords = true;
   var input = {
     TableName: tableName,
@@ -74,6 +82,7 @@ async function recordsCleaning() {
       .then(
         function (data) {
           totalScannedRecords += data.ScannedCount;
+          progressBar.update(totalScannedRecords);
           if (data.LastEvaluatedKey == null || test) {
             hasRecords = false;
           }
@@ -128,7 +137,7 @@ function getOrderedEventsList(record) {
   });
 }
 
-//Aggiungo l'attributo "insertTimestamp" agli eventi fino a che non incontro un evento che ha già quell'attributo valorizzato. 
+//Aggiungo l'attributo "insertTimestamp" agli eventi fino a che non incontro un evento che ha già quell'attributo valorizzato.
 //La funzione restituisce un booleano che indica se almeno un evento è stato aggiornato o meno.
 function addInsertTimestampToEvents(eventsList) {
   var epochTime = 1;
@@ -187,12 +196,12 @@ async function updateRecord(record) {
       }
     }
     else {
-      console.warn(`No events for record "${requestId}"`);
+      console.warn(`\nNo events for record "${requestId}"`);
       return;
     }
   }
   catch (error) {
-    console.warn(`Error while updating record "${requestId}" : ${error}`);
+    console.warn(`\nError while updating record "${requestId}" : ${error}`);
     itemFailures++;
     fs.appendFileSync("failures.csv", requestId.toString() + "," + error + "\r\n");
     return;
@@ -201,14 +210,21 @@ async function updateRecord(record) {
   return;
 }
 
+async function getTotalRecords() {
+  var response = await dynamoDbClient.send(new DescribeTableCommand({ TableName: tableName }));
+  return response.Table.ItemCount;
+}
+
 recordsCleaning()
   .then(
     function (data) {
+      progressBar.stop();
       console.log("Successful operation, ending process.");
       console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
       return;
     },
     function (error) {
+      progressBar.stop();
       console.error(`* FATAL * Error in process : ${error}`);
       console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
     });
