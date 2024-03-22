@@ -16,7 +16,7 @@ const confinofAssumeRoleArn = (0, _env.getAssumeRoleConfinfoArn)();
  * Gets temporary security credentials by assuming confinfo IAM role.
  *
  * @return {Promise<Object>} Temporary security credentials: Access Key ID,
- * Secret Access Key and Session Tokenß
+ * Secret Access Key and Session Token
  */
 const getConfinfoCredentials = async () => {
   if (!confinofAssumeRoleArn) {
