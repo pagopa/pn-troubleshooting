@@ -24,7 +24,11 @@ Il servizio è disponibile su [localhost:3000](http://localhost:3000).
 
 Utilizzare le seguenti credenziali: email send@pagopa.it e password send1234.
 
-Una volta autenticati, posizionarsi sul tab "Apps" e creare la dashboard da file JSON selezionando i file in `./dashboards`.
+Una volta autenticati, posizionarsi sul tab "Apps" e creare la dashboard da file JSON (terza opzione del dropdown) selezionando i file in `./dashboards`.
+
+Dashboard:
+* `notification.json`: permette di visualizzare i dettagli della notifica, deanonimizzarla e scaricare i file in pn-safestorage.
+* `console.json`: console sperimentale dinamica definita da JsonSchema.
 
 ## Scripts
 ### `docker_up_profile.sh`
