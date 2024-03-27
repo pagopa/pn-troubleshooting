@@ -1,0 +1,16 @@
+{
+  "name": "ecs_update_tasknumber",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-application-auto-scaling": "^3.540.0",
+    "@aws-sdk/client-ecs": "^3.542.0",
+    "simple-git": "^3.23.0"
+  }
+}
