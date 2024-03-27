@@ -63,7 +63,7 @@ async function main() {
     let params;
     if(!loadtest) {
         if(envName=="dev") {
-            params = JSON.parse(fs.readFileSync("./conf/ecs_normal_conf.json", { encoding: 'utf8', flag: 'r' }))
+            params = JSON.parse(fs.readFileSync("./conf/ecs_dev_conf.json", { encoding: 'utf8', flag: 'r' }))
         }
         else {
             const git = simpleGit().clean(CleanOptions.FORCE);
