@@ -1,0 +1,101 @@
+{
+	"pn-external-channels": {
+		"desiredCount": 10,
+		"type": "mock"
+	},
+	"pn-address-manager": {
+		"MinTasksNumber": 3,
+		"MaxTasksNumber": 3,
+        "type": "svc"
+	},
+	"pn-apikey-manager": {
+		"MinTasksNumber": 2,
+		"MaxTasksNumber": 3,
+        "type": "svc"
+	},
+	"pn-data-vault": {
+		"MinTasksNumber": 2,
+		"MaxTasksNumber": 3,
+        "type": "svc"
+	},
+	"pn-delivery": {
+		"MinTasksNumber": 4,
+		"MaxTasksNumber": 26,
+        "type": "svc"
+	},
+	"pn-delivery-push": {
+		"MinTasksNumber": 2,
+		"MaxTasksNumber": 11,
+        "type": "svc"
+	},
+	"pn-downtime-logs": {
+		"MinTasksNumber": 2,
+		"MaxTasksNumber": 5,
+        "type": "svc"
+	},
+	"pn-ec": {
+		"MinTasksNumber": 6,
+		"MaxTasksNumber": 12,
+        "type": "svc"
+	},
+	"pn-external-registries": {
+		"MinTasksNumber": 2,
+		"MaxTasksNumber": 7,
+        "type": "svc"
+	},
+	"pn-f24": {
+		"MinTasksNumber": 1,
+		"MaxTasksNumber": 6,
+        "type": "svc"
+	},
+	"pn-kafka-bridge": {
+		"MinTasksNumber": 1,
+		"MaxTasksNumber": 6,
+        "type": "svc"
+	},
+	"pn-logextractor-be": {
+		"MinTasksNumber": 1,
+		"MaxTasksNumber": 6,
+        "type": "svc"
+	},
+	"pn-mandate": {
+		"MinTasksNumber": 2,
+		"MaxTasksNumber": 3,
+        "type": "svc"
+	},
+	"pn-national-registries": {
+		"MinTasksNumber": 2,
+		"MaxTasksNumber": 4,
+        "type": "svc"
+	},
+	"pn-paper-channel": {
+		"MinTasksNumber": 2,
+		"MaxTasksNumber": 10,
+        "type": "svc"
+	},
+	"pn-radd-alt": {
+		"MinTasksNumber": 1,
+		"MaxTasksNumber": 5,
+        "type": "svc"
+	},
+	"pn-service-desk": {
+		"MinTasksNumber": 1,
+		"MaxTasksNumber": 6,
+        "type": "svc"
+	},
+	"pn-ss": {
+		"MinTasksNumber": 3,
+		"MaxTasksNumber": 13,
+        "type": "svc"
+	},
+	"pn-statemachinemanager": {
+		"MinTasksNumber": 2,
+		"MaxTasksNumber": 6,
+        "type": "svc"
+	},
+	"pn-user-attributes": {
+		"MinTasksNumber": 2,
+		"MaxTasksNumber": 7,
+        "type": "svc"
+	}
+}
