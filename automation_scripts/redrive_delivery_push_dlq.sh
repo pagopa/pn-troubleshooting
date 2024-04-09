@@ -51,6 +51,12 @@ parse_params() {
   done
 
   args=("$@")
+
+  # check required params and arguments
+  [[ -z "${env_name-}" ]] && usage 
+  [[ -z "${work_dir-}" ]] && usage
+  [[ -z "${queue_name-}" ]] && usage
+
   return 0
 }
 

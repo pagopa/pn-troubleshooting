@@ -1,18 +1,25 @@
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const { parseArgs } = require('util');
+const cliProgress = require('cli-progress');
+const progressBar = new cliProgress.SingleBar({
+  barCompleteChar: '\u2588',
+  barIncompleteChar: '\u2591',
+  hideCursor: true
+});
 const fs = require('fs');
 
 const args = [
-  { name: "awsProfile", mandatory: true },
+  { name: "awsProfile", mandatory: false },
   { name: "exclusiveStartKey", mandatory: false },
   { name: "scanLimit", mandatory: false },
-  { name: "test", mandatory: false }
+  { name: "test", mandatory: false },
+  { name: "dryrun", mandatory: false }
 ]
 
 const values = {
-  values: { awsProfile, scanLimit, exclusiveStartKey, test },
+  values: { awsProfile, scanLimit, exclusiveStartKey, test, dryrun },
 } = parseArgs({
   options: {
     awsProfile: {
@@ -26,19 +33,19 @@ const values = {
     },
     test: {
       type: "boolean"
+    },
+    dryrun: {
+      type: "boolean"
     }
   },
 });
 
-args.forEach(k => {
-  if (k.mandatory && !values.values[k.name]) {
-    console.log("Parameter '" + k.name + "' is not defined")
-    console.log("Usage: index.js --awsProfile <aws-profile>")
-    process.exit(1)
-  }
-});
 
-const confinfoCredentials = fromSSO({ profile: awsProfile })();
+if (dryrun) { test = true; }
+
+var confinfoCredentials;
+if (awsProfile != null) { confinfoCredentials = fromSSO({ profile: awsProfile })(); }
+
 const dynamoDbClient = new DynamoDBClient({
     credentials: confinfoCredentials,
     region: 'eu-south-1'
@@ -54,6 +61,8 @@ if (test)
   scanLimit = 10;
 
 async function recordsCleaning() {
+  const totalRecords = await getTotalRecords();
+  progressBar.start(totalRecords, 0);
   var hasRecords = true;
   var input = {
     TableName: tableName,
@@ -73,6 +82,7 @@ async function recordsCleaning() {
       .then(
         function (data) {
           totalScannedRecords += data.ScannedCount;
+          progressBar.update(totalScannedRecords);
           if (data.LastEvaluatedKey == null || test) {
             hasRecords = false;
           }
@@ -127,7 +137,7 @@ function getOrderedEventsList(record) {
   });
 }
 
-//Aggiungo l'attributo "insertTimestamp" agli eventi fino a che non incontro un evento che ha già quell'attributo valorizzato. 
+//Aggiungo l'attributo "insertTimestamp" agli eventi fino a che non incontro un evento che ha già quell'attributo valorizzato.
 //La funzione restituisce un booleano che indica se almeno un evento è stato aggiornato o meno.
 function addInsertTimestampToEvents(eventsList) {
   var epochTime = 1;
@@ -180,34 +190,41 @@ async function updateRecord(record) {
       if (test)
         fs.appendFileSync("test-records.csv", requestId.toString() + "\r\n");
 
-      const command = new UpdateCommand(input);
-      await dynamoDbDocumentClient.send(command);
+      if (!dryrun) {
+        const command = new UpdateCommand(input);
+        await dynamoDbDocumentClient.send(command);
+      }
     }
     else {
-      console.warn(`No events for record "${requestId}"`);
+      console.warn(`\nNo events for record "${requestId}"`);
       return;
     }
   }
   catch (error) {
-    console.warn(`Error while updating record "${requestId}" : ${error}`);
+    console.warn(`\nError while updating record "${requestId}" : ${error}`);
     itemFailures++;
     fs.appendFileSync("failures.csv", requestId.toString() + "," + error + "\r\n");
     return;
   }
-  if (test)
-      fs.appendFileSync("test-records.csv", requestId.toString() + "\r\n");
   itemUpdates++;
   return;
+}
+
+async function getTotalRecords() {
+  var response = await dynamoDbClient.send(new DescribeTableCommand({ TableName: tableName }));
+  return response.Table.ItemCount;
 }
 
 recordsCleaning()
   .then(
     function (data) {
+      progressBar.stop();
       console.log("Successful operation, ending process.");
       console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
       return;
     },
     function (error) {
+      progressBar.stop();
       console.error(`* FATAL * Error in process : ${error}`);
       console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
     });

@@ -21,11 +21,13 @@ npm install
 ## Utilizzo
 
 ```bash
-node scan_dynamo.js --awsProfile <aws-profile> --tableName <dynamodb-table>
+node scan_dynamo.js --awsProfile <aws-profile> --tableName <dynamodb-table> [--json]
 ```
 Dove:
 - `<aws-profile>` è il profilo dell'account AWS dell'ambiente di riferimento.
 - `<dynamodb-table>` é la tabella sulla quale si intende effettuare una scan.
+- `<json>` restituisce l'output in formato json (optional)
+
 
 ## Output
 Lo script genera un file in formato JSON contenente i gli elementi estratti dalla tabella in input nel seguente avente come nome numeroDiElementi_nomeDellaTabella_profiloUtilizzato.json

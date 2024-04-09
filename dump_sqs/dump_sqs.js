@@ -138,13 +138,7 @@ async function dumpSQS() {
 
     if (remove) {
       extraction.forEach(async (e) => {
-        var params = {
-          QueueUrl: queueData.QueueUrl,
-          ReceiptHandle: e.ReceiptHandle
-        };
-        sqs.deleteMessage(params, function(err, data) {
-          if (err) console.log("errore nell'eliminazione dell'evento: " + message) ;    
-        });
+        const response = await awsClient._deleteFromQueueMessage(queueUrl, e.ReceiptHandle);
       })
     }
   }
