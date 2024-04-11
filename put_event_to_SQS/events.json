@@ -1,0 +1,29 @@
+[{
+  "MessageId": "87588ca7-a112-4d44-993d-495a41429551",
+  "ReceiptHandle": "AQEB53jMjPFzIlDo9T+LHsM9Fu7L/bZtGYkx8o4F/o2IdRyJCHFkqCNlUUKykgsfJnSOMne6Yk2CLIAFBLgdEJdKZukew3B6JfFahzmvLsPZl5Sino3bCae4pA8axYCrSk6ZcM1RVgis4w1WzalzhyeC1Bs3aFzeofRsNwrxs/Jl3dz8QnSs1C4Rxt1os8xC3hCFrqLxQI06fjtdWwC4sZqMLgEtPQYRyFsH59E7GhicM+KjXqLrCwjU95iSnSuGJ0eCng51vDi1KvWEauGJiIpJk3nAvzTDdAUWNYzsYgfQh58qgVvZf7jiwqskBt9hhdMvcoHPgZQmFJ0N2DRq5SCpaloTnqAC+i3oyZl3jvXcqEWy2kbkYleI0l8CWRH3LfeZo10z9sH+PcwyqhzNcc6bS2cNkXWq25g6F2nsbS3r/HBOmPzOmYPpZrHEDJNZZ/er",
+  "MD5OfBody": "71330fa9c48cbf81090dc7cf62f88d41",
+  "Body": "{\"correlationId\":\"NATIONAL_REGISTRY_CALL.IUN_KENP-UPQL-KGDL-202310-K-1.RECINDEX_0.DELIVERYMODE_DIGITAL.CONTACTPHASE_SEND_ATTEMPT.ATTEMPT_0\",\"taxId\":\"03106910791\",\"referenceRequestDate\":\"2023-11-01T15:14:46.051+00:00\",\"domicileType\":\"DIGITAL\",\"recipientType\":\"PG\",\"pnNationalRegistriesCxId\":\"pn-delivery-push\"}",
+  "Attributes": {
+    "SenderId": "AROAXN3CDHRRYHZ2SY2Y7:33bcd601d55149ae81cdf6aea3f58da3",
+    "ApproximateFirstReceiveTimestamp": "1699280644327",
+    "ApproximateReceiveCount": "4",
+    "SentTimestamp": "1699280644327",
+    "AWSTraceHeader": "Root=1-6548f704-e41a769e022706d78a33e22f;Parent=16de455860266c98;Sampled=1"
+  },
+  "MD5OfMessageAttributes": "5246ddc00884efd8256dcdc0f8bbb574",
+  "MessageAttributes": {
+    "clientId": {
+      "StringValue": "pn-delivery-push",
+      "StringListValues": [],
+      "BinaryListValues": [],
+      "DataType": "String"
+    },
+    "eventType": {
+      "StringValue": "NR_GATEWAY_INPUT",
+      "StringListValues": [],
+      "BinaryListValues": [],
+      "DataType": "String"
+    }
+  }
+}
+]
