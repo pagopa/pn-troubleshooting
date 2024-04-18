@@ -1,14 +1,6 @@
 
 ----------------------------------------------------------------------------
--- Metadata
-{
-    "name": "pn-Notifications",
-    "dependencies": [
-        "dipendenzaA",
-        "dipendenzaB"
-    ]
-}
-
+-- pn-Notifications
   WITH
     only_notification_strings AS (
       SELECT
