@@ -5,6 +5,23 @@ const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const path = require('path');
 const stream = require('stream');
 
+function saveResponse(sourceStream, outputPath) {
+  return new Promise((resolve, reject) => {
+    const writeStream = fs.createWriteStream(outputPath);
+      writeStream.on('error', (error) => {
+          reject(error);
+      });
+      writeStream.on('finish', () => {
+          resolve();
+      });
+      sourceStream.pipe(writeStream);
+      sourceStream.on('error', (error) => {
+          writeStream.end();
+          reject(error);
+      });
+  });
+}
+
 async function _writeInFile(path, result) {
   const resultPath = path + 'dynamoresult.json';
   fs.writeFileSync(resultPath, JSON.stringify(result, null, 4), 'utf-8')
@@ -68,10 +85,16 @@ async function main() {
     let tmp = unmarshall(result.Items[i]);
     const getObjectRes = await awsClient._getObject(bucketName, tmp.fileKey)
     fs.mkdirSync(resultPath, { recursive: true });
-    const writeStream = fs.createWriteStream(resultPath + tmp.fileKey);
+    _writeInFile(resultPath, tmp)
     if (getObjectRes.Body instanceof stream.Readable) {
-      getObjectRes.Body.pipe(writeStream);
-      _writeInFile(resultPath, tmp)
+      const outputPath = resultPath + tmp.fileKey; 
+      saveResponse(getObjectRes.Body, outputPath)
+          .then(() => {
+              console.log('File scritto con successo!');
+          })
+          .catch((error) => {
+              console.error('Errore durante la scrittura del file:', error);
+          });
     } else {
         throw new Error('Expected body to be a readable stream');
     }
