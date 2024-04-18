@@ -2,6 +2,7 @@ const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const { parseArgs } = require('util');
 const fs = require('fs');
 const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
+const path = require('path');
 
 function _getIunFromRequestId(requestId) {
   return requestId.split("IUN_")[1].split(".")[0];
@@ -33,8 +34,6 @@ function _checkingParameters(args, values){
 }
 
 function appendJsonToFile(fileName, data){
-  if(!fs.existsSync("results"))
-    fs.mkdirSync("results", { recursive: true });
   fs.appendFileSync(fileName, data + "\n")
 }
 
@@ -59,6 +58,10 @@ async function main() {
 
   _checkingParameters(args, values)
   const awsClient = new AwsClientsWrapper( envName );
+  const resultPath = path.join(__dirname, "results/");
+  if(!fs.existsSync(resultPath)) {
+    fs.mkdirSync(resultPath, { recursive: true });
+  }
   const data = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
   for (requestId of data) {
     if (requestId === '')
@@ -87,8 +90,8 @@ async function main() {
           console.log("not implemented for " + doc.documentType + " " + requestId)
         }
       }
-      appendJsonToFile("results/aar.json", temp.AAR)
-      appendJsonToFile("results/atti.json",  JSON.stringify(temp.ATTI))
+      appendJsonToFile(resultPath + 'aar.json', temp.AAR)
+      appendJsonToFile(resultPath + 'atti.json',  JSON.stringify(temp.ATTI))
       console.log("Done " + requestId)
     }
     catch (e) {

@@ -27,11 +27,10 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash  
-node index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> --expiration <expiration> --tier <tier>
+node index.js --envName <envName> --fileName <fileName> --expiration <expiration> --tier <tier>
 ```
 Dove:
 - `<envName>` è l'environment si intende eseguire la procedura;
-- `<bucketName>` è il nome del bucket in cui si trovano i documenti;
 - `<fileName>` è il file-path del file che riporta gli IUN e i documenti associati;
 - `<expiration>` numeri di giorni per il quale vuoi rendere il documento disponibile; [default 30]
 - `<tier>` la velocità con il quale si vuole recuperare i documenti [Bulk|Standard|Expedited]; [default Bulk]

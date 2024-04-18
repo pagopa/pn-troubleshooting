@@ -1,6 +1,6 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { S3Client, RestoreObjectCommand } = require("@aws-sdk/client-s3"); 
+const { S3Client, RestoreObjectCommand, ListBucketsCommand } = require("@aws-sdk/client-s3"); 
 
 function awsClientCfg( profile ) {
   const self = this;
@@ -41,6 +41,11 @@ class AwsClientsWrapper {
     catch (error) {
       return error
     }
+  }
+
+  async _getBucketLists(){
+    const command = new ListBucketsCommand({});
+    return await this._s3Client.send(command);
   }
 }
 
