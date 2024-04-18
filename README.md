@@ -279,3 +279,9 @@ Vuoi verificare se ci sono state delle modifiche nei template della generazione 
 ```bash
 node index.js --from <from> -to <to> [--files]
 ```
+
+### check_radd_info
+Vuoi recuperare informazioni relative ad un soggetto RADD?
+```bash
+node index.js --envName <envName> --cf <fiscalcode> --operationId <operation-id> 
+```
