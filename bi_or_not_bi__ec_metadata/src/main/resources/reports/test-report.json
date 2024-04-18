@@ -1,0 +1,11 @@
+{
+  "report": "report name",
+  "version": "1.0",
+  "outputFormat": "CSV",
+  "chron": "DAILY",
+  "task": {
+    "name": "Read timeline with events",
+    "type": "SQL",
+    "script": "/queries/select_all_from_timeline_with_events.sql"
+  }
+}
