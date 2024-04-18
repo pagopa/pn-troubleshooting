@@ -69,6 +69,7 @@ async function main() {
         temp[bucket.Name] = e['$metadata'].httpStatusCode
       }
     }
+    console.log(temp)
     Object.keys(temp).forEach(b => {
       if(((b.indexOf('staging') > 0 && temp[b] == 404 ) || temp[b] == 200)) {
         return;
