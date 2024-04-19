@@ -7,6 +7,11 @@ public class Edge {
     private Vertex source;
     private Vertex target;
 
+    public Edge(Vertex source, Vertex target) {
+        this.source = source;
+        this.target = target;
+    }
+
     /* GETTER & SETTER */
 
     public void setSource(Vertex source) {

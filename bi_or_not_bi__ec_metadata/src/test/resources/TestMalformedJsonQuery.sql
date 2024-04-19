@@ -3,7 +3,7 @@
 --$Metadata
 {
     "name": "pn-Notifications",
-    "dependencies": []
+    "dep"
 }
 
 --$Query
@@ -103,9 +103,9 @@
       FROM
         only_notification_strings
     )
-  SELECT
+SELECT
     *
-  FROM
+FROM
     decoded_string
 ;
 
@@ -113,8 +113,7 @@
 ----------------------------------------------------------------------------
 --$Metadata
 {
-    "name": "pn-Timelines",
-    "dependencies": []
+    "name": "pn-Timelines"
 }
 
 --$Query
@@ -164,13 +163,11 @@
       FROM
         only_timeline_strings
     )
-  SELECT
+SELECT
     *
-  FROM
+FROM
     decoded_string
 ;
-
-
 
 ----------------------------------------------------------------------------
 --$Metadata
@@ -228,8 +225,8 @@
       FROM
         only_timeline_strings
     )
-  SELECT
+SELECT
     *
-  FROM
+FROM
     decoded_string
 ;

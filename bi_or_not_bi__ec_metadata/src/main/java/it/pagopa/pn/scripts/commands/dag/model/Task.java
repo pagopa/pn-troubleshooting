@@ -30,6 +30,13 @@ public abstract class Task implements Vertex {
     public abstract void run();
 
     @Override
+    public String toString() {
+        return "Task{" +
+            "name='" + name + '\'' +
+            '}';
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

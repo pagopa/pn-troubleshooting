@@ -71,7 +71,7 @@ public class EcRichiesteMetadatiExportCommand implements Callable<Integer> {
 
         // - Execute all queries present in SQL file
         for( String queryName: queries.getQueriesNames() ) {
-            String sqlQuery = queries.getQuery(queryName);
+            String sqlQuery = queries.getQuery(queryName).getSqlQuery();
             System.out.println( "############## EXECUTE QUERY " + queryName);
             System.out.println( sqlQuery );
 
