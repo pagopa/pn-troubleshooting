@@ -7,8 +7,6 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
 import org.testng.annotations.Test;
 
-import java.util.Iterator;
-
 public class DirectAcyclicGraphBuilderTest {
 
 

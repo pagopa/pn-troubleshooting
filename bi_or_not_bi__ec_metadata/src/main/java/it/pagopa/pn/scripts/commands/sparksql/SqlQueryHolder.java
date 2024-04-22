@@ -7,7 +7,7 @@ public class SqlQueryHolder {
 
     private String name;
     private String sqlQuery;
-    private Set<String> dependencies;
+    private Set<SqlQueryDependency> dependencies;
 
     public String getName() {
         return name;
@@ -25,11 +25,11 @@ public class SqlQueryHolder {
         this.sqlQuery = sqlQuery;
     }
 
-    public Set<String> getDependencies() {
+    public Set<SqlQueryDependency> getDependencies() {
         return dependencies;
     }
 
-    public void setDependencies(Set<String> dependencies) {
+    public void setDependencies(Set<SqlQueryDependency> dependencies) {
         this.dependencies = dependencies;
     }
 

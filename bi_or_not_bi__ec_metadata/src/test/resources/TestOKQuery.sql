@@ -1,17 +1,23 @@
-
 ----------------------------------------------------------------------------
 --$Metadata
 {
     "name": "pn-Notifications",
     "dependencies": [
-        "dipendenzaA",
-        "dipendenzaB"
+        {
+            "name": "dipendenzaA",
+            "location": "resources/file1.sql"
+        },
+        {
+            "name": "dipendenzaB",
+            "location": "resources/file1.sql"
+        }
     ]
 }
 
 --$Query
   WITH
     only_notification_strings AS (
+    /* query di prova */
       SELECT
         json_string,
         get_json_object(json_string, '$.dynamodb.NewImage') as img
