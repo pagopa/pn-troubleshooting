@@ -30,20 +30,8 @@ public class SQLTask extends Task {
 
     @Override
     public void run() {
-        log.info(() -> "Running SQL task found in location: " + sqlQuery);
+        log.info(() -> "Running SQL task: " + id);
+//        log.info(() -> "Running SQL task found in location: " + sqlQuery);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
-        SQLTask sqlTask = (SQLTask) o;
-        return Objects.equals(sqlQuery, sqlTask.sqlQuery);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), sqlQuery);
-    }
 }
