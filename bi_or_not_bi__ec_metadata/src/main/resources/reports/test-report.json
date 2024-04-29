@@ -6,6 +6,9 @@
   "task": {
     "name": "Read timeline with events",
     "type": "SQL",
-    "script": "/queries/select_all_from_timeline_with_events.sql"
+    "script": {
+      "path": "/queries/select_all_from_timeline_with_events.sql",
+      "entry": "q1"
+    }
   }
 }

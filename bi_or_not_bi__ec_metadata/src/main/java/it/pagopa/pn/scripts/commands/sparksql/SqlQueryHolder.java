@@ -1,13 +1,19 @@
 package it.pagopa.pn.scripts.commands.sparksql;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import it.pagopa.pn.scripts.commands.dag.model.Vertex;
+
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
 public class SqlQueryHolder {
 
+    @JsonProperty(defaultValue = "")
     private String name;
+    private String location;
     private String sqlQuery;
-    private Set<SqlQueryDependency> dependencies;
+    private Set<SqlQueryDependency> dependencies = new HashSet<>();;
 
     public String getName() {
         return name;
@@ -15,6 +21,14 @@ public class SqlQueryHolder {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 
     public String getSqlQuery() {

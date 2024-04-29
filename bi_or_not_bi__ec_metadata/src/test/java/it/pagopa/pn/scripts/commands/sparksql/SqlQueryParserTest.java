@@ -30,10 +30,8 @@ public class SqlQueryParserTest {
         InputStream stream = ClassLoader.getSystemResourceAsStream("TestOKQuery.sql");
         if (stream == null) Assert.fail();
 
-        Stream<String> lines = this.inputStreamToLines(stream);
-
         // When
-        Map<String, SqlQueryHolder> result = parser.parse(lines);
+        Map<String, SqlQueryHolder> result = parser.parse(inputStreamToString(stream));
 
         // Then
         Assert.assertNotNull(result);
@@ -41,16 +39,14 @@ public class SqlQueryParserTest {
     }
 
     @Test
-    public void parseMalformedJsonTestKO() throws IOException {
+    public void parseMalformedJsonTestKO() throws SQLParsingException {
 
         // Given
         InputStream stream = ClassLoader.getSystemResourceAsStream("TestMalformedJsonQuery.sql");
         if (stream == null) Assert.fail();
 
-        Stream<String> lines = this.inputStreamToLines(stream);
-
         // When - Then
-        Assert.assertThrows(SQLParsingException.class, () -> parser.parse(lines));
+        Assert.assertThrows(SQLParsingException.class, () -> parser.parse(inputStreamToString(stream)));
     }
 
     private Stream<String> inputStreamToLines(InputStream inputStream) throws IOException {
@@ -59,6 +55,10 @@ public class SqlQueryParserTest {
         String[] lines = writer.toString().split("\n");
 
         return Arrays.stream(lines);
+    }
+
+    private static String inputStreamToString(InputStream input) throws IOException {
+        return new String(input.readAllBytes(), StandardCharsets.UTF_8);
     }
 
 
