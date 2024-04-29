@@ -37,6 +37,7 @@ public class SparkSqlWrapper extends MsgSenderSupport {
         spark = SparkSession.builder()
                 .appName( applicationName )
                 .master("local[" + cores + "]")
+                .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
                 .getOrCreate();
         sparkContext = new JavaSparkContext( spark.sparkContext() );
         sqlContext = spark.sqlContext();

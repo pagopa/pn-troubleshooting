@@ -10,6 +10,7 @@ import org.jgrapht.graph.DirectedAcyclicGraph;
 import org.jgrapht.graph.GraphCycleProhibitedException;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.logging.Logger;
@@ -29,15 +30,19 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
     final boolean isInResource;
     final String rootFileLocation;
     final SqlQueryHolder entryQuery;
+    final String sourceBasePath;
 
-    public SqlQueryDag( String fileLocation, String entryQuery, boolean isInResource ){
+    public SqlQueryDag( String fileLocation, String entryQuery, String sourceBasePath, boolean isInResource ){
         this.isInResource = isInResource;
         this.rootFileLocation = fileLocation;
         this.sqlQueryParser = new SqlQueryParser();
         this.queries = new LinkedHashMap<>();
         this.files = new HashMap<>();
+        this.sourceBasePath = sourceBasePath;
+
         this.dag = new DirectedAcyclicGraph<>(DefaultEdge.class);
         this.entryQuery = getQueriesFromFile(fileLocation).get(entryQuery);
+
         buildAbstractDependenciesGraph();
         buildDag();
     }
@@ -88,11 +93,14 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
     }
 
     private String readFile( String location ) {
+
+        String fullLocation = Paths.get(sourceBasePath, location).toString();
+
         try {
             if(isInResource) {
-                return PathsUtils.readClasspathResource(location);
+                return PathsUtils.readClasspathResource(fullLocation);
             } else {
-                return PathsUtils.readPath(Paths.get(location));
+                return PathsUtils.readPath(Paths.get(fullLocation));
             }
         } catch (IOException | FileNotFoundException e) {
             throw new SQLParsingException(

@@ -1,5 +1,5 @@
 {
-  "report": "report name",
+  "name": "report name",
   "version": "1.0",
   "outputFormat": "CSV",
   "chron": "DAILY",
