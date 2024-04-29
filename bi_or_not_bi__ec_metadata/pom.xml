@@ -111,6 +111,13 @@
             <version>3.5.0</version>
         </dependency>
 
+        <!-- Hadoop dependency to enable s3a schema -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-aws</artifactId>
+            <version>3.3.4</version>
+        </dependency>
+
         <dependency>
             <groupId>org.codehaus.jettison</groupId>
             <artifactId>jettison</artifactId>
