@@ -11,9 +11,9 @@ import java.util.Set;
 /**
  * Builder for {@link DirectedAcyclicGraph} class
  * */
-public final class DirectAcyclicGraphBuilder {
+public final class DirectAcyclicGraphBuilder <V extends Vertex> {
 
-    private final Set<Vertex> vertices;
+    private final Set<V> vertices;
     private final Set<Edge> edges;
 
     private DirectAcyclicGraphBuilder() {
@@ -21,25 +21,25 @@ public final class DirectAcyclicGraphBuilder {
         this.edges = new HashSet<>();
     }
 
-    public static DirectAcyclicGraphBuilder builder() {
-        return new DirectAcyclicGraphBuilder();
+    public static <T extends Vertex>  DirectAcyclicGraphBuilder<T> builder() {
+        return new DirectAcyclicGraphBuilder<>();
     }
 
-    public DirectedAcyclicGraph<Vertex, DefaultEdge> build() {
-        DirectedAcyclicGraph<Vertex, DefaultEdge> dag = new DirectedAcyclicGraph<>(DefaultEdge.class);
+    public DirectedAcyclicGraph<V, DefaultEdge> build() {
+        DirectedAcyclicGraph<V, DefaultEdge> dag = new DirectedAcyclicGraph<>(DefaultEdge.class);
 
         this.vertices.forEach(dag::addVertex);
-        this.edges.forEach(e -> dag.addEdge(e.getSource(), e.getTarget()));
+        this.edges.forEach(e -> dag.addEdge(((V) e.getSource()), ((V) e.getTarget())));
 
         return dag;
     }
 
-    public DirectAcyclicGraphBuilder addVertex(Vertex vertex) {
+    public DirectAcyclicGraphBuilder<V> addVertex(V vertex) {
         this.vertices.add(vertex);
         return this;
     }
 
-    public DirectAcyclicGraphBuilder addEdge(Edge edge) {
+    public DirectAcyclicGraphBuilder<V> addEdge(Edge edge) {
         this.edges.add(edge);
         return this;
     }
