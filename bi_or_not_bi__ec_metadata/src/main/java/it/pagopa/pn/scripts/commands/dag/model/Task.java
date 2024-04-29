@@ -5,6 +5,7 @@ import java.util.Objects;
 public abstract class Task implements Vertex {
 
     protected String id;
+
     protected String name;
 
     /* GETTER & SETTER */
@@ -14,13 +15,12 @@ public abstract class Task implements Vertex {
         return id;
     }
 
-    @Override
-    public String getName() {
-        return name;
-    }
-
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getName() {
+        return name;
     }
 
     public void setName(String name) {
@@ -31,9 +31,7 @@ public abstract class Task implements Vertex {
 
     @Override
     public String toString() {
-        return "Task{" +
-            "name='" + name + '\'' +
-            '}';
+        return "Task{id='" + id + "', name='" + name + "'}";
     }
 
     @Override
