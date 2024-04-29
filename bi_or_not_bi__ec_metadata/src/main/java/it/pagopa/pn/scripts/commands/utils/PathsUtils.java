@@ -28,11 +28,23 @@ public class PathsUtils {
         }
     }
 
-    public static Stream<String> readPath( Path p ) throws IOException {
+    public static String readPath( Path p ) throws IOException {
+        return Files.readString( p );
+    }
+
+    public static Stream<String> readPathAsStream( Path p ) throws IOException {
         return Files.lines( p );
     }
 
-    public static Stream<String> readClasspathResource( String resourceName ) throws IOException {
+    public static String readClasspathResource( String resourceName ) throws IOException {
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        try(InputStream in = contextClassLoader.getResourceAsStream( resourceName ) ) {
+            if (in == null) throw new FileNotFoundException(resourceName);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    public static Stream<String> readClasspathResourceAsStream( String resourceName ) throws IOException {
 
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
 
