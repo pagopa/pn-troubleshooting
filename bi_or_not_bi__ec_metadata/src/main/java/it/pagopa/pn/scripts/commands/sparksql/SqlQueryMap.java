@@ -1,5 +1,6 @@
 package it.pagopa.pn.scripts.commands.sparksql;
 
+import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
 import it.pagopa.pn.scripts.commands.exceptions.FileNotFoundException;
 import it.pagopa.pn.scripts.commands.exceptions.SQLParsingException;
 import it.pagopa.pn.scripts.commands.utils.PathsUtils;
@@ -8,12 +9,8 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
-public class SqlQueryMap {
+public class SqlQueryMap implements Iterable<Map.Entry<String, SqlQueryHolder>> {
 
     public static SqlQueryMap fromPath( Path sqlFilePath ) {
         try {
@@ -39,7 +36,7 @@ public class SqlQueryMap {
 
     private final Map<String, SqlQueryHolder> queries;
 
-    private SqlQueryMap( Stream<String> sqlFile ) {
+    private SqlQueryMap( String sqlFile ) {
         this.queries = parseQueryFile( sqlFile );
     }
 
@@ -51,7 +48,14 @@ public class SqlQueryMap {
         return new ArrayList<>( this.queries.keySet() );
     }
 
-    private static Map<String, SqlQueryHolder> parseQueryFile( Stream<String> sqlFile) {
+    @NotNull
+    @Override
+    public Iterator<Map.Entry<String, SqlQueryHolder>> iterator() {
+        return this.queries.entrySet().iterator();
+    }
+
+
+    private static Map<String, SqlQueryHolder> parseQueryFile( String sqlFile ) {
         SqlQueryParser sqlQueryParser = new SqlQueryParser();
         return sqlQueryParser.parse(sqlFile);
     }
