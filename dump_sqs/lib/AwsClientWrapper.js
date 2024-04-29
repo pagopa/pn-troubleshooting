@@ -1,6 +1,6 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand } = require("@aws-sdk/client-sqs");
+const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws-sdk/client-sqs");
 
 function awsClientCfg( profile ) {
   const self = this;
@@ -50,6 +50,16 @@ class AwsClientsWrapper {
     const command = new ReceiveMessageCommand(input);
     const response = await this._sqsClient.send(command);
     return response
+  }
+
+  async _deleteFromQueueMessage(queueUrl, receiptHandle) {
+    const input = { // DeleteMessageRequest
+      QueueUrl: queueUrl, // required
+      ReceiptHandle: receiptHandle, // required
+    };
+    const command = new DeleteMessageCommand(input);
+    const response = await this._sqsClient.send(command);
+    return response;
   }
 }
 exports.AwsClientsWrapper = AwsClientsWrapper;

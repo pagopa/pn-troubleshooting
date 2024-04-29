@@ -1,7 +1,7 @@
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const { parseArgs } = require('util');
 const fs = require('fs');
-
+const { unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function _checkingParameters(args, values){
   const usage = "Usage: node index.js --awsProfile <aws-profile> --tableName <table-name> --filter <filter>"
@@ -28,11 +28,27 @@ function _checkingParameters(args, values){
   })
 }
 
-async function _writeInFile(result, filename ) {
+
+async function _writeInFile(result) {
   fs.mkdirSync("result", { recursive: true });
-  const str = result.map(el => {
-    return JSON.stringify(el, null)
-  }).join('\n')
+  const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
+  const resultPath = path.join(__dirname, 'result/dump' +'_'+queueName+'_'+dateIsoString+'.json');
+  fs.writeFileSync(resultPath, JSON.stringify(result, null, 4), 'utf-8')
+}
+
+async function _writeInFile(result, filename, json ) {
+  fs.mkdirSync("result", { recursive: true });
+  let str;
+  if(json) {
+    str = result.map(el => {
+      return JSON.stringify(unmarshall(el))
+    }).join('\n')
+  }
+  else {
+    str = result.map(el => {
+      return JSON.stringify(el, null)
+    }).join('\n')
+  }
   fs.writeFileSync('result/' + filename+'.json', str, 'utf-8')
 }
 
@@ -42,9 +58,10 @@ async function main() {
     { name: "awsProfile", mandatory: true, subcommand: [] },
     { name: "tableName", mandatory: true, subcommand: [] },
     { name: "filter", mandatory: false, subcommand: [] },
+    { name: "json", mandatory: false, subcommand: [] },
   ]
   const values = {
-    values: { awsProfile, tableName, filter },
+    values: { awsProfile, tableName, filter, json },
   } = parseArgs({
     options: {
       awsProfile: {
@@ -55,6 +72,9 @@ async function main() {
       },
       filter: {
         type: "string", short: "f", default: undefined
+      },
+      json: {
+        type: "boolean", short: "m", default: false
       },
     },
   });  
@@ -75,7 +95,7 @@ async function main() {
     }
     results = results.concat(res.Items);
   }
-  await _writeInFile(results, results.length+"_"+tableName+"_"+awsProfile)
+  await _writeInFile(results, results.length+"_"+tableName+"_"+awsProfile, json)
   console.log('Sono stati memorizzati n° ' + results.length + ' elementi.');
 
 }

@@ -255,3 +255,33 @@ Vuoi verificare se un requestId è stato scartato e il suo tentativo precedente 
 ```bash
 node index.js --envName <envName> --fileName <fileName>
 ```
+
+### redrive_prepare_analog_start_event
+Vuoi sottomettere un evento di prepare_analog_domicile per riavviare il flusso iniziale?
+```bash
+node index.js --envName <envName> --fileName <fileName> [--dryrun]
+```
+
+### dump_sla_violation
+Vuoi recuperare tutte le notifiche che hanno violato una determinata tipologia di SLA?
+```bash
+node index.js --awsProfile <awsProfile> --slaViolation <slaViolation>"
+```
+
+### retrieve_info_sender_from_requestId
+Vuoi recuperare senderId, PA mittente e notificationSentAt di una serie di requestId?
+```bash
+node index.js --envName <envName> --fileName <fileName>"
+```
+
+### diff_document_template
+Vuoi verificare se ci sono state delle modifiche nei template della generazione dei documenti?
+```bash
+node index.js --from <from> -to <to> [--files]
+```
+
+### check_radd_info
+Vuoi recuperare informazioni relative ad un soggetto RADD?
+```bash
+node index.js --envName <envName> --cf <fiscalcode> --operationId <operation-id> 
+```

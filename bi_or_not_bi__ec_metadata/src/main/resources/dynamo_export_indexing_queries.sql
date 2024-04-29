@@ -39,6 +39,7 @@
               ),
               y  -> named_struct(
                 'documentType', get_json_object(y, concat('$.documentType.S')),
+                'uri', get_json_object(y, concat('$.uri.S')),
                 'id', get_json_object(y, concat('$.id.S'))
               )
             ),
