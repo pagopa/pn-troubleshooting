@@ -2,9 +2,11 @@ package it.pagopa.pn.scripts.commands.dag;
 
 import it.pagopa.pn.scripts.commands.dag.model.Edge;
 import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
+import it.pagopa.pn.scripts.commands.dag.model.Task;
 import it.pagopa.pn.scripts.commands.dag.model.Vertex;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class DirectAcyclicGraphBuilderTest {
@@ -23,16 +25,20 @@ public class DirectAcyclicGraphBuilderTest {
         Edge dependency13 = new Edge(node3, node1);
         Edge dependency23 = new Edge(node2, node1);
 
-        DirectedAcyclicGraph<Vertex, DefaultEdge> graph = DirectAcyclicGraphBuilder.builder()
-            .addVertex(node1)
-            .addVertex(node2)
-            .addVertex(node3)
-            .addVertex(node4)
-            .addEdge(dependency34)
-            .addEdge(dependency13)
-            .addEdge(dependency23)
+        // When
+        TaskDag graph = TaskDagBuilder.builder()
+            .addTask(node1)
+            .addTask(node2)
+            .addTask(node3)
+            .addTask(node4)
+            .addDependency(dependency34)
+            .addDependency(dependency13)
+            .addDependency(dependency23)
             .build();
 
+        // Then
+        Assert.assertEquals(graph.getDag().vertexSet().size(), 4);
+        Assert.assertEquals(graph.getDag().edgeSet().size(), 3);
         for (Vertex vertex : graph) {
             System.out.println(vertex);
         }

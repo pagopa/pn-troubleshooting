@@ -9,11 +9,10 @@ import java.util.Set;
 
 public class SqlQueryHolder {
 
-    @JsonProperty(defaultValue = "")
     private String name;
     private String location;
     private String sqlQuery;
-    private Set<SqlQueryDependency> dependencies = new HashSet<>();;
+    private Set<SqlQueryDependency> dependencies = new HashSet<>();
 
     public String getName() {
         return name;
@@ -57,7 +56,7 @@ public class SqlQueryHolder {
 
     @Override
     public int hashCode() {
-        return Objects.hash(name);
+        return Objects.hash(name, location);
     }
 
     @Override

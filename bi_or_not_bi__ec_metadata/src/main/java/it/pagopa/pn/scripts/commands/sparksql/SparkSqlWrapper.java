@@ -1,12 +1,16 @@
 package it.pagopa.pn.scripts.commands.sparksql;
 
+import it.pagopa.pn.scripts.commands.enumerations.FormatEnum;
 import it.pagopa.pn.scripts.commands.logs.Msg;
 import it.pagopa.pn.scripts.commands.logs.MsgSenderSupport;
 import it.pagopa.pn.scripts.commands.exports.ec_metadata.seq.RawEventSequence;
+import it.pagopa.pn.scripts.commands.utils.SparkDatasetWriter;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.*;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -19,6 +23,8 @@ import java.util.concurrent.*;
 import java.util.stream.Stream;
 
 public class SparkSqlWrapper extends MsgSenderSupport {
+
+    private static final Logger log = LoggerFactory.getLogger(SparkSqlWrapper.class);
 
     public static SparkSqlWrapper local(String applicationName, SparkConf sparkConf, Boolean isMultiCore) {
 
@@ -147,9 +153,8 @@ public class SparkSqlWrapper extends MsgSenderSupport {
     }
 
     public void writeTableToParquet(String tableName, Path parquetOut ) {
-        spark.table( tableName ).write().parquet( parquetOut.toString() );
+        SparkDatasetWriter.writeDataset(spark.table(tableName), parquetOut.toString(), FormatEnum.PARQUET, SaveMode.ErrorIfExists);
     }
-
 
     public static final class LineHolder implements Serializable {
 

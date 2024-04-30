@@ -2,6 +2,7 @@ package it.pagopa.pn.scripts.commands.reports;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.pagopa.pn.scripts.commands.CommandsMain;
+import it.pagopa.pn.scripts.commands.dag.TaskDag;
 import it.pagopa.pn.scripts.commands.dag.TaskRunner;
 import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
 import it.pagopa.pn.scripts.commands.dag.model.Task;
@@ -9,16 +10,18 @@ import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
 import it.pagopa.pn.scripts.commands.reports.model.Report;
 import it.pagopa.pn.scripts.commands.sparksql.SparkSqlWrapper;
 import it.pagopa.pn.scripts.commands.sparksql.SqlQueryDag;
-import it.pagopa.pn.scripts.commands.sparksql.SqlQueryMap;
+import it.pagopa.pn.scripts.commands.utils.QueryDagToTaskDagAdapter;
+import it.pagopa.pn.scripts.commands.utils.SparkDatasetWriter;
+import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SaveMode;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.ParentCommand;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 
@@ -35,6 +38,9 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
     @CommandLine.Option( names = {"--sql-sources"}, arity = "1")
     private Path sourceBasePath;
 
+    @CommandLine.Option( names = {"--report-upload-url"}, arity = "1")
+    private String reportUploadUrl;
+
     @ParentCommand
     CommandsMain parent;
 
@@ -42,32 +48,53 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
     public Integer call() throws IOException {
 
         MsgListenerImpl logger = new MsgListenerImpl();
+        SparkConf sparkConf = new SparkConf()
+            .set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+            .set("spark.hadoop.fs.s3a.path.style.access", "true")
+            .set("spark.hadoop.fs.s3a.secret.key", "test")
+            .set("spark.hadoop.fs.s3a.access.key", "test")
+            .set("spark.hadoop.fs.s3a.endpoint", "http://localhost:4566");
 
-        SparkSqlWrapper spark = SparkSqlWrapper.local(APPLICATION_NAME, null, true);
+        SparkSqlWrapper spark = SparkSqlWrapper.local(APPLICATION_NAME, sparkConf, true);
         spark.addListener(logger);
 
         // Read report to retrieve information
         Report report = this.mapper.readValue(reportPath.toFile(), Report.class);
 
         // Read query dependencies
-        SqlQueryDag sqlQueryDag = new SqlQueryDag(
+        SqlQueryDag sqlQueryDag = SqlQueryDag.fromFile(
             report.getTask().getScript().getPath(),
             report.getTask().getScript().getEntry(),
-            sourceBasePath.toString(),
-            false
+            sourceBasePath.toString()
         );
 
-        // TODO Adapt query holder DAG to task DAG
+        // Define task for each job and adapt graph
+        Function<Task, Object> job = task -> spark.execSql(((SQLTask) task).getSqlQuery());
+        TaskDag taskDag = QueryDagToTaskDagAdapter.from(sqlQueryDag, job);
 
-        // TODO Get DAG entry point
-        Task t = new SQLTask("1", "test", "SELECT * FROM table t");
+        // Instantiate runner and run
+        TaskRunner taskRunner = new TaskRunner(taskDag);
+        taskRunner.linearRun();
 
-        Function<Task, Dataset<Row>> run = task -> {
-            t.run();
-            return null;
-        };
+        // Find leaf node to get last result
+        @SuppressWarnings("unchecked")
+        Dataset<Row> datasetReport = taskDag.getEntryPoint()
+            .getResult(Dataset.class);
 
-        run.apply(t);
+        String s3Out = String.format(
+            "%s/%s.%s",
+            this.reportUploadUrl,
+            report.getName(),
+            report.getOutputFormat().getExtension()
+        );
+
+        // Write out report
+        SparkDatasetWriter.writeDataset(
+            datasetReport,
+            s3Out,
+            report.getOutputFormat(),
+            SaveMode.Overwrite
+        );
 
         return 0;
     }

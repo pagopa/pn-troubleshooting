@@ -1,12 +1,17 @@
 package it.pagopa.pn.scripts.commands.dag.model;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 public abstract class Task implements Vertex {
 
     protected String id;
 
     protected String name;
+
+    protected Function<Task, Object> job;
+
+    protected Object result;
 
     /* GETTER & SETTER */
 
@@ -27,7 +32,24 @@ public abstract class Task implements Vertex {
         this.name = name;
     }
 
-    public abstract void run();
+    public Function<Task, Object> getJob() {
+        return job;
+    }
+
+    public void setJob(Function<Task, Object> job) {
+        this.job = job;
+    }
+
+    public Object getResult() {
+        return result;
+    }
+    public <T> T getResult(Class<T> type) {
+        return type.cast(result);
+    }
+
+    public void run() {
+        result = job.apply(this);
+    }
 
     @Override
     public String toString() {

@@ -8,15 +8,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 public class SqlQueryParser {
     // Match of with multi-line comments with $QueryMetadata Es. /* $Query {...} */
     private static final Pattern METADATA_REGEX_MATCHER = Pattern.compile("(?s)(?i)(^|\\s+?)(/\\*)((.)(?!\\*/))*?(\\$QueryMetadata)(.*?)(\\*/)");
     private final ObjectMapper mapper = new ObjectMapper();
-    private final Map<String, SqlQueryHolder> queries = new HashMap<>();
 
-    public Map<String, SqlQueryHolder> parse(String input) {
+    public Map<String, SqlQueryHolder> parse(String input, String location) {
+        Map<String, SqlQueryHolder> queries = new HashMap<>();
         // Dummy metadata to avoid an additional if outside while
         input += "\n/* Dummy $QueryMetadata {} */";
         Matcher matcher = METADATA_REGEX_MATCHER.matcher(input);
@@ -24,18 +23,19 @@ public class SqlQueryParser {
         int lastEndPosition = 0;
 
         while (matcher.find()) {
-            if(sqlQueryHolder != null) {
+            if (sqlQueryHolder != null) {
                 String queryString = input.substring(lastEndPosition, matcher.start()).trim();
                 sqlQueryHolder.setSqlQuery(queryString);
-                this.queries.put(sqlQueryHolder.getName(), sqlQueryHolder);
+                queries.put(sqlQueryHolder.getName(), sqlQueryHolder);
             }
             lastEndPosition = matcher.end();
             // Group 6 is the inner json
             String jsonMetadata = matcher.group(6).trim();
             sqlQueryHolder = readSqlQueryHolderFromString(jsonMetadata);
+            updateLocation(sqlQueryHolder, location);
         }
 
-        return this.queries;
+        return queries;
     }
 
     private SqlQueryHolder readSqlQueryHolderFromString(String metadata) {
@@ -45,11 +45,20 @@ public class SqlQueryParser {
             sqlQueryHolderFromString = mapper.readValue(metadata, SqlQueryHolder.class);
         } catch (JsonProcessingException e) {
             throw new SQLParsingException(
-                String.format("Error occurred during string conversion to %s", SqlQueryHolder.class),
-                e
+                    String.format("Error occurred during string conversion to %s", SqlQueryHolder.class),
+                    e
             );
         }
 
         return sqlQueryHolderFromString;
+    }
+
+    private static void updateLocation(SqlQueryHolder sqlQueryHolder, String location) {
+        sqlQueryHolder.setLocation(location);
+        sqlQueryHolder.getDependencies().forEach(d -> {
+            if (d.getLocation() == null) {
+                d.setLocation(location);
+            }
+        });
     }
 }
