@@ -1,12 +1,11 @@
-
-----------------------------------------------------------------------------
---$Metadata
+/*
+$QueryMetadata
 {
     "name": "010__all_paper_metadata_with_synthetic_select_list_no_class",
     "dependencies": []
 }
+*/
 
---$Query
 create or replace temporary view all_paper_metadata_with_synthetic_select_list_no_class as
   WITH
     last_modification_by_request_id AS (
@@ -161,14 +160,14 @@ create or replace temporary view all_paper_metadata_with_synthetic_select_list_n
 ;
 
 
-----------------------------------------------------------------------------
---$Metadata
+/*
+$QueryMetadata
 {
     "name": "020__all_paper_metadata_with_synthetic_select_list",
     "dependencies": []
 }
+*/
 
---$Query
 create or replace temporary view all_paper_metadata_with_synthetic_select_list as
   WITH categorized_sequences_no_arr AS (
     SELECT
@@ -201,14 +200,14 @@ create or replace temporary view all_paper_metadata_with_synthetic_select_list a
                                        and c.statuses_string = a.statuses_string
 ;
 
-----------------------------------------------------------------------------
---$Metadata
+/*
+$QueryMetadata
 {
     "name": "030__cardinality_by_product_and_sequence",
     "dependencies": []
 }
+*/
 
---$Query
 create or replace temporary view cardinality_by_product_and_sequence as
   SELECT
     paperMeta_productType,
@@ -262,14 +261,14 @@ create or replace temporary view cardinality_by_product_and_sequence as
     statuses_string
 ;
 
-----------------------------------------------------------------------------
---$Metadata
+/*
+$QueryMetadata
 {
     "name": "040__cardinality_by_product_and_day",
     "dependencies": []
 }
+*/
 
---$Query
 create or replace temporary view cardinality_by_product_and_day as
   SELECT
     paperMeta_productType,

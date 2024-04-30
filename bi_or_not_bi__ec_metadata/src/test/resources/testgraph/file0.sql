@@ -1,25 +1,25 @@
 /*
 $QueryMetadata
 {
-    "name": "query0",
+    "name": "query00",
     "dependencies": [
         {
-            "name": "query1",
+            "name": "query10",
             "location": "./testgraph/file1.sql"
         },
         {
-            "name": "query2",
+            "name": "query20",
             "location": "./testgraph/file2.sql"
         },
-                {
-                    "name": "query20",
-                    "location": "./testgraph/file2.sql"
-                }
+        {
+            "name": "query21",
+            "location": "./testgraph/file2.sql"
+        }
     ]
 }
 */
 
-q0
+q00
 
 /*
 $QueryMetadata
@@ -33,10 +33,15 @@ $QueryMetadata
         {
             "name": "query11",
             "location": "./testgraph/file1.sql"
+        },
+        {
+            "name": "query12",
+            "location": "./testgraph/file1.sql"
         }
     ]
 }
 */
+
 q01
 
 /*
@@ -47,4 +52,4 @@ $QueryMetadata
     ]
 }
 */
-q01
+q02

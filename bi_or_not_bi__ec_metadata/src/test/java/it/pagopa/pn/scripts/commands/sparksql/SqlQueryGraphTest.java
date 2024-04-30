@@ -1,10 +1,7 @@
 package it.pagopa.pn.scripts.commands.sparksql;
 
-import it.pagopa.pn.scripts.commands.dag.TaskRunner;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-
-import java.util.HashSet;
 
 public class SqlQueryGraphTest {
     @Test
@@ -12,16 +9,14 @@ public class SqlQueryGraphTest {
 
         // Given
         String sqlResourceName = "./testgraph/file0.sql";
+        String queryName = "query00";
 
         // When
-        SqlQueryDag sqlQueryGraph = new SqlQueryDag(sqlResourceName, "query0", true);
+        SqlQueryDag sqlQueryGraph = new SqlQueryDag(sqlResourceName, queryName, true);
 
-        // Test
-//        Assert.assertNotNull(sqlQueryMap);
-//        Assert.assertEquals(sqlQueryMap.getQueriesNames().size(), 4);
-        sqlQueryGraph.forEach(n -> System.out.println(n.toString()));
-
-//        TaskRunner.depthFirstSearch(sqlQueryGraph.getDag(), sqlQueryGraph.getQuery(sqlResourceName, "query0"), new HashSet<>());
-
+        // Then
+        Assert.assertNotNull(sqlQueryGraph);
+        Assert.assertEquals(sqlQueryGraph.size(), 8);
+        // sqlQueryGraph.forEach(n -> System.out.println(n.toString()));
     }
 }

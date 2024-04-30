@@ -1,17 +1,6 @@
 /*
 $QueryMetadata
 {
-    "name": "query1",
-    "dependencies": [
-    ]
-}
-*/
-
-q1
-
-/*
-$QueryMetadata
-{
     "name": "query10",
     "dependencies": [
     ]
@@ -26,9 +15,20 @@ $QueryMetadata
     "name": "query11",
     "dependencies": [
         {
-            "name": "query20",
+            "name": "query21",
             "location": "./testgraph/file2.sql"
         }
+    ]
+}
+*/
+
+q11
+
+/*
+$QueryMetadata
+{
+    "name": "query12",
+    "dependencies": [
     ]
 }
 */

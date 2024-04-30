@@ -1,17 +1,13 @@
 package it.pagopa.pn.scripts.commands.dag;
 import it.pagopa.pn.scripts.commands.dag.model.Edge;
 import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
-import it.pagopa.pn.scripts.commands.dag.model.Task;
-import it.pagopa.pn.scripts.commands.dag.model.Vertex;
-import org.jgrapht.graph.DefaultEdge;
-import org.jgrapht.graph.DirectedAcyclicGraph;
+import it.pagopa.pn.scripts.commands.exceptions.MoreThanOneEntryException;
+import org.testng.Assert;
 import org.testng.annotations.Test;
-
-import java.util.concurrent.ExecutionException;
 
 public class TaskRunnerTest {
     @Test
-    public void runTasksTwoEntriesTest() throws ExecutionException, InterruptedException {
+    public void runTasksLinearTwoEntriesTest(){
 
         /*
             node1
@@ -41,29 +37,35 @@ public class TaskRunnerTest {
         Edge dependency36 = new Edge(node3, node6);
         Edge dependency68 = new Edge(node6, node8);
 
-        DirectedAcyclicGraph<Task, DefaultEdge> graph = DirectAcyclicGraphBuilder.<Task>builder()
-                .addVertex(node1)
-                .addVertex(node2)
-                .addVertex(node3)
-                .addVertex(node4)
-                .addVertex(node5)
-                .addVertex(node6)
-                .addVertex(node7)
-                .addVertex(node8)
-                .addEdge(dependency12)
-                .addEdge(dependency13)
-                .addEdge(dependency24)
-                .addEdge(dependency35)
-                .addEdge(dependency36)
-                .addEdge(dependency68)
+        TaskDag graph = TaskDagBuilder.builder()
+                .addTask(node1)
+                .addTask(node2)
+                .addTask(node3)
+                .addTask(node4)
+                .addTask(node5)
+                .addTask(node6)
+                .addTask(node7)
+                .addTask(node8)
+                .addDependency(dependency12)
+                .addDependency(dependency13)
+                .addDependency(dependency24)
+                .addDependency(dependency35)
+                .addDependency(dependency36)
+                .addDependency(dependency68)
                 .build();
 
-        TaskRunner taskRunner = TaskRunner.getRunnerFor(graph);
-        taskRunner.linearRun();
+        // When - Then
+        Assert.assertThrows(
+                MoreThanOneEntryException.class,
+                () -> {
+                    TaskRunner taskRunner = new TaskRunner(graph);
+                    taskRunner.linearRun();
+                }
+        );
     }
 
     @Test
-    public void runTasksSingleEntryTest() throws ExecutionException, InterruptedException {
+    public void runTasksLinearSingleEntryTest() {
 
         /*
             node1
@@ -91,23 +93,24 @@ public class TaskRunnerTest {
         Edge dependency36 = new Edge(node3, node6);
         Edge dependency68 = new Edge(node6, node8);
 
-        DirectedAcyclicGraph<Task, DefaultEdge> graph = DirectAcyclicGraphBuilder.<Task>builder()
-                .addVertex(node1)
-                .addVertex(node2)
-                .addVertex(node3)
-                .addVertex(node4)
-                .addVertex(node5)
-                .addVertex(node6)
-                .addVertex(node8)
-                .addEdge(dependency12)
-                .addEdge(dependency13)
-                .addEdge(dependency24)
-                .addEdge(dependency35)
-                .addEdge(dependency36)
-                .addEdge(dependency68)
+        TaskDag graph = TaskDagBuilder.builder()
+                .addTask(node1)
+                .addTask(node2)
+                .addTask(node3)
+                .addTask(node4)
+                .addTask(node5)
+                .addTask(node6)
+                .addTask(node8)
+                .addDependency(dependency12)
+                .addDependency(dependency13)
+                .addDependency(dependency24)
+                .addDependency(dependency35)
+                .addDependency(dependency36)
+                .addDependency(dependency68)
                 .build();
 
-        TaskRunner taskRunner = TaskRunner.getRunnerFor(graph);
+        // When - Then
+        TaskRunner taskRunner = new TaskRunner(graph);
         taskRunner.linearRun();
     }
 }
