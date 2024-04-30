@@ -1,12 +1,10 @@
-
-----------------------------------------------------------------------------
---$Metadata
+/*
+$QueryMetadata
 {
     "name": "pn-EcRichiesteMetadati",
     "dependencies": []
 }
-
---$Query
+*/
     SELECT
       get_json_object(json_string, '$.Metadata_WriteTimestampMicros') as Metadata_WriteTimestampMicros,
       get_json_object(json_string, '$.Item.requestId.S') as requestId,
@@ -66,16 +64,13 @@
       json_objects
 ;
 
-
-
-----------------------------------------------------------------------------
---$Metadata
+/*
+$QueryMetadata
 {
     "name": "pn-SsDocumenti",
     "dependencies": []
 }
-
---$Query
+*/
     SELECT
       get_json_object(json_string, '$.Metadata_WriteTimestampMicros') as Metadata_WriteTimestampMicros,
       get_json_object(json_string, '$.Item.documentKey.S') as documentKey,
@@ -107,15 +102,13 @@
       json_objects
 ;
 
-
-----------------------------------------------------------------------------
---$Metadata
+/*
+$QueryMetadata
 {
     "name": "pn-PaperRequestError",
     "dependencies": []
 }
-
---$Query
+*/
     SELECT
       get_json_object(json_string, '$.Metadata_WriteTimestampMicros') as Metadata_WriteTimestampMicros,
       if( get_json_object(json_string, '$.Item') is null, 'REMOVE', 'INSERT/MODIFY') as Metadata_Operation,

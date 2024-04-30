@@ -54,7 +54,7 @@ public class EcRichiesteMetadatiExportCommand implements Callable<Integer> {
 
         // - Start spark
         MsgListenerImpl logger = new MsgListenerImpl();
-        SparkSqlWrapper spark = SparkSqlWrapper.localMultiCore("Export EcMetadata");
+        SparkSqlWrapper spark = SparkSqlWrapper.local("Export EcMetadata", null, true);
         spark.addListener( logger );
 
         // - Send manual sequence classification to spark

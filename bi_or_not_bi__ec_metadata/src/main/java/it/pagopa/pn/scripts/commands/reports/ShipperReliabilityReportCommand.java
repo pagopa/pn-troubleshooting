@@ -2,6 +2,9 @@ package it.pagopa.pn.scripts.commands.reports;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.pagopa.pn.scripts.commands.CommandsMain;
+import it.pagopa.pn.scripts.commands.dag.TaskRunner;
+import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
+import it.pagopa.pn.scripts.commands.dag.model.Task;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
 import it.pagopa.pn.scripts.commands.reports.model.Report;
 import it.pagopa.pn.scripts.commands.sparksql.SparkSqlWrapper;
@@ -17,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 @Command(name = "shipperReliabilityReport")
 public class ShipperReliabilityReportCommand implements Callable<Integer> {
@@ -39,7 +43,7 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
 
         MsgListenerImpl logger = new MsgListenerImpl();
 
-        SparkSqlWrapper spark = SparkSqlWrapper.localMultiCore(APPLICATION_NAME);
+        SparkSqlWrapper spark = SparkSqlWrapper.local(APPLICATION_NAME, null, true);
         spark.addListener(logger);
 
         // Read report to retrieve information
@@ -52,6 +56,18 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
             sourceBasePath.toString(),
             false
         );
+
+        // TODO Adapt query holder DAG to task DAG
+
+        // TODO Get DAG entry point
+        Task t = new SQLTask("1", "test", "SELECT * FROM table t");
+
+        Function<Task, Dataset<Row>> run = task -> {
+            t.run();
+            return null;
+        };
+
+        run.apply(t);
 
         return 0;
     }

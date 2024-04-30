@@ -15,14 +15,15 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
 usage() {
       cat <<EOF
-    Usage: $(basename "${BASH_SOURCE[0]}") [-h] --account-type <account-type> --env-type <env-type> --export-bucket-name <export-bucket-name> --logs-bucket-name <logs-bucket-name>
+    Usage: $(basename "${BASH_SOURCE[0]}") [-h] --account-type <account-type> --env-type <env-type> --export-bucket-name <export-bucket-name> --logs-bucket-name <logs-bucket-name> --resource-root <resource-root>
 
     [-h]                                       : this help message
     --account-type <account-type>              : "confinfo" or "core"
     --env-type <env-type>                      : "dev", "test", "uat", "hotfix", "prod"
     --export-bucket-name <export-bucket-name>  : Bucket where dump are present
     --logs-bucket-name                         : Bucket where cdc are written
-    
+    --resource-root                            : base path where resources are present
+
 EOF
   exit 1
 }
@@ -33,6 +34,7 @@ parse_params() {
   env_type=""
   export_bucket_name=""
   logs_bucket_name=""
+  resource_root=""
   
   while :; do
     case "${1-}" in
@@ -53,6 +55,10 @@ parse_params() {
       logs_bucket_name="${2-}"
       shift
       ;;
+    --resource-root)
+      resource_root="${2-}"
+      shift
+      ;;
     -?*) die "Unknown option: $1" ;;
     *) break ;;
     esac
@@ -66,6 +72,7 @@ parse_params() {
   [[ -z "${env_type-}" ]] && usage
   [[ -z "${export_bucket_name-}" ]] && usage
   [[ -z "${logs_bucket_name-}" ]] && usage
+  [[ -z "${resource_root-}" ]] && usage
   return 0
 }
 
@@ -77,6 +84,7 @@ dump_params(){
   echo "Environment Type:            ${env_type}"
   echo "Dynamo Exports Bucket Name:  ${export_bucket_name}"
   echo "Cdc Bucket Name:             ${logs_bucket_name}"
+  echo "Resource Root:               ${resource_root}"
 
 }
 

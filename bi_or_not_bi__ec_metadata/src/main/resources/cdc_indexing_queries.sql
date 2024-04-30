@@ -1,12 +1,10 @@
-
-----------------------------------------------------------------------------
---$Metadata
+/*
+$QueryMetadata
 {
     "name": "pn-Notifications",
     "dependencies": []
 }
-
---$Query
+*/
   WITH
     only_notification_strings AS (
       SELECT
@@ -109,15 +107,13 @@
     decoded_string
 ;
 
-
-----------------------------------------------------------------------------
---$Metadata
+/*
+$QueryMetadata
 {
     "name": "pn-Timelines",
     "dependencies": []
 }
-
---$Query
+*/
   WITH
     only_timeline_strings AS (
       SELECT
@@ -170,16 +166,13 @@
     decoded_string
 ;
 
-
-
-----------------------------------------------------------------------------
---$Metadata
+/*
+$QueryMetadata
 {
     "name": "pn-TimelinesForInvoicing",
     "dependencies": []
 }
-
---$Query
+*/
   WITH
     only_timeline_strings AS (
       SELECT
