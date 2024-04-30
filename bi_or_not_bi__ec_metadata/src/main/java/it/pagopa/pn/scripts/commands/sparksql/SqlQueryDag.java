@@ -27,17 +27,26 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
 
     final SqlQueryParser sqlQueryParser;
     final boolean isInResource;
-    final String rootFileLocation;
     final SqlQueryHolder entryQuery;
 
-    public SqlQueryDag( String fileLocation, String entryQuery, boolean isInResource ){
+    public static SqlQueryDag fromResource(String fileLocation, String entryQuery){
+        return new SqlQueryDag(fileLocation, entryQuery, true);
+    }
+
+    public static SqlQueryDag fromFile(String fileLocation, String entryQuery){
+        return new SqlQueryDag(fileLocation, entryQuery, false);
+    }
+
+    public SqlQueryDag(String fileLocation, String entryQuery, boolean isInResource ){
         this.isInResource = isInResource;
-        this.rootFileLocation = fileLocation;
         this.sqlQueryParser = new SqlQueryParser();
         this.queries = new LinkedHashMap<>();
         this.files = new HashMap<>();
         this.dag = new DirectedAcyclicGraph<>(DefaultEdge.class);
-        this.entryQuery = getQueriesFromFile(fileLocation).get(entryQuery);
+        Map<String, SqlQueryHolder> rootQueries = getQueriesFromFile(fileLocation);
+        this.entryQuery = rootQueries.get(entryQuery);
+        this.entryQuery.setLocation(fileLocation);
+        files.put(fileLocation, rootQueries);
         buildAbstractDependenciesGraph();
         buildDag();
     }
@@ -45,7 +54,7 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
 
     private void buildAbstractDependenciesGraph() {
         // Put start query into viewing list
-        queries.put(buildQueryId(rootFileLocation, entryQuery.getName()), entryQuery);
+        queries.put(buildQueryId(entryQuery.getLocation(), entryQuery.getName()), entryQuery);
 
         int currentQueryIndex = 0;
         // Iterate over query and add new ones
@@ -84,7 +93,7 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
 
     private Map<String, SqlQueryHolder> getQueriesFromFile( String location ) {
         String sqlFile = readFile(location);
-        return sqlQueryParser.parse(sqlFile);
+        return sqlQueryParser.parse(sqlFile, location);
     }
 
     private String readFile( String location ) {
@@ -124,5 +133,9 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
 
     public DirectedAcyclicGraph<SqlQueryHolder, DefaultEdge> getDag() {
         return dag;
+    }
+
+    public int size() {
+        return queries.size();
     }
 }
