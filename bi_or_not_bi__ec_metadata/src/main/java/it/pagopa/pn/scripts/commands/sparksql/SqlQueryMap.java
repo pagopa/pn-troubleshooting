@@ -37,7 +37,7 @@ public class SqlQueryMap implements Iterable<Map.Entry<String, SqlQueryHolder>> 
     private final Map<String, SqlQueryHolder> queries;
 
     private SqlQueryMap( String sqlFile ) {
-        this.queries = parseQueryFile( sqlFile );
+        this.queries = parseQueryFile( sqlFile, null );
     }
 
     public SqlQueryHolder getQuery( String key ) {
@@ -55,8 +55,8 @@ public class SqlQueryMap implements Iterable<Map.Entry<String, SqlQueryHolder>> 
     }
 
 
-    private static Map<String, SqlQueryHolder> parseQueryFile( String sqlFile ) {
+    private static Map<String, SqlQueryHolder> parseQueryFile( String sqlFile, String location) {
         SqlQueryParser sqlQueryParser = new SqlQueryParser();
-        return sqlQueryParser.parse(sqlFile);
+        return sqlQueryParser.parse(sqlFile, location);
     }
 }
