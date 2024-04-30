@@ -14,7 +14,7 @@ public class SqlQueryGraphTest {
         String sqlResourceName = "./testgraph/file0.sql";
 
         // When
-        SqlQueryDag sqlQueryGraph = new SqlQueryDag(sqlResourceName, "query0", true);
+        SqlQueryDag sqlQueryGraph = new SqlQueryDag(sqlResourceName, "query0", "", true);
 
         // Test
 //        Assert.assertNotNull(sqlQueryMap);
