@@ -2,6 +2,7 @@ package it.pagopa.pn.scripts.commands.reports;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.pagopa.pn.scripts.commands.CommandsMain;
+import it.pagopa.pn.scripts.commands.config.ObjectMapperResolver;
 import it.pagopa.pn.scripts.commands.dag.TaskDag;
 import it.pagopa.pn.scripts.commands.dag.TaskRunner;
 import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
@@ -33,7 +34,7 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
     private static final String APPLICATION_NAME = "shipperReliabilityReport";
     private static final String REPORT_FOLDER = "/reports";
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = ObjectMapperResolver.getObjectMapper();
 
     @CommandLine.Option( names = {"--report"}, arity = "1")
     private Path reportPath;

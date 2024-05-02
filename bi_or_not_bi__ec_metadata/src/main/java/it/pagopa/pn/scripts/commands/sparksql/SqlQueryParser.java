@@ -2,6 +2,7 @@ package it.pagopa.pn.scripts.commands.sparksql;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.pagopa.pn.scripts.commands.config.ObjectMapperResolver;
 import it.pagopa.pn.scripts.commands.exceptions.SQLParsingException;
 
 import java.util.HashMap;
@@ -11,7 +12,7 @@ import java.util.regex.Pattern;
 
 public class SqlQueryParser {
     private static final Pattern METADATA_REGEX_MATCHER = Pattern.compile("(?s)(?i)(^|\\s+?)(/\\*)((.)(?!\\*/))*?(\\$QueryMetadata)(.*?)(\\*/)");
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = ObjectMapperResolver.getObjectMapper();
 
     public Map<String, SqlQueryHolder> parse(String input, String location) {
         Map<String, SqlQueryHolder> queries = new HashMap<>();
