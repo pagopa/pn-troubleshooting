@@ -39,7 +39,7 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
     @CommandLine.Option( names = {"--report"}, arity = "1")
     private Path reportPath;
 
-    @CommandLine.Option( names = {"--sql-sources"}, arity = "1")
+    @CommandLine.Option( names = {"--source-path"}, arity = "1")
     private Path sourceBasePath;
 
     @CommandLine.Option( names = {"--export-bucket"}, arity = "1")
