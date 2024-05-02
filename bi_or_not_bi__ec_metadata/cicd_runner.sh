@@ -178,10 +178,17 @@ elif ([ $account_type == "core" ]); then
       \
       \
       dynamoExportsIndexing \
-      --aws-bucket ${export_bucket_name} \
-      --aws-dynexport-folder-prefix %s/incremental2024/ \
-      --result-upload-url s3://${export_bucket_name}/parquet/ \
-      pn-PaperRequestError 2024-1-1 3035-1-1 \
+        --aws-bucket ${export_bucket_name} \
+        --aws-dynexport-folder-prefix %s/incremental2024/ \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-PaperRequestError 2024-1-1 3035-1-1 \
+      \
+      \
+      \
+      shipperReliabilityReport \
+        --report ${resource_root}/analog-delivery-monitoring/reports/ShipperReliabilityReport.json \
+        --source-path ${resource_root} \
+        --export-bucket ${export_bucket_name}
       "
   fi
 
