@@ -153,7 +153,13 @@ public class SparkSqlWrapper extends MsgSenderSupport {
     }
 
     public void writeTableToParquet(String tableName, Path parquetOut ) {
-        SparkDatasetWriter.writeDataset(spark.table(tableName), parquetOut.toString(), FormatEnum.PARQUET, SaveMode.ErrorIfExists);
+        SparkDatasetWriter.builder()
+            .dataset(spark.table(tableName))
+            .outLocation(parquetOut.toString())
+            .format(FormatEnum.PARQUET)
+            .saveMode(SaveMode.ErrorIfExists)
+            .build()
+            .write();
     }
 
     public static final class LineHolder implements Serializable {

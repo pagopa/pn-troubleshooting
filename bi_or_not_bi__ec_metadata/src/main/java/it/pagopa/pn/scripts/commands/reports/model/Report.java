@@ -9,6 +9,7 @@ public class Report {
     private String version;
     private FormatEnum outputFormat;
     private ChronEnum chron;
+    private Integer partitions;
     private ReportTask task;
 
     public String getName() {
@@ -41,6 +42,14 @@ public class Report {
 
     public void setChron(ChronEnum chron) {
         this.chron = chron;
+    }
+
+    public Integer getPartitions() {
+        return partitions;
+    }
+
+    public void setPartitions(Integer partitions) {
+        this.partitions = partitions;
     }
 
     public ReportTask getTask() {

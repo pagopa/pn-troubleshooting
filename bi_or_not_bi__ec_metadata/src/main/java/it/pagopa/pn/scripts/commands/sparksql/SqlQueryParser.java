@@ -10,7 +10,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class SqlQueryParser {
-    // Match of with multi-line comments with $QueryMetadata Es. /* $Query {...} */
     private static final Pattern METADATA_REGEX_MATCHER = Pattern.compile("(?s)(?i)(^|\\s+?)(/\\*)((.)(?!\\*/))*?(\\$QueryMetadata)(.*?)(\\*/)");
     private final ObjectMapper mapper = new ObjectMapper();
 

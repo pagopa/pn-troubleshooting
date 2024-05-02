@@ -6,10 +6,12 @@ import it.pagopa.pn.scripts.commands.dag.TaskDag;
 import it.pagopa.pn.scripts.commands.dag.TaskRunner;
 import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
 import it.pagopa.pn.scripts.commands.dag.model.Task;
+import it.pagopa.pn.scripts.commands.enumerations.SchemaEnum;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
 import it.pagopa.pn.scripts.commands.reports.model.Report;
 import it.pagopa.pn.scripts.commands.sparksql.SparkSqlWrapper;
 import it.pagopa.pn.scripts.commands.sparksql.SqlQueryDag;
+import it.pagopa.pn.scripts.commands.utils.PathsUtils;
 import it.pagopa.pn.scripts.commands.utils.QueryDagToTaskDagAdapter;
 import it.pagopa.pn.scripts.commands.utils.SparkDatasetWriter;
 import org.apache.spark.SparkConf;
@@ -28,7 +30,8 @@ import java.util.function.Function;
 @Command(name = "shipperReliabilityReport")
 public class ShipperReliabilityReportCommand implements Callable<Integer> {
 
-    public static final String APPLICATION_NAME = "shipperReliabilityReport";
+    private static final String APPLICATION_NAME = "shipperReliabilityReport";
+    private static final String REPORT_FOLDER = "/reports";
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -38,8 +41,8 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
     @CommandLine.Option( names = {"--sql-sources"}, arity = "1")
     private Path sourceBasePath;
 
-    @CommandLine.Option( names = {"--report-upload-url"}, arity = "1")
-    private String reportUploadUrl;
+    @CommandLine.Option( names = {"--export-bucket"}, arity = "1")
+    private String exportBucket;
 
     @ParentCommand
     CommandsMain parent;
@@ -51,8 +54,6 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
         SparkConf sparkConf = new SparkConf()
             .set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
             .set("spark.hadoop.fs.s3a.path.style.access", "true")
-            .set("spark.hadoop.fs.s3a.secret.key", "test")
-            .set("spark.hadoop.fs.s3a.access.key", "test")
             .set("spark.hadoop.fs.s3a.endpoint", "http://localhost:4566");
 
         SparkSqlWrapper spark = SparkSqlWrapper.local(APPLICATION_NAME, sparkConf, true);
@@ -81,20 +82,24 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
         Dataset<Row> datasetReport = taskDag.getEntryPoint()
             .getResult(Dataset.class);
 
-        String s3Out = String.format(
-            "%s/%s.%s",
-            this.reportUploadUrl,
-            report.getName(),
-            report.getOutputFormat().getExtension()
+        // Compute S3a path
+        String s3Out = PathsUtils.concatPathsWithURISchema(
+            SchemaEnum.S3A.getSchema(),
+            this.exportBucket,
+            REPORT_FOLDER,
+            PathsUtils.datePathFromNow(),
+            PathsUtils.filenameWithExtensions(report.getName(), report.getOutputFormat().getExtension())
         );
 
         // Write out report
-        SparkDatasetWriter.writeDataset(
-            datasetReport,
-            s3Out,
-            report.getOutputFormat(),
-            SaveMode.Overwrite
-        );
+        SparkDatasetWriter.builder()
+            .dataset(datasetReport)
+            .outLocation(s3Out)
+            .format(report.getOutputFormat())
+            .saveMode(SaveMode.Overwrite)
+            .partitions(report.getPartitions())
+            .build()
+            .write();
 
         return 0;
     }

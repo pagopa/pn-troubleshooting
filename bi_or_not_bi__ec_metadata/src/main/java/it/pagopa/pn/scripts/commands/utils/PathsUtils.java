@@ -2,11 +2,15 @@ package it.pagopa.pn.scripts.commands.utils;
 
 import it.pagopa.pn.scripts.commands.exceptions.FileNotFoundException;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.file.PathUtils;
 
 import java.io.*;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.stream.Stream;
@@ -57,5 +61,32 @@ public class PathsUtils {
             String[] lines = writer.toString().split("\n");
             return Arrays.stream(lines);
         }
+    }
+
+    public static String datePathFromNow() {
+        return datePathFromInstant(Instant.now());
+    }
+
+    public static String datePathFromInstant(Instant instant) {
+        DateHoursStream.DateHour dateHour = DateHoursStream.DateHour.valueOf(instant);
+
+        return concatPaths(
+            String.valueOf(dateHour.getYear()),
+            String.valueOf(dateHour.getMonth()),
+            String.valueOf(dateHour.getDay())
+        );
+    }
+
+    public static String concatPathsWithURISchema(String schema, String first, String... more) {
+        return schema.concat(concatPaths(first, more));
+    }
+
+    public static String concatPaths(String first, String... more) {
+        return Paths.get(first, more).toString();
+    }
+
+    public static String filenameWithExtensions(String filename, String extension) {
+        String dotExtensions = extension.startsWith(".") ? extension : ".".concat(extension);
+        return filename.concat(dotExtensions);
     }
 }
