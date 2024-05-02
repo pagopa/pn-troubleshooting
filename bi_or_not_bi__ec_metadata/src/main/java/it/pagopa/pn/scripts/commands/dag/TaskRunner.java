@@ -5,9 +5,8 @@ import it.pagopa.pn.scripts.commands.dag.model.Task;
 import java.util.logging.Logger;
 
 public class TaskRunner {
-    private static final Logger log = Logger.getLogger(TaskRunner.class.getName());
-    private final TaskDag taskDag;
 
+    private final TaskDag taskDag;
 
     public TaskRunner(TaskDag taskDag) {
         this.taskDag = taskDag;

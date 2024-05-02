@@ -1,8 +1,5 @@
 package it.pagopa.pn.scripts.commands.sparksql;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import it.pagopa.pn.scripts.commands.dag.model.Vertex;
-
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;

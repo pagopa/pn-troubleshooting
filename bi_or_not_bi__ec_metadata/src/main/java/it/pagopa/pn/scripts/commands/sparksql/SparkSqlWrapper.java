@@ -47,6 +47,8 @@ public class SparkSqlWrapper extends MsgSenderSupport {
 
     private SparkSqlWrapper(String applicationName, int cores, int maxJobEnqueued, @Nullable SparkConf sparkConf) {
 
+        log.info("Creating new Spark Session with name: {}, cores: {}", applicationName, cores);
+
         if (sparkConf == null) {
             sparkConf = new SparkConf();
         }

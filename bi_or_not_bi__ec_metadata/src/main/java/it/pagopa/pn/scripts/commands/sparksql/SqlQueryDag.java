@@ -12,11 +12,8 @@ import org.jgrapht.graph.GraphCycleProhibitedException;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.logging.Logger;
 
 public class SqlQueryDag implements Iterable<SqlQueryHolder> {
-
-    private static final Logger log = Logger.getLogger(SqlQueryDag.class.getName());
 
     // <queryFileLocation#queryName, SqlQueryHolder>
     private final LinkedHashMap<String, SqlQueryHolder> queries;
@@ -82,18 +79,16 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
 
     private void buildDag() {
         queries.values().forEach(dag::addVertex);
-        queries.values().forEach(q -> {
-            q.getDependencies().forEach(d -> {
-                var queryKey = buildQueryId(d.getLocation(), d.getName());
-                SqlQueryHolder depQuery = queries.get(queryKey);
-                try {
-                    dag.addEdge(q, depQuery);
-                } catch (GraphCycleProhibitedException e) {
-                    throw new DependencyCycleException(
-                            "Edge %s -> %s would induce a cycle".formatted(q.getName(), depQuery.getName()));
-                }
-            });
-        });
+        queries.values().forEach(q -> q.getDependencies().forEach(d -> {
+            var queryKey = buildQueryId(d.getLocation(), d.getName());
+            SqlQueryHolder depQuery = queries.get(queryKey);
+            try {
+                dag.addEdge(q, depQuery);
+            } catch (GraphCycleProhibitedException e) {
+                throw new DependencyCycleException(
+                        "Edge %s -> %s would induce a cycle".formatted(q.getName(), depQuery.getName()));
+            }
+        }));
     }
 
     private Map<String, SqlQueryHolder> getQueriesFromFile( String location ) {

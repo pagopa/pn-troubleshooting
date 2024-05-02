@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class TaskDag implements Iterable<Task> {
-    private static final Logger log = Logger.getLogger(TaskDag.class.getName());
+
     private final DirectedAcyclicGraph<Task, DefaultEdge> dag;
 
     public TaskDag() {

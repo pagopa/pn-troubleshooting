@@ -2,8 +2,6 @@ package it.pagopa.pn.scripts.commands.reports.model;
 
 import it.pagopa.pn.scripts.commands.enumerations.TaskEnum;
 
-import java.nio.file.Path;
-
 public class ReportTask {
 
     private String name;

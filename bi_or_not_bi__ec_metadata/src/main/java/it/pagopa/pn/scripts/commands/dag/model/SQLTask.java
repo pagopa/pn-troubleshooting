@@ -1,8 +1,5 @@
 package it.pagopa.pn.scripts.commands.dag.model;
 
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-
 import java.util.function.Function;
 import java.util.logging.Logger;
 
@@ -22,7 +19,7 @@ public class SQLTask extends Task {
         this.job = job;
     }
     public SQLTask(String id, String name, String sqlQuery) {
-        this(id, name, sqlQuery, (t) -> {
+        this(id, name, sqlQuery, t -> {
             log.info(() -> "Running SQLTask: " + id);
             return null;
         });
@@ -38,4 +35,16 @@ public class SQLTask extends Task {
         this.sqlQuery = sqlQuery;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
 }
