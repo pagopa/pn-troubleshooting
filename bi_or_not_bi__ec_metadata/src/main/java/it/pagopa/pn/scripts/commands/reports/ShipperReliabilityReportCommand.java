@@ -2,7 +2,7 @@ package it.pagopa.pn.scripts.commands.reports;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.pagopa.pn.scripts.commands.CommandsMain;
-import it.pagopa.pn.scripts.commands.config.ObjectMapperResolver;
+import it.pagopa.pn.scripts.commands.config.resolver.ObjectMapperResolver;
 import it.pagopa.pn.scripts.commands.dag.TaskDag;
 import it.pagopa.pn.scripts.commands.dag.TaskRunner;
 import it.pagopa.pn.scripts.commands.dag.model.SQLTask;

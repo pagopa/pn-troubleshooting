@@ -56,6 +56,16 @@
                     <mainClass>it.pagopa.pn.scripts.commands.CommandsMain</mainClass>
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <environmentVariables>
+                        <CORE_BUCKET>bucket-test</CORE_BUCKET>
+                    </environmentVariables>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

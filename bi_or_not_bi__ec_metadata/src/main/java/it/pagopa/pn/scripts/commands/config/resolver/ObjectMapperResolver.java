@@ -1,4 +1,4 @@
-package it.pagopa.pn.scripts.commands.config;
+package it.pagopa.pn.scripts.commands.config.resolver;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

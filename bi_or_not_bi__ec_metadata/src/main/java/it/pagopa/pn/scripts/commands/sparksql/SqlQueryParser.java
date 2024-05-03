@@ -2,7 +2,8 @@ package it.pagopa.pn.scripts.commands.sparksql;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.pagopa.pn.scripts.commands.config.ObjectMapperResolver;
+import it.pagopa.pn.scripts.commands.config.resolver.EnvironmentResolver;
+import it.pagopa.pn.scripts.commands.config.resolver.ObjectMapperResolver;
 import it.pagopa.pn.scripts.commands.exceptions.SQLParsingException;
 
 import java.util.HashMap;
@@ -25,7 +26,7 @@ public class SqlQueryParser {
         while (matcher.find()) {
             if (sqlQueryHolder != null) {
                 String queryString = input.substring(lastEndPosition, matcher.start()).trim();
-                sqlQueryHolder.setSqlQuery(queryString);
+                sqlQueryHolder.setSqlQuery(EnvironmentResolver.resolve(queryString));
                 queries.put(sqlQueryHolder.getName(), sqlQueryHolder);
             }
             lastEndPosition = matcher.end();
