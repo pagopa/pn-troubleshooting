@@ -54,7 +54,8 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
         MsgListenerImpl logger = new MsgListenerImpl();
         SparkConf sparkConf = new SparkConf()
             .set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-            .set("spark.hadoop.fs.s3a.path.style.access", "true");
+            .set("spark.hadoop.fs.s3a.path.style.access", "true")
+            .set("spark.hadoop.fs.s3a.requester.pays.enabled", "true");
 
         SparkSqlWrapper spark = SparkSqlWrapper.local(APPLICATION_NAME, sparkConf, true);
         spark.addListener(logger);
