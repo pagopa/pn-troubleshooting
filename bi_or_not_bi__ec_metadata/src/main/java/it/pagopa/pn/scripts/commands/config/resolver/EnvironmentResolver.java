@@ -7,7 +7,7 @@ public final class EnvironmentResolver {
     private EnvironmentResolver() {}
 
     public static String resolve(String text) {
-        StrSubstitutor sub = new StrSubstitutor(System.getenv());
+        StrSubstitutor sub = new StrSubstitutor(System.getProperties());
         return sub.replace(text);
     }
 }

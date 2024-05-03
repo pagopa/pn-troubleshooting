@@ -23,6 +23,8 @@ usage() {
     --export-bucket-name <export-bucket-name>  : Bucket where dump are present
     --logs-bucket-name                         : Bucket where cdc are written
     --resource-root                            : base path where resources are present
+    --core-bucket-name                         : core bucket name
+    --confinfo-bucket-name                     : confinfo bucket name
 
 EOF
   exit 1
@@ -35,6 +37,8 @@ parse_params() {
   export_bucket_name=""
   logs_bucket_name=""
   resource_root=""
+  core_bucket_name=""
+  confinfo_bucket_name=""
   
   while :; do
     case "${1-}" in
@@ -59,6 +63,14 @@ parse_params() {
       resource_root="${2-}"
       shift
       ;;
+    --core-bucket-name)
+      core_bucket_name="${2-}"
+      shift
+      ;;
+    --confinfo-bucket-name)
+      confinfo_bucket_name="${2-}"
+      shift
+      ;;
     -?*) die "Unknown option: $1" ;;
     *) break ;;
     esac
@@ -73,6 +85,8 @@ parse_params() {
   [[ -z "${export_bucket_name-}" ]] && usage
   [[ -z "${logs_bucket_name-}" ]] && usage
   [[ -z "${resource_root-}" ]] && usage
+  [[ -z "${core_bucket_name-}" ]] && usage
+  [[ -z "${confinfo_bucket_name-}" ]] && usage
   return 0
 }
 
@@ -85,7 +99,8 @@ dump_params(){
   echo "Dynamo Exports Bucket Name:  ${export_bucket_name}"
   echo "Cdc Bucket Name:             ${logs_bucket_name}"
   echo "Resource Root:               ${resource_root}"
-
+  echo "Core Bucket Name:            ${core_bucket_name}"
+  echo "Confinfo Bucket Name:        ${confinfo_bucket_name}"
 }
 
 
@@ -199,7 +214,7 @@ elif ([ $account_type == "core" ]); then
 
   ARGUMENTS=$( echo $COMMANDLINE | sed -e 's/  */,/g' )
   ./mvnw compile
-  ./mvnw exec:java "-Dexec.arguments=${ARGUMENTS} -DCORE_BUCKET=${CORE_BUCKET} -DCONFINFO_BUCKET=${CONFINFO_BUCKET}"
+  ./mvnw exec:java -Dexec.arguments=${ARGUMENTS} -DCORE_BUCKET=${core_bucket_name} -DCONFINFO_BUCKET=${confinfo_bucket_name}
 
 fi
 
