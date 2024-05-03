@@ -285,3 +285,9 @@ Vuoi recuperare informazioni relative ad un soggetto RADD?
 ```bash
 node index.js --envName <envName> --cf <fiscalcode> --operationId <operation-id> 
 ```
+
+### check_feedback_from_requestId
+Vuoi recuperare informazioni relative agli eventi presenti in pn-external-channel-to-paper-channel-DLQ?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
