@@ -51,11 +51,13 @@ public class ShipperReliabilityReportCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
 
+        System.out.println("ENV:" + System.getenv());
+
         MsgListenerImpl logger = new MsgListenerImpl();
         SparkConf sparkConf = new SparkConf()
             .set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
             .set("spark.hadoop.fs.s3a.path.style.access", "true")
-            .set("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.InstanceProfileCredentialsProvider");
+            .set("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.EnvironmentVariableCredentialsProvider");
 
         SparkSqlWrapper spark = SparkSqlWrapper.local(APPLICATION_NAME, sparkConf, true);
         spark.addListener(logger);
