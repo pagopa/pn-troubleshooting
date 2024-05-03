@@ -199,7 +199,7 @@ elif ([ $account_type == "core" ]); then
 
   ARGUMENTS=$( echo $COMMANDLINE | sed -e 's/  */,/g' )
   ./mvnw compile
-  ./mvnw exec:java "-Dexec.arguments=${ARGUMENTS}"
+  ./mvnw exec:java "-Dexec.arguments=${ARGUMENTS} -DCORE_BUCKET=${CORE_BUCKET} -DCONFINFO_BUCKET=${CONFINFO_BUCKET}"
 
 fi
 
