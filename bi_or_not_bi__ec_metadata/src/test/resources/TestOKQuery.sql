@@ -2,11 +2,22 @@
 $QueryMetadata
 {
     "name": "pn-Notifications",
-    "dependencies": []
+    "dependencies": [
+        {
+            "name": "dipendenzaA",
+            "location": "resources/file1.sql"
+        },
+        {
+            "name": "dipendenzaB",
+            "location": "resources/file1.sql"
+        }
+    ]
 }
 */
+
   WITH
     only_notification_strings AS (
+    /* query di prova */
       SELECT
         json_string,
         get_json_object(json_string, '$.dynamodb.NewImage') as img
@@ -101,19 +112,20 @@ $QueryMetadata
       FROM
         only_notification_strings
     )
-  SELECT
+SELECT
     *
-  FROM
+FROM
     decoded_string
 ;
+
 
 /*
 $QueryMetadata
 {
-    "name": "pn-Timelines",
-    "dependencies": []
+    "name": "pn-Timelines"
 }
 */
+
   WITH
     only_timeline_strings AS (
       SELECT
@@ -160,9 +172,9 @@ $QueryMetadata
       FROM
         only_timeline_strings
     )
-  SELECT
+SELECT
     *
-  FROM
+FROM
     decoded_string
 ;
 
@@ -173,6 +185,7 @@ $QueryMetadata
     "dependencies": []
 }
 */
+
   WITH
     only_timeline_strings AS (
       SELECT
@@ -221,8 +234,8 @@ $QueryMetadata
       FROM
         only_timeline_strings
     )
-  SELECT
+SELECT
     *
-  FROM
+FROM
     decoded_string
 ;
