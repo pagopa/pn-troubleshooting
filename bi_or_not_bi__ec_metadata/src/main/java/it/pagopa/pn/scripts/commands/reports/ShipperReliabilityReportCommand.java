@@ -32,7 +32,7 @@ import java.util.function.Function;
 public class ShipperReliabilityReportCommand implements Callable<Integer> {
 
     private static final String APPLICATION_NAME = "shipperReliabilityReport";
-    private static final String REPORT_FOLDER = "/parquet";
+    private static final String REPORT_FOLDER = "/reports";
 
     private final ObjectMapper mapper = ObjectMapperResolver.getObjectMapper();
 
