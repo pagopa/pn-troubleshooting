@@ -175,6 +175,13 @@ elif ([ $account_type == "core" ]); then
       --aws-dynexport-folder-prefix %s/incremental2024/ \
       --result-upload-url s3://${export_bucket_name}/parquet/ \
       pn-PaperRequestError 2023-6-1 3035-1-1 \
+      \
+      \
+      \
+      taskDagExecutor \
+        --report ${resource_root}/analog-delivery-monitoring/reports/ShipperReliabilityReport.json \
+        --source-path ${resource_root} \
+        --export-bucket ${export_bucket_name}
       "
   else
     COMMANDLINE=" --cdc-indexed-data-folder ./out/prove_dev/cdc \
@@ -200,7 +207,7 @@ elif ([ $account_type == "core" ]); then
       \
       \
       \
-      shipperReliabilityReport \
+      taskDagExecutor \
         --report ${resource_root}/analog-delivery-monitoring/reports/ShipperReliabilityReport.json \
         --source-path ${resource_root} \
         --export-bucket ${export_bucket_name}
