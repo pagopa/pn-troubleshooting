@@ -2,9 +2,6 @@ package it.pagopa.pn.scripts.commands.dag;
 
 import it.pagopa.pn.scripts.commands.dag.model.Edge;
 import it.pagopa.pn.scripts.commands.dag.model.Task;
-import it.pagopa.pn.scripts.commands.dag.model.Vertex;
-import org.jgrapht.graph.DefaultEdge;
-import org.jgrapht.graph.DirectedAcyclicGraph;
 
 import java.util.HashSet;
 import java.util.Set;

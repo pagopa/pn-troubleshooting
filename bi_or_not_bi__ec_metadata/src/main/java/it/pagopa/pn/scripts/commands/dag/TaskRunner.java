@@ -2,8 +2,6 @@ package it.pagopa.pn.scripts.commands.dag;
 
 import it.pagopa.pn.scripts.commands.dag.model.Task;
 
-import java.util.logging.Logger;
-
 public class TaskRunner {
 
     private final TaskDag taskDag;

@@ -9,7 +9,6 @@ import org.jgrapht.graph.DirectedAcyclicGraph;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.function.Supplier;
-import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class TaskDag implements Iterable<Task> {
