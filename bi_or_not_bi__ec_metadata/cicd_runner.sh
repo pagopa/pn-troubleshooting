@@ -15,14 +15,17 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
 usage() {
       cat <<EOF
-    Usage: $(basename "${BASH_SOURCE[0]}") [-h] --account-type <account-type> --env-type <env-type> --export-bucket-name <export-bucket-name> --logs-bucket-name <logs-bucket-name>
+    Usage: $(basename "${BASH_SOURCE[0]}") [-h] --account-type <account-type> --env-type <env-type> --export-bucket-name <export-bucket-name> --logs-bucket-name <logs-bucket-name> --resource-root <resource-root>
 
     [-h]                                       : this help message
     --account-type <account-type>              : "confinfo" or "core"
     --env-type <env-type>                      : "dev", "test", "uat", "hotfix", "prod"
     --export-bucket-name <export-bucket-name>  : Bucket where dump are present
     --logs-bucket-name                         : Bucket where cdc are written
-    
+    --resource-root                            : base path where resources are present
+    --core-bucket-name                         : core bucket name
+    --confinfo-bucket-name                     : confinfo bucket name
+
 EOF
   exit 1
 }
@@ -33,6 +36,9 @@ parse_params() {
   env_type=""
   export_bucket_name=""
   logs_bucket_name=""
+  resource_root=""
+  core_bucket_name=""
+  confinfo_bucket_name=""
   
   while :; do
     case "${1-}" in
@@ -53,6 +59,18 @@ parse_params() {
       logs_bucket_name="${2-}"
       shift
       ;;
+    --resource-root)
+      resource_root="${2-}"
+      shift
+      ;;
+    --core-bucket-name)
+      core_bucket_name="${2-}"
+      shift
+      ;;
+    --confinfo-bucket-name)
+      confinfo_bucket_name="${2-}"
+      shift
+      ;;
     -?*) die "Unknown option: $1" ;;
     *) break ;;
     esac
@@ -66,6 +84,9 @@ parse_params() {
   [[ -z "${env_type-}" ]] && usage
   [[ -z "${export_bucket_name-}" ]] && usage
   [[ -z "${logs_bucket_name-}" ]] && usage
+  [[ -z "${resource_root-}" ]] && usage
+  [[ -z "${core_bucket_name-}" ]] && usage
+  [[ -z "${confinfo_bucket_name-}" ]] && usage
   return 0
 }
 
@@ -77,7 +98,9 @@ dump_params(){
   echo "Environment Type:            ${env_type}"
   echo "Dynamo Exports Bucket Name:  ${export_bucket_name}"
   echo "Cdc Bucket Name:             ${logs_bucket_name}"
-
+  echo "Resource Root:               ${resource_root}"
+  echo "Core Bucket Name:            ${core_bucket_name}"
+  echo "Confinfo Bucket Name:        ${confinfo_bucket_name}"
 }
 
 
@@ -152,6 +175,13 @@ elif ([ $account_type == "core" ]); then
       --aws-dynexport-folder-prefix %s/incremental2024/ \
       --result-upload-url s3://${export_bucket_name}/parquet/ \
       pn-PaperRequestError 2023-6-1 3035-1-1 \
+      \
+      \
+      \
+      taskDagExecutor \
+        --report ${resource_root}/analog-delivery-monitoring/reports/ShipperReliabilityReport.json \
+        --source-path ${resource_root} \
+        --export-bucket ${export_bucket_name}
       "
   else
     COMMANDLINE=" --cdc-indexed-data-folder ./out/prove_dev/cdc \
@@ -170,10 +200,17 @@ elif ([ $account_type == "core" ]); then
       \
       \
       dynamoExportsIndexing \
-      --aws-bucket ${export_bucket_name} \
-      --aws-dynexport-folder-prefix %s/incremental2024/ \
-      --result-upload-url s3://${export_bucket_name}/parquet/ \
-      pn-PaperRequestError 2024-1-1 3035-1-1 \
+        --aws-bucket ${export_bucket_name} \
+        --aws-dynexport-folder-prefix %s/incremental2024/ \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-PaperRequestError 2024-1-1 3035-1-1 \
+      \
+      \
+      \
+      taskDagExecutor \
+        --report ${resource_root}/analog-delivery-monitoring/reports/ShipperReliabilityReport.json \
+        --source-path ${resource_root} \
+        --export-bucket ${export_bucket_name}
       "
   fi
 
@@ -184,7 +221,7 @@ elif ([ $account_type == "core" ]); then
 
   ARGUMENTS=$( echo $COMMANDLINE | sed -e 's/  */,/g' )
   ./mvnw compile
-  ./mvnw exec:java "-Dexec.arguments=${ARGUMENTS}"
+  ./mvnw exec:java -Dexec.arguments=${ARGUMENTS} -DCORE_BUCKET=${core_bucket_name} -DCONFINFO_BUCKET=${confinfo_bucket_name}
 
 fi
 

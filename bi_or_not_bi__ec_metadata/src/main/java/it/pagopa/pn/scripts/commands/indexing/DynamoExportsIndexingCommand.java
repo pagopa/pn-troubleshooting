@@ -129,7 +129,7 @@ public class DynamoExportsIndexingCommand extends AbstractUploadSupport implemen
 
         SqlQueryMap queries = SqlQueryMap.fromClasspathResource(INDEXING_QUERIES_RESOURCE);
 
-        SparkSqlWrapper spark = SparkSqlWrapper.localMultiCore( tableName + " Indexing");
+        SparkSqlWrapper spark = SparkSqlWrapper.local( tableName + " Indexing", null, true);
         spark.addListener(logger);
 
         s3 = new S3ClientWrapper(awsProfileName, awsRegionCode);

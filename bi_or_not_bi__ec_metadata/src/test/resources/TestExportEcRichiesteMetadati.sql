@@ -5,6 +5,7 @@ $QueryMetadata
     "dependencies": []
 }
 */
+
 create or replace temporary view all_paper_metadata_with_synthetic_select_list_no_class as
   WITH
     last_modification_by_request_id AS (
@@ -158,6 +159,7 @@ create or replace temporary view all_paper_metadata_with_synthetic_select_list_n
     paperMeta_productType is not null
 ;
 
+
 /*
 $QueryMetadata
 {
@@ -165,6 +167,7 @@ $QueryMetadata
     "dependencies": []
 }
 */
+
 create or replace temporary view all_paper_metadata_with_synthetic_select_list as
   WITH categorized_sequences_no_arr AS (
     SELECT
@@ -204,6 +207,7 @@ $QueryMetadata
     "dependencies": []
 }
 */
+
 create or replace temporary view cardinality_by_product_and_sequence as
   SELECT
     paperMeta_productType,
@@ -264,6 +268,7 @@ $QueryMetadata
     "dependencies": []
 }
 */
+
 create or replace temporary view cardinality_by_product_and_day as
   SELECT
     paperMeta_productType,

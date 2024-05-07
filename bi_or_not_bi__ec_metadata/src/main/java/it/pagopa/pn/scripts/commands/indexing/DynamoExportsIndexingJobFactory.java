@@ -81,7 +81,7 @@ public class DynamoExportsIndexingJobFactory {
 
             spark.ceateTableFromStringCollection( jsonStringsTableName, dataChunk );
 
-            String jsonParsingSql = queries.getQuery( tableName );
+            String jsonParsingSql = queries.getQuery( tableName ).getSqlQuery();
             jsonParsingSql = jsonParsingSql.replaceFirst(
                     "json_objects",
                     jsonStringsTableName

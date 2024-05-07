@@ -1,10 +1,16 @@
 package it.pagopa.pn.scripts.commands.sparksql;
 
+import it.pagopa.pn.scripts.commands.enumerations.FormatEnum;
 import it.pagopa.pn.scripts.commands.logs.Msg;
 import it.pagopa.pn.scripts.commands.logs.MsgSenderSupport;
 import it.pagopa.pn.scripts.commands.exports.ec_metadata.seq.RawEventSequence;
+import it.pagopa.pn.scripts.commands.utils.SparkDatasetWriter;
+import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.*;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -14,17 +20,23 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class SparkSqlWrapper extends MsgSenderSupport {
 
-    public static SparkSqlWrapper localSingleCore( String appicationName ) {
-        return new SparkSqlWrapper( appicationName, 1, 1 );
-    }
+    private static final Logger log = LoggerFactory.getLogger(SparkSqlWrapper.class);
 
-    public static SparkSqlWrapper localMultiCore( String appicationName ) {
-        return new SparkSqlWrapper( appicationName, Runtime.getRuntime().availableProcessors(), 2 );
+    public static SparkSqlWrapper local(String applicationName, SparkConf sparkConf, Boolean isMultiCore) {
+
+        int cores = Boolean.TRUE.equals(isMultiCore) ? Runtime.getRuntime().availableProcessors() : 1;
+        int maxJobEnqueued = Boolean.TRUE.equals(isMultiCore) ? 2 : 1;
+
+        return new SparkSqlWrapper(
+            applicationName,
+            cores,
+            maxJobEnqueued,
+            sparkConf
+        );
     }
 
     private final SparkSession spark;
@@ -33,11 +45,22 @@ public class SparkSqlWrapper extends MsgSenderSupport {
 
     private final ThreadPoolExecutor jobWorkers;
 
-    private SparkSqlWrapper(String applicationName, int cores, int maxJobEnqueued ) {
+    private SparkSqlWrapper(String applicationName, int cores, int maxJobEnqueued, @Nullable SparkConf sparkConf) {
+
+        log.info("Creating new Spark Session with name: {}, cores: {}", applicationName, cores);
+
+        if (sparkConf == null) {
+            sparkConf = new SparkConf();
+        }
+
+        sparkConf
+            .setAppName(applicationName)
+            .setMaster("local[" + cores + "]");
+
         spark = SparkSession.builder()
-                .appName( applicationName )
-                .master("local[" + cores + "]")
+                .config(sparkConf)
                 .getOrCreate();
+
         sparkContext = new JavaSparkContext( spark.sparkContext() );
         sqlContext = spark.sqlContext();
 
@@ -119,7 +142,7 @@ public class SparkSqlWrapper extends MsgSenderSupport {
     public void ceateTableFromStringCollection( String tableName, List<String> lines ) {
         spark.createDataFrame(
                 sparkContext.parallelize(
-                        lines.stream().map(l -> new LineHolder(l)).collect(Collectors.toList())
+                        lines.stream().map(LineHolder::new).toList()
                     ),
                 LineHolder.class
             )
@@ -132,9 +155,14 @@ public class SparkSqlWrapper extends MsgSenderSupport {
     }
 
     public void writeTableToParquet(String tableName, Path parquetOut ) {
-        spark.table( tableName ).write().parquet( parquetOut.toString() );
+        SparkDatasetWriter.builder()
+            .dataset(spark.table(tableName))
+            .outLocation(parquetOut.toString())
+            .format(FormatEnum.PARQUET)
+            .saveMode(SaveMode.ErrorIfExists)
+            .build()
+            .write();
     }
-
 
     public static final class LineHolder implements Serializable {
 

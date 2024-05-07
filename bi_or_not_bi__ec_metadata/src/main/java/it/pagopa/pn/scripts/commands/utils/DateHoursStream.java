@@ -3,8 +3,11 @@ package it.pagopa.pn.scripts.commands.utils;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -46,6 +49,18 @@ public class DateHoursStream {
     }
 
     public static class DateHour implements Comparable<DateHour> {
+
+        public static DateHour valueOf(Instant instant) {
+
+            final String PATTERN_FORMAT = "yyyy-MM-dd";
+
+            String formattedInstant = DateTimeFormatter
+                .ofPattern(PATTERN_FORMAT)
+                .withZone(ZoneId.systemDefault())
+                .format(instant);
+
+            return valueOf(formattedInstant, "-", false);
+        }
 
         public static DateHour valueOf( String date, String separator) {
             return valueOf( date, separator, false);

@@ -1,9 +1,5 @@
 package it.pagopa.pn.scripts.commands.utils;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -11,14 +7,15 @@ import java.util.stream.Stream;
 
 public class StreamUtils {
 
+    private StreamUtils() {}
 
     public static Stream<String> oneJsonObjectPerLine( Stream<String> in ) {
         Function<String, String[]> fromStringToJsonObjectsWithoutExternalCurly =
-                (line) -> line.trim()
+                line -> line.trim()
                         .replaceFirst("^\\{", "")
                         .replaceFirst("}$", "")
                         .split("} *\\{");
-        Function<String[], Stream<String>> arrToStream = (arr) -> Arrays.asList( arr ).stream();
+        Function<String[], Stream<String>> arrToStream = Arrays::stream;
 
         Function<String,Stream<String>> line2jsonObjs = arrToStream.compose( fromStringToJsonObjectsWithoutExternalCurly );
 
@@ -27,7 +24,7 @@ public class StreamUtils {
 
     public static <T> Stream<List<T>> chunkedStream(Stream<T> stream, int size) {
 
-        AtomicReference<List<T>> bufferRef = new AtomicReference( new ArrayList<T>() );
+        AtomicReference<List<T>> bufferRef = new AtomicReference<>( new ArrayList<>() );
 
 
         return Stream.concat( stream.sequential(), Stream.of( LAST_ELEMENT ))
@@ -49,7 +46,7 @@ public class StreamUtils {
                         return null;
                     }
                 })
-                .filter( el -> el != null);
+                .filter(Objects::nonNull);
     }
 
     private static final Object LAST_ELEMENT = new Object();
