@@ -8,12 +8,12 @@ const { ApiClient } = require("./libs/api");
 
 function resolveDate(date, hasRefined) {
   if(hasRefined) {
-    date.setHours(date.getHours() + 1)
+    date.setHours(date.getHours() + (24*120) + 1)
   }
   else {
     date.setHours(date.getHours() + (24*120))
   }
-  return date.toISOString().split('.')[0] + "Z"
+  return date.toISOString().substring(0, 19) + "Z"
 }
 
 function _parseCSV(fileName) {
@@ -28,7 +28,7 @@ function _parseCSV(fileName) {
       results.push(data)
     });
     parser.on('error', (err) => {
-      reject(error);
+      reject(err);
     });
     parser.on('end', () => {
       resolve(results);
@@ -87,7 +87,7 @@ async function removeDeletionMarker(fileKey, bucketName){
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --awsProfile <aws-profile> --tableName <table-name> --filter <filter>"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> --dryrun"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -160,8 +160,7 @@ async function main() {
       //REQUEST TO PN-SS START
       let newRetentionDate;
       if(results[i].status == "refined") {
-        const retentionUntil = (await awsClient._queryRequest("pn-SsDocumenti", 'documentKey', fileKey, 'retentionUntil', 'confinfo')).Items[0];
-        newRetentionDate = resolveDate(new Date(unmarshall(retentionUntil).retentionUntil), true)
+        newRetentionDate = resolveDate(new Date(results[i].ts), true)
       }
       else {
         newRetentionDate = resolveDate(new Date(), false)
