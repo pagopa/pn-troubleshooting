@@ -18,12 +18,16 @@ function awsClientCfg( profile ) {
 class AwsClientsWrapper {
 
   constructor( envName, profileName, roleArn ) {
-    const ssoProfile = `sso_pn-core-${envName}`
-    this._dynamoClient = new DynamoDBClient( awsClientCfg( ssoProfile, profileName, roleArn ));
-    this._sqsClient = new SQSClient( awsClientCfg( ssoProfile, profileName, roleArn ));
+    const ssoCoreProfile = `sso_pn-core-${envName}`
+    const ssoConfinfoProfile = `sso_pn-confinfo-${envName}`
+    this._dynamoClient = {
+      core: new DynamoDBClient( awsClientCfg( ssoCoreProfile, profileName, roleArn )),
+      confinfo: new DynamoDBClient( awsClientCfg( ssoConfinfoProfile, profileName, roleArn )),
+    }
+    this._sqsClient = new SQSClient( awsClientCfg( ssoCoreProfile, profileName, roleArn ));
   }
 
-  async _queryRequest(tableName, key, value){
+  async _queryRequest(tableName, key, value, profile = 'core'){
     
     const input = { // QueryInput
       TableName: tableName, // required
@@ -36,7 +40,7 @@ class AwsClientsWrapper {
       },
     };
     const command = new QueryCommand(input);
-    return await this._dynamoClient.send(command);
+    return await this._dynamoClient[profile].send(command);
   }
 
   async _getQueueUrl(queueName) {
