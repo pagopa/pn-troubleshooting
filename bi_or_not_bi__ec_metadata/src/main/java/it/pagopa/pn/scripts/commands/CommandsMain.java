@@ -6,6 +6,7 @@ import it.pagopa.pn.scripts.commands.datafixes.source_channel_details.SourceChan
 import it.pagopa.pn.scripts.commands.exports.ec_metadata.EcRichiesteMetadatiExportCommand;
 import it.pagopa.pn.scripts.commands.indexing.DoCdcIndexingCommand;
 import it.pagopa.pn.scripts.commands.indexing.DynamoExportsIndexingCommand;
+import it.pagopa.pn.scripts.commands.reports.TaskDagExecutorCommand;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -18,7 +19,8 @@ import java.nio.file.Paths;
         EcRichiesteMetadatiExportCommand.class,
         DoCdcIndexingCommand.class,
         SourceChannelDetailsRedoCommand.class,
-        JsonTransformFactoryCommand.class
+        JsonTransformFactoryCommand.class,
+        TaskDagExecutorCommand.class
 })
 public class CommandsMain {
 

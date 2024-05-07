@@ -88,7 +88,7 @@ public class DoCdcIndexingCommand extends AbstractUploadSupport implements Calla
 
         SqlQueryMap queries = SqlQueryMap.fromClasspathResource(INDEXING_QUERIES_RESOURCE);
 
-        SparkSqlWrapper spark = SparkSqlWrapper.localMultiCore("CDC Indexing");
+        SparkSqlWrapper spark = SparkSqlWrapper.local("CDC Indexing", null, true);
         spark.addListener(logger);
 
         S3ClientWrapper s3 = new S3ClientWrapper(awsProfileName, awsRegionCode);

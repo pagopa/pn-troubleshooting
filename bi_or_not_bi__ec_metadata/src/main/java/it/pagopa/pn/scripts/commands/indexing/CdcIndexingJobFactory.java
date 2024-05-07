@@ -37,7 +37,7 @@ public class CdcIndexingJobFactory {
 
     public JobWithOutput newJob(String table, DateHoursStream.DateHour date, List<String> dataChunk, String chunkId ) {
         String tableOutputFolder = outputFolder + File.separator + table;
-        String query = queries.getQuery( table );
+        String query = queries.getQuery(table).getSqlQuery();
 
         return new CdcIndexingJob( tableOutputFolder, table, date, dataChunk, chunkId, query, spark );
     }
