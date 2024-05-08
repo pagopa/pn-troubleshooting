@@ -29,7 +29,13 @@ const dynamoDbClient = new DynamoDBClient({
 const dynamoDbDocumentClient = DynamoDBDocumentClient.from(dynamoDbClient);
 const tableName = "pn-EcRichiesteMetadati";
 
+fs.writeFileSync("statuses.csv", "requestId" + "," + "status" + "\r\n");
+let isFirstLine = true;
 lineReader.eachLine(filePath, function (line, last) {
+    if (isFirstLine) {
+        isFirstLine = false;
+        return;
+    }
     const getCommand = new GetCommand({
         Key: { "requestId": line },
         TableName: tableName
