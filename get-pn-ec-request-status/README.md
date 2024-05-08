@@ -1,6 +1,6 @@
-# get-request-status
+# get-pn-ec-request-status
 
-Script per reperire gli stati corrispondenti ad una lista di requestId.
+Script per reperire gli stati corrispondenti ad una lista di requestId di pn-ec.
 
 ## Tabella dei Contenuti
 
