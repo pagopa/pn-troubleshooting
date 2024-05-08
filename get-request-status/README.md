@@ -1,4 +1,4 @@
-# get-pec-request-status
+# get-request-status
 
 Script per reperire gli stati corrispondenti ad una lista di requestId.
 
