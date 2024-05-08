@@ -1,5 +1,5 @@
 {
-  "name": "get-request-status",
+  "name": "get-pn-ec-request-status",
   "version": "1.0.0",
   "description": "Script to retrieve the corresponding states for a list of requestIds.",
   "main": "index.js",
