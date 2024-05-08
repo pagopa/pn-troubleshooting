@@ -1,0 +1,18 @@
+{
+  "name": "get-pec-request-status",
+  "version": "1.0.0",
+  "description": "Script to retrieve the corresponding states for a list of requestIds.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.569.0",
+    "@aws-sdk/credential-provider-sso": "^3.568.0",
+    "@aws-sdk/lib-dynamodb": "^3.569.0",
+    "line-reader": "^0.4.0",
+    "util": "^0.12.5"
+  }
+}
