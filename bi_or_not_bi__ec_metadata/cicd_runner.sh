@@ -181,6 +181,13 @@ elif ([ $account_type == "core" ]); then
       taskDagExecutor \
         --report ${resource_root}/analog-delivery-monitoring/reports/ShipperReliabilityReport.json \
         --source-path ${resource_root} \
+        --export-bucket ${export_bucket_name} \
+      \
+      \
+      \
+      taskDagExecutor \
+        --report ${resource_root}/analog-delivery-monitoring/reports/SlaReport.json \
+        --source-path ${resource_root} \
         --export-bucket ${export_bucket_name}
       "
   else
@@ -209,6 +216,13 @@ elif ([ $account_type == "core" ]); then
       \
       taskDagExecutor \
         --report ${resource_root}/analog-delivery-monitoring/reports/ShipperReliabilityReport.json \
+        --source-path ${resource_root} \
+        --export-bucket ${export_bucket_name} \
+      \
+      \
+      \
+      taskDagExecutor \
+        --report ${resource_root}/analog-delivery-monitoring/reports/SlaReport.json \
         --source-path ${resource_root} \
         --export-bucket ${export_bucket_name}
       "
