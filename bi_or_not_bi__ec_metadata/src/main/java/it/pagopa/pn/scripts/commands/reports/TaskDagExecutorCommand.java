@@ -34,7 +34,7 @@ import java.util.function.Function;
 @Command(name = "taskDagExecutor")
 public class TaskDagExecutorCommand implements Callable<Integer> {
 
-    private static final String APPLICATION_NAME = "sqlDagExecutor";
+    private static final String APPLICATION_NAME = "taskDagExecutor";
     private static final String REPORT_FOLDER = "/reports";
 
     private final ObjectMapper mapper = ObjectMapperResolver.getObjectMapper();
