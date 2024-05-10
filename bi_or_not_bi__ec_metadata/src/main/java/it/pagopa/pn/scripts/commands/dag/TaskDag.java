@@ -6,14 +6,17 @@ import org.jetbrains.annotations.NotNull;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 public class TaskDag implements Iterable<Task> {
 
     private final DirectedAcyclicGraph<Task, DefaultEdge> dag;
+    private final Map<String, Task> entryPoints = new HashMap<>();
 
     public TaskDag() {
         this(new DirectedAcyclicGraph<>(DefaultEdge.class));
@@ -32,12 +35,22 @@ public class TaskDag implements Iterable<Task> {
         return taskSupplier.get().findFirst().orElse(null);
     }
 
+    public Task getEntryPointById(String id) {
+        return this.entryPoints.get(id);
+    }
+
     public DirectedAcyclicGraph<Task, DefaultEdge> getDag() {
         return dag;
     }
 
     public void addTask(Task task) {
         dag.addVertex(task);
+    }
+
+    public void addTask(Task task, boolean isEntryPoint) {
+        this.addTask(task);
+
+        if (isEntryPoint) this.entryPoints.put(task.getId(), task);
     }
 
     public void removeTask(Task task) {

@@ -12,7 +12,7 @@ public class TaskRunner {
 
     public void linearRun() {
         // Here only to launch exception
-        taskDag.getEntryPoint();
+        //taskDag.getEntryPoint();
         for(var task : taskDag){
             executeTask(task);
         }

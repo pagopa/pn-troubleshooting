@@ -183,6 +183,30 @@ elif ([ $account_type == "core" ]); then
         --source-path ${resource_root} \
         --export-bucket ${export_bucket_name}
       "
+
+  elif ([ $env_type == "uat" ]); then
+    COMMANDLINE=" --cdc-indexed-data-folder ./out/prove_dev/cdc \
+      cdcIndexing \
+        --aws-bucket ${logs_bucket_name} \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-Notifications 2024-1-1 3055-1-1 \
+      \
+      \
+      \
+      cdcIndexing \
+        --aws-bucket ${logs_bucket_name} \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-Timelines 2024-1-1 3055-1-1 \
+      \
+      \
+      \
+      dynamoExportsIndexing \
+        --aws-bucket ${export_bucket_name} \
+        --aws-dynexport-folder-prefix %s/incremental2024/ \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-PaperRequestError 2024-1-1 3035-1-1
+      "
+
   else
     COMMANDLINE=" --cdc-indexed-data-folder ./out/prove_dev/cdc \
       cdcIndexing \
@@ -208,7 +232,7 @@ elif ([ $account_type == "core" ]); then
       \
       \
       taskDagExecutor \
-        --report ${resource_root}/analog-delivery-monitoring/reports/ShipperReliabilityReport.json \
+        --report ${resource_root}/analog-delivery-monitoring/reports/ReportFleet.json \
         --source-path ${resource_root} \
         --export-bucket ${export_bucket_name}
       "

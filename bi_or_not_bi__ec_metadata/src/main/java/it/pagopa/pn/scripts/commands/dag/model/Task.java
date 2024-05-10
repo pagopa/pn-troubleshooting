@@ -69,4 +69,8 @@ public abstract class Task implements Vertex {
     public int hashCode() {
         return Objects.hash(id);
     }
+
+    public static String buildId(String location, String name) {
+        return location + "#" + name;
+    }
 }

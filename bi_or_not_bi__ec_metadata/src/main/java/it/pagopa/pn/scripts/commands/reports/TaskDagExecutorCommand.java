@@ -10,6 +10,7 @@ import it.pagopa.pn.scripts.commands.dag.model.Task;
 import it.pagopa.pn.scripts.commands.enumerations.SchemaEnum;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
 import it.pagopa.pn.scripts.commands.reports.model.Report;
+import it.pagopa.pn.scripts.commands.reports.model.ReportFleet;
 import it.pagopa.pn.scripts.commands.sparksql.SparkSqlWrapper;
 import it.pagopa.pn.scripts.commands.sparksql.SqlQueryDag;
 import it.pagopa.pn.scripts.commands.utils.PathsUtils;
@@ -25,6 +26,8 @@ import picocli.CommandLine.ParentCommand;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 
@@ -51,6 +54,36 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
 
+        // Initialize spark session and get wrapper
+        SparkSqlWrapper spark = this.sparkInit();
+
+        // Read reports to retrieve information
+        ReportFleet reports = this.mapper.readValue(reportPath.toFile(), ReportFleet.class);
+
+        // Define task for each job and adapt graph
+        Function<Task, Object> job = task -> spark.execSql(((SQLTask) task).getSqlQuery());
+
+        // Build unique task DAG
+        TaskDag taskDag = QueryDagToTaskDagAdapter.from(parseQueryDag(reports), job);
+
+        // Instantiate runner and run single threaded
+        TaskRunner taskRunner = new TaskRunner(taskDag);
+        taskRunner.linearRun();
+
+        // Produce report for each case
+        reports.getReports()
+            .forEach(report -> this.writeOutReport(report, taskDag));
+
+        return 0;
+    }
+
+    /**
+     * Initialize Spark context providing a common {@link SparkConf} to work with S3A protocol and enable ECS
+     * credential discovery.
+     *
+     * @return {@link SparkSqlWrapper} object that wrap Spark Context
+     * */
+    private SparkSqlWrapper sparkInit() {
         MsgListenerImpl logger = new MsgListenerImpl();
         SparkConf sparkConf = new SparkConf()
             .set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
@@ -60,27 +93,51 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
         SparkSqlWrapper spark = SparkSqlWrapper.local(APPLICATION_NAME, sparkConf, true);
         spark.addListener(logger);
 
-        // Read report to retrieve information
-        Report report = this.mapper.readValue(reportPath.toFile(), Report.class);
+        return spark;
+    }
 
-        // Read query dependencies
-        SqlQueryDag sqlQueryDag = SqlQueryDag.fromFile(
+    /**
+     * Collect all DAG retrieved from each report and parsed accordingly to {@link SqlQueryDag#fromFile} method
+     *
+     * @param reports all reports to generate through DAG definition
+     *
+     * @return a collection of {@link SqlQueryDag} object
+     * */
+    private Collection<SqlQueryDag> parseQueryDag(ReportFleet reports) {
+        Collection<SqlQueryDag> sqlQueryDags = new HashSet<>();
+
+        reports.getReports().forEach(report -> {
+
+            // Read query dependencies
+            SqlQueryDag sqlQueryDag = SqlQueryDag.fromFile(
+                report.getTask().getScript().getPath(),
+                report.getTask().getScript().getEntry(),
+                sourceBasePath.toString()
+            );
+
+            sqlQueryDags.add(sqlQueryDag);
+        });
+
+        return sqlQueryDags;
+    }
+
+    /**
+     * Write out the report using information stored within {@link Report} class in order to find the leaf node
+     * that holds generator query
+     *
+     * @param report    report to write out
+     * @param taskDag   DAG from which retrieve leaf node
+     *
+     * */
+    private void writeOutReport(Report report, TaskDag taskDag) {
+        String leafId = Task.buildId(
             report.getTask().getScript().getPath(),
-            report.getTask().getScript().getEntry(),
-            sourceBasePath.toString()
+            report.getTask().getScript().getEntry()
         );
-
-        // Define task for each job and adapt graph
-        Function<Task, Object> job = task -> spark.execSql(((SQLTask) task).getSqlQuery());
-        TaskDag taskDag = QueryDagToTaskDagAdapter.from(sqlQueryDag, job);
-
-        // Instantiate runner and run
-        TaskRunner taskRunner = new TaskRunner(taskDag);
-        taskRunner.linearRun();
 
         // Find leaf node to get last result
         @SuppressWarnings("unchecked")
-        Dataset<Row> datasetReport = taskDag.getEntryPoint()
+        Dataset<Row> datasetReport = taskDag.getEntryPointById(leafId)
             .getResult(Dataset.class);
 
         // Compute S3a path
@@ -101,7 +158,5 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
             .partitions(report.getPartitions())
             .build()
             .write();
-
-        return 0;
     }
 }
