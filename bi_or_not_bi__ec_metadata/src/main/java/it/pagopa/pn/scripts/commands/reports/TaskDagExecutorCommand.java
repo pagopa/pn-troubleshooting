@@ -39,8 +39,8 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
 
     private final ObjectMapper mapper = ObjectMapperResolver.getObjectMapper();
 
-    @CommandLine.Option( names = {"--report"}, arity = "1")
-    private Path reportPath;
+    @CommandLine.Option( names = {"--report-fleet"}, arity = "1")
+    private Path reportFleetPath;
 
     @CommandLine.Option( names = {"--source-path"}, arity = "1")
     private Path sourceBasePath;
@@ -58,7 +58,7 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
         SparkSqlWrapper spark = this.sparkInit();
 
         // Read reports to retrieve information
-        ReportFleet reports = this.mapper.readValue(reportPath.toFile(), ReportFleet.class);
+        ReportFleet reports = this.mapper.readValue(reportFleetPath.toFile(), ReportFleet.class);
 
         // Define task for each job and adapt graph
         Function<Task, Object> job = task -> spark.execSql(((SQLTask) task).getSqlQuery());
