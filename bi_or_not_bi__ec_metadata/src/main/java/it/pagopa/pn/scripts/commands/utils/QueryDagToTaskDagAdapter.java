@@ -32,7 +32,7 @@ public class QueryDagToTaskDagAdapter {
 
                 var sqlTask = new SQLTask(id, name, sqlQuery, job);
 
-                taskDag.addTask(sqlTask);
+                taskDag.addTask(sqlTask, v.isEntryPoint());
                 tasks.put(id, sqlTask);
             }
         });
