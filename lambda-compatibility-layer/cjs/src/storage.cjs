@@ -13,11 +13,11 @@ var _env = require("./env.cjs");
 var _path = _interopRequireDefault(require("path"));
 var _fs = _interopRequireDefault(require("fs"));
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-const S3BucketNotDefinedError = exports.S3BucketNotDefinedError = (0, _utils.createCustomError)("S3BucketNotDefinedError", 500);
+const S3BucketNotDefinedError = exports.S3BucketNotDefinedError = (0, _utils.createCustomError)('S3BucketNotDefinedError', 500);
 const executionTime = (0, _utils.formatToUTC)(Date.now());
 const uuid = (0, _uuid.v4)();
-const localBaseDir = "./out";
-const lambdaBaseDir = "/tmp";
+const localBaseDir = './out';
+const lambdaBaseDir = '/tmp';
 const localBasePath = _path.default.join(localBaseDir, executionTime);
 const lambdaBasePath = _path.default.join(lambdaBaseDir, executionTime);
 
@@ -75,9 +75,9 @@ const pathJoin = (...paths) => {
 exports.pathJoin = pathJoin;
 const uploadToS3 = async (key, filePath) => {
   if (!bucketName) {
-    throw new S3BucketNotDefinedError("S3 bucket name not defined in env vars.");
+    throw new S3BucketNotDefinedError('S3 bucket name not defined in env vars.');
   }
-  const client = new _clientS.S3Client((0, _awsAuth.awsClientConfig)("core"));
+  const client = new _clientS.S3Client((0, _awsAuth.awsClientConfig)('core'));
   const fileStream = _fs.default.createReadStream(filePath);
   const uploadParams = {
     Bucket: bucketName,

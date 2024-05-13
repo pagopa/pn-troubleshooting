@@ -93,7 +93,7 @@ const generateUsage = (schema, indent = '', prefix = '', required = false) => {
 
 /**
  * Applies underline formatting to text for CLI output.
- * 
+ *
  * @param {string} text - The text to underline.
  * @returns {string} The underlined text.
  */
@@ -105,10 +105,13 @@ const underline = text => `\x1b[4m${text}\x1b[0m`;
  * @param {Object} schema - The function manifest.
  * @param {string} [scriptName='<script>'] - The name of the script.
  */
-const printUsage = (schema, scriptName = '<script>') => {
+const printUsage = (schema, scriptName = '<script>', metaSchemaVersion) => {
   console.log(`\n${underline(schema.name ? schema.name : scriptName)}\n`);
   if (schema.description) {
     console.log(indentDescription('', '', schema.description, 2));
+  }
+  if (metaSchemaVersion) {
+    console.log(indentDescription('', '', `MetaSchema ${metaSchemaVersion}`, 2));
   }
   console.log(`${underline('Synopsys:')}\n`);
   console.log(`  $ node ${scriptName} [OPTIONS]\n`);
@@ -141,21 +144,29 @@ const processArgvToObject = argv => {
   const result = {};
   argv.slice(2).forEach((arg, index, self) => {
     if (arg.startsWith('--')) {
-      const path = arg.substring(2);
+      let path = arg.substring(2);
       let value = self[index + 1];
-      if (!value || value && value.startsWith('--')) {
-        value = "true";
+      let returnValue;
+
+      // Array definition
+      if (arg.endsWith(':')) {
+        path = path.slice(0, -1);
+        returnValue = [];
       }
+      // Boolean definition if value not found
+      else if (!value || value && value.startsWith('--')) {
+        returnValue = 'true';
+      }
+
+      // Value definition
       if (value && !value.startsWith('--')) {
-        let valueNext = self[index + 2];
-        // If the next value is not a flag, gather all consecutive non-flag values into an array
-        value = valueNext && !valueNext.startsWith('--') ? [value] : value;
+        returnValue = arg.endsWith(':') ? [value] : value;
         // Add consecutive non-flag values to the array
         for (let i = 2; self[index + i] && !self[index + i].startsWith('--'); i++) {
-          value.push(self[index + i]);
+          returnValue.push(self[index + i]);
         }
-        assignValueByPath(result, path.split('.'), value);
       }
+      assignValueByPath(result, path.split('.'), returnValue);
     }
   });
   return result;
@@ -165,15 +176,16 @@ const processArgvToObject = argv => {
  * Handles local CLI invocation, parsing arguments and optionally printing help.
  *
  * @param {Object} schema - The function manifest.
+ * @param {Object} metaSchema - The meta schema of manifest.
  * @returns {Object} The parsed command line arguments as an object.
  * @throws {HelpArgError} When --help is present in the arguments.
  */
 exports.processArgvToObject = processArgvToObject;
-const handleLocalCLI = schema => {
+const handleLocalCLI = (schema, metaSchema) => {
   const inputObject = processArgvToObject(process.argv, schema.input);
   if ('help' in inputObject) {
     const scriptName = _path.default.basename(process.argv[1]);
-    printUsage(schema, scriptName);
+    printUsage(schema, scriptName, metaSchema['$comment']);
     throw new HelpArgError('--help in args!');
   }
   if ('inputPayloadFile' in inputObject) {

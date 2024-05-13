@@ -8,8 +8,8 @@ var _utils = require("./utils.cjs");
 var _credentialProviders = require("@aws-sdk/credential-providers");
 var _clientSts = require("@aws-sdk/client-sts");
 var _env = require("./env.cjs");
-const AssumeRoleArnNotDefinedError = (0, _utils.createCustomError)("AssumeRoleArnNotDefinedError");
-const stsRegion = "eu-south-1";
+const AssumeRoleArnNotDefinedError = (0, _utils.createCustomError)('AssumeRoleArnNotDefinedError');
+const stsRegion = 'eu-south-1';
 const confinofAssumeRoleArn = (0, _env.getAssumeRoleConfinfoArn)();
 
 /**
@@ -20,14 +20,14 @@ const confinofAssumeRoleArn = (0, _env.getAssumeRoleConfinfoArn)();
  */
 const getConfinfoCredentials = async () => {
   if (!confinofAssumeRoleArn) {
-    throw new AssumeRoleArnNotDefinedError("AssumeRole arn not defined in env vars.");
+    throw new AssumeRoleArnNotDefinedError('AssumeRole arn not defined in env vars.');
   }
   const stsClient = new _clientSts.STSClient({
     region: stsRegion
   });
   const assumeRoleCommand = new _clientSts.AssumeRoleCommand({
     RoleArn: confinofAssumeRoleArn,
-    RoleSessionName: "DiagnosticGenericSession"
+    RoleSessionName: 'DiagnosticGenericSession'
   });
   const {
     Credentials
@@ -60,10 +60,10 @@ const awsClientConfig = (profile, region) => {
     });
   } else {
     // Assume that lambda runs on core
-    if (profile.includes("core")) {
+    if (profile.includes('core')) {
       credentials = (0, _credentialProviders.fromEnv)();
       region = (0, _env.getCurrentRegion)();
-    } else if (profile.includes("confinfo")) {
+    } else if (profile.includes('confinfo')) {
       credentials = getConfinfoCredentials();
     } else {
       throw new Error(`Profile ${profile} not in [core, confinfo]`);

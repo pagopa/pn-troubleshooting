@@ -18,7 +18,7 @@ const getEnvironmentVariable = env => process.env[env];
  * @return {string|undefined} The name of the AWS Lambda function, or undefined if not
  * set.
  */
-const getLambdaFunctionName = () => getEnvironmentVariable("AWS_LAMBDA_FUNCTION_NAME");
+const getLambdaFunctionName = () => getEnvironmentVariable('AWS_LAMBDA_FUNCTION_NAME');
 
 /**
  * Retrieves the current region from environment variables.
@@ -26,7 +26,7 @@ const getLambdaFunctionName = () => getEnvironmentVariable("AWS_LAMBDA_FUNCTION_
  * @return {string|undefined} The current region, or undefined if not set.
  */
 exports.getLambdaFunctionName = getLambdaFunctionName;
-const getCurrentRegion = () => getEnvironmentVariable("AWS_REGION");
+const getCurrentRegion = () => getEnvironmentVariable('AWS_REGION');
 
 /**
  * Retrieves the ARN for an assumed role from environment variables.
@@ -35,7 +35,7 @@ const getCurrentRegion = () => getEnvironmentVariable("AWS_REGION");
  * not set.
  */
 exports.getCurrentRegion = getCurrentRegion;
-const getAssumeRoleConfinfoArn = () => getEnvironmentVariable("COMPAT_CONFINFO_ASSUME_ROLE_ARN");
+const getAssumeRoleConfinfoArn = () => getEnvironmentVariable('COMPAT_CONFINFO_ASSUME_ROLE_ARN');
 
 /**
  * Retrieves the S3 bucket name from environment variables.
@@ -43,7 +43,7 @@ const getAssumeRoleConfinfoArn = () => getEnvironmentVariable("COMPAT_CONFINFO_A
  * @return {string|undefined} The S3 bucket name, or undefined if not set.
  */
 exports.getAssumeRoleConfinfoArn = getAssumeRoleConfinfoArn;
-const getS3Bucket = () => getEnvironmentVariable("COMAPT_S3_BUCKET");
+const getS3Bucket = () => getEnvironmentVariable('COMAPT_S3_BUCKET');
 
 /**
  * Retrieves the duration (in seconds) that a presigned URL for S3 objects
@@ -53,7 +53,7 @@ const getS3Bucket = () => getEnvironmentVariable("COMAPT_S3_BUCKET");
  */
 exports.getS3Bucket = getS3Bucket;
 const getPresignedUrlSeconds = () => {
-  const value = parseInt(getEnvironmentVariable("COMAPT_PRESIGNED_URL_SECONDS"));
+  const value = parseInt(getEnvironmentVariable('COMAPT_PRESIGNED_URL_SECONDS'));
   if (isNaN(value)) {
     return undefined;
   }
