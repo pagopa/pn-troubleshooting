@@ -1,26 +1,60 @@
-import Ajv from "ajv";
-import fs from "fs";
-import { handleLocalCLI, HelpArgError } from "./cli.js";
+import Ajv from 'ajv';
+import fs from 'fs';
+import { handleLocalCLI, HelpArgError } from './cli.js';
 import {
   isLocalEnvironment,
   makeResponse,
   makeErrorResponse,
   createCustomError,
-} from "./utils.js";
-import { uploadWorkDirToS3, isDirMade, basePath } from "./storage.js";
-
+} from './utils.js';
+import { uploadWorkDirToS3, isDirMade, basePath } from './storage.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { printStartLog, printEndLog } from './log.js';
 const SchemaFileNotFoundError = createCustomError(
-  "SchemaFileNotFoundError",
+  'SchemaFileNotFoundError',
   404
 );
-const ValidationError = createCustomError("ValidationError", 400);
+const ValidationError = createCustomError('ValidationError', 400);
+
+// import * as metaSchema from './metaSchema.json' with { type: 'json' };
+// -> Done in this way to avoid node warnings
+const metaSchema = JSON.parse(
+  fs.readFileSync(
+    path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../data/metaSchema.json'
+    ),
+    { encoding: 'utf8' }
+  )
+);
 
 /**
  * Default path to the schema file.
  */
-const defaultSchemaPath = "./manifest.json";
+const defaultSchemaPath = './manifest.json';
 
-let functionSchema = {};
+const functionSchema = {};
+
+const dataAjv = new Ajv({
+  useDefaults: true,
+  coerceTypes: isLocalEnvironment(),
+});
+
+dataAjv.addKeyword({
+  keyword: 'dataClassification',
+  metaSchema: {
+    type: 'string',
+    enum: ['PUBLIC', 'CONFIDENTIAL', 'HIGHLY_CONFIDENTIAL', 'RESTRICTED'],
+  },
+});
+
+dataAjv.addKeyword({
+  keyword: 'audit',
+  metaSchema: {
+    type: 'boolean',
+  },
+});
 
 /**
  * Validates the given data against the provided schema.
@@ -29,29 +63,31 @@ let functionSchema = {};
  * @throws {Array<Object>} Throws an array of validation errors if data is
  * invalid.
  */
-const validateData = async (schema, data) => {
-  const ajv = new Ajv({
-    useDefaults: true,
-    coerceTypes: isLocalEnvironment(),
-  });
-
-  ajv.addKeyword({
-    keyword: "dataClassification",
-    type: "string",
-    metaSchema: {
-      type: "string",
-      enum: [
-        "PUBLIC",
-        "CONFIDENTIAL",
-        "HIGHLY_CONFIDENTIAL",
-        "RESTRICTED"
-      ]
-    }
-  })
-
-  const isDataValid = ajv.validate(schema, data);
+const validateData = (schema, data) => {
+  const isDataValid = dataAjv.validate(schema, data);
   if (!isDataValid) {
-    console.error("Data is invalid:", JSON.stringify(ajv.errors));
+    console.error(
+      'Data is invalid:',
+      JSON.stringify(dataAjv.errors[0], null, 2)
+    );
+    throw new ValidationError(JSON.stringify(dataAjv.errors));
+  }
+};
+
+/**
+ * Validates the given manifest against the metaSchema.
+ * @param {Object} manifest - The manifest to validate.
+ * @throws {Object} Throws a validation error object if data is invalid.
+ */
+const validateManifest = (manifest) => {
+  const ajv = new Ajv();
+
+  const isDataValid = ajv.validate(metaSchema, manifest);
+  if (!isDataValid) {
+    console.error(
+      'Manifest is invalid:',
+      JSON.stringify(ajv.errors[0], null, 2)
+    );
     throw new ValidationError(JSON.stringify(ajv.errors));
   }
 };
@@ -59,25 +95,34 @@ const validateData = async (schema, data) => {
 /**
  * Pre-handler logic for the function.
  * @param {Object} event - The event object.
+ * @param {Object} context - The context object.
  */
-const preHandler = async (event) => {
+const preHandler = (event, context) => {
   if (isLocalEnvironment()) {
-    const eventFromArgs = handleLocalCLI(functionSchema);
+    const eventFromArgs = handleLocalCLI(functionSchema, metaSchema);
     Object.assign(event, eventFromArgs);
   }
-  //console.log(event);
   if (event.getManifest) {
     return makeResponse(200, functionSchema);
   }
-  await validateData(functionSchema.input, event);
+  validateData(functionSchema.input, event);
+  if (!isLocalEnvironment()) {
+    printStartLog(
+      event,
+      functionSchema.input,
+      context.awsRequestId,
+      context.invokedFunctionArn
+    );
+  }
 };
 
 /**
  * Post-handler logic for the function.
  * @param {Object} event - The event object.
+ * @param {Object} context - The context object.
  * @param {Object} result - The result object.
  */
-const postHandler = async (event, result) => {
+const postHandler = async (event, context, result) => {
   if (isDirMade()) {
     if (isLocalEnvironment()) {
       result.storagePath = basePath();
@@ -85,12 +130,20 @@ const postHandler = async (event, result) => {
       result.storagePresignedUrl = await uploadWorkDirToS3();
     }
   }
+  validateData(functionSchema.output, result);
+  if (!isLocalEnvironment()) {
+    printEndLog(
+      result,
+      functionSchema.output,
+      context.awsRequestId,
+      context.invokedFunctionArn
+    );
+  }
 };
 
 /**
  * Loads and returns the schema from a given path.
  * @param {string} schemaPath - The path to the schema file.
- * @returns {Object} The schema as an object.
  * @throws {SchemaFileNotFoundError} Throws when the schema file is not found.
  */
 const loadSchema = (schemaPath) => {
@@ -99,8 +152,11 @@ const loadSchema = (schemaPath) => {
       `Schema manifest not found at ${schemaPath}.`
     );
   }
-  const schemaString = fs.readFileSync(schemaPath, { encoding: "utf8" });
-  return JSON.parse(schemaString);
+  const schemaString = fs.readFileSync(schemaPath, { encoding: 'utf8' });
+  const schema = JSON.parse(schemaString);
+
+  validateManifest(schema);
+  Object.assign(functionSchema, schema);
 };
 
 /**
@@ -117,11 +173,11 @@ export const functionWrapper = (
 ) => {
   const newHandler = async (event = {}, context = {}) => {
     try {
-      functionSchema = loadSchema(manifestPath);
-      const preResult = await preHandler(event);
+      loadSchema(manifestPath);
+      const preResult = preHandler(event, context);
       if (preResult) return preResult;
     } catch (e) {
-      if (e instanceof HelpArgError) {
+      if (e instanceof HelpArgError || e instanceof ValidationError) {
         return;
       }
       return makeErrorResponse(e);
@@ -130,7 +186,7 @@ export const functionWrapper = (
     const result = await handler(event, context);
 
     try {
-      await postHandler(event, result);
+      await postHandler(event, context, result);
     } catch (e) {
       return makeErrorResponse(e);
     }
@@ -140,7 +196,7 @@ export const functionWrapper = (
   if (isLocalEnvironment()) {
     newHandler().then((result) => {
       if (result) {
-        console.log("\nResponse:");
+        console.log('\nResponse:');
         console.log(result);
       }
     });
