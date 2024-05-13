@@ -66,7 +66,7 @@ export const printStartLog = (objectIn, schema, requestID, functionArn) => {
     functionArn,
     event,
   };
-  auditLog(record, 'Lambda started', auditTypeStart, 'OK').info('info');
+  auditLog(record, 'Lambda started', auditTypeStart).info('info');
 };
 
 /**
@@ -84,5 +84,5 @@ export const printEndLog = (objectOut, schema, requestID, functionArn) => {
     functionArn,
     result,
   };
-  auditLog(record, 'Lambda ended', auditTypeEnd, 'OK').info('info');
+  auditLog(record, 'Lambda ended', auditTypeEnd).info('info');
 };
