@@ -1,14 +1,14 @@
-import { isLocalEnvironment } from "./utils.js";
-import { fromIni, fromEnv } from "@aws-sdk/credential-providers";
-import { STSClient, AssumeRoleCommand } from "@aws-sdk/client-sts";
-import { createCustomError } from "./utils.js";
-import { getAssumeRoleConfinfoArn, getCurrentRegion } from "./env.js";
+import { isLocalEnvironment } from './utils.js';
+import { fromIni, fromEnv } from '@aws-sdk/credential-providers';
+import { STSClient, AssumeRoleCommand } from '@aws-sdk/client-sts';
+import { createCustomError } from './utils.js';
+import { getAssumeRoleConfinfoArn, getCurrentRegion } from './env.js';
 
 const AssumeRoleArnNotDefinedError = createCustomError(
-  "AssumeRoleArnNotDefinedError"
+  'AssumeRoleArnNotDefinedError'
 );
 
-const stsRegion = "eu-south-1";
+const stsRegion = 'eu-south-1';
 const confinofAssumeRoleArn = getAssumeRoleConfinfoArn();
 
 /**
@@ -20,13 +20,13 @@ const confinofAssumeRoleArn = getAssumeRoleConfinfoArn();
 const getConfinfoCredentials = async () => {
   if (!confinofAssumeRoleArn) {
     throw new AssumeRoleArnNotDefinedError(
-      "AssumeRole arn not defined in env vars."
+      'AssumeRole arn not defined in env vars.'
     );
   }
   const stsClient = new STSClient({ region: stsRegion });
   const assumeRoleCommand = new AssumeRoleCommand({
     RoleArn: confinofAssumeRoleArn,
-    RoleSessionName: "DiagnosticGenericSession",
+    RoleSessionName: 'DiagnosticGenericSession',
   });
 
   const { Credentials } = await stsClient.send(assumeRoleCommand);
@@ -56,10 +56,10 @@ export const awsClientConfig = (profile, region) => {
     credentials = fromIni({ profile });
   } else {
     // Assume that lambda runs on core
-    if (profile.includes("core")) {
+    if (profile.includes('core')) {
       credentials = fromEnv();
       region = getCurrentRegion();
-    } else if (profile.includes("confinfo")) {
+    } else if (profile.includes('confinfo')) {
       credentials = getConfinfoCredentials();
     } else {
       throw new Error(`Profile ${profile} not in [core, confinfo]`);
