@@ -4,30 +4,29 @@ import {
   getFunctionName,
   createCustomError,
   formatToUTC,
-} from "./utils.js";
-import { awsClientConfig } from "./awsAuth.js";
-import { v4 as uuidv4 } from "uuid";
+} from './utils.js';
+import { awsClientConfig } from './awsAuth.js';
+import { v4 as uuidv4 } from 'uuid';
 import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { getS3Bucket, getPresignedUrlSeconds } from "./env.js";
-import path from "path";
-import fs from "fs";
-
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getS3Bucket, getPresignedUrlSeconds } from './env.js';
+import path from 'path';
+import fs from 'fs';
 
 export const S3BucketNotDefinedError = createCustomError(
-  "S3BucketNotDefinedError",
+  'S3BucketNotDefinedError',
   500
 );
 
 const executionTime = formatToUTC(Date.now());
 const uuid = uuidv4();
 
-const localBaseDir = "./out";
-const lambdaBaseDir = "/tmp";
+const localBaseDir = './out';
+const lambdaBaseDir = '/tmp';
 
 const localBasePath = path.join(localBaseDir, executionTime);
 const lambdaBasePath = path.join(lambdaBaseDir, executionTime);
@@ -84,11 +83,11 @@ export const pathJoin = (...paths) => {
 const uploadToS3 = async (key, filePath) => {
   if (!bucketName) {
     throw new S3BucketNotDefinedError(
-      "S3 bucket name not defined in env vars."
+      'S3 bucket name not defined in env vars.'
     );
   }
 
-  const client = new S3Client(awsClientConfig("core"));
+  const client = new S3Client(awsClientConfig('core'));
   const fileStream = fs.createReadStream(filePath);
 
   const uploadParams = {

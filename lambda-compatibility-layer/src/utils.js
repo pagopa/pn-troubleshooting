@@ -1,7 +1,7 @@
-import archiver from "archiver";
-import fs from "fs";
-import { getSchema } from "./validator.js";
-import { getLambdaFunctionName } from "./env.js";
+import archiver from 'archiver';
+import fs from 'fs';
+import { getSchema } from './validator.js';
+import { getLambdaFunctionName } from './env.js';
 
 /**
  * Determines if the current environment is local or not.
@@ -22,12 +22,12 @@ export const isLocalEnvironment = () => {
 export const createZip = async (directoryPath, outputPath) => {
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(outputPath);
-    const archive = archiver("zip", {
+    const archive = archiver('zip', {
       zlib: { level: 9 },
     });
 
-    output.on("close", () => resolve(outputPath));
-    archive.on("error", (err) => reject(err));
+    output.on('close', () => resolve(outputPath));
+    archive.on('error', (err) => reject(err));
 
     archive.pipe(output);
     archive.directory(directoryPath, false);
@@ -79,7 +79,7 @@ export const createCustomError = (name, statusCode) => {
       super(message);
       this.name = name;
       this.statusCode = statusCode;
-      if (typeof Error.captureStackTrace === "function") {
+      if (typeof Error.captureStackTrace === 'function') {
         Error.captureStackTrace(this, this.constructor);
       } else {
         this.stack = new Error(message).stack;
@@ -91,7 +91,8 @@ export const createCustomError = (name, statusCode) => {
 /**
  * Retrieves the name of the Lambda function, falling back to the schema name if
  * not running in a Lambda environment.
- * @returns {string} The name of the Lambda function or the name specified in the schema.
+ * @returns {string} The name of the Lambda function or the name specified in
+ * the schema.
  */
 export const getFunctionName = () => {
   const function_name = getLambdaFunctionName();
@@ -105,8 +106,7 @@ export const getFunctionName = () => {
  */
 export const formatToUTC = (timestamp) => {
   const date = new Date(timestamp);
-  // Padding per garantire che i componenti della data siano sempre in formato a due cifre
-  const pad = (num) => num.toString().padStart(2, "0");
+  const pad = (num) => num.toString().padStart(2, '0');
   const year = date.getUTCFullYear();
   const month = pad(date.getUTCMonth() + 1);
   const day = pad(date.getUTCDate());

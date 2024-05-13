@@ -13,15 +13,14 @@ const getEnvironmentVariable = (env) => process.env[env];
  * set.
  */
 export const getLambdaFunctionName = () =>
-  getEnvironmentVariable("AWS_LAMBDA_FUNCTION_NAME");
+  getEnvironmentVariable('AWS_LAMBDA_FUNCTION_NAME');
 
 /**
  * Retrieves the current region from environment variables.
  *
  * @return {string|undefined} The current region, or undefined if not set.
  */
-export const getCurrentRegion = () =>
-  getEnvironmentVariable("AWS_REGION");
+export const getCurrentRegion = () => getEnvironmentVariable('AWS_REGION');
 
 /**
  * Retrieves the ARN for an assumed role from environment variables.
@@ -30,14 +29,14 @@ export const getCurrentRegion = () =>
  * not set.
  */
 export const getAssumeRoleConfinfoArn = () =>
-  getEnvironmentVariable("COMPAT_CONFINFO_ASSUME_ROLE_ARN");
+  getEnvironmentVariable('COMPAT_CONFINFO_ASSUME_ROLE_ARN');
 
 /**
  * Retrieves the S3 bucket name from environment variables.
  *
  * @return {string|undefined} The S3 bucket name, or undefined if not set.
  */
-export const getS3Bucket = () => getEnvironmentVariable("COMAPT_S3_BUCKET");
+export const getS3Bucket = () => getEnvironmentVariable('COMAPT_S3_BUCKET');
 
 /**
  * Retrieves the duration (in seconds) that a presigned URL for S3 objects
@@ -46,7 +45,9 @@ export const getS3Bucket = () => getEnvironmentVariable("COMAPT_S3_BUCKET");
  * @return {number|undefined} The duration in seconds, or undefined if not set.
  */
 export const getPresignedUrlSeconds = () => {
-  const value = parseInt(getEnvironmentVariable("COMAPT_PRESIGNED_URL_SECONDS"));
+  const value = parseInt(
+    getEnvironmentVariable('COMAPT_PRESIGNED_URL_SECONDS')
+  );
   if (isNaN(value)) {
     return undefined;
   }
