@@ -4,14 +4,21 @@ const path = require('path');
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 
-const headers = ["requestId", "iun", "paId", "registeredLetterCode","statusCodeDLQ","deliveryFailureCauseDLQ","businessDateTimeDLQ", "eventDateTimeDLQ", "statusCodeTL","deliveryFailureCauseTL", "businessDateTimeTL", "eventDateTimeTL"]
+const headersVerifyOrDelete = ["requestId", "iun", "paId", "registeredLetterCode","statusCodeDLQ","deliveryFailureCauseDLQ","businessDateTimeDLQ", "eventDateTimeDLQ", "statusCodeTL","deliveryFailureCauseTL", "businessDateTimeTL", "eventDateTimeTL"]
+const headersRedrive = ["requestId", "statusCodeDLQ"]
 
 function appendJsonToFile(fileName, data){
   const resultPath = path.join(__dirname, "result")
   if(!fs.existsSync(resultPath))
     fs.mkdirSync(resultPath, { recursive: true });
   if(!fs.existsSync(resultPath + "/" + fileName))
-    fs.appendFileSync(resultPath + "/" + fileName, headers.join(",") +"\n")
+    if(fileName.startsWith('to_verify') || fileName.startsWith('to_delete')) {
+      fs.appendFileSync(resultPath + "/" + fileName, headersVerifyOrDelete.join(",") +"\n")
+    }
+    else {
+      fs.appendFileSync(resultPath + "/" + fileName, headersRedrive.join(",") +"\n")
+    }
+    
   fs.appendFileSync(resultPath + "/" + fileName, data + "\n")
 }
 
@@ -29,21 +36,26 @@ function getFirstCElement(eventsList){
   return res
 }
 
-function verifyCompatibility(requestId, iun, paId, registeredLetterCode, statusCodeDLQ, deliveryFailureCauseDLQ, statusDateTimeDLQ, eventTimestamp, deliveryDetailCodeTL, deliveryFailureCauseTL, notificationDateTL, timestampTL){
-  if(deliveryDetailCodeTL == statusCodeDLQ && deliveryFailureCauseTL == deliveryFailureCauseDLQ) {
-    if (dryrun) {
-      console.log("DRYRUN: " + requestId + " to remove")
-      return false
+function verifyCompatibility(type, requestId, iun, paId, registeredLetterCode, statusCodeDLQ, deliveryFailureCauseDLQ, statusDateTimeDLQ, eventTimestamp, deliveryDetailCodeTL, deliveryFailureCauseTL, notificationDateTL, timestampTL){
+  if(type == 'analog') {
+    if(deliveryDetailCodeTL == statusCodeDLQ && deliveryFailureCauseTL == deliveryFailureCauseDLQ && new Date(statusDateTimeDLQ).toISOString() == new Date(notificationDateTL).toISOString()) {
+      dryrun ? console.log("DRYRUN: " + requestId + " to remove") : console.log(requestId + " to remove")
+      return true
     }
     else {
-      console.log(requestId + " to remove")
-      return true
+      console.log(requestId + " to verify")
+      appendJsonToFile("to_verify.csv", createReport(requestId, iun, paId, registeredLetterCode, statusCodeDLQ, deliveryFailureCauseDLQ, statusDateTimeDLQ, eventTimestamp, deliveryDetailCodeTL, deliveryFailureCauseTL, notificationDateTL, timestampTL))
+      return false
     }
   }
   else {
-    console.log(requestId + " to verify")
-    appendJsonToFile("to_verify.csv", createReport(requestId, iun, paId, registeredLetterCode, statusCodeDLQ, deliveryFailureCauseDLQ, statusDateTimeDLQ, eventTimestamp, deliveryDetailCodeTL, deliveryFailureCauseTL, notificationDateTL, timestampTL))
-    return false
+    if(deliveryDetailCodeTL == statusCodeDLQ && deliveryFailureCauseTL == deliveryFailureCauseDLQ && new Date(statusDateTimeDLQ).toISOString() == new Date(notificationDateTL).toISOString()) {
+      dryrun ? console.log("DRYRUN: " + requestId + " to remove") : console.log(requestId + " to remove")
+      return true
+    }
+    else {
+      return false
+    }
   }
 }
 
@@ -107,38 +119,64 @@ async function main() {
     let timelineEvents = result.Items;
     if (requestId.startsWith("PREPARE_ANALOG_DOMICILE")) {
       feedbackString = "SEND_ANALOG_FEEDBACK.IUN_" + iun + requestId.split(iun)[1].split('.PCRETRY')[0]
-    }
-    //TO REMOVE PATH
-    let feedbackEvent = timelineEvents.find(x => x.timelineElementId.S == feedbackString)
-    if(feedbackEvent) {
-      feedbackEvent = unmarshall(feedbackEvent);
+      //TO REMOVE PATH
+      let feedbackEvent = timelineEvents.find(x => x.timelineElementId.S == feedbackString)
       dlq_elem.deliveryFailureCause == "null" ? dlq_elem.deliveryFailureCause = null : null
-      if(feedbackEvent.details.deliveryDetailCode == "PNRN012") {
-        let result = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", 'pn-cons-000~' + requestId, 'confinfo')
-        if (result.Items.length>0) {
-          metadata = unmarshall(result.Items[0]) 
-          let firstCElement = getFirstCElement(metadata.eventsList)
-          let toDelete = verifyCompatibility(requestId, iun, feedbackEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, firstCElement.paperProgrStatus.statusCode, firstCElement.paperProgrStatus.deliveryFailureCause, feedbackEvent.details.notificationDate, feedbackEvent.timestamp)
-          if (toDelete && !dryrun) {
-            //await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).receiptHandle)
+      if(feedbackEvent) {
+        feedbackEvent = unmarshall(feedbackEvent);
+        if(feedbackEvent.details.deliveryDetailCode == "PNRN012") {
+          let result = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", 'pn-cons-000~' + requestId, 'confinfo')
+          if (result.Items.length>0) {
+            metadata = unmarshall(result.Items[0]) 
+            let firstCElement = getFirstCElement(metadata.eventsList)
+            let toDelete = verifyCompatibility('analog', requestId, iun, feedbackEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, firstCElement.paperProgrStatus.statusCode, firstCElement.paperProgrStatus.deliveryFailureCause, firstCElement.paperProgrStatus.statusDateTime, feedbackEvent.timestamp)
+            if (toDelete) {
+              appendJsonToFile("to_delete.csv", createReport(requestId, iun, feedbackEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, firstCElement.paperProgrStatus.statusCode, firstCElement.paperProgrStatus.deliveryFailureCause, firstCElement.paperProgrStatus.statusDateTime, feedbackEvent.timestamp))
+            }
+            if(!dryrun) {
+              await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).receiptHandle)
+            }
+          }
+          else {
+            console.log("RequestId not found " + requestId)
+            continue
           }
         }
         else {
-          console.log("RequestId not found " + requestId)
-          continue
+          let toDelete = verifyCompatibility('analog', requestId, iun, feedbackEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, feedbackEvent.details.deliveryDetailCode, feedbackEvent.details.deliveryFailureCause, feedbackEvent.details.notificationDate, feedbackEvent.timestamp)
+          if (toDelete) {
+            appendJsonToFile("to_delete.csv", createReport(requestId, iun, feedbackEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, feedbackEvent.details.deliveryDetailCode, feedbackEvent.details.deliveryFailureCause, feedbackEvent.details.notificationDate, feedbackEvent.timestamp))  
+          }
+          if(!dryrun) {
+            await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).receiptHandle)
+          }
         }
       }
+      //TO REDRIVE PATH
       else {
-        let toDelete = verifyCompatibility(requestId, iun, feedbackEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, feedbackEvent.details.deliveryDetailCode, feedbackEvent.details.deliveryFailureCause, feedbackEvent.details.notificationDate, feedbackEvent.timestamp)
-        if (toDelete && !dryrun) {
-          //await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).receiptHandle)
-        }
+        console.log(requestId + " to redrive")
+        appendJsonToFile("to_redrive.csv", [requestId, dlq_elem.statusCode])
       }
     }
-    //TO REDRIVE PATH
-    else {
-      console.log(requestId + " to redrive")
-      appendJsonToFile("to_redrive.json", "{\"requestId\": \"" +requestId+ "\", \"statusCode\": \"" + dlq_elem.statusCode + "\"}")
+    else if (requestId.startsWith("PREPARE_SIMPLE")) {
+      let progressString = "SEND_SIMPLE_REGISTERED_LETTER_PROGRESS.IUN_" + iun + requestId.split(iun)[1].split('.PCRETRY')[0]
+      let simpleLetterProgressEvents = timelineEvents.filter(x => x.timelineElementId.S.startsWith(progressString))
+      let toDelete = false;
+      for(let z = 0; z < simpleLetterProgressEvents.length; z++) {
+        let progressEvent = unmarshall(simpleLetterProgressEvents[z])
+        toDelete = verifyCompatibility('simple', requestId, iun, progressEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, progressEvent.details.deliveryDetailCode,  progressEvent.details?.deliveryFailureCause,  progressEvent.details.notificationDate, progressEvent.timestamp)
+        if (toDelete) {
+          appendJsonToFile("to_delete.csv", createReport(requestId, iun, progressEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, progressEvent.details.deliveryDetailCode,  progressEvent.details?.deliveryFailureCause,  progressEvent.details.notificationDate, progressEvent.timestamp))
+          if(!dryrun) {
+            await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).receiptHandle)
+          }
+          break
+        }
+      }
+      if(!toDelete) {
+        console.log(requestId + " to redrive")
+        appendJsonToFile("to_redrive.csv", [requestId, dlq_elem.statusCode])
+      }
     }
   }
   console.log("End Execution")
