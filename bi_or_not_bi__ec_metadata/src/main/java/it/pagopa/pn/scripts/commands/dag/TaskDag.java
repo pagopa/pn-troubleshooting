@@ -75,6 +75,12 @@ public class TaskDag implements Iterable<Task> {
         return dag.vertexSet().size();
     }
 
+    /**
+     * Export graph using mermaid markdown representation.
+     * More information about mermaid here: <a href="https://mermaid.js.org/">Mermaid</a>
+     *
+     * @return the graph in mermaid representation
+     * */
     public String toMermaid() {
         final String HEAD = "```mermaid\ngraph TD\n";
         final String TAIL = "\n```";
