@@ -6,10 +6,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Map;
+import java.rmi.server.ExportException;
+import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -75,6 +73,19 @@ public class TaskDag implements Iterable<Task> {
 
     public int size() {
         return dag.vertexSet().size();
+    }
+
+    public String toMermaid() {
+        final String HEAD = "```mermaid\ngraph TD\n";
+        final String TAIL = "\n```";
+
+        StringJoiner edgeJoiner = new StringJoiner("\n");
+
+        this.dag.edgeSet().forEach(edge -> edgeJoiner.add(
+            this.dag.getEdgeSource(edge).getId() + " --> " + this.dag.getEdgeTarget(edge).getId())
+        );
+
+        return HEAD + edgeJoiner + TAIL;
     }
 
 }
