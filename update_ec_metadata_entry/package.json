@@ -1,0 +1,17 @@
+{
+  "name": "update_ec_metadata_entry",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.574.0",
+    "@aws-sdk/client-sqs": "^3.574.0",
+    "@aws-sdk/credential-provider-ini": "^3.572.0",
+    "@aws-sdk/util-dynamodb": "^3.574.0"
+  }
+}
