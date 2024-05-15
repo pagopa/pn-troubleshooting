@@ -6,7 +6,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
 
-import java.rmi.server.ExportException;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -78,11 +77,19 @@ public class TaskDag implements Iterable<Task> {
     /**
      * Export graph using mermaid markdown representation.
      * More information about mermaid here: <a href="https://mermaid.js.org/">Mermaid</a>
+     * <pre>
+     *     ```mermaid
+     *     graph LR
+     *     VertexA --> VertexB
+     *     VertexA --> VertexC
+     *     VertexB --> VertexD
+     *     ```
+     * </pre>
      *
      * @return the graph in mermaid representation
      * */
     public String toMermaid() {
-        final String HEAD = "```mermaid\ngraph TD\n";
+        final String HEAD = "```mermaid\ngraph LR\n";
         final String TAIL = "\n```";
 
         StringJoiner edgeJoiner = new StringJoiner("\n");
