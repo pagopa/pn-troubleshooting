@@ -126,7 +126,9 @@ async function main() {
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   var results = []
   for(let idx = 0; idx < fileRows.length; idx++) {
-    results.push(JSON.parse(fileRows[idx]))
+    if(fileRows[idx]!='') {
+      results.push(JSON.parse(fileRows[idx]))
+    }
   }
   for (i = 0; i < results.length; i++) {
     let iun = results[i].iun
