@@ -9,6 +9,7 @@ public class SqlQueryHolder {
     private String name;
     private String location;
     private String sqlQuery;
+    private Boolean persist;
     private Set<SqlQueryDependency> dependencies = new HashSet<>();
 
     private boolean isEntryPoint;
@@ -45,11 +46,19 @@ public class SqlQueryHolder {
         this.dependencies = dependencies;
     }
 
-    public boolean isEntryPoint() {
+    public Boolean isPersist() {
+        return persist;
+    }
+
+    public void setPersist(Boolean persist) {
+        this.persist = persist;
+    }
+
+    public Boolean isEntryPoint() {
         return isEntryPoint;
     }
 
-    public void setEntryPoint(boolean entryPoint) {
+    public void setEntryPoint(Boolean entryPoint) {
         isEntryPoint = entryPoint;
     }
 

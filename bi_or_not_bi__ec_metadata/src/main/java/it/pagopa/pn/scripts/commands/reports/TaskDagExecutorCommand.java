@@ -76,7 +76,7 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
         TaskDag taskDag = QueryDagToTaskDagAdapter.from(parseQueryDag(reports), job);
 
         // Instantiate runner and run single threaded
-        TaskRunner taskRunner = new TaskRunner(taskDag);
+        TaskRunner taskRunner = new TaskRunner(taskDag, spark);
         taskRunner.linearRun();
 
         // Produce report for each case

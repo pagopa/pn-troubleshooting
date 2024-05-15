@@ -18,6 +18,8 @@ public abstract class Task implements Vertex {
 
     protected Object result;
 
+    protected Boolean persist;
+
     /* GETTER & SETTER */
 
     @Override
@@ -50,6 +52,14 @@ public abstract class Task implements Vertex {
     }
     public <T> T getResult(Class<T> type) {
         return type.cast(result);
+    }
+
+    public Boolean isPersist() {
+        return persist;
+    }
+
+    public void setPersist(Boolean persist) {
+        this.persist = persist;
     }
 
     public void run() {

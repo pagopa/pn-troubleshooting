@@ -4,6 +4,7 @@ import it.pagopa.pn.scripts.commands.dag.TaskDag;
 import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
 import it.pagopa.pn.scripts.commands.dag.model.Task;
 import it.pagopa.pn.scripts.commands.sparksql.SqlQueryDag;
+import org.apache.commons.lang3.BooleanUtils;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -31,6 +32,7 @@ public class QueryDagToTaskDagAdapter {
                 var sqlQuery = v.getSqlQuery();
 
                 var sqlTask = new SQLTask(id, name, sqlQuery, job);
+                sqlTask.setPersist(BooleanUtils.toBooleanDefaultIfNull(v.isPersist(), Boolean.TRUE));
 
                 taskDag.addTask(sqlTask, v.isEntryPoint());
                 tasks.put(id, sqlTask);
