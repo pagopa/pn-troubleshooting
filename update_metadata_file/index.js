@@ -122,35 +122,45 @@ async function main() {
   const results = await _parseCSV(fileName)
   const listBuckets = await awsClient._getBucketLists();
   const bucketName = listBuckets.Buckets.filter((x) => x.Name.indexOf("safestorage")>0 && x.Name.indexOf("staging")<0)[0].Name;
-  
+  const folder = fileName.split(".")[0]
   for (i = 0; i < results.length; i++) {
     let iun = results[i].iun
     //RETRIEVE ATTACHMENTS START
-    const attachments = (await awsClient._queryRequest("pn-Notifications", 'iun', iun, 'documents,recipients', 'core')).Items[0];
+    const attachments = unmarshall((await awsClient._queryRequest("pn-Notifications", 'iun', iun, 'documents,recipients,idempotenceToken,paNotificationId,senderPaId', 'core')).Items[0]);
     results[i]['attachments'] = []
-    for(const doc of unmarshall(attachments).documents) {
+    for(const doc of attachments.documents) {
       results[i].attachments.push(doc.ref.key)
     }
-    for(const recipient of unmarshall(attachments).recipients) { 
+    for(const recipient of attachments.recipients) { 
       if(recipient.payments != null) {
         for(const payment of recipient.payments) {
           payment.pagoPaForm ? results[i].attachments.push(payment.pagoPaForm.ref.key) : null
         }
       }
     }
+    results[i]['idempotenceToken'] = attachments.idempotenceToken
+    results[i]['paProtocolNumber'] = attachments.paNotificationId
+    results[i]['senderPaId'] = attachments.senderPaId
     //RETRIEVE ATTACHMENTS END
     //REMOVE DELETE MARKER START
     for(let j=0; j<results[i].attachments.length; j++){
       const fileKey = results[i].attachments[j]
       try{
         const delMarkerRes = await removeDeletionMarkerIfNeeded(fileKey, bucketName)
-        appendJsonToFile(resultPath, "logs.json", delMarkerRes)
+        appendJsonToFile(resultPath + "/" + folder, "logs.json", delMarkerRes)
       } catch(err){
         if(err.message.indexOf('Deletion marker not found ')===0){
-          appendJsonToFile(resultPath, "logs.json", {
+          appendJsonToFile(resultPath + "/" + folder, "logs.json", {
             fileKey: fileKey,
             deletionMarkerRemoved: false,
             error: err.message
+          })
+          appendJsonToFile(resultPath + "/" + folder, "to_retrieve.json", {
+            iun: iun,
+            senderPaId: results[i].senderPaId,
+            idempotenceToken: results[i].idempotenceToken,
+            paProtocolNumber: results[i].paProtocolNumber,
+            fileKey: fileKey,
           })
         } else {
           console.log('Error on file ' + fileKey)
@@ -158,7 +168,7 @@ async function main() {
         }
       }
       //REQUEST TO PN-SS START
-      let newRetentionDate;
+      /*let newRetentionDate;
       if(results[i].status == "refined") {
         newRetentionDate = resolveDate(new Date(results[i].ts), true)
       }
@@ -174,6 +184,7 @@ async function main() {
       else {
         console.log("Request to safestorage: with newRetentionDate: " + newRetentionDate)
       }
+      */
       //REQUEST TO PN-SS END
     }
     //REMOVE DELETE MARKER END
@@ -183,7 +194,7 @@ async function main() {
 const args = [
   { name: "envName", mandatory: true, subcommand: [] },
   { name: "fileName", mandatory: true, subcommand: [] },
-  { name: "dryrun", mandatory: true, subcommand: [] },
+  { name: "dryrun", mandatory: false, subcommand: [] },
 ]
 const values = {
   values: { envName, fileName, dryrun},
