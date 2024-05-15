@@ -1,17 +1,18 @@
 package it.pagopa.pn.scripts.commands.utils;
 
 import it.pagopa.pn.scripts.commands.enumerations.FormatEnum;
+import it.pagopa.pn.scripts.commands.logs.LoggerFactory;
 import org.apache.spark.sql.DataFrameWriter;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SaveMode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.util.logging.Logger;
 
 
 public class SparkDatasetWriter {
 
-    private static final Logger log = LoggerFactory.getLogger(SparkDatasetWriter.class);
+    private static final Logger log = LoggerFactory.getLogger();
 
     private static final String CSV_HEADER_OPTION = "header";
     private static final String CSV_DELIMITER_OPTION = "delimiter";
@@ -80,11 +81,13 @@ public class SparkDatasetWriter {
             case PARQUET -> this.writeDatasetToParquet(writer, this.outLocation);
             default -> this.writeDatasetToCsv(writer, this.outLocation);
         }
+
+        log.info(() -> "Dataset written to " + this.outLocation);
     }
 
     private void writeDatasetToCsv(DataFrameWriter<Row> writer, String out) {
 
-        log.info("Writing dataset in CSV to location: {}", out);
+        log.info(() -> "Writing dataset in CSV to location " + out);
 
         writer
             .option(CSV_HEADER_OPTION, true)
@@ -94,14 +97,14 @@ public class SparkDatasetWriter {
 
     private void writeDatasetToJson(DataFrameWriter<Row> writer, String out) {
 
-        log.info("Writing dataset in JSON to location: {}", out);
+        log.info(() -> "Writing dataset in JSON to location " + out);
 
         writer.json(out);
     }
 
     private void writeDatasetToParquet(DataFrameWriter<Row> writer, String out) {
 
-        log.info("Writing dataset in PARQUET to location: {}", out);
+        log.info(() -> "Writing dataset in PARQUET to location: " + out);
 
         writer.parquet(out);
     }

@@ -8,6 +8,7 @@ import it.pagopa.pn.scripts.commands.dag.TaskRunner;
 import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
 import it.pagopa.pn.scripts.commands.dag.model.Task;
 import it.pagopa.pn.scripts.commands.enumerations.SchemaEnum;
+import it.pagopa.pn.scripts.commands.logs.LoggerFactory;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
 import it.pagopa.pn.scripts.commands.reports.model.Report;
 import it.pagopa.pn.scripts.commands.reports.model.ReportFleet;
@@ -26,13 +27,18 @@ import picocli.CommandLine.ParentCommand;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Command(name = "taskDagExecutor")
 public class TaskDagExecutorCommand implements Callable<Integer> {
+
+    private static final Logger log = LoggerFactory.getLogger();
 
     private static final String APPLICATION_NAME = "taskDagExecutor";
     private static final String REPORT_FOLDER = "/reports";
@@ -54,6 +60,9 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
 
+        log.info("Starting command " + APPLICATION_NAME);
+        Instant start = Instant.now();
+
         // Initialize spark session and get wrapper
         SparkSqlWrapper spark = this.sparkInit();
 
@@ -73,6 +82,9 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
         // Produce report for each case
         reports.getReports()
             .forEach(report -> this.writeOutReport(report, taskDag));
+
+        long completionTime = Instant.now().toEpochMilli() - start.toEpochMilli();
+        log.log(Level.INFO, () -> APPLICATION_NAME + " completed in " + completionTime + "ms");
 
         return 0;
     }

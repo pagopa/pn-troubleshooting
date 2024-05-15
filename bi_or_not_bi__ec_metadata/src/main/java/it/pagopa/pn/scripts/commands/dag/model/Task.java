@@ -1,9 +1,14 @@
 package it.pagopa.pn.scripts.commands.dag.model;
 
+import it.pagopa.pn.scripts.commands.logs.LoggerFactory;
+
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 public abstract class Task implements Vertex {
+
+    private static final Logger log = LoggerFactory.getLogger();
 
     protected String id;
 
@@ -48,7 +53,9 @@ public abstract class Task implements Vertex {
     }
 
     public void run() {
+        log.info("Running task " + getId());
         result = job.apply(this);
+        log.info("Task " + getId() + " completed");
     }
 
     @Override
