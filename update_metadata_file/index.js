@@ -119,10 +119,15 @@ function appendJsonToFile(resultPath, fileName, jsonData){
 
 async function main() {
   const resultPath = path.join(__dirname, "files");
-  const results = await _parseCSV(fileName)
+  //const results = await _parseCSV(fileName)
   const listBuckets = await awsClient._getBucketLists();
   const bucketName = listBuckets.Buckets.filter((x) => x.Name.indexOf("safestorage")>0 && x.Name.indexOf("staging")<0)[0].Name;
   const folder = fileName.split(".")[0]
+  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+  var results = []
+  for(let idx = 0; idx < fileRows.length; idx++) {
+    results.push(JSON.parse(fileRows[idx]))
+  }
   for (i = 0; i < results.length; i++) {
     let iun = results[i].iun
     //RETRIEVE ATTACHMENTS START
