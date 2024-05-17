@@ -3,6 +3,7 @@ package it.pagopa.pn.scripts.commands.reports;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.pagopa.pn.scripts.commands.CommandsMain;
 import it.pagopa.pn.scripts.commands.config.resolver.ObjectMapperResolver;
+import it.pagopa.pn.scripts.commands.dag.SparkTaskRunner;
 import it.pagopa.pn.scripts.commands.dag.TaskDag;
 import it.pagopa.pn.scripts.commands.dag.TaskRunner;
 import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
@@ -76,7 +77,7 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
         TaskDag taskDag = QueryDagToTaskDagAdapter.from(parseQueryDag(reports), job);
 
         // Instantiate runner and run single threaded
-        TaskRunner taskRunner = new TaskRunner(taskDag, spark);
+        TaskRunner taskRunner = new SparkTaskRunner(taskDag, spark);
         taskRunner.linearRun();
 
         // Produce report for each case
