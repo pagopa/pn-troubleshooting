@@ -77,7 +77,7 @@ async function callAddressManager(baseUrl,requestID,baseAddress,targetAddress){
     
     let url = baseUrl+'/address-private/deduplicates';
     let body = {
-        correlationId: "NRG_"+requestID,
+        correlationId: "NRG_ADDRESS_"+requestID,
         baseAddress: baseAddress,
         targetAddress: targetAddress
     } 
