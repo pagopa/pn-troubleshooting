@@ -15,12 +15,13 @@ const args = [
     { name: "envType", mandatory: true },
     { name: "requestId", mandatory: false },
     { name: "inputFile", mandatory: false },
-    { name: "outputFile", mandatory: false },
+    { name: "outputFile", mandatory: true },
+    { name: "callAddressManager", mandatory: false },
     { name: "nrBasePath", mandatory: false },
     { name: "adrMBasePath", mandatory: false },
 ]
 const values = {
-  values: { awsCoreProfile, envType, requestId, inputFile, outputFile, nrBasePath, adrMBasePath },
+  values: { awsCoreProfile, envType, requestId, inputFile, outputFile, callAddressManager, nrBasePath, adrMBasePath },
 } = parseArgs({
   options: {
     awsCoreProfile: {
@@ -40,6 +41,10 @@ const values = {
         short: "i"
     },
     outputFile: {
+        type: "string",
+        short: "i"
+    },
+    callAddressManager: {
         type: "string",
         short: "i"
     },
@@ -68,12 +73,20 @@ args.forEach(k => {
         console.log('use default basePath NR');
         adrMBasePath = 'http://localhost:8887';
     }
+
+    if(!callAddressManager || (callAddressManager+'').toUpperCase() != 'TRUE'){
+        callAddressManager = false;
+    }else{
+        callAddressManager= true;
+    }
   });
 
+outputFile = outputFile+'_'+(new Date().toISOString()+'')+'.csv';
 console.log("Using AWS Core profile: "+ awsCoreProfile)
 console.log("Using Env Type: "+ envType)
 console.log("Using Request ID: "+ requestId)
 console.log("Using input file : "+ inputFile)
+console.log("Using output file : "+ outputFile)
 
 
 
@@ -220,6 +233,8 @@ async function getDecryptedValue(value, kmsArn){
     return originalText
 }
 
+let firstWrite = true;
+const csvTop = 'requestId; address1; address2; equalityResult; error';
 
 function initialiteRequestId(){
     let requestIds;
@@ -280,6 +295,8 @@ async function run(){
         let nrResponse = await ApiClient.callNr(cxId,fiscalCode,nrBasePath)
         if(nrResponse && nrResponse.residentialAddresses){
             console.log("NR response: "+JSON.stringify(nrResponse.residentialAddresses));
+
+
         }
         
 
@@ -293,8 +310,8 @@ async function run(){
         }
         console.log('baseAddress: ',baseAddress);
 
-        let jsonNrAddress = nrResponse.residentialAddresses[0];
-        let targetAddress = {
+        let jsonNrAddress = nrResponse ? nrResponse.residentialAddresses[0]: null;
+        let targetAddress = jsonNrAddress ? {
             cap: jsonNrAddress['zip'],
             addressRow: jsonNrAddress['address'],
             addressRow2: jsonNrAddress['addressDetails'],
@@ -302,17 +319,32 @@ async function run(){
             city2: jsonNrAddress['municipalityDetails'],
             pr: jsonNrAddress['province'],
             country: jsonNrAddress['foreignState']
-        }
+        } : null
         console.log('TargetAddress: ',targetAddress);
        
-        let deduplicateAddress = await ApiClient.callAddressManager(adrMBasePath,currentRequestId,baseAddress,targetAddress);
-        console.log('AddressManager call result: ',deduplicateAddress);
+        let deduplicateAddress;
+        if(targetAddress && callAddressManager){
+            deduplicateAddress = await ApiClient.callAddressManager(adrMBasePath,currentRequestId,baseAddress,targetAddress);
+            console.log('AddressManager call result: ',deduplicateAddress);
+        }
+       
+        //csvTop = 'requestId, address1, address2, equalityResult, error';
+        let address1 = baseAddress? JSON.stringify(baseAddress) : 'N/A';
+        let address2 = targetAddress? JSON.stringify(targetAddress) : 'N/A';
+        let equalityResult = deduplicateAddress ? deduplicateAddress['equalityResult'] : 'N/A';
+        let error = deduplicateAddress ? deduplicateAddress['error'] : 'N/A';
+
+        let result = currentRequestId+";"+address1+';'+address2+';'+equalityResult+';'+error;
+        console.log("RESULT: "+result);
 
         if(outputFile){
-            let result = fiscalCode; //Mod with real result
+             if(firstWrite){
+                console.log('Write first time');
+                fs.writeFileSync(outputFile, csvTop + '\n', (err) => { if (err) { throw new Error(`Error appending to file: ${err}`); } });
+                firstWrite = false;
+             }
 
-            //console.log('OutputFile: ',outputFile);
-            fs.appendFile(outputFile, result + '\n', (err) => { if (err) { throw new Error(`Error appending to file: ${err}`); } });
+            fs.appendFileSync(outputFile, result + '\n', (err) => { if (err) { throw new Error(`Error appending to file: ${err}`); } });
         }
         
     }
