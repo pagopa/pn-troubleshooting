@@ -14,12 +14,13 @@ const args = [
     { name: "awsCoreProfile", mandatory: true },
     { name: "envType", mandatory: true },
     { name: "requestId", mandatory: false },
-    { name: "fileName", mandatory: false },
+    { name: "inputFile", mandatory: false },
     { name: "outputFile", mandatory: false },
     { name: "nrBasePath", mandatory: false },
+    { name: "adrMBasePath", mandatory: false },
 ]
 const values = {
-  values: { awsCoreProfile, envType, requestId, fileName, outputFile, nrBasePath },
+  values: { awsCoreProfile, envType, requestId, inputFile, outputFile, nrBasePath, adrMBasePath },
 } = parseArgs({
   options: {
     awsCoreProfile: {
@@ -34,7 +35,7 @@ const values = {
         type: "string",
         short: "i"
     },
-    fileName: {
+    inputFile: {
         type: "string",
         short: "i"
     },
@@ -46,25 +47,33 @@ const values = {
         type: "string",
         short: "i"
     },
+    adrMBasePath: {
+        type: "string",
+        short: "i"
+    },
   },
 });
 
 args.forEach(k => {
     if (k.mandatory && !values.values[k.name]) {
       console.log("Parameter '" + k.name + "' is not defined")
-      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id> || --fileName")
+      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id> || --inputFile")
       process.exit(1)
     }
     if(!nrBasePath){
         console.log('use default basePath NR');
         nrBasePath = 'http://localhost:8888';
     }
+    if(!adrMBasePath){
+        console.log('use default basePath NR');
+        adrMBasePath = 'http://localhost:8887';
+    }
   });
 
 console.log("Using AWS Core profile: "+ awsCoreProfile)
 console.log("Using Env Type: "+ envType)
-console.log("Using Rquest ID: "+ requestId)
-console.log("Using file : "+ fileName)
+console.log("Using Request ID: "+ requestId)
+console.log("Using input file : "+ inputFile)
 
 
 
@@ -73,18 +82,10 @@ const urls = {
       pdv: 'https://api.uat.tokenizer.pdv.pagopa.it',
       selfcare: 'https://api.uat.selfcare.pagopa.it'
     },
-    hotfix: {
-      pdv: 'https://api.uat.tokenizer.pdv.pagopa.it',
-      selfcare: 'https://api.uat.selfcare.pagopa.it'
-    },
     prod: {
       pdv: 'https://api.tokenizer.pdv.pagopa.it',
       selfcare: 'https://api.selfcare.pagopa.it'
     },
-    dev: {
-        pdv: 'https://api.uat.tokenizer.pdv.pagopa.it',
-        selfcare: 'https://api.uat.selfcare.pagopa.it'
-      },
   }
 
 const baseUrlSelfcare = envType == 'prod' ? urls.prod.selfcare : urls.uat.selfcare
@@ -222,8 +223,8 @@ async function getDecryptedValue(value, kmsArn){
 
 function initialiteRequestId(){
     let requestIds;
-    if(fileName){
-        requestIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+    if(inputFile){
+        requestIds = fs.readFileSync(inputFile, { encoding: 'utf8', flag: 'r' }).split('\n')
     }else{
         console.log('Use requestId value');
         requestIds = new Array(requestId)
@@ -256,7 +257,7 @@ async function run(){
         let cxId = paperRequestDelivery.fiscalCode;
         console.log('Fiscal Code: ', cxId)
     
-        const awsClient = new AwsClientsWrapper("dev");
+        const awsClient = new AwsClientsWrapper(envType);
         const apiKeys = await awsClient._getSecretKey('pn-PersonalDataVault-Secrets')
         const secrets =  {
             apiKeyPF: apiKeys.TokenizerApiKeyForPF,
@@ -281,9 +282,36 @@ async function run(){
             console.log("NR response: "+JSON.stringify(nrResponse.residentialAddresses));
         }
         
+
+        let baseAddress = {
+            cap: decodedAddressData['cap'],
+            addressRow: decodedAddressData['address'],
+            addressRow2: decodedAddressData['addressRow2'],
+            city: decodedAddressData['city'],
+            pr: decodedAddressData['pr'],
+            country: decodedAddressData['country']
+        }
+        console.log('baseAddress: ',baseAddress);
+
+        let jsonNrAddress = nrResponse.residentialAddresses[0];
+        let targetAddress = {
+            cap: jsonNrAddress['zip'],
+            addressRow: jsonNrAddress['address'],
+            addressRow2: jsonNrAddress['addressDetails'],
+            city: jsonNrAddress['municipality'],
+            city2: jsonNrAddress['municipalityDetails'],
+            pr: jsonNrAddress['province'],
+            country: jsonNrAddress['foreignState']
+        }
+        console.log('TargetAddress: ',targetAddress);
+       
+        let deduplicateAddress = await ApiClient.callAddressManager(adrMBasePath,currentRequestId,baseAddress,targetAddress);
+        console.log('AddressManager call result: ',deduplicateAddress);
+
         if(outputFile){
-            let result = fiscalCode;
-            console.log('OutputFile: ',outputFile);
+            let result = fiscalCode; //Mod with real result
+
+            //console.log('OutputFile: ',outputFile);
             fs.appendFile(outputFile, result + '\n', (err) => { if (err) { throw new Error(`Error appending to file: ${err}`); } });
         }
         
@@ -292,6 +320,7 @@ async function run(){
     return;
     
 }
+
     
 
 run()

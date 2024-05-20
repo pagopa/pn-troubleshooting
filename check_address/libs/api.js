@@ -56,7 +56,7 @@ async function callNr(cxId,fiscalCode, baseUrl){
         throw new Error('Invalid UID prefix');
     }
     try{
-        let response = await axios.post(url,body, {headers});
+        let response = await axios.post(url, body, {headers});
         return response.data;
     }catch(error){
         console.error("Call NR error");
@@ -64,9 +64,38 @@ async function callNr(cxId,fiscalCode, baseUrl){
     
 }
 
+
+
+async function callAddressManager(baseUrl,requestID,baseAddress,targetAddress){
+
+    const headers = {
+            'Content-Type' : 'application/json',
+            'Accept' : 'application/json',
+            'x-api-key' : 'pn-mock-apikey',
+            'pn-address-manager-cx-id' : 'pn-mock'
+    };
+    
+    let url = baseUrl+'/address-private/deduplicates';
+    let body = {
+        correlationId: "NRG_"+requestID,
+        baseAddress: baseAddress,
+        targetAddress: targetAddress
+    } 
+
+              
+    try{
+        let response = await axios.post(url, body, {headers});
+        return response.data;
+    }catch(error){
+        console.error("Call address manager error ",error);
+    }
+    
+}
+
 const ApiClient = {
     decodeUID,
-    callNr
+    callNr,
+    callAddressManager
 }
 
 exports.ApiClient = ApiClient;
