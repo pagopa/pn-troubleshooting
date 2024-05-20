@@ -8,7 +8,6 @@ const { ApiClient } = require("./libs/api");
 const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 
 const fs = require('fs')
-const jsonDiff = require('json-diff');
 
 
 const args = [
@@ -16,9 +15,11 @@ const args = [
     { name: "envType", mandatory: true },
     { name: "requestId", mandatory: false },
     { name: "fileName", mandatory: false },
+    { name: "outputFile", mandatory: false },
+    { name: "nrBasePath", mandatory: false },
 ]
 const values = {
-  values: { awsCoreProfile, envType, requestId, fileName },
+  values: { awsCoreProfile, envType, requestId, fileName, outputFile, nrBasePath },
 } = parseArgs({
   options: {
     awsCoreProfile: {
@@ -37,6 +38,14 @@ const values = {
         type: "string",
         short: "i"
     },
+    outputFile: {
+        type: "string",
+        short: "i"
+    },
+    nrBasePath: {
+        type: "string",
+        short: "i"
+    },
   },
 });
 
@@ -45,6 +54,10 @@ args.forEach(k => {
       console.log("Parameter '" + k.name + "' is not defined")
       console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id> || --fileName")
       process.exit(1)
+    }
+    if(!nrBasePath){
+        console.log('use default basePath NR');
+        nrBasePath = 'http://localhost:8888';
     }
   });
 
@@ -210,7 +223,7 @@ async function getDecryptedValue(value, kmsArn){
 function initialiteRequestId(){
     let requestIds;
     if(fileName){
-        console.log('Use file value');
+        requestIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
     }else{
         console.log('Use requestId value');
         requestIds = new Array(requestId)
@@ -263,13 +276,17 @@ async function run(){
         console.log('decode FiscalCode response', fiscalCode)
 
 
-        let nrResponse = await ApiClient.callNr(cxId,fiscalCode,'http://localhost:8888')
+        let nrResponse = await ApiClient.callNr(cxId,fiscalCode,nrBasePath)
         if(nrResponse && nrResponse.residentialAddresses){
             console.log("NR response: "+JSON.stringify(nrResponse.residentialAddresses));
         }
         
+        if(outputFile){
+            let result = fiscalCode;
+            console.log('OutputFile: ',outputFile);
+            fs.appendFile(outputFile, result + '\n', (err) => { if (err) { throw new Error(`Error appending to file: ${err}`); } });
+        }
         
-
     }
     
     return;
