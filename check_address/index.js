@@ -14,11 +14,11 @@ const jsonDiff = require('json-diff');
 const args = [
     { name: "awsCoreProfile", mandatory: true },
     { name: "envType", mandatory: true },
-    { name: "requestId", mandatory: true },
-    { name: "update", mandatory: false }
+    { name: "requestId", mandatory: false },
+    { name: "fileName", mandatory: false },
 ]
 const values = {
-  values: { awsCoreProfile, envType, requestId, update },
+  values: { awsCoreProfile, envType, requestId, fileName },
 } = parseArgs({
   options: {
     awsCoreProfile: {
@@ -33,13 +33,26 @@ const values = {
         type: "string",
         short: "i"
     },
-    update: {
-        type: "boolean",
-        default: false,
-        short: "w"
-    }
+    fileName: {
+        type: "string",
+        short: "i"
+    },
   },
 });
+
+args.forEach(k => {
+    if (k.mandatory && !values.values[k.name]) {
+      console.log("Parameter '" + k.name + "' is not defined")
+      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id> || --fileName")
+      process.exit(1)
+    }
+  });
+
+console.log("Using AWS Core profile: "+ awsCoreProfile)
+console.log("Using Env Type: "+ envType)
+console.log("Using Rquest ID: "+ requestId)
+console.log("Using file : "+ fileName)
+
 
 
 const urls = {
@@ -61,21 +74,8 @@ const urls = {
       },
   }
 
-  const baseUrlSelfcare = envType == 'prod' ? urls.prod.selfcare : urls.uat.selfcare
-  const baseUrlPDV = envType == 'prod' ? urls.prod.pdv: urls.uat.pdv
-
-args.forEach(k => {
-    if (k.mandatory && !values.values[k.name]) {
-      console.log("Parameter '" + k.name + "' is not defined")
-      console.log("Usage: node index.js --awsCoreProfile <aws-core-profile> --envType <env-type> --requestId <request-id> [--update]")
-      process.exit(1)
-    }
-  });
-
-  console.log("Using AWS Core profile: "+ awsCoreProfile)
-  console.log("Using Env Type: "+ envType)
-  console.log("Using Rquest ID: "+ requestId)
-  console.log("Using Write Operation on DynamoDB : "+ update)
+const baseUrlSelfcare = envType == 'prod' ? urls.prod.selfcare : urls.uat.selfcare
+const baseUrlPDV = envType == 'prod' ? urls.prod.pdv: urls.uat.pdv
 
 
 const coreCredentials = fromSSO({ profile: awsCoreProfile })();
@@ -206,72 +206,78 @@ async function getDecryptedValue(value, kmsArn){
     return originalText
 }
 
-async function getEncryptedValue(value, kmsArn){
-    const base64Value = Buffer.from(value, 'utf-8').toString('base64')
 
-    const input = { // DecryptRequest
-        Plaintext: Buffer.from(base64Value, 'base64'), 
-        KeyId: kmsArn
-    };
-    const command = new EncryptCommand(input);
-    const response = await kmsClient.send(command);
-
-    const base64Text = Buffer.from(response.CiphertextBlob).toString('base64'); 
-    return base64Text
+function initialiteRequestId(){
+    let requestIds;
+    if(fileName){
+        console.log('Use file value');
+    }else{
+        console.log('Use requestId value');
+        requestIds = new Array(requestId)
+    }
+    return requestIds;
 }
 
-
-
 async function run(){
-    const keyArn = await getKeyArn()    
-    console.log('kms key arn', keyArn)
+    let requestIds = initialiteRequestId();
+    for(i=0; i < requestIds.length; i++){
 
-    if(!keyArn){
-        throw new Error("Missing key arn")
-    }
+        let currentRequestId = requestIds[i];
 
-    const paperReceiverAddress = await getReceiverPaperAddress(requestId)
-    console.log('original address data', paperReceiverAddress)
+        const keyArn = await getKeyArn()    
+        console.log('kms key arn', keyArn)
 
-    const decodedAddressData = await getDecodedAddressData(paperReceiverAddress, keyArn)
-    console.log('decoded address data', decodedAddressData)
+        if(!keyArn){
+            throw new Error("Missing key arn")
+        }
 
-    const paperRequestDelivery = await getPaperRequestDelivery(requestId)
-    console.log('paper request delivery', paperRequestDelivery)
+        const paperReceiverAddress = await getReceiverPaperAddress(currentRequestId)
+        console.log('original address data', paperReceiverAddress)
 
-    let cxId = paperRequestDelivery.fiscalCode;
-    console.log('Fiscal Code: ', cxId)
+        const decodedAddressData = await getDecodedAddressData(paperReceiverAddress, keyArn)
+        console.log('decoded address data', decodedAddressData)
+
+        const paperRequestDelivery = await getPaperRequestDelivery(currentRequestId)
+        console.log('paper request delivery', paperRequestDelivery)
+
+        let cxId = paperRequestDelivery.fiscalCode;
+        console.log('Fiscal Code: ', cxId)
     
-    const awsClient = new AwsClientsWrapper("dev");
-    const apiKeys = await awsClient._getSecretKey('pn-PersonalDataVault-Secrets')
-    const secrets =  {
-        apiKeyPF: apiKeys.TokenizerApiKeyForPF,
-        apiKeyPG: apiKeys.SelfcareApiKeyForPG
+        const awsClient = new AwsClientsWrapper("dev");
+        const apiKeys = await awsClient._getSecretKey('pn-PersonalDataVault-Secrets')
+        const secrets =  {
+            apiKeyPF: apiKeys.TokenizerApiKeyForPF,
+            apiKeyPG: apiKeys.SelfcareApiKeyForPG
+        }
+    
+        let res;
+        let fiscalCode = "";
+        if(cxId.startsWith('PF')) {
+            res = await ApiClient.decodeUID(cxId, baseUrlPDV, secrets.apiKeyPF)
+            fiscalCode = res.pii
+        } else {
+            res = await ApiClient.decodeUID(cxId, baseUrlSelfcare, secrets.apiKeyPG)
+            fiscalCode = res.taxCode
+        }
+
+        console.log('decode FiscalCode response', fiscalCode)
+
+
+        let nrResponse = await ApiClient.callNr(cxId,fiscalCode,'http://localhost:8888')
+        if(nrResponse && nrResponse.residentialAddresses){
+            console.log("NR response: "+JSON.stringify(nrResponse.residentialAddresses));
+        }
+        
+        
+
     }
     
-    let res;
-    let fiscalCode = "";
-    if(cxId.startsWith('PF')) {
-        res = await ApiClient.decodeUID(cxId, baseUrlPDV, secrets.apiKeyPF)
-        fiscalCode = res.pii
-    } else {
-        res = await ApiClient.decodeUID(cxId, baseUrlSelfcare, secrets.apiKeyPG)
-        fiscalCode = res.taxCode
-    }
-
-    console.log('decode FiscalCode response', fiscalCode)
-
-
-    let nrResponse = await ApiClient.callNr(cxId,fiscalCode,'http://localhost:8888')
-    console.log("NR response: "+JSON.stringify(nrResponse.residentialAddresses));
-
-
     return;
     
 }
     
 
 run()
-.then((d) => {
-    console.log('data', d)
+.then(() => {
+    console.log('process finished')
 })
