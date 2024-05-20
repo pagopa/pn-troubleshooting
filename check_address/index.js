@@ -234,7 +234,7 @@ async function getDecryptedValue(value, kmsArn){
 }
 
 let firstWrite = true;
-const csvTop = 'requestId; address1; address2; equalityResult; error';
+const csvTop = 'requestId; address1; address2; equalityResult; error; normalizedAddress';
 
 function initialiteRequestId(){
     let requestIds;
@@ -328,13 +328,14 @@ async function run(){
             console.log('AddressManager call result: ',deduplicateAddress);
         }
        
-        //csvTop = 'requestId, address1, address2, equalityResult, error';
+        //csvTop = 'requestId; address1; address2; equalityResult; error; normalizedAddress';
         let address1 = baseAddress? JSON.stringify(baseAddress) : 'N/A';
         let address2 = targetAddress? JSON.stringify(targetAddress) : 'N/A';
         let equalityResult = deduplicateAddress ? deduplicateAddress['equalityResult'] : 'N/A';
         let error = deduplicateAddress ? deduplicateAddress['error'] : 'N/A';
+        let normalizedAddress = deduplicateAddress ? JSON.stringify(deduplicateAddress['normalizedAddress']) : 'N/A';
 
-        let result = currentRequestId+";"+address1+';'+address2+';'+equalityResult+';'+error;
+        let result = currentRequestId+";"+address1+';'+address2+';'+equalityResult+';'+error+';'+normalizedAddress;
         console.log("RESULT: "+result);
 
         if(outputFile){
