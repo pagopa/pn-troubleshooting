@@ -268,23 +268,23 @@ async function run(){
         }
 
         const keyArn = await getKeyArn()    
-        console.log('kms key arn', keyArn)
+        //console.log('kms key arn', keyArn)
 
         if(!keyArn){
             throw new Error("Missing key arn")
         }
 
         const paperReceiverAddress = await getReceiverPaperAddress(currentRequestId)
-        console.log('original address data', paperReceiverAddress)
+        //console.log('original address data', paperReceiverAddress)
 
         const decodedAddressData = await getDecodedAddressData(paperReceiverAddress, keyArn)
-        console.log('decoded address data', decodedAddressData)
+        //console.log('decoded address data', decodedAddressData)
 
         const paperRequestDelivery = await getPaperRequestDelivery(currentRequestId)
-        console.log('paper request delivery', paperRequestDelivery)
+        //console.log('paper request delivery', paperRequestDelivery)
 
         let cxId = paperRequestDelivery.fiscalCode;
-        console.log('Fiscal Code: ', cxId)
+        //console.log('Fiscal Code: ', cxId)
     
         const awsClient = new AwsClientsWrapper(envType);
         /*
@@ -310,13 +310,12 @@ async function run(){
             fiscalCode = res.taxCode
         }
 
-        console.log('decode FiscalCode response', fiscalCode)
+        //console.log('decode FiscalCode response', fiscalCode)
 
 
         let nrResponse = await ApiClient.callNr(cxId,fiscalCode,nrBasePath)
         if(nrResponse && nrResponse.residentialAddresses){
             console.log("NR response: "+JSON.stringify(nrResponse.residentialAddresses));
-
 
         }
         
@@ -329,7 +328,7 @@ async function run(){
             pr: decodedAddressData['pr'],
             country: decodedAddressData['country']
         }
-        console.log('baseAddress: ',baseAddress);
+        //console.log('baseAddress: ',baseAddress);
 
         let jsonNrAddress = (nrResponse && nrResponse.residentialAddresses) ? nrResponse.residentialAddresses[0]: null;
 
@@ -342,7 +341,7 @@ async function run(){
             pr: jsonNrAddress['province'],
             country: jsonNrAddress['foreignState']
         } : null
-        console.log('TargetAddress: ',targetAddress);
+        //console.log('TargetAddress: ',targetAddress);
        
         let deduplicateAddress;
         if(targetAddress && callAddressManager){
