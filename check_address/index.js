@@ -331,7 +331,8 @@ async function run(){
         }
         console.log('baseAddress: ',baseAddress);
 
-        let jsonNrAddress = nrResponse ? nrResponse.residentialAddresses[0]: null;
+        let jsonNrAddress = (nrResponse && nrResponse.residentialAddresses) ? nrResponse.residentialAddresses[0]: null;
+
         let targetAddress = jsonNrAddress ? {
             cap: jsonNrAddress['zip'],
             addressRow: jsonNrAddress['address'],
