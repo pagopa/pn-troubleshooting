@@ -263,7 +263,7 @@ async function run(){
     for(i=0; i < requestIds.length; i++){
 
         let currentRequestId = requestIds[i];
-        if(currentRequestId && currentRequestId.trim().length == 0){
+        if(!currentRequestId || currentRequestId.trim().length == 0){
             continue;
         }
 
