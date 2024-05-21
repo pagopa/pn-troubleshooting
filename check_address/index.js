@@ -262,6 +262,9 @@ async function run(){
     for(i=0; i < requestIds.length; i++){
 
         let currentRequestId = requestIds[i];
+        if(currentRequestId && currentRequestId.trim().length == 0){
+            continue;
+        }
 
         const keyArn = await getKeyArn()    
         console.log('kms key arn', keyArn)
