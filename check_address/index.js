@@ -158,6 +158,7 @@ async function getItemFromTable(tableName, keys){
         TableName: tableName,
         Key: keys
     };
+    console.log('PARAMNS: ',params);
     const ret = await client.send(new GetCommand(params));
     if(ret && ret.Item){
         return ret.Item
