@@ -19,9 +19,11 @@ const args = [
     { name: "callAddressManager", mandatory: false },
     { name: "nrBasePath", mandatory: false },
     { name: "adrMBasePath", mandatory: false },
+    { name: "apikeypdv", mandatory: false },
+    { name: "apikeyselfcare", mandatory: false },
 ]
 const values = {
-  values: { awsCoreProfile, envType, requestId, inputFile, outputFile, callAddressManager, nrBasePath, adrMBasePath },
+  values: { awsCoreProfile, envType, requestId, inputFile, outputFile, callAddressManager, nrBasePath, adrMBasePath, apikeypdv, apikeyselfcare },
 } = parseArgs({
   options: {
     awsCoreProfile: {
@@ -53,6 +55,14 @@ const values = {
         short: "i"
     },
     adrMBasePath: {
+        type: "string",
+        short: "i"
+    },
+    apikeypdv: {
+        type: "string",
+        short: "i"
+    },
+    apikeyselfcare: {
         type: "string",
         short: "i"
     },
@@ -273,10 +283,17 @@ async function run(){
         console.log('Fiscal Code: ', cxId)
     
         const awsClient = new AwsClientsWrapper(envType);
+        /*
         const apiKeys = await awsClient._getSecretKey('pn-PersonalDataVault-Secrets')
         const secrets =  {
             apiKeyPF: apiKeys.TokenizerApiKeyForPF,
             apiKeyPG: apiKeys.SelfcareApiKeyForPG
+        }
+        */
+
+        const secrets =  {
+            apiKeyPF: apikeypdv,
+            apiKeyPG: apikeyselfcare
         }
     
         let res;
