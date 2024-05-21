@@ -59,7 +59,7 @@ async function callNr(cxId,fiscalCode, baseUrl){
         let response = await axios.post(url, body, {headers});
         return response.data;
     }catch(error){
-        console.error("Call NR error");
+        console.error("Call NR error ",error);
     }
     
 }
