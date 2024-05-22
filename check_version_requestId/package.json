@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.574.0",
+    "@aws-sdk/client-sqs": "^3.574.0",
+    "@aws-sdk/credential-provider-ini": "^3.572.0"
+  }
+}
