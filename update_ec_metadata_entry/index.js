@@ -88,27 +88,31 @@ async function main() {
     let metadata = unmarshall(result.Items[0])
     let requestStatus = metadata.statusRequest
     let latestRequestStatusElement = getLatestElement(metadata.eventsList, requestStatus)
-    let firstRequestStatusElement = getFirstElement(metadata.eventsList, requestStatus)
     delete latestRequestStatusElement["insertTimestamp"]
     delete latestRequestStatusElement.paperProgrStatus["clientRequestTimeStamp"]
+    let first = true;
     let lego = metadata.eventsList.filter( el => {
       let tmp = JSON.parse(JSON.stringify(el))
       delete tmp["insertTimestamp"]
       delete tmp.paperProgrStatus["clientRequestTimeStamp"]
-      return JSON.stringify(tmp)!==JSON.stringify(latestRequestStatusElement)
-    })
-    lego.push(firstRequestStatusElement)
-    lego = lego.sort((a, b) => {
-      const dateA = new Date(a.paperProgrStatus.statusDateTime)
-      const dateB = new Date(b.paperProgrStatus.statusDateTime)
-      return dateA - dateB
+      if(JSON.stringify(tmp)!==JSON.stringify(latestRequestStatusElement)) {
+        return true;
+      }
+      else {
+        if(first) {
+          first = false;
+          return true;
+        }
+        return false;
+      }
     })
     data = {
       eventsList: lego,
-      version: metadata.version + 1
+      version: metadata.version + 1,
+      date: new Date().toISOString()
     }
     if(!dryrun) {
-      //await awsClient._updateItem("pn-EcRichiesteMetadati", metadata.requestId, data)
+      await awsClient._updateItem("pn-EcRichiesteMetadati", metadata.requestId, data)
     }
     else {
       console.log("DRYRUN " + metadata.requestId + " " + JSON.stringify(data))

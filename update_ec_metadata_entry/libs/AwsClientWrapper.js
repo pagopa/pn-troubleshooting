@@ -46,12 +46,12 @@ class AwsClientsWrapper {
       },
       ExpressionAttributeValues: {
         ":v": marshall(data.version),
-        ":e": { "L" :marshall(data.eventsList)}
+        ":e": { "L" :marshall(data.eventsList)},
+        ":d": marshall(data.date)
       },
-      UpdateExpression: 'SET version = :v, eventsList = :e',
+      UpdateExpression: 'SET version = :v, eventsList = :e, lastUpdateTimestamp = :d',
       ReturnValues: 'ALL_NEW'
     }
-    console.log(input)
     const command = new UpdateItemCommand(input)
     return await this._dynamoClient.send(command)
   }
