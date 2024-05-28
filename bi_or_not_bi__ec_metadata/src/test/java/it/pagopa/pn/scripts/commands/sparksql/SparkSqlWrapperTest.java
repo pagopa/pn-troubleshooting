@@ -37,7 +37,6 @@ public class SparkSqlWrapperTest {
 
         // Given
         String file = "sample.csv";
-        String out = "select_from_sample.csv";
 
         String sqlTempView = String.format("""
             CREATE OR REPLACE TEMPORARY VIEW test
@@ -53,14 +52,6 @@ public class SparkSqlWrapperTest {
         // When
         Dataset<Row> tempViewResult = this.sparkSqlWrapper.execSql(sqlTempView);
         Dataset<Row> selectAllResult = this.sparkSqlWrapper.execSql(sqlSelectAll);
-
-        SparkDatasetWriter.builder()
-            .dataset(selectAllResult)
-            .outLocation(S3A_SCHEMA_PREFIX + S3_BUCKET + "/" + out)
-            .format(FormatEnum.CSV)
-            .saveMode(SaveMode.Overwrite)
-            .partitions(1)
-            .build();
 
         // Then
         Assert.assertNotNull(tempViewResult);
