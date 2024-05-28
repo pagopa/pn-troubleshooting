@@ -149,9 +149,14 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
         );
 
         // Find leaf node to get last result
+        Task entryPointTask = taskDag.getEntryPointById(leafId);
+        if (entryPointTask == null) {
+            log.severe(() -> "EntryPoint " + leafId + " not found; skipping report writing");
+            return;
+        }
+
         @SuppressWarnings("unchecked")
-        Dataset<Row> datasetReport = taskDag.getEntryPointById(leafId)
-            .getResult(Dataset.class);
+        Dataset<Row> datasetReport = entryPointTask.getResult(Dataset.class);
 
         // Compute S3a path
         String s3Out = PathsUtils.concatPathsWithURISchema(
@@ -169,6 +174,7 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
             .format(report.getOutputFormat())
             .saveMode(SaveMode.Overwrite)
             .partitions(report.getPartitions())
+            .partitionKeys(report.getPartitionKeys())
             .build()
             .write();
     }

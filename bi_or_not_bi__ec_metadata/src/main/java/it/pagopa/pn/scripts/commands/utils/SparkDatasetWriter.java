@@ -3,7 +3,6 @@ package it.pagopa.pn.scripts.commands.utils;
 import it.pagopa.pn.scripts.commands.enumerations.FormatEnum;
 import it.pagopa.pn.scripts.commands.logs.LoggerFactory;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.SetUtils;
 import org.apache.spark.sql.DataFrameWriter;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
