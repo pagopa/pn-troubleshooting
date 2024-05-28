@@ -1,11 +1,8 @@
 package it.pagopa.pn.scripts.commands.sparksql;
 
-import it.pagopa.pn.scripts.commands.enumerations.FormatEnum;
-import it.pagopa.pn.scripts.commands.utils.SparkDatasetWriter;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SaveMode;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
