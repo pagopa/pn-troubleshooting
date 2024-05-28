@@ -79,6 +79,11 @@ public class SparkDatasetWriter {
 
     public void write() {
 
+        if (this.dataset.count() == 0) {
+            log.info(() -> "Skipping empty dataset export");
+            return;
+        }
+
         Dataset<Row> df = this.partitions > 0
             ? this.dataset.repartition(this.partitions)
             : this.dataset;
