@@ -1,6 +1,7 @@
 package it.pagopa.pn.scripts.commands.utils;
 
 import it.pagopa.pn.scripts.commands.enumerations.FormatEnum;
+import it.pagopa.pn.scripts.commands.exceptions.EmptyDatasetException;
 import it.pagopa.pn.scripts.commands.logs.LoggerFactory;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.spark.sql.DataFrameWriter;
@@ -77,11 +78,15 @@ public class SparkDatasetWriter {
         return new SparkDatasetWriterBuilder();
     }
 
-    public void write() {
+    /**
+     * Write out a {@link Dataset} object or throw a {@link EmptyDatasetException} when it is empty.
+     *
+     * @throws EmptyDatasetException throws exception when dataset is empty
+     * */
+    public void write() throws EmptyDatasetException {
 
         if (this.dataset.count() == 0) {
-            log.info(() -> "Skipping empty dataset export");
-            return;
+            throw new EmptyDatasetException("Found empty dataset");
         }
 
         Dataset<Row> df = this.partitions > 0

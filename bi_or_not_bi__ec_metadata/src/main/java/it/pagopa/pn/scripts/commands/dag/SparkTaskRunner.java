@@ -34,7 +34,8 @@ public class SparkTaskRunner extends TaskRunner {
     }
 
     /**
-     * Executes a task job and save it in cache when its incoming edges are two or more
+     * Executes a task job and save it in cache when its incoming edges
+     * are {@link SparkTaskRunner#MIN_IN_DEGREE_TO_CACHE} or more
      *
      * @param task the task to execute
      * */

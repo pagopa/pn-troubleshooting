@@ -9,6 +9,7 @@ import it.pagopa.pn.scripts.commands.dag.TaskRunner;
 import it.pagopa.pn.scripts.commands.dag.model.SQLTask;
 import it.pagopa.pn.scripts.commands.dag.model.Task;
 import it.pagopa.pn.scripts.commands.enumerations.SchemaEnum;
+import it.pagopa.pn.scripts.commands.exceptions.EmptyDatasetException;
 import it.pagopa.pn.scripts.commands.logs.LoggerFactory;
 import it.pagopa.pn.scripts.commands.logs.MsgListenerImpl;
 import it.pagopa.pn.scripts.commands.reports.model.Report;
@@ -167,15 +168,21 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
             PathsUtils.filenameWithExtensions(report.getName(), report.getOutputFormat().getExtension())
         );
 
-        // Write out report
-        SparkDatasetWriter.builder()
-            .dataset(datasetReport)
-            .outLocation(s3Out)
-            .format(report.getOutputFormat())
-            .saveMode(SaveMode.Overwrite)
-            .partitions(report.getPartitions())
-            .partitionKeys(report.getPartitionKeys())
-            .build()
-            .write();
+        try {
+            // Write out report
+            SparkDatasetWriter.builder()
+                .dataset(datasetReport)
+                .outLocation(s3Out)
+                .format(report.getOutputFormat())
+                .saveMode(SaveMode.Overwrite)
+                .partitions(report.getPartitions())
+                .partitionKeys(report.getPartitionKeys())
+                .build()
+                .write();
+        } catch (EmptyDatasetException e) {
+            log.info(() -> "Skipping empty dataset " + report.getName());
+        } catch (RuntimeException e) {
+            log.severe(() -> "Unexpected runtime exception " + e);
+        }
     }
 }
