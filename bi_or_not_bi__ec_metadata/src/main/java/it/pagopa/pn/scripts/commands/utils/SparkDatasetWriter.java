@@ -25,7 +25,7 @@ public class SparkDatasetWriter {
     private FormatEnum format;
     private SaveMode saveMode;
 
-    private int partitions;
+    private Integer partitions;
     private Set<String> partitionKeys;
 
     private SparkDatasetWriter() {}
@@ -89,7 +89,7 @@ public class SparkDatasetWriter {
             throw new EmptyDatasetException("Found empty dataset");
         }
 
-        Dataset<Row> df = this.partitions > 0
+        Dataset<Row> df = this.partitions != null && this.partitions > 0
             ? this.dataset.repartition(this.partitions)
             : this.dataset;
 

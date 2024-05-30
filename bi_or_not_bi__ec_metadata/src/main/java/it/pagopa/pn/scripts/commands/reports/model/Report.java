@@ -1,6 +1,6 @@
 package it.pagopa.pn.scripts.commands.reports.model;
 
-import it.pagopa.pn.scripts.commands.enumerations.ChronEnum;
+import it.pagopa.pn.scripts.commands.enumerations.CronEnum;
 import it.pagopa.pn.scripts.commands.enumerations.FormatEnum;
 
 import java.util.Set;
@@ -10,7 +10,7 @@ public class Report {
     private String name;
     private String version;
     private FormatEnum outputFormat;
-    private ChronEnum chron;
+    private CronEnum cron;
     private Integer partitions;
     private Set<String> partitionKeys;
     private ReportTask task;
@@ -39,12 +39,12 @@ public class Report {
         this.outputFormat = outputFormat;
     }
 
-    public ChronEnum getChron() {
-        return chron;
+    public CronEnum getCron() {
+        return cron;
     }
 
-    public void setChron(ChronEnum chron) {
-        this.chron = chron;
+    public void setCron(CronEnum cron) {
+        this.cron = cron;
     }
 
     public Integer getPartitions() {
