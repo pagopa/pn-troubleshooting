@@ -2,6 +2,9 @@ package it.pagopa.pn.scripts.commands.config.resolver;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+/**
+ * Holds singleton instance of {@link ObjectMapper}
+ * */
 public class ObjectMapperResolver {
 
     private static ObjectMapper objectMapper = null;
