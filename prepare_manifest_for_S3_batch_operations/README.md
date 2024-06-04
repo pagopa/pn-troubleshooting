@@ -8,8 +8,6 @@ Effettua il Download dei soli nomi dei file da un bucket e prepara il file manif
 - [Esecuzione](#esecuzione)
 
 ## Descrizione
-
-Lo Script, dato in input una coda DLQ, effettua le seguenti operazioni:
 Lo Script, dati in input il bucket di destinazione, la tipologia di storage class ed il prefisso dei file genera un file manifest.csv che puo' essere utilizzato tramite AWS S3 Batch Operation per eseguire operazioni sul bucket, come ad esempio un retrive da Glacier
 
 
