@@ -1,6 +1,6 @@
-# Dump SQS messages
+# retrive glacier file from a bucket
 
-Script di dump dei messaggi presenti in una coda SQS.
+Effettua il retrive dei file da un bucket e prepara il file manifest.csv per l'utlizzo su s3 batch operations
 
 ## Tabella dei Contenuti
 
