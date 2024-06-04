@@ -88,7 +88,6 @@ mkdir -p "$out_dir" && cd "$out_dir"
 
 echo "retrieving elements with storage class: $storage_class from $bucket_name...."
 
-
 > manifest.csv
 
 IFS=',' read -r -a prefix_array <<< "$prefixes"
