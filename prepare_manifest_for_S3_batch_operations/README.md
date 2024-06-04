@@ -1,6 +1,6 @@
 # retrive glacier file from a bucket
 
-Effettua il retrive dei file da un bucket e prepara il file manifest.csv per l'utlizzo su s3 batch operations
+Effettua il Download dei soli nomi dei file da un bucket e prepara il file manifest.csv per l'utlizzo su s3 batch operations
 
 ## Tabella dei Contenuti
 
