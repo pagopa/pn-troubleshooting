@@ -12,6 +12,7 @@ var _storage = require("./storage.cjs");
 var _path = _interopRequireDefault(require("path"));
 var _url = require("url");
 var _log = require("./log.cjs");
+var _config = require("./config.cjs");
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 const SchemaFileNotFoundError = (0, _utils.createCustomError)('SchemaFileNotFoundError', 404);
 const ValidationError = (0, _utils.createCustomError)('ValidationError', 400);
@@ -32,14 +33,14 @@ const dataAjv = new _ajv.default({
   coerceTypes: (0, _utils.isLocalEnvironment)()
 });
 dataAjv.addKeyword({
-  keyword: 'dataClassification',
+  keyword: _config.dataClassificationSchemaKey,
   metaSchema: {
     type: 'string',
     enum: ['PUBLIC', 'CONFIDENTIAL', 'HIGHLY_CONFIDENTIAL', 'RESTRICTED']
   }
 });
 dataAjv.addKeyword({
-  keyword: 'audit',
+  keyword: _config.auditSchemaKey,
   metaSchema: {
     type: 'boolean'
   }

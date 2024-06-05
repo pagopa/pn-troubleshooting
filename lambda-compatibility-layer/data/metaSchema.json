@@ -156,8 +156,8 @@
         "dataClassification": {
           "$ref": "#/definitions/dataClassification"
         },
-        "audit": {
-          "$ref": "#/definitions/audit"
+        "x-pn-audit": {
+          "$ref": "#/definitions/x-pn-audit"
         }
       },
       "additionalProperties": false,
@@ -229,7 +229,7 @@
       "type": "string",
       "enum": ["PUBLIC", "CONFIDENTIAL", "HIGHLY_CONFIDENTIAL", "RESTRICTED"]
     },
-    "audit": {
+    "x-pn-audit": {
       "type": "boolean",
       "default": false
     }
