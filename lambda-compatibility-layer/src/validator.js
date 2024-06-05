@@ -11,6 +11,8 @@ import { uploadWorkDirToS3, isDirMade, basePath } from './storage.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { printStartLog, printEndLog } from './log.js';
+import { auditSchemaKey, dataClassificationSchemaKey } from './config.js'
+
 const SchemaFileNotFoundError = createCustomError(
   'SchemaFileNotFoundError',
   404
@@ -42,7 +44,7 @@ const dataAjv = new Ajv({
 });
 
 dataAjv.addKeyword({
-  keyword: 'dataClassification',
+  keyword: dataClassificationSchemaKey,
   metaSchema: {
     type: 'string',
     enum: ['PUBLIC', 'CONFIDENTIAL', 'HIGHLY_CONFIDENTIAL', 'RESTRICTED'],
@@ -50,7 +52,7 @@ dataAjv.addKeyword({
 });
 
 dataAjv.addKeyword({
-  keyword: 'audit',
+  keyword: auditSchemaKey,
   metaSchema: {
     type: 'boolean',
   },
