@@ -163,7 +163,7 @@ node index.js --envName <envName> --fileName <fileName>
 ### retrieve_glacier_s3
 Vuoi effettuare delle richieste di recupero su glacier tramite file in input per una serie di documenti?
 ```bash  
-node index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--expiration <expiration> --tier <tier>]
+node index.js --envName <envName> --fileName <fileName> [--expiration <expiration> --tier <tier>]
 ```
 
 ### check_pec_events
@@ -284,4 +284,10 @@ node index.js --from <from> -to <to> [--files]
 Vuoi recuperare informazioni relative ad un soggetto RADD?
 ```bash
 node index.js --envName <envName> --cf <fiscalcode> --operationId <operation-id> 
+```
+
+### check_feedback_from_requestId
+Vuoi recuperare informazioni relative agli eventi presenti in pn-external-channel-to-paper-channel-DLQ?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
 ```

@@ -29,8 +29,8 @@ function _checkingParameters(args, values){
 }
 
 function appendJsonToFile(fileName, jsonData){
-  if(!fs.existsSync("files"))
-    fs.mkdirSync("files", { recursive: true });
+  if(!fs.existsSync(path.join(__dirname, "files")))
+    fs.mkdirSync(path.join(__dirname, "files"), { recursive: true });
   fs.appendFileSync(fileName, JSON.stringify(jsonData) + "\n")
 }
 
