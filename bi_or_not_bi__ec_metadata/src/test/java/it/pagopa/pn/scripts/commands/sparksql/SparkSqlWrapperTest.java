@@ -1,11 +1,8 @@
 package it.pagopa.pn.scripts.commands.sparksql;
 
-import it.pagopa.pn.scripts.commands.enumerations.FormatEnum;
-import it.pagopa.pn.scripts.commands.utils.SparkDatasetWriter;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SaveMode;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -37,7 +34,6 @@ public class SparkSqlWrapperTest {
 
         // Given
         String file = "sample.csv";
-        String out = "select_from_sample.csv";
 
         String sqlTempView = String.format("""
             CREATE OR REPLACE TEMPORARY VIEW test
@@ -53,14 +49,6 @@ public class SparkSqlWrapperTest {
         // When
         Dataset<Row> tempViewResult = this.sparkSqlWrapper.execSql(sqlTempView);
         Dataset<Row> selectAllResult = this.sparkSqlWrapper.execSql(sqlSelectAll);
-
-        SparkDatasetWriter.builder()
-            .dataset(selectAllResult)
-            .outLocation(S3A_SCHEMA_PREFIX + S3_BUCKET + "/" + out)
-            .format(FormatEnum.CSV)
-            .saveMode(SaveMode.Overwrite)
-            .partitions(1)
-            .build();
 
         // Then
         Assert.assertNotNull(tempViewResult);

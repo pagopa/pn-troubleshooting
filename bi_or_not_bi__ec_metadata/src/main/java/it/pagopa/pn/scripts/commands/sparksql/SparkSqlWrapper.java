@@ -154,6 +154,11 @@ public class SparkSqlWrapper extends MsgSenderSupport {
                 .createOrReplaceTempView( tableName );
     }
 
+    public void temporaryTableFromDataset(String tableName, Dataset<Row> dataset) {
+        spark.createDataFrame(dataset.rdd(), dataset.schema())
+            .createOrReplaceTempView(tableName);
+    }
+
     public void writeTableToParquet(String tableName, Path parquetOut ) {
         SparkDatasetWriter.builder()
             .dataset(spark.table(tableName))

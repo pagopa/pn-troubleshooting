@@ -1,0 +1,35 @@
+{
+    "name": "compatibility-layer",
+    "version": "1.0.0",
+    "description": "Compatibility layer of diagnostic functions.",
+    "scripts": {
+        "build.cjs": "npx babel src --out-dir ./cjs/src --out-file-extension .cjs",
+        "build": "npm run build.cjs"
+    },
+    "type": "module",
+    "main": "./src/index.js",
+    "exports": {
+        ".": {
+            "import": "./src/index.js",
+            "require": "./cjs/src/index.cjs"
+        }
+    },
+    "author": "Giacomo Vallorani",
+    "license": "ISC",
+    "dependencies": {
+        "@aws-sdk/client-s3": "^3.525.0",
+        "@aws-sdk/credential-providers": "^3.525.0",
+        "@aws-sdk/s3-request-presigner": "^3.504.0",
+        "ajv": "^8.12.0",
+        "archiver": "^7.0.0",
+        "jsonschema": "^1.4.1",
+        "pino": "^9.1.0",
+        "uuid": "^9.0.1"
+    },
+    "devDependencies": {
+        "@babel/cli": "^7.23.9",
+        "@babel/core": "^7.24.0",
+        "@babel/preset-env": "^7.24.0",
+        "babel-plugin-replace-import-extension": "^1.1.4"
+    }
+}
