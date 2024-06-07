@@ -191,7 +191,7 @@ async function processSingleFile(file){
         const fileKey = json.attachments[j]
         const iun = json.iun
         try{
-          const delMarkerRes = await removeDeletionMarkerIfNeeded(iun, fileKey, bucketName)
+          const delMarkerRes = await removeDeletionMarkerIfNeeded(fileKey, bucketName)
           delMarkerRes['iun'] = iun;
           appendJsonToFile(resultPath, delMarkerRes)
         } catch(err){

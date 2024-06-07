@@ -47,7 +47,7 @@ class AwsClientsWrapper {
       ExpressionAttributeValues: {
         ":v": marshall(data.version),
         ":e": { "L" :marshall(data.eventsList)},
-        ":d": marshall(data.date)
+        ":d": marshall(data.lastUpdateTimestamp)
       },
       UpdateExpression: 'SET version = :v, eventsList = :e, lastUpdateTimestamp = :d',
       ReturnValues: 'ALL_NEW'

@@ -109,7 +109,7 @@ async function main() {
     data = {
       eventsList: lego,
       version: metadata.version + 1,
-      date: new Date().toISOString()
+      lastUpdateTimestamp: new Date().toISOString()
     }
     if(!dryrun) {
       await awsClient._updateItem("pn-EcRichiesteMetadati", metadata.requestId, data)
