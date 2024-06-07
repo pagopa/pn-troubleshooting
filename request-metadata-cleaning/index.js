@@ -58,7 +58,7 @@ var itemUpdates = 0;
 var totalScannedRecords = 0;
 
 if (test)
-  scanLimit = 10;
+  scanLimit = 1;
 
 async function recordsCleaning() {
   const totalRecords = await getTotalRecords();
@@ -83,7 +83,7 @@ async function recordsCleaning() {
         function (data) {
           totalScannedRecords += data.ScannedCount;
           progressBar.update(totalScannedRecords);
-          if (data.LastEvaluatedKey == null || test) {
+          if (data.LastEvaluatedKey == null || (test && itemUpdates >= 10)) {
             hasRecords = false;
           }
           else {
