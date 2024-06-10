@@ -9,7 +9,7 @@ const { ApiClient } = require("./libs/api");
 function resolveDate(dateInMs, hasRefined) {
   let date = new Date(dateInMs)
   if(hasRefined) {
-    date.setHours(date.getHours() + (24*120) + 1)
+    date.setHours(date.getMinutes() + (24*120*60) + 61)
   }
   else {
     date.setHours(date.getHours() + (24*120))
