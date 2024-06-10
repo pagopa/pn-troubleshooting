@@ -83,6 +83,7 @@ class AwsClientsWrapper {
   }
 
   async _updateItem(tableName, keyName, keyValue, updateExpression, expressionAttributeValues, envType = 'core'){
+    
     const input = {
       TableName: tableName,
       Key: {
@@ -92,9 +93,10 @@ class AwsClientsWrapper {
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: 'ALL_NEW'
     }
-
+    console.log(input)
     const command = new UpdateItemCommand(input)
-    const res = await _dynamoClient[envType].send(command)
+    const res = await this._dynamoClient[envType].send(command)
+    console.log(res)
     return res
   }
 

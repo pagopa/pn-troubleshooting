@@ -6,7 +6,8 @@ const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const path = require('path');
 const { ApiClient } = require("./libs/api");
 
-function resolveDate(date, hasRefined) {
+function resolveDate(dateInMs, hasRefined) {
+  let date = new Date(dateInMs)
   if(hasRefined) {
     date.setHours(date.getHours() + (24*120) + 1)
   }
@@ -47,16 +48,27 @@ async function removeDeletionMarkerIfNeeded(fileKey, bucketName){
     else {
       console.log("await awsClient._updateItem('pn-SsDocumenti', 'documentKey', " + fileKey + ", + 'set documentState = :documentState', { ':documentState': { 'S': 'attached' } }, 'confinfo')")
     }
-    
-
     return {
       fileKey: fileKey,
-      deletionMarkerRemoved: true
+      deletionMarkerRemoved: true,
+      documentState: true
     }
   }
-  return {
-    fileKey: fileKey,
-    deletionMarkerRemoved: false
+  else {
+    const attachmentStatus = unmarshall((await awsClient._queryRequest("pn-SsDocumenti", 'documentKey', fileKey, 'documentState', 'confinfo')).Items[0]);
+    if(!dryrun && attachmentStatus.documentState == 'deleted') {
+      await awsClient._updateItem('pn-SsDocumenti', 'documentKey', fileKey, 'set documentState = :documentState', { ':documentState': { 'S': 'attached' } }, 'confinfo')
+      return {
+        fileKey: fileKey,
+        deletionMarkerRemoved: false,
+        documentState: true
+      }
+    }
+    return {
+      fileKey: fileKey,
+      deletionMarkerRemoved: false,
+      documentState: false
+    }
   }
 }
 
@@ -119,18 +131,19 @@ function appendJsonToFile(resultPath, fileName, jsonData){
 
 async function main() {
   const resultPath = path.join(__dirname, "files");
-  //const results = await _parseCSV(fileName)
   const listBuckets = await awsClient._getBucketLists();
   const bucketName = listBuckets.Buckets.filter((x) => x.Name.indexOf("safestorage")>0 && x.Name.indexOf("staging")<0)[0].Name;
   const folder = fileName.split(".")[0]
-  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+  const results = await _parseCSV(fileName)
+  /*const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   var results = []
   for(let idx = 0; idx < fileRows.length; idx++) {
     if(fileRows[idx]!='') {
       results.push(JSON.parse(fileRows[idx]))
     }
-  }
+  }*/
   for (i = 0; i < results.length; i++) {
+    let safeStorageFlag = true
     let iun = results[i].iun
     //RETRIEVE ATTACHMENTS START
     const attachments = unmarshall((await awsClient._queryRequest("pn-Notifications", 'iun', iun, 'documents,recipients,idempotenceToken,paNotificationId,senderPaId', 'core')).Items[0]);
@@ -156,6 +169,7 @@ async function main() {
         const delMarkerRes = await removeDeletionMarkerIfNeeded(fileKey, bucketName)
         appendJsonToFile(resultPath + "/" + folder, "logs.json", delMarkerRes)
       } catch(err){
+        safeStorageFlag = false;
         if(err.message.indexOf('Deletion marker not found ')===0){
           appendJsonToFile(resultPath + "/" + folder, "logs.json", {
             fileKey: fileKey,
@@ -175,23 +189,29 @@ async function main() {
         }
       }
       //REQUEST TO PN-SS START
-      /*let newRetentionDate;
+      let newRetentionDate;
       if(results[i].status == "refined") {
-        newRetentionDate = resolveDate(new Date(results[i].ts), true)
+        newRetentionDate = resolveDate(new Date(results[i].refinement_or_viewed_ts).getTime(), true)
       }
       else {
         newRetentionDate = resolveDate(new Date(), false)
       }
-      if(!dryrun) {
-        await ApiClient.requestToSafeStorage(fileKey, {
-          "status": null,
-          "retentionUntil": newRetentionDate
-        });
+      console.log(newRetentionDate)
+      if(!dryrun && safeStorageFlag) {
+        try {
+          await ApiClient.requestToSafeStorage(fileKey, {
+            "status": null,
+            "retentionUntil": newRetentionDate
+          });
+          console.log("update to new retention " + iun + " on " + newRetentionDate)
+        }
+        catch (error) {
+          console.log("problem to update retention " + iun + " file " + fileKey, error.message)
+        }
       }
       else {
-        console.log("Request to safestorage: with newRetentionDate: " + newRetentionDate)
+        safeStorageFlag ? console.log("DRYRUN: Request to safestorage iun " + iun + " with newRetentionDate: " + newRetentionDate) : console.log("IUN" + iun + "not sent safestorageflag false")
       }
-      */
       //REQUEST TO PN-SS END
     }
     //REMOVE DELETE MARKER END
