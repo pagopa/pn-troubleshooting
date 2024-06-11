@@ -8,8 +8,9 @@ const { ApiClient } = require("./libs/api");
 
 function resolveDate(dateInMs, hasRefined) {
   let date = new Date(dateInMs)
+  console.log(date.toISOString())
   if(hasRefined) {
-    date.setHours(date.getMinutes() + (24*120*60) + 1)
+    date.setHours(date.getHours() + (24*121))
   }
   else {
     date.setHours(date.getHours() + (24*120))
@@ -176,13 +177,6 @@ async function main() {
             deletionMarkerRemoved: false,
             error: err.message
           })
-          appendJsonToFile(resultPath + "/" + folder, "to_retrieve.json", {
-            iun: iun,
-            senderPaId: results[i].senderPaId,
-            idempotenceToken: results[i].idempotenceToken,
-            paProtocolNumber: results[i].paProtocolNumber,
-            fileKey: fileKey,
-          })
         } else {
           console.log('Error on file ' + fileKey)
           throw err; // let it fail, we need to resume from that
@@ -209,7 +203,7 @@ async function main() {
         }
       }
       else {
-        safeStorageFlag ? console.log("DRYRUN: Request to safestorage iun " + iun + " with newRetentionDate: " + newRetentionDate) : console.log("IUN" + iun + "not sent safestorageflag false")
+        safeStorageFlag ? console.log("DRYRUN: Request to safestorage iun " + iun + " with newRetentionDate: " + newRetentionDate) : console.log("IUN " + iun + " not sent safestorageflag " + safeStorageFlag)
       }
       //REQUEST TO PN-SS END
     }
