@@ -192,7 +192,7 @@ async function main() {
       }
       if(!dryrun && safeStorageFlag) {
         try {
-          if(newRetentionDate > new Date().toISOString) {
+          if(newRetentionDate > new Date().toISOString()) {
             const res = await ApiClient.requestToSafeStorage(fileKey, {
               "status": null,
               "retentionUntil": newRetentionDate
