@@ -143,7 +143,6 @@ async function main() {
     }
   }*/
   for (i = 0; i < results.length; i++) {
-    let safeStorageFlag = true
     let iun = results[i].iun
     //RETRIEVE ATTACHMENTS START
     const attachments = unmarshall((await awsClient._queryRequest("pn-Notifications", 'iun', iun, 'documents,recipients,idempotenceToken,paNotificationId,senderPaId', 'core')).Items[0]);
@@ -164,6 +163,7 @@ async function main() {
     //RETRIEVE ATTACHMENTS END
     //REMOVE DELETE MARKER START
     for(let j=0; j<results[i].attachments.length; j++){
+      let safeStorageFlag = true
       const fileKey = results[i].attachments[j]
       try{
         const delMarkerRes = await removeDeletionMarkerIfNeeded(fileKey, bucketName)
