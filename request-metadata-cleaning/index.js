@@ -92,7 +92,7 @@ async function getRecord(requestId) {
     Key: {
       requestId: requestId
     },
-    ProjectionExpression: "requestId, eventsList, version",
+    ProjectionExpression: "requestId, lastUpdateTimestamp, eventsList, version",
     ConsistentRead: true
   })
   response = await dynamoDbDocumentClient.send(getCommand);
@@ -114,7 +114,9 @@ async function recordsCleaningFromFile(requestIdsPath) {
     await getRecord(requestId)
       .then(
         function (record) {
-          return updateRecord(record);
+          if (record.lastUpdateTimestamp == null && (record.eventsList != null && record.eventsList[0].insertTimestamp == null)) {
+            return updateRecord(record);
+          }
         },
         function (error) {
           console.log("Error while getting record from table with requestId: " + requestId + ": " + error);
