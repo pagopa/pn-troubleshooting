@@ -95,7 +95,6 @@ class AwsClientsWrapper {
     }
     const command = new UpdateItemCommand(input)
     const res = await this._dynamoClient[envType].send(command)
-    console.log(res)
     return res
   }
 
