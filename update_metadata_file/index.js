@@ -8,7 +8,6 @@ const { ApiClient } = require("./libs/api");
 
 function resolveDate(dateInMs, hasRefined) {
   let date = new Date(dateInMs)
-  console.log(date.toISOString())
   if(hasRefined) {
     date.setHours(date.getHours() + (24*121))
   }
@@ -23,7 +22,7 @@ function _parseCSV(fileName) {
     let results = [];
     const parser = fs.createReadStream(fileName).pipe(parse({
       columns: true, 
-      delimiter: ',', 
+      delimiter: ';', 
       trim: true
     }));
     parser.on('data', (data) => {
@@ -146,6 +145,7 @@ async function main() {
   for (i = 0; i < results.length; i++) {
     let iun = results[i].iun
     //RETRIEVE ATTACHMENTS START
+    console.log(iun)
     const attachments = unmarshall((await awsClient._queryRequest("pn-Notifications", 'iun', iun, 'documents,recipients,idempotenceToken,paNotificationId,senderPaId', 'core')).Items[0]);
     results[i]['attachments'] = []
     for(const doc of attachments.documents) {
@@ -192,11 +192,16 @@ async function main() {
       }
       if(!dryrun && safeStorageFlag) {
         try {
-          const res = await ApiClient.requestToSafeStorage(fileKey, {
-            "status": null,
-            "retentionUntil": newRetentionDate
-          });
-          console.log("update to new retention " + iun + " on " + newRetentionDate, res.resultDescription)
+          if(newRetentionDate > new Date().toISOString) {
+            const res = await ApiClient.requestToSafeStorage(fileKey, {
+              "status": null,
+              "retentionUntil": newRetentionDate
+            });
+            console.log("update to new retention " + iun + " on file " + fileKey + " to " + newRetentionDate, res.resultDescription)
+          }
+          else {
+            console.log("new retention date " + newRetentionDate + " is not valid for " + iun + " file " + fileKey)
+          }
         }
         catch (error) {
           console.log("problem to update retention " + iun + " file " + fileKey, error)

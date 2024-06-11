@@ -93,7 +93,6 @@ class AwsClientsWrapper {
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: 'ALL_NEW'
     }
-    console.log(input)
     const command = new UpdateItemCommand(input)
     const res = await this._dynamoClient[envType].send(command)
     console.log(res)
