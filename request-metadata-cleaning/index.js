@@ -3,6 +3,7 @@ const { DynamoDBDocumentClient, ScanCommand, UpdateCommand, GetCommand } = requi
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const { parseArgs } = require('util');
 const cliProgress = require('cli-progress');
+const readline = require('readline');
 const progressBar = new cliProgress.SingleBar({
   barCompleteChar: '\u2588',
   barIncompleteChar: '\u2591',
@@ -63,16 +64,26 @@ var totalScannedRecords = 0;
 if (test)
   scanLimit = 1;
 
-function getFileFromPath(requestIdsPath) {
-  try {
-    const text = fs.readFileSync(requestIdsPath, { encoding: 'utf8', flag: 'r' });
-    const requestIdsList = text.split('\r\n')
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    return requestIdsList
-  } catch (error) {
-    throw new Error("Error while reading file at path " + requestIdsPath + ": " + error)
-  }
+async function getFileFromPath(requestIdsPath) {
+  return new Promise((resolve, reject) => {
+    try {
+      const requestIdsList = [];
+      const rl = readline.createInterface({
+        input: fs.createReadStream(requestIdsPath),
+        crlfDelay: Infinity
+      });
+
+      rl.on('line', (line) => {
+        requestIdsList.push(line.trim());
+      });
+
+      rl.on('close', () => {
+        resolve(requestIdsList);
+      });
+    } catch (error) {
+      reject(new Error("Error while reading file at path " + requestIdsPath + ": " + error));
+    }
+  });
 }
 
 async function getRecord(requestId) {
@@ -92,7 +103,7 @@ async function getRecord(requestId) {
 }
 
 async function recordsCleaningFromFile(requestIdsPath) {
-  let requestIdsList = getFileFromPath(requestIdsPath);
+  let requestIdsList = await getFileFromPath(requestIdsPath);
 
   const totalRecords = requestIdsList.length;
   var workedRecords = 0;
