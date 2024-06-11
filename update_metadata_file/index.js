@@ -9,7 +9,7 @@ const { ApiClient } = require("./libs/api");
 function resolveDate(dateInMs, hasRefined) {
   let date = new Date(dateInMs)
   if(hasRefined) {
-    date.setHours(date.getMinutes() + (24*120*60) + 61)
+    date.setHours(date.getMinutes() + (24*120*60) + 1)
   }
   else {
     date.setHours(date.getHours() + (24*120))
@@ -196,17 +196,16 @@ async function main() {
       else {
         newRetentionDate = resolveDate(new Date(), false)
       }
-      console.log(newRetentionDate)
       if(!dryrun && safeStorageFlag) {
         try {
-          await ApiClient.requestToSafeStorage(fileKey, {
+          const res = await ApiClient.requestToSafeStorage(fileKey, {
             "status": null,
             "retentionUntil": newRetentionDate
           });
-          console.log("update to new retention " + iun + " on " + newRetentionDate)
+          console.log("update to new retention " + iun + " on " + newRetentionDate, res.resultDescription)
         }
         catch (error) {
-          console.log("problem to update retention " + iun + " file " + fileKey, error.message)
+          console.log("problem to update retention " + iun + " file " + fileKey, error)
         }
       }
       else {
