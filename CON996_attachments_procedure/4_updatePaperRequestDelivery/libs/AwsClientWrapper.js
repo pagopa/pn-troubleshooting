@@ -34,7 +34,6 @@ class AwsClientsWrapper {
         ":k": { "S": value }
       },
     };
-    console.log(input)
     const command = new QueryCommand(input);
     return await this._dynamoClient.send(command);
   }

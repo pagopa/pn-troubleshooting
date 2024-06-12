@@ -74,6 +74,7 @@ async function main() {
         AAR: '',
         ATTI: {
           iun: iun,
+          requestId: requestId.indexOf(".PCRETRY") ? requestId.split(".PCRETRY")[0] : requestId,
           sentAt: null,
           attachments: []
         }
