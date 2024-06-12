@@ -44,7 +44,21 @@ Output step 0.
 `node index.js --envName <env-name> --fileName <file-name>`
 
 ## Step 4
-TBC
+### Step preliminare
+Recuperare gli atti a partire dai requestId forniti mediante script "retrieve_attachments_from_requestid" il quale darà in output un file contenente gli attachments dei requestId "atti.json"
+
+### Input
+Gli input sono i seguenti:
+- <env-name> ambiente di esecuzione (ex: uat, prod)
+- <attachments-file> path del file ottenuto dallo step preliminare
+- <data-file> path del file ottenuto dallo step 2
+
+### Esecuzione
+Esecuzione `4_updatePaperRequestDelivery`:
+`node index.js --envName <env-name> --attachmentsFile <attachments-file> --dataFile <data-file>`
+
+### Output
+In output viene fornito un file contenete un JSON con tutti i file modificati nello stesso formato dello step 2
 
 ## Step 5
 
@@ -66,5 +80,14 @@ Dove:
 - `<aws-profile-confinfo>` è il profilo dell'account AWS confinfo;
 - `<file-path>` è il path di un file csv con la lista dei requestId da processare (una sola colonna).
 
+
 ## Step 6
-TBC
+### Input
+Gli input sono i seguenti:
+- <env-name> ambiente di esecuzione (ex: uat, prod)
+- <attachments-file> path del file ottenuto dallo step preliminare
+- <data-file> path del file ottenuto dallo step 4
+### Esecuzione
+Esecuzione `4_updatePaperRequestDelivery`:
+`node index.js --envName <env-name> --attachmentsFile <attachments-file> --dataFile <data-file>``
+
