@@ -89,5 +89,5 @@ Gli input sono i seguenti:
 - <data-file> path del file ottenuto dallo step 4
 ### Esecuzione
 Esecuzione `4_updatePaperRequestDelivery`:
-`node index.js --envName <env-name> --attachmentsFile <attachments-file> --dataFile <data-file>``
+`node index.js --envName <env-name> --attachmentsFile <attachments-file> --dataFile <data-file>`
 
