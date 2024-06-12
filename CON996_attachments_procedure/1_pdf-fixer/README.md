@@ -1,5 +1,5 @@
 ## Esecuzione
-node index.js <input-file> <aws-account-id> <env>
+`node index.js <input-file> <aws-account-id> <env>`
 
 Il file di input è nel formato JSON-line
 ```
@@ -11,4 +11,4 @@ Genera un output nel seguente formato
 ```
 { "<fileKey>": "<localFilePath>" }
 ```
-dove <fileKey> è la fileKey dell'attachment e <localFilePath> è il path al file PDF trasformato.
+dove `<fileKey>` è la fileKey dell'attachment e `<localFilePath>` è il path al file PDF trasformato.
