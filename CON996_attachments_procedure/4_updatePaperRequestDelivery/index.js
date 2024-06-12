@@ -92,7 +92,7 @@ async function main() {
     for(let i = 0; i < attachments.length; i++) {
       const tmpFileKey = attachments[i].fileKey.replace("safestorage://", "")
       if (tmpFileKey in dataFileMap) {
-        output[tmpFileKey] = {
+        output[dataFileMap[tmpFileKey]["fileKey"]] = {
             date: attachments[i]["date"],
             checksum: attachments[i]["checksum"],
             url: attachments[i]["url"],
