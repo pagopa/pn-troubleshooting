@@ -45,3 +45,26 @@ Output step 0.
 
 ## Step 4
 TBC
+
+## Step 5
+
+### Input
+Txt dove ogni riga è il requestId con il `PCRETRY_` che ci si aspetta.
+
+Si può usare l'input dello step 0 ed incrementare il PCRETRY_.
+
+
+### Esecuzione
+Esecuzione scirpt `redrive_paper_event`:
+
+```bash
+node redrive_paper_events_massive.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --file <file-path>
+
+```
+Dove:
+- `<aws-profile-core>` è il profilo dell'account AWS core;
+- `<aws-profile-confinfo>` è il profilo dell'account AWS confinfo;
+- `<file-path>` è il path di un file csv con la lista dei requestId da processare (una sola colonna).
+
+## Step 6
+TBC
