@@ -108,8 +108,8 @@ const marginPercentage = 10; // 10% reduction in left and right margins
 const scalePercentage = 20;
 
 async function fixPdf(inputPath, outputPath, marginPercentage, scalePercentage) {
-    await printToPdf(inputPath, outputPath);
-    await scaleContent(outputPath, outputPath, scalePercentage);
+    //await printToPdf(inputPath, outputPath);
+    await scaleContent(inputPath, outputPath, scalePercentage);
     //await reduceMargins(outputPath, outputPath, marginPercentage);
 }
 
