@@ -114,7 +114,7 @@ async function recordsCleaningFromFile(requestIdsPath) {
     await getRecord(requestId)
       .then(
         function (record) {
-          if (record.lastUpdateTimestamp == null && (record.eventsList != null && record.eventsList[0].insertTimestamp == null)) {
+          if (record.lastUpdateTimestamp == null || (record.eventsList != null && record.eventsList[0].insertTimestamp == null)) {
             return updateRecord(record);
           }
         },
