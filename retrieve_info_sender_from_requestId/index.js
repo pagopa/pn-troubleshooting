@@ -66,16 +66,17 @@ async function main() {
   let results = {}
   for(let i = 0; i < fileRows.length; i++){
     const requestId = fileRows[i]
-    const iun = requestId.split('IUN_')[1].split('.')[0]   
+    const iun = requestId
     console.log('Handling requestId: ' + requestId)
     console.log(iun)
     let result = await awsClient._queryRequest("pn-Timelines", "iun", iun)
-    let latestTimelineEvent = result.Items[0];
+    let latestTimelineEvent = unmarshall(result.Items[0]);
     !results[latestTimelineEvent.paId] ? results[latestTimelineEvent.paId] = {pa: '', requestIdx: []}  : null
     results[latestTimelineEvent.paId].requestIdx.push({
       requestId: requestId,
       notificationSentAt: latestTimelineEvent.notificationSentAt
     })
+    console.log(latestTimelineEvent.paId)
   }
   const paIdx = Object.keys(results);
   for(let i = 0; i < paIdx.length; i++){

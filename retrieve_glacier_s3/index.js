@@ -4,7 +4,7 @@ const fs = require('fs');
 
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--expiration <expiration> --tier <tier>]"
+  const usage = "Usage: index.js --envName <envName> --fileName <fileName> [--expiration <expiration> --tier <tier>]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -33,20 +33,16 @@ async function main() {
 
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
-    { name: "bucketName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
     { name: "expiration", mandatory: false, subcommand: [] },
     { name: "tier", mandatory: false, subcommand: [] }
   ]
   const values = {
-    values: { envName, bucketName, fileName, expiration, tier},
+    values: { envName, fileName, expiration, tier},
   } = parseArgs({
     options: {
       envName: {
         type: "string", short: "e", default: undefined
-      },
-      bucketName: {
-        type: "string", short: "b", default: undefined
       },
       fileName: {
         type: "string", short: "f", default: undefined
@@ -63,6 +59,8 @@ async function main() {
   _checkingParameters(args, values)
   expiration = parseInt(expiration)
   const awsClient = new AwsClientsWrapper( envName );
+  const listBuckets = await awsClient._getBucketLists();
+  const bucketName = listBuckets.Buckets.filter((x) => x.Name.indexOf("safestorage")>0 && x.Name.indexOf("staging")<0)[0].Name;
   const keys = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' });
   const value = keys.split("\n")
   for (element of value) {

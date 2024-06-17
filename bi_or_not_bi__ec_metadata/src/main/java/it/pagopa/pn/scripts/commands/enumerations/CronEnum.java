@@ -1,6 +1,6 @@
 package it.pagopa.pn.scripts.commands.enumerations;
 
-public enum ChronEnum {
+public enum CronEnum {
     DAILY,
     WEEKLY,
     MONTHLY

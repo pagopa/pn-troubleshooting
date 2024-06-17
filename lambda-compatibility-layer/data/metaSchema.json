@@ -1,0 +1,237 @@
+{
+  "$comment": "v1.0.0",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["name", "description", "input", "output"],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "input": {
+      "$ref": "#/definitions/metaSchema"
+    },
+    "output": {
+      "$ref": "#/definitions/metaSchema"
+    },
+    "operations": {
+      "$ref": "#/definitions/operations"
+    },
+    "$comment": {
+      "type": "string"
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "metaSchema": {
+      "type": ["object"],
+      "properties": {
+        "type": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/simpleTypes"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/simpleTypes"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          ]
+        },
+        "const": true,
+        "enum": {
+          "type": "array",
+          "items": true
+        },
+        "multipleOf": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "exclusiveMaximum": {
+          "type": "number"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "exclusiveMinimum": {
+          "type": "number"
+        },
+        "maxLength": {
+          "$ref": "#/definitions/nonNegativeInteger"
+        },
+        "minLength": {
+          "$ref": "#/definitions/nonNegativeIntegerDefault0"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "maxItems": {
+          "$ref": "#/definitions/nonNegativeInteger"
+        },
+        "minItems": {
+          "$ref": "#/definitions/nonNegativeIntegerDefault0"
+        },
+        "uniqueItems": {
+          "type": "boolean",
+          "default": false
+        },
+        "maxProperties": {
+          "$ref": "#/definitions/nonNegativeInteger"
+        },
+        "minProperties": {
+          "$ref": "#/definitions/nonNegativeIntegerDefault0"
+        },
+        "required": {
+          "$ref": "#/definitions/stringArray"
+        },
+        "items": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/metaSchema"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/metaSchema"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          ]
+        },
+        "additionalProperties": {
+          "type": "boolean"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/metaSchema"
+          },
+          "default": {}
+        },
+        "oneOf": {
+          "$ref": "#/definitions/schemaArray"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "default": true,
+        "deprecated": {
+          "type": "boolean",
+          "default": false
+        },
+        "examples": {
+          "type": "array",
+          "items": true
+        },
+        "$comment": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "contentEncoding": {
+          "type": "string"
+        },
+        "contentMediaType": {
+          "type": "string"
+        },
+        "contentSchema": {
+          "$ref": "#/definitions/metaSchema"
+        },
+        "dataClassification": {
+          "$ref": "#/definitions/dataClassification"
+        },
+        "x-pn-audit": {
+          "$ref": "#/definitions/x-pn-audit"
+        }
+      },
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "type": {
+            "const": "array"
+          }
+        }
+      },
+      "then": {
+        "required": ["items"]
+      },
+      "else": {
+        "if": {
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
+        },
+        "then": {
+          "required": ["properties"]
+        }
+      }
+    },
+    "operations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "$ref": "#/definitions/metaSchema"
+          },
+          "output": {
+            "$ref": "#/definitions/metaSchema"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nonNegativeIntegerDefault0": {
+      "$ref": "#/definitions/nonNegativeInteger",
+      "default": 0
+    },
+    "simpleTypes": {
+      "enum": ["array", "boolean", "integer", "number", "object", "string", "null"]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "schemaArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/metaSchema"
+      }
+    },
+    "dataClassification": {
+      "type": "string",
+      "enum": ["PUBLIC", "CONFIDENTIAL", "HIGHLY_CONFIDENTIAL", "RESTRICTED"]
+    },
+    "x-pn-audit": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

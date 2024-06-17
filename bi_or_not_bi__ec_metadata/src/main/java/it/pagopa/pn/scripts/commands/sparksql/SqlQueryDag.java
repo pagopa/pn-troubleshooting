@@ -1,5 +1,6 @@
 package it.pagopa.pn.scripts.commands.sparksql;
 
+import it.pagopa.pn.scripts.commands.dag.model.Task;
 import it.pagopa.pn.scripts.commands.exceptions.DependencyCycleException;
 import it.pagopa.pn.scripts.commands.exceptions.FileNotFoundException;
 import it.pagopa.pn.scripts.commands.exceptions.SQLParsingException;
@@ -46,8 +47,11 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
         this.sourceBasePath = sourceBasePath;
 
         Map<String, SqlQueryHolder> rootQueries = getQueriesFromFile(fileLocation);
+
         this.entryQuery = rootQueries.get(entryQuery);
         this.entryQuery.setLocation(fileLocation);
+        this.entryQuery.setEntryPoint(true);
+
         files.put(fileLocation, rootQueries);
         buildAbstractDependenciesGraph();
         buildDag();
@@ -56,7 +60,7 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
 
     private void buildAbstractDependenciesGraph() {
         // Put start query into viewing list
-        queries.put(buildQueryId(entryQuery.getLocation(), entryQuery.getName()), entryQuery);
+        queries.put(Task.buildId(entryQuery.getLocation(), entryQuery.getName()), entryQuery);
 
         int currentQueryIndex = 0;
         // Iterate over query and add new ones
@@ -70,7 +74,7 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
                 }
                 var queryMap = files.get(d.getLocation());
                 SqlQueryHolder queryHolder = queryMap.get(d.getName());
-                queries.putIfAbsent(buildQueryId(d.getLocation(), d.getName()), queryHolder);
+                queries.putIfAbsent(Task.buildId(d.getLocation(), d.getName()), queryHolder);
             });
 
             currentQueryIndex++;
@@ -80,7 +84,7 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
     private void buildDag() {
         queries.values().forEach(dag::addVertex);
         queries.values().forEach(q -> q.getDependencies().forEach(d -> {
-            var queryKey = buildQueryId(d.getLocation(), d.getName());
+            var queryKey = Task.buildId(d.getLocation(), d.getName());
             SqlQueryHolder depQuery = queries.get(queryKey);
             try {
                 dag.addEdge(q, depQuery);
@@ -114,10 +118,6 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
         }
     }
 
-    private static String buildQueryId (String queryLocation, String queryName) {
-        return queryLocation + '#' + queryName;
-    }
-
     @NotNull
     @Override
     public Iterator<SqlQueryHolder> iterator() {
@@ -131,7 +131,7 @@ public class SqlQueryDag implements Iterable<SqlQueryHolder> {
     }
 
     public SqlQueryHolder getQuery (String fileLocation, String queryName) {
-        return queries.get(buildQueryId(fileLocation, queryName));
+        return queries.get(Task.buildId(fileLocation, queryName));
     }
 
     public DirectedAcyclicGraph<SqlQueryHolder, DefaultEdge> getDag() {

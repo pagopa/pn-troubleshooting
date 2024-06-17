@@ -1,9 +1,14 @@
 package it.pagopa.pn.scripts.commands.dag.model;
 
+import it.pagopa.pn.scripts.commands.logs.LoggerFactory;
+
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 public abstract class Task implements Vertex {
+
+    private static final Logger log = LoggerFactory.getLogger();
 
     protected String id;
 
@@ -12,6 +17,8 @@ public abstract class Task implements Vertex {
     protected Function<Task, Object> job;
 
     protected Object result;
+
+    protected Boolean persist;
 
     /* GETTER & SETTER */
 
@@ -47,8 +54,18 @@ public abstract class Task implements Vertex {
         return type.cast(result);
     }
 
+    public Boolean isPersist() {
+        return persist;
+    }
+
+    public void setPersist(Boolean persist) {
+        this.persist = persist;
+    }
+
     public void run() {
+        log.info("Running task " + getId());
         result = job.apply(this);
+        log.info("Task " + getId() + " completed");
     }
 
     @Override
@@ -68,5 +85,9 @@ public abstract class Task implements Vertex {
     @Override
     public int hashCode() {
         return Objects.hash(id);
+    }
+
+    public static String buildId(String location, String name) {
+        return location + "#" + name;
     }
 }

@@ -4,7 +4,7 @@ const { parseArgs } = require('util');
 const path = require('path');
 
 async function _writeInFile(result) {
-  fs.mkdirSync("result", { recursive: true });
+  fs.mkdirSync(path.join(__dirname, 'result'), { recursive: true });
   const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
   const resultPath = path.join(__dirname, 'result/dump' +'_'+queueName+'_'+dateIsoString+'.json');
   fs.writeFileSync(resultPath, JSON.stringify(result, null, 4), 'utf-8')
