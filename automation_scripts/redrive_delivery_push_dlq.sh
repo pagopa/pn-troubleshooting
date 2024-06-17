@@ -85,7 +85,6 @@ echo "$dumped_file"
 echo "RETRIEVING IUN..."
 iuns_file="./dump_sqs/result/iuns.txt"
 if [[ "$queue_name" == *"actions"* ]]; then
-  echo "JQ EXECUTING"
   cat $dumped_file | jq -r '.[] | .Body | fromjson | select(.type == "REFINEMENT_NOTIFICATION" or .type == "CHECK_ATTACHMENT_RETENTION") | .iun' | sort | uniq > $iuns_file 
 else
   echo "JQ EXECUTING"
