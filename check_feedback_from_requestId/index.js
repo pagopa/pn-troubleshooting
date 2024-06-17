@@ -111,7 +111,7 @@ async function main() {
   const queueUrl = await awsClient._getQueueUrl('pn-external_channel_to_paper_channel-DLQ');
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   for(let i = 0; i < fileRows.length; i++){
-    const body =  JSON.parse(fileRows[i]).body
+    const body =  JSON.parse(JSON.parse(fileRows[i]).Body)
     const dlq_elem = body.analogMail
     const requestId = dlq_elem.requestId
     const iun = requestId.split('IUN_')[1].split('.')[0]   
@@ -134,7 +134,7 @@ async function main() {
               appendJsonToFile("to_delete.csv", createReport(requestId, iun, feedbackEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, firstCElement.paperProgrStatus.statusCode, firstCElement.paperProgrStatus.deliveryFailureCause, firstCElement.paperProgrStatus.statusDateTime, feedbackEvent.timestamp))
             }
             if(!dryrun) {
-              await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).receiptHandle)
+              await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).ReceiptHandle)
             }
           }
           else {
@@ -148,7 +148,7 @@ async function main() {
             appendJsonToFile("to_delete.csv", createReport(requestId, iun, feedbackEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, feedbackEvent.details.deliveryDetailCode, feedbackEvent.details.deliveryFailureCause, feedbackEvent.details.notificationDate, feedbackEvent.timestamp))  
           }
           if(!dryrun) {
-            await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).receiptHandle)
+            await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).ReceiptHandle)
           }
         }
       }
@@ -168,7 +168,7 @@ async function main() {
         if (toDelete) {
           appendJsonToFile("to_delete.csv", createReport(requestId, iun, progressEvent.paId, dlq_elem.registeredLetterCode, dlq_elem.statusCode, dlq_elem.deliveryFailureCause, dlq_elem.statusDateTime, body.eventTimestamp, progressEvent.details.deliveryDetailCode,  progressEvent.details?.deliveryFailureCause,  progressEvent.details.notificationDate, progressEvent.timestamp))
           if(!dryrun) {
-            await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).receiptHandle)
+            await awsClient._deleteFromQueueMessage(queueUrl, JSON.parse(fileRows[i]).ReceiptHandle)
           }
           break
         }
