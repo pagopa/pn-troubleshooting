@@ -1,8 +1,9 @@
 const { DynamoDBClient, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, ScanCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, ScanCommand, UpdateCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const { parseArgs } = require('util');
 const cliProgress = require('cli-progress');
+const readline = require('readline');
 const progressBar = new cliProgress.SingleBar({
   barCompleteChar: '\u2588',
   barIncompleteChar: '\u2591',
@@ -15,11 +16,12 @@ const args = [
   { name: "exclusiveStartKey", mandatory: false },
   { name: "scanLimit", mandatory: false },
   { name: "test", mandatory: false },
-  { name: "dryrun", mandatory: false }
+  { name: "dryrun", mandatory: false },
+  { name: "requestIdsPath", mandatory: false }
 ]
 
 const values = {
-  values: { awsProfile, scanLimit, exclusiveStartKey, test, dryrun },
+  values: { awsProfile, scanLimit, exclusiveStartKey, test, dryrun, requestIdsPath },
 } = parseArgs({
   options: {
     awsProfile: {
@@ -36,10 +38,12 @@ const values = {
     },
     dryrun: {
       type: "boolean"
+    },
+    requestIdsPath: {
+      type: "string",
     }
   },
 });
-
 
 if (dryrun) { test = true; }
 
@@ -59,6 +63,70 @@ var totalScannedRecords = 0;
 
 if (test)
   scanLimit = 1;
+
+async function getFileFromPath(requestIdsPath) {
+  return new Promise((resolve, reject) => {
+    try {
+      const requestIdsList = [];
+      const rl = readline.createInterface({
+        input: fs.createReadStream(requestIdsPath),
+        crlfDelay: Infinity
+      });
+
+      rl.on('line', (line) => {
+        requestIdsList.push(line.trim());
+      });
+
+      rl.on('close', () => {
+        resolve(requestIdsList);
+      });
+    } catch (error) {
+      reject(new Error("Error while reading file at path " + requestIdsPath + ": " + error));
+    }
+  });
+}
+
+async function getRecord(requestId) {
+  const getCommand = new GetCommand({
+    TableName: tableName,
+    Key: {
+      requestId: requestId
+    },
+    ProjectionExpression: "requestId, lastUpdateTimestamp, eventsList, version",
+    ConsistentRead: true
+  })
+  response = await dynamoDbDocumentClient.send(getCommand);
+  if (response.Item == null) {
+    throw new Error("Request with request id " + requestId + " does not exist.");
+  }
+  return response.Item;
+}
+
+async function recordsCleaningFromFile(requestIdsPath) {
+  let requestIdsList = await getFileFromPath(requestIdsPath);
+
+  const totalRecords = requestIdsList.length;
+  var workedRecords = 0;
+  progressBar.start(totalRecords, 0);
+
+  await Promise.all(requestIdsList.map(async (requestId) => {
+    progressBar.update(++workedRecords);
+    await getRecord(requestId)
+      .then(
+        function (record) {
+          if (record.lastUpdateTimestamp == null && (record.eventsList != null && record.eventsList[0].insertTimestamp == null)) {
+            return updateRecord(record);
+          }
+        },
+        function (error) {
+          console.log("Error while getting record from table with requestId: " + requestId + ": " + error);
+          itemFailures++;
+          fs.appendFileSync("failures.csv", requestId + "," + error + "\r\n");
+          return;
+        }
+      )
+  }))
+}
 
 async function recordsCleaning() {
   const totalRecords = await getTotalRecords();
@@ -215,7 +283,15 @@ async function getTotalRecords() {
   return response.Table.ItemCount;
 }
 
-recordsCleaning()
+async function switchUpdateMethod() {
+  if (requestIdsPath != null) {
+    await recordsCleaningFromFile(requestIdsPath);
+  } else {
+    await recordsCleaning();
+  }
+}
+
+switchUpdateMethod()
   .then(
     function (data) {
       progressBar.stop();
