@@ -53,8 +53,8 @@ var confinfoCredentials;
 if (awsProfile != null) { confinfoCredentials = fromSSO({ profile: awsProfile })(); }
 
 const dynamoDbClient = new DynamoDBClient({
-    credentials: confinfoCredentials,
-    region: 'eu-south-1'
+  credentials: confinfoCredentials,
+  region: 'eu-south-1'
 });
 const dynamoDbDocumentClient = DynamoDBDocumentClient.from(dynamoDbClient);
 const tableName = "pn-EcRichiesteMetadati";
@@ -308,14 +308,13 @@ switchUpdateMethod()
     });
 
 
-process.on('SIGINT', () => {
-  console.log('Received SIGINT signal. Ending script execution.');
-});
+//Handling of signals coming from the process.
 
-process.on('SIGTERM', () => {
-  console.log('Received SIGTERM signal. Ending script execution.');
-});
+function handleProcessSignal(signal) {
+  console.log(`Received ${signal} signal. Ending script execution.`);
+  process.exit();
+}
 
-process.on('SIGHUP', () => {
-  console.log('Received SIGHUP signal. Ending script execution.');
-});
+process.on('SIGINT', handleProcessSignal);
+process.on('SIGTERM', handleProcessSignal);
+process.on('SIGHUP', handleProcessSignal);
