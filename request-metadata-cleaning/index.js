@@ -7,9 +7,13 @@ const readline = require('readline');
 const progressBar = new cliProgress.SingleBar({
   barCompleteChar: '\u2588',
   barIncompleteChar: '\u2591',
-  hideCursor: true
+  hideCursor: true,
+  noTTYOutput: true
 });
 const fs = require('fs');
+const process = require('node:process');
+
+console.log(`Starting process at ${new Date(Date.now()).toISOString()}`)
 
 const args = [
   { name: "awsProfile", mandatory: false },
@@ -51,8 +55,8 @@ var confinfoCredentials;
 if (awsProfile != null) { confinfoCredentials = fromSSO({ profile: awsProfile })(); }
 
 const dynamoDbClient = new DynamoDBClient({
-    credentials: confinfoCredentials,
-    region: 'eu-south-1'
+  credentials: confinfoCredentials,
+  region: 'eu-south-1'
 });
 const dynamoDbDocumentClient = DynamoDBDocumentClient.from(dynamoDbClient);
 const tableName = "pn-EcRichiesteMetadati";
@@ -291,16 +295,34 @@ async function switchUpdateMethod() {
   }
 }
 
+function logFinalReport() {
+  progressBar.stop();
+  console.log(`Ending process at ${new Date(Date.now()).toISOString()}`)
+  console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}.`);
+  console.log(`Check "failures.csv" file for individual failures.`)
+}
+
 switchUpdateMethod()
   .then(
     function (data) {
-      progressBar.stop();
-      console.log("Successful operation, ending process.");
-      console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
+      console.log("Successful operation.");
+      logFinalReport();
       return;
     },
     function (error) {
-      progressBar.stop();
       console.error(`* FATAL * Error in process : ${error}`);
-      console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
+      logFinalReport();
     });
+
+
+//Handling of signals coming from the process.
+
+function handleProcessSignal(signal) {
+  console.log(`Received ${signal} signal. Ending script execution.`);
+  logFinalReport();
+  process.exit();
+}
+
+process.on('SIGINT', handleProcessSignal);
+process.on('SIGTERM', handleProcessSignal);
+process.on('SIGHUP', handleProcessSignal);
