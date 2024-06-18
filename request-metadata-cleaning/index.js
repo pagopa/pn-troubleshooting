@@ -11,7 +11,7 @@ const progressBar = new cliProgress.SingleBar({
 });
 const fs = require('fs');
 const process = require('node:process');
-
+const startTime = Date.now();
 
 const args = [
   { name: "awsProfile", mandatory: false },
@@ -295,7 +295,9 @@ async function switchUpdateMethod() {
 
 function logFinalReport() {
   progressBar.stop();
-  console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
+  console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}.`);
+  console.log(`StartingTime: ${new Date(startTime).toISOString()}, EndingTime: ${new Date(Date.now()).toISOString()}`)
+  console.log(`Check "failures.csv" file for individual failures.`)
 }
 
 switchUpdateMethod()
