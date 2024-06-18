@@ -7,11 +7,13 @@ const readline = require('readline');
 const progressBar = new cliProgress.SingleBar({
   barCompleteChar: '\u2588',
   barIncompleteChar: '\u2591',
-  hideCursor: true
+  hideCursor: true,
+  noTTYOutput: true
 });
 const fs = require('fs');
 const process = require('node:process');
-const startTime = Date.now();
+
+console.log(`Starting process at ${new Date(Date.now()).toISOString()}`)
 
 const args = [
   { name: "awsProfile", mandatory: false },
@@ -295,15 +297,15 @@ async function switchUpdateMethod() {
 
 function logFinalReport() {
   progressBar.stop();
+  console.log(`Ending process at ${new Date(Date.now()).toISOString()}`)
   console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}.`);
-  console.log(`StartingTime: ${new Date(startTime).toISOString()}, EndingTime: ${new Date(Date.now()).toISOString()}`)
   console.log(`Check "failures.csv" file for individual failures.`)
 }
 
 switchUpdateMethod()
   .then(
     function (data) {
-      console.log("Successful operation, ending process.");
+      console.log("Successful operation.");
       logFinalReport();
       return;
     },
