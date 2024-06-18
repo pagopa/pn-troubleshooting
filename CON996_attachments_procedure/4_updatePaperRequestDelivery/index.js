@@ -100,7 +100,6 @@ async function main() {
     const attachments = result.attachments;
     for(let i = 0; i < attachments.length; i++) {
       const tmpFileKey = attachments[i].fileKey.replace("safestorage://", "").split('?')[0]
-      console.log("tmpFileKey: ", tmpFileKey)
       if (tmpFileKey in dataFileMap) {
         toModify = true;
         output[dataFileMap[tmpFileKey]["fileKey"]] = {
