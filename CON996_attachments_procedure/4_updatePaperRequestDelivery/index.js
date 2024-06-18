@@ -60,7 +60,7 @@ async function main() {
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "attachmentsFile", mandatory: true, subcommand: [] },
     { name: "dataFile", mandatory: true, subcommand: [] },
-    { name: "cacheFile", mandatory: true, subcommand: [] },
+    { name: "cacheFile", mandatory: false, subcommand: [] },
     { name: "dryrun", mandatory: false, subcommand: [] }
   ]
   const values = {
