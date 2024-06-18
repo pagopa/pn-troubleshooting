@@ -10,6 +10,8 @@ const progressBar = new cliProgress.SingleBar({
   hideCursor: true
 });
 const fs = require('fs');
+const process = require('node:process');
+
 
 const args = [
   { name: "awsProfile", mandatory: false },
@@ -304,3 +306,16 @@ switchUpdateMethod()
       console.error(`* FATAL * Error in process : ${error}`);
       console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
     });
+
+
+process.on('SIGINT', () => {
+  console.log('Received SIGINT signal. Ending script execution.');
+});
+
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM signal. Ending script execution.');
+});
+
+process.on('SIGHUP', () => {
+  console.log('Received SIGHUP signal. Ending script execution.');
+});
