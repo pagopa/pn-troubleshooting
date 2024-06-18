@@ -4,7 +4,7 @@ const fs = require('fs');
 const { unmarshall } = require("@aws-sdk/util-dynamodb");
 
 function _checkingParameters(args, values){
-const usage = "Usage: index.js --envName <env-name> --attachmentsFile <attachments-file> --dataFile <data-file>"
+const usage = "Usage: index.js --envName <env-name> --attachmentsFile <attachments-file> --dataFile <data-file> --cacheFile <cache-file> [--dryrun]"
 //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -60,10 +60,11 @@ async function main() {
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "attachmentsFile", mandatory: true, subcommand: [] },
     { name: "dataFile", mandatory: true, subcommand: [] },
+    { name: "cacheFile", mandatory: true, subcommand: [] },
     { name: "dryrun", mandatory: false, subcommand: [] }
   ]
   const values = {
-    values: { envName, attachmentsFile, dataFile, dryrun  },
+    values: { envName, attachmentsFile, dataFile, cacheFile, dryrun  },
   } = parseArgs({
     options: {
       envName: {
@@ -75,6 +76,9 @@ async function main() {
       dataFile: {
         type: "string", short: "d", default: undefined
       },
+      cacheFile: {
+        type: "string", short: "c", default: undefined
+      },
       dryrun: {
         type: "boolean", short: "w", default: false
       }
@@ -85,17 +89,20 @@ async function main() {
   const awsClient = new AwsClientsWrapper( envName );
   const attachmentsFileMap = prepareAttachmentFile(attachmentsFile)
   const dataFileMap = prepareDataFile(dataFile)
-
-  console.log("attachmentsFileMap: ", attachmentsFileMap)
-  console.log("dataFileMap: ", dataFileMap)
   let output = {}
+  if(cacheFile) {
+    output = prepareDataFile(cacheFile)
+  }
+  
   for (const requestId of attachmentsFileMap.keys()) {
+    let toModify = false;
     let result = unmarshall((await awsClient._queryRequest("pn-PaperRequestDelivery", "requestId", requestId)).Items[0])
     const attachments = result.attachments;
     for(let i = 0; i < attachments.length; i++) {
       const tmpFileKey = attachments[i].fileKey.replace("safestorage://", "").split('?')[0]
       console.log("tmpFileKey: ", tmpFileKey)
       if (tmpFileKey in dataFileMap) {
+        toModify = true;
         output[dataFileMap[tmpFileKey]["fileKey"]] = {
             date: attachments[i]["date"],
             checksum: attachments[i]["checksum"],
@@ -109,8 +116,16 @@ async function main() {
         dataFileMap[tmpFileKey]["fileKey"].startsWith("safestorage://") ? attachments[i]["fileKey"] = dataFileMap[tmpFileKey]["fileKey"] : attachments[i]["fileKey"] = "safestorage://" + dataFileMap[tmpFileKey]["fileKey"]  //verificare se fabrizio ci piazza safestorage://
       }
     }
-    if(!dryrun) {
-      await awsClient._updateItem("pn-PaperRequestDelivery", requestId, attachments)
+    if(toModify) {
+      if(!dryrun) {
+        await awsClient._updateItem("pn-PaperRequestDelivery", requestId, attachments)
+        console.log("done " + requestId)
+      } else {
+        console.log("dryrun: done " + requestId)
+      }
+    }
+    else {
+      console.log("skipping " + requestId)
     }
   } 
 }
