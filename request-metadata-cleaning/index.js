@@ -293,18 +293,21 @@ async function switchUpdateMethod() {
   }
 }
 
+function logFinalReport() {
+  progressBar.stop();
+  console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
+}
+
 switchUpdateMethod()
   .then(
     function (data) {
-      progressBar.stop();
       console.log("Successful operation, ending process.");
-      console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
+      logFinalReport();
       return;
     },
     function (error) {
-      progressBar.stop();
       console.error(`* FATAL * Error in process : ${error}`);
-      console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}. Check "failures.csv" file for individual failures.`);
+      logFinalReport();
     });
 
 
@@ -312,6 +315,7 @@ switchUpdateMethod()
 
 function handleProcessSignal(signal) {
   console.log(`Received ${signal} signal. Ending script execution.`);
+  logFinalReport();
   process.exit();
 }
 
