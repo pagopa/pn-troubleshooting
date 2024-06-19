@@ -1,5 +1,6 @@
 const { DynamoDBClient, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand, UpdateCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { StandardRetryStrategy } = require("@smithy/middleware-retry");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const { parseArgs } = require('util');
 const cliProgress = require('cli-progress');
@@ -54,9 +55,30 @@ if (dryrun) { test = true; }
 var confinfoCredentials;
 if (awsProfile != null) { confinfoCredentials = fromSSO({ profile: awsProfile })(); }
 
+// Funzione per decidere su quali eccezioni fare retry
+const customRetryDecider = (err) => {
+  console.log("Retrying for exception : " + err);
+  return true;
+};
+
+// Retry strategy per i client AWS
+const MAXIMUM_ATTEMPTS = 3;
+const DELAY_RATIO = 3000;
+const retryStrategy = new StandardRetryStrategy(
+  () => Promise.resolve(MAXIMUM_ATTEMPTS),
+  {
+    delayDecider: (_delayBase, attempts) => {
+      return DELAY_RATIO * attempts;
+    },
+    retryDecider: customRetryDecider,
+  },
+);
+retryStrategy.mode = 'STANDARD';
+
 const dynamoDbClient = new DynamoDBClient({
   credentials: confinfoCredentials,
-  region: 'eu-south-1'
+  region: 'eu-south-1',
+  retryStrategy: retryStrategy
 });
 const dynamoDbDocumentClient = DynamoDBDocumentClient.from(dynamoDbClient);
 const tableName = "pn-EcRichiesteMetadati";
@@ -113,7 +135,7 @@ async function recordsCleaningFromFile(requestIdsPath) {
   var workedRecords = 0;
   progressBar.start(totalRecords, 0);
 
-  await Promise.all(requestIdsList.map(async (requestId) => {
+  for (const requestId of requestIdsList) {
     progressBar.update(++workedRecords);
     await getRecord(requestId)
       .then(
@@ -129,7 +151,7 @@ async function recordsCleaningFromFile(requestIdsPath) {
           return;
         }
       )
-  }))
+  }
 }
 
 async function recordsCleaning() {
@@ -161,9 +183,9 @@ async function recordsCleaning() {
           else {
             exclusiveStartKey = data.LastEvaluatedKey.requestId;
           }
-          return Promise.all(data.Items.map(async (record) => {
-            await updateRecord(record);
-          }));
+          for (const record of data.Items) {
+            return updateRecord(record);
+          }
         },
         function (error) {
           console.log(`Error while scanning table : ${error}`);
