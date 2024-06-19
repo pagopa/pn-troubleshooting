@@ -2,11 +2,18 @@ const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
 const inputFile = process.argv[2];
+const cacheFile = process.argv[3];
+
+if(process.argv.length < 4){
+    console.error('Usage: node index.js <inputFile> <cacheFile>');
+    process.exit(1);
+}
 
 const data = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
+const cacheData = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
 
 // start tunnel https://pagopa.atlassian.net/wiki/spaces/PN/pages/706183466/Bastion+Host+SSM
-const safeStorageUrl = 'http://127.0.0.1:8888'
+const safeStorageUrl = process.env.SAFESTORAGE_URL;
 
 function computeSha256Base64(filePath) {
     // Read the file in binary mode
@@ -28,9 +35,7 @@ async function uploadToS3(pdfFilePath){
         status: 'PRELOADED'
     }
 
-    console.log('Uploading', pdfFilePath)
     const sha256 = computeSha256Base64(pdfFilePath);   
-    console.log('SHA256', sha256)
     const response = await fetch(`${safeStorageUrl}/safe-storage/v1/files`, {
         method: 'POST',
         headers: {
@@ -44,7 +49,6 @@ async function uploadToS3(pdfFilePath){
 
     const data = await response.json();
     
-    console.log('DATA', data)
     const uploadUrl = data.uploadUrl;
     const fileKey = data.key;
     const secret = data.secret;
@@ -62,14 +66,11 @@ async function uploadToS3(pdfFilePath){
         }
     }
 
-    console.log(uploadRequestParams)
-
     const uploadResponse = await fetch(uploadUrl, uploadRequestParams)
 
     if(uploadResponse.status !== 200){
         throw new Error('Upload failed for key '+fileKey+' with status '+uploadResponse.status);
     }
-    console.log('UPLOAD RESPONSE', uploadResponse.status)
 
     if(uploadResponse.status !== 200){
         throw new Error('Upload failed for key '+fileKey+' with status '+uploadResponse.status);
@@ -103,20 +104,26 @@ const report = {
 async function run() {
     // iterate on data
     for( let key in data){
+        if(cacheData[key]){
+            console.log('Skipping '+key);
+            report[key] = cacheData[key];
+            continue;
+        }
         const pdfFilePath = data[key];
         const { fileKey, checksum } = await uploadToS3(basePath+pdfFilePath);
-        console.log(`Uploaded ${pdfFilePath} with fileKey: ${fileKey} and checksum: ${checksum}`);
         const presignedDownloadUrl = await getPresignedDownloadUrl(fileKey);
         report[key] = {
             fileKey,
+            key,
             checksum,
             date: new Date().toISOString(),
             pdfFilePath,
             url: presignedDownloadUrl
         }
+
+        console.log(JSON.stringify(report[key], null, 2))
     }
 
-    fs.writeFileSync('report.json', JSON.stringify(report, null, 2));
 }
 
 run()
@@ -125,4 +132,9 @@ run()
     })
     .catch((err) => {
         console.error(err);
-    });
+    })
+    .finally(() => {
+        fs.writeFileSync('report.json', JSON.stringify(report, null, 2));
+    })
+
+
