@@ -57,6 +57,7 @@ if (awsProfile != null) { confinfoCredentials = fromSSO({ profile: awsProfile })
 
 // Funzione per decidere su quali eccezioni fare retry
 const customRetryDecider = (err) => {
+  console.log("Retrying for exception : " + err);
   return true;
 };
 
@@ -134,7 +135,7 @@ async function recordsCleaningFromFile(requestIdsPath) {
   var workedRecords = 0;
   progressBar.start(totalRecords, 0);
 
-  await Promise.all(requestIdsList.map(async (requestId) => {
+  for (const requestId of requestIdsList) {
     progressBar.update(++workedRecords);
     await getRecord(requestId)
       .then(
@@ -150,7 +151,7 @@ async function recordsCleaningFromFile(requestIdsPath) {
           return;
         }
       )
-  }))
+  }
 }
 
 async function recordsCleaning() {
@@ -182,9 +183,9 @@ async function recordsCleaning() {
           else {
             exclusiveStartKey = data.LastEvaluatedKey.requestId;
           }
-          return Promise.all(data.Items.map(async (record) => {
-            await updateRecord(record);
-          }));
+          for (const record of data.Items) {
+            return updateRecord(record);
+          }
         },
         function (error) {
           console.log(`Error while scanning table : ${error}`);
