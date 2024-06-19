@@ -52,10 +52,12 @@ Gli input sono i seguenti:
 - <env-name> ambiente di esecuzione (ex: uat, prod)
 - <attachments-file> path del file ottenuto dallo step preliminare
 - <data-file> path del file ottenuto dallo step 2
+- <cache-file> [opzionale] da utilizzare nel caso in cui lo script si interrompe inavvertitamente usando l'output temporaneo
+- <dryrun> [opzionale] nel caso in cui non si voglia procedere in modalità dryrun
 
 ### Esecuzione
 Esecuzione `4_updatePaperRequestDelivery`:
-`node index.js --envName <env-name> --attachmentsFile <attachments-file> --dataFile <data-file>`
+`node index.js --envName <env-name> --attachmentsFile <attachments-file> --dataFile <data-file> [--cacheFile <cache-file> --dryrun]`
 
 ### Output
 In output viene fornito un file contenete un JSON con tutti i file modificati nello stesso formato dello step 2
