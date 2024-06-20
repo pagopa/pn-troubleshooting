@@ -291,3 +291,9 @@ Vuoi recuperare informazioni relative agli eventi presenti in pn-external-channe
 ```bash
 node index.js --envName <env-name> --fileName <file-name>
 ```
+
+### check_status_request
+Vuoi conoscere lo statusRequest di determinati requestId ed avere un riepilogo?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
