@@ -31,7 +31,7 @@ aws sso login --profile sso_pn-confinfo-<env>
 ### Esecuzione
 
 ```bash
-node index.js --inputFile <input-file> --awsProfile <aws-profile> --awsRegion <aws-region> --test --dryrun
+node index.js --inputFile <input-file> --awsProfile <aws-profile> --awsRegion <aws-region> --dryrun
 ```
 
 Dove:
@@ -41,7 +41,6 @@ Dove:
   sistema; `OPZIONALE`
 - `<aws-region>` è la region dei client AWS. Se non viene inserita, verrà presa la region di default del
   sistema; `OPZIONALE`
-- `<test>` se inserito, attiva la modalità test. `OPZIONALE`
 - `<dryrun>` se inserito, attiva la modalità dryrun. Questa modalità attiva automaticamente anche quella di test, e in
   piu'
   disattiva le operazioni di scrittura. `OPZIONALE`

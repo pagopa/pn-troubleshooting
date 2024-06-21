@@ -29,7 +29,7 @@ aws sso login --profile sso_pn-confinfo-<env>
 ### Esecuzione
 
 ```bash
-node index.js --fileKeys <input-file> --savedRecords <saved-records> --awsProfile <aws-profile> --awsRegion <aws-region> --test --dryrun
+node index.js --fileKeys <input-file> --savedRecords <saved-records> --awsProfile <aws-profile> --awsRegion <aws-region> --dryrun
 ```
 
 Dove:
