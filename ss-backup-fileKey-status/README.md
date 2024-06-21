@@ -47,7 +47,7 @@ Dove:
 
 Alla fine del processo, verranno generati due file:
 
-- _"output_3.txt"_ contenente le fileKey dei record su cui il processo è andato a buon fine e i corrispettivi record in
+- _"output.txt"_ contenente le fileKey dei record su cui il processo è andato a buon fine e i corrispettivi record in
   formato JSON.
-- _"failures_3.txt"_ contenente le fileKey dei record su cui il processo è andato in eccezione, la causa dell'errore e
+- _"failures.txt"_ contenente le fileKey dei record su cui il processo è andato in eccezione, la causa dell'errore e
   il timestamp.

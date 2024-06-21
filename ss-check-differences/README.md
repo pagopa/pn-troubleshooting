@@ -43,6 +43,7 @@ Dove:
 
 Alla fine del processo, verranno generati due file:
 
-- _"output_7.txt"_ contenente le fileKey dei record su cui il processo è andato a buon fine.
-- _"incoherent_7.txt"_ contenente le fileKey dei record che non rispettano il controllo di uguaglianza e il dump delle due versioni.
-- _"failures_7.txt"_ contenente le fileKey dei record su cui il processo è andato in eccezione, la causa dell'errore e il timestamp.
+- _"output.txt"_ contenente le fileKey dei record su cui il processo è andato a buon fine.
+- _"ignored.txt"_ contenente le fileKey dei record ignorati.
+- _"incoherent.txt"_ contenente le fileKey dei record che non rispettano il controllo di uguaglianza e il dump delle due versioni.
+- _"failures.txt"_ contenente le fileKey dei record su cui il processo è andato in eccezione, la causa dell'errore e il timestamp.

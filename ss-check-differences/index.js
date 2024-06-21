@@ -105,7 +105,7 @@ async function processLines(path, set) {
       })
       .catch((error) => {
         failedItems++;
-        fs.appendFileSync("failures_7.txt", line + SEP + error + SEP + new Date(Date.now()).toISOString() + "\r\n");
+        fs.appendFileSync("failures.txt", line + SEP + error + SEP + new Date(Date.now()).toISOString() + "\r\n");
       })
       .finally(() => {
         progressBar.update(readItems);
@@ -120,14 +120,14 @@ async function processLine(line, set) {
   if (set.has(fileKey)) {
     await coherenceCheck(fileKey, savedRecord);
   }
-  else fs.appendFileSync("ignored_7.txt", fileKey + "\r\n");
+  else fs.appendFileSync("ignored.txt", fileKey + "\r\n");
 }
 
 async function coherenceCheck(fileKey, savedRecord) {
   const record = await dynamoDbService.getItem("pn-SsDocumenti", fileKey);
   if (isSameRecord(record, savedRecord))
-    fs.appendFileSync("output_7.txt", fileKey + "\r\n");
-  else fs.appendFileSync("incoherent_7.txt", fileKey + SEP + JSON.stringify(savedRecord) + SEP + JSON.stringify(record) + "\r\n");
+    fs.appendFileSync("output.txt", fileKey + "\r\n");
+  else fs.appendFileSync("incoherent.txt", fileKey + SEP + JSON.stringify(savedRecord) + SEP + JSON.stringify(record) + "\r\n");
 }
 
 function isSameRecord(record1, record2) {
@@ -154,7 +154,7 @@ async function main() {
 function logFinalReport() {
   console.log(`Ending process at ${new Date(Date.now()).toISOString()}`)
   console.log(`Total items : ${totalItemCount}, Read items: ${readItems}, Worked items: ${workedItems}. Failures : ${failedItems}.`);
-  console.log(`Check "failures_7.txt" file for individual failures.`)
+  console.log(`Check "failures.txt" file for individual failures.`)
 }
 
 // Esecuzione del metodo principale
