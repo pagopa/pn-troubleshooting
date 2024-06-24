@@ -22,11 +22,10 @@ const args = [
   { name: "awsProfile", mandatory: false },
   { name: "awsRegion", mandatory: false },
   { name: "dryrun", mandatory: false },
-  { name: "newStatus", mandatory: true},
-  { name: "retentionCheck", mandatory: false},
-  { name: "queuesNames", mandatory: false},
-  { name: "uriUpdateMetadata", mandatory: true},
-  { name: "sCxId", mandatory:true },
+  { name: "newStatus", mandatory: true },
+  { name: "queuesNames", mandatory: false },
+  { name: "uriUpdateMetadata", mandatory: true },
+  { name: "sCxId", mandatory: true },
   { name: "sAPIKey", mandatory: true },
   { name: "baseUrl", mandatory: true }
 ]
@@ -34,7 +33,7 @@ const args = [
 // Parsing degli argomenti da linea di comando.
 // Se awsProfile e awsRegion non vengono impostati, verranno usati i default della macchina attuale.
 const values = {
-  values: { inputFile, awsProfile, awsRegion, dryrun, newStatus, retentionCheck, queuesNames, uriUpdateMetadata, sCxId, sAPIKey, baseUrl },
+  values: { inputFile, awsProfile, awsRegion, dryrun, newStatus, queuesNames, uriUpdateMetadata, sCxId, sAPIKey, baseUrl },
 } = parseArgs({
   options: {
     inputFile: {
@@ -51,9 +50,6 @@ const values = {
     },
     newStatus: {
       type: "string"
-    },
-    retentionCheck: {
-      type: "boolean"
     },
     queuesNames: {
       type: "string",
@@ -130,9 +126,6 @@ async function countLines(path) {
 
 // Per ogni riga, applichiamo un'operazione asincrona.
 async function processLines(path) {
-  if (!newStatus) {
-    console.error("Error: newStatus is not defined or is empty");
-  }
   for await (const line of readLines(path)) {
     readItems++;
     await processLine(line, newStatus)
@@ -141,7 +134,7 @@ async function processLines(path) {
       })
       .catch((error) => {
         failedItems++;
-        fs.appendFileSync("failures.txt", line + "," + error + "," + new Date(Date.now()).toISOString() + "\r\n");
+        fs.appendFileSync("failures.txt", line + ";" + error + ";" + new Date(Date.now()).toISOString() + "\r\n");
       })
       .finally(() => {
         progressBar.update(readItems);
@@ -154,18 +147,15 @@ async function processLine(line) {
   if (item && item.documentState === "available") {
 
     if (dryrun) {
-      console.log("Dry run: ", line);
       await writeLines('output.txt', [line]);
     } else {
       await updateObjectMetadata(sCxId, sAPIKey, baseUrl, uriUpdateMetadata, line, newStatus);
-      console.log("Success for fileKey ", line);
-        await writeLines('output.txt', [line]);
-      }
-    } else {
-      const incoherentEntry = `${line};${item ? item.documentState : 'undefined'};${new Date().toISOString()}`;
-      await writeLines('incoherent.txt', [incoherentEntry]);
+      await writeLines('output.txt', [line]);
     }
-
+  } else {
+    const incoherentEntry = `${line};${item ? item.documentState : 'undefined'};${new Date().toISOString()}`;
+    await writeLines('incoherent.txt', [incoherentEntry]);
+  }
 }
 
 
@@ -190,15 +180,14 @@ const body = {
     const response = await axios.post(url, body, { headers });
     return response.data;
   } catch (error) {
-    console.error(`Failed to update metadata for ${sFileKey}: `, error.message);
+    var errorMsg = `Failed to update metadata for ${sFileKey}: `;
     if (error.response) {
-      console.error('Error setting up request: ', error.message);
+      errorMsg += 'Error setting up request: ' + error.message;
     }
-    console.error(`Failed to update metadata for ${sFileKey}: `, error.message);
     if (error.code === 'ECONNREFUSED') {
-      console.error(`Connection refused at ${url}. Please check the server and the URL.`);
+      errorMsg += `Connection refused at ${url}. Please check the server and the URL.`;
     }
-    throw error;
+    throw new Error(errorMsg);
   }
 }
 
