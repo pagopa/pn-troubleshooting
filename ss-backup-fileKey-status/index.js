@@ -40,7 +40,6 @@ const values = {
   },
 });
 checkingParameters(args, values);
-if (test) dryrun == true;
 
 const SEP = ";";
 

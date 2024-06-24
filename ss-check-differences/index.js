@@ -99,13 +99,16 @@ async function countLines(path) {
 async function processLines(path, set) {
   for await (const line of readLines(path)) {
     readItems++;
-    await processLine(line, set)
+    const array = line.split(/;(.+)/);
+    const fileKey = array[0];
+    const savedRecord = JSON.parse(array[1]);
+    await processLine(fileKey, savedRecord, set)
       .then((result) => {
         workedItems++;
       })
       .catch((error) => {
         failedItems++;
-        fs.appendFileSync("failures.txt", line + SEP + error + SEP + new Date(Date.now()).toISOString() + "\r\n");
+        fs.appendFileSync("failures.txt", fileKey + SEP + error + SEP + new Date(Date.now()).toISOString() + "\r\n");
       })
       .finally(() => {
         progressBar.update(readItems);
@@ -113,10 +116,7 @@ async function processLines(path, set) {
   }
 }
 
-async function processLine(line, set) {
-  const array = line.split(/;(.+)/);
-  const fileKey = array[0];
-  const savedRecord = JSON.parse(array[1]);
+async function processLine(fileKey, savedRecord, set) {
   if (set.has(fileKey)) {
     await coherenceCheck(fileKey, savedRecord);
   }
@@ -125,18 +125,24 @@ async function processLine(line, set) {
 
 async function coherenceCheck(fileKey, savedRecord) {
   const record = await dynamoDbService.getItem("pn-SsDocumenti", fileKey);
-  if (isSameRecord(record, savedRecord))
+  const differences = getDifferences(record, savedRecord);
+  if (differences.length == 0)
     fs.appendFileSync("output.txt", fileKey + "\r\n");
-  else fs.appendFileSync("incoherent.txt", fileKey + SEP + JSON.stringify(savedRecord) + SEP + JSON.stringify(record) + "\r\n");
+  else fs.appendFileSync("incoherent.txt", fileKey + SEP + JSON.stringify(differences) + "\r\n");
 }
 
-function isSameRecord(record1, record2) {
-  return record1.documentState == record2.documentState &&
-    record1.documentLogicalState == record2.documentLogicalState &&
-    record1.contentType == record2.contentType &&
-    record1.clientShortCode == record2.clientShortCode &&
-    record1.checkSum == record2.checkSum &&
-    record1.documentKey == record2.documentKey
+function getDifferences(record1, record2) {
+  const fieldsToCheck = ["documentState", "documentLogicalState", "contentType", "clientShortCode", "checkSum", "documentKey", "contentLenght"]
+  let differences = [];
+  fieldsToCheck.forEach(fieldName => {
+    if (record1[fieldName] !== record2[fieldName])
+      differences.push({
+        field: fieldName,
+        value1: record1[fieldName],
+        value2: record2[fieldName]
+      })
+  });
+  return differences;
 }
 
 // Metodo principale
