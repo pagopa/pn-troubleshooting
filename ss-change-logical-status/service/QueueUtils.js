@@ -7,7 +7,6 @@ class QueueUtils {
     this.sqs = new AWS.SQS({ region: awsRegion });
   }
 
-  // Funzione per ottenere il numero di messaggi nella coda
   async getQueueLength(queueUrl) {
     const params = {
       QueueUrl: queueUrl,
@@ -19,10 +18,8 @@ class QueueUtils {
     return parseInt(data.Attributes.ApproximateNumberOfMessages, 10);
   }
 
-  // Funzione per aspettare che le code si svuotino
   async waitForQueuesToEmpty(queueUrls) {
-    console.log(`Checking if the queues are empty...`);
-    
+
     let allQueuesEmpty = false;
 
     while (!allQueuesEmpty) {
@@ -32,14 +29,12 @@ class QueueUtils {
         const queueLength = await this.getQueueLength(url);
         if (queueLength > 0) {
           allQueuesEmpty = false;
-          console.log(`Queue ${url} is not empty. Waiting...`);
-          await new Promise(resolve => setTimeout(resolve, 10000)); // Aspetta 10 secondi prima di ricontrollare
+          await new Promise(resolve => setTimeout(resolve, 10000));
           break; 
         }
       }
     }
 
-    console.log(`All queues are empty. Proceeding with the process...`);
   }
 
   async getQueueUrls(queueNames) {
@@ -52,11 +47,8 @@ class QueueUtils {
 
       try {
         const data = await this.client.send(new GetQueueUrlCommand(input));
-        console.log(`Queue URL for ${name}: ${data.QueueUrl}`);
         queueUrls.push(data.QueueUrl);
       } catch (err) {
-        console.log(`Error for queue ${name}: ${err}`);
-        // Gestisci l'errore in base alle tue esigenze
       }
     }
 

@@ -141,7 +141,7 @@ async function processLines(path) {
       })
       .catch((error) => {
         failedItems++;
-        fs.appendFileSync("failures_6.txt", line + "," + error + "," + new Date(Date.now()).toISOString() + "\r\n");
+        fs.appendFileSync("failures.txt", line + "," + error + "," + new Date(Date.now()).toISOString() + "\r\n");
       })
       .finally(() => {
         progressBar.update(readItems);
@@ -154,37 +154,17 @@ async function processLine(line) {
   const item = await dynamoDbService.getItem(tableName, line);
   if (item && item.documentState === "available") {
 
-   /* controllo rimosso perchè presente in script ss-coherence-check
-
-   if (retentionCheck && item.retentionUntil) {
-      const now = new Date();
-      const futureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // now + 7gg
-      const retentionUntilDate = new Date(item.retentionUntil);
-
-      if (retentionUntilDate > futureDate) {
-        console.log(`Retention date for ${line} is in the future.`);
-
-        // Aggiorna retentionUntil aggiungendo 1 secondo
-        const newRetentionUntil = new Date(retentionUntilDate.getTime() + 1000).toISOString();
-
-        updateExpressionDynamic += ", #retentionUntil = :newRetentionUntil";
-        expressionAttributeValuesDynamic[":newRetentionUntil"] = newRetentionUntil;
-        expressionAttributeNamesDynamic["#retentionUntil"] = "retentionUntil";
-      }
-    }
-      */
     if (dryrun) {
       console.log("Dry run: ", line);
-      await writeLines('output_6.txt', [line]);
+      await writeLines('output.txt', [line]);
     } else {
-      // Eseguo chiamata updateMetadata con i valori aggiornati
       await updateObjectMetadata(sCxId, sAPIKey, baseUrl, uriUpdateMetadata, line, newStatus);
       console.log("Success for fileKey ", line);
-        await writeLines('output_6.txt', [line]);
+        await writeLines('output.txt', [line]);
       }
     } else {
       const incoherentEntry = `${line};${item ? item.documentState : 'undefined'};${new Date().toISOString()}`;
-      await writeLines('incoherent_6.txt', [incoherentEntry]);
+      await writeLines('incoherent.txt', [incoherentEntry]);
     }
 
 }

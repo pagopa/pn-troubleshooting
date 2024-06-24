@@ -22,7 +22,7 @@ npm install
 
 ### Step preliminare
 
-```bash
+```bashset 
 aws sso login --profile sso_pn-confinfo-<env>
 ```
 
