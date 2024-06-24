@@ -43,6 +43,6 @@ Dove:
 
 Alla fine del processo, verranno generati tre file:
 
-- _"output_2.txt"_ contenente le fileKey dei record coerenti.
-- _"incoherent_2.txt"_ contenente le fileKey dei record non coerenti, la causa dell'incoerenza e il timestamp.
-- _"failures_2.txt"_ contenente le fileKey dei record su cui il processo è andato in eccezione, la causa dell'errore e il timestamp.
+- _"output.txt"_ contenente le fileKey dei record coerenti.
+- _"incoherent.txt"_ contenente le fileKey dei record non coerenti, la causa dell'incoerenza e il timestamp.
+- _"failures.txt"_ contenente le fileKey dei record su cui il processo è andato in eccezione, la causa dell'errore e il timestamp.
