@@ -29,7 +29,7 @@ aws sso login --profile sso_pn-confinfo-<env>
 ### Esecuzione
 
 ```bash
-node index.js --inputFile <input-file> --newStatus <new-status> --awsProfile <aws-profile> --awsRegion <aws-region> --sCxId <sCxId> --sAPIKey <sAPIKey> --uriUpdateMetadata <uriUpdateMetadata> --baseUrl <baseUrl> --dryrun
+node index.js --inputFile <input-file> --newStatus <new-status> --awsProfile <aws-profile> --awsRegion <aws-region> --sCxId <sCxId> --sAPIKey <sAPIKey> --uriUpdateMetadata <uriUpdateMetadata> --baseUrl <baseUrl> --queuesNames <queuesNames> --dryrun
 ```
 
 Dove:
@@ -42,8 +42,9 @@ Dove:
   sistema; `OPZIONALE`
 - `<sCxId>` è l'identidicativo client AWS, necessario per eseguire la chiamata API.
 - `<sAPIKey>` è la stringa che che identifica la chiave alla chiamata.
-- `<baseURL>` identifica l'url di base per la chiamata HTTP.
+- `<baseUrl>` identifica l'url di base per la chiamata HTTP.
 - `<uriUpdateMetadata>` è il path url per la chiamata updateMetadata.
+- `<queuesNames>` nome/nomi della/e coda/e da verificare che siano vuote. `OPZIONALE`
 - `<dryrun>` se inserito, attiva la modalità dryrun. Questa modalità attiva automaticamente anche quella di test, e in
   piu'
   disattiva le operazioni di scrittura. `OPZIONALE`
