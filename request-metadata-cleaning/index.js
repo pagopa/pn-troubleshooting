@@ -137,20 +137,17 @@ async function recordsCleaningFromFile(requestIdsPath) {
 
   for (const requestId of requestIdsList) {
     progressBar.update(++workedRecords);
-    await getRecord(requestId)
-      .then(
-        function (record) {
-          if (record.lastUpdateTimestamp == null || (record.eventsList != null && record.eventsList[0].insertTimestamp == null)) {
-            return updateRecord(record);
-          }
-        },
-        function (error) {
-          console.log("Error while getting record from table with requestId: " + requestId + ": " + error);
-          itemFailures++;
-          fs.appendFileSync("failures.csv", requestId + "," + error + "\r\n");
-          return;
-        }
-      )
+    try {
+      const record = await getRecord(requestId);
+      if (record.lastUpdateTimestamp == null || (record.eventsList != null && record.eventsList[0].insertTimestamp == null)) {
+        await updateRecord(record);
+      }
+    }
+    catch (error) {
+      console.log("Error while getting record from table with requestId: " + requestId + ": " + error);
+      itemFailures++;
+      fs.appendFileSync("failures.csv", requestId + "," + error + "\r\n");
+    }
   }
 }
 
