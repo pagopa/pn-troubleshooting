@@ -172,27 +172,26 @@ async function recordsCleaning() {
       input.ExclusiveStartKey = { "requestId": exclusiveStartKey };
     }
 
-    await getRecords(input)
-      .then(
-        function (data) {
-          totalScannedRecords += data.ScannedCount;
-          progressBar.update(totalScannedRecords);
-          if (data.LastEvaluatedKey == null || (test && itemUpdates >= 10)) {
-            hasRecords = false;
-          }
-          else {
-            exclusiveStartKey = data.LastEvaluatedKey.requestId;
-          }
-          for (const record of data.Items) {
-            return updateRecord(record);
-          }
-        },
-        function (error) {
-          console.log(`Error while scanning table : ${error}`);
-          console.log("Last evaluated key : " + exclusiveStartKey);
-          hasRecords = false;
-          throw (error);
-        });
+    try {
+      const data = await getRecords(input);
+      totalScannedRecords += data.ScannedCount;
+      progressBar.update(totalScannedRecords);
+      if (data.LastEvaluatedKey == null || (test && itemUpdates >= 10)) {
+        hasRecords = false;
+      }
+      else {
+        exclusiveStartKey = data.LastEvaluatedKey.requestId;
+      }
+      for (const record of data.Items) {
+        await updateRecord(record);
+      }
+    }
+    catch (error) {
+      console.log(`Error while scanning table : ${error}`);
+      console.log("Last evaluated key : " + exclusiveStartKey);
+      hasRecords = false;
+      throw (error);
+    }
   }
 }
 
