@@ -137,20 +137,17 @@ async function recordsCleaningFromFile(requestIdsPath) {
 
   for (const requestId of requestIdsList) {
     progressBar.update(++workedRecords);
-    await getRecord(requestId)
-      .then(
-        function (record) {
-          if (record.lastUpdateTimestamp == null || (record.eventsList != null && record.eventsList[0].insertTimestamp == null)) {
-            return updateRecord(record);
-          }
-        },
-        function (error) {
-          console.log("Error while getting record from table with requestId: " + requestId + ": " + error);
-          itemFailures++;
-          fs.appendFileSync("failures.csv", requestId + "," + error + "\r\n");
-          return;
-        }
-      )
+    try {
+      const record = await getRecord(requestId);
+      if (record.lastUpdateTimestamp == null || (record.eventsList != null && record.eventsList[0].insertTimestamp == null)) {
+        await updateRecord(record);
+      }
+    }
+    catch (error) {
+      console.log("Error while getting record from table with requestId: " + requestId + ": " + error);
+      itemFailures++;
+      fs.appendFileSync("failures.csv", requestId + "," + error + "\r\n");
+    }
   }
 }
 
@@ -172,27 +169,26 @@ async function recordsCleaning() {
       input.ExclusiveStartKey = { "requestId": exclusiveStartKey };
     }
 
-    await getRecords(input)
-      .then(
-        function (data) {
-          totalScannedRecords += data.ScannedCount;
-          progressBar.update(totalScannedRecords);
-          if (data.LastEvaluatedKey == null || (test && itemUpdates >= 10)) {
-            hasRecords = false;
-          }
-          else {
-            exclusiveStartKey = data.LastEvaluatedKey.requestId;
-          }
-          for (const record of data.Items) {
-            return updateRecord(record);
-          }
-        },
-        function (error) {
-          console.log(`Error while scanning table : ${error}`);
-          console.log("Last evaluated key : " + exclusiveStartKey);
-          hasRecords = false;
-          throw (error);
-        });
+    try {
+      const data = await getRecords(input);
+      totalScannedRecords += data.ScannedCount;
+      progressBar.update(totalScannedRecords);
+      if (data.LastEvaluatedKey == null || (test && itemUpdates >= 10)) {
+        hasRecords = false;
+      }
+      else {
+        exclusiveStartKey = data.LastEvaluatedKey.requestId;
+      }
+      for (const record of data.Items) {
+        await updateRecord(record);
+      }
+    }
+    catch (error) {
+      console.log(`Error while scanning table : ${error}`);
+      console.log("Last evaluated key : " + exclusiveStartKey);
+      hasRecords = false;
+      throw (error);
+    }
   }
 }
 
