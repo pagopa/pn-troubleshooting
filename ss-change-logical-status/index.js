@@ -150,7 +150,6 @@ async function processLines(path) {
 }
 
 async function processLine(line) {
-  console.log("Processing line: ", line);
   const item = await dynamoDbService.getItem(tableName, line);
   if (item && item.documentState === "available") {
 
@@ -169,15 +168,6 @@ async function processLine(line) {
 
 }
 
-function stdReq() {
-  return {
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'x-amzn-trace-id': uuidv4()
-    }
-  };
-}
 
 async function updateObjectMetadata(sCxId, sAPIKey, baseUrl, uriUpdateMetadata, sFileKey, newStatus) {
   const url = `${baseUrl}${uriUpdateMetadata}${sFileKey}`;
