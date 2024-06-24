@@ -116,7 +116,6 @@ async function processLines(path) {
 
 async function processLine(line) {
   const response = await dynamoDbService.updateDocumentState("pn-SsDocumenti", line, newStatus);
-  console.log(response);
   return response;
 }
 
