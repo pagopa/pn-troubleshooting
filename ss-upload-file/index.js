@@ -10,6 +10,7 @@ const progressBar = new cliProgress.SingleBar({
   hideCursor: true,
   noTTYOutput: true
 });
+var mime = require('mime-types')
 
 // Definizione delle costanti da mappare sugli argomenti da linea di comando.
 const args = [
@@ -119,8 +120,9 @@ async function processLines(path) {
 
 async function processLine(line) {
   const getObjectResponse = await s3Service.getObject(sourceBucket, line);
+  var contentType = mime.lookup(line) ? mime.lookup(line) : null;
   if (!dryrun) {
-    await s3Service.putObject(destinationBucket, line, getObjectResponse.ContentType, await getObjectResponse.Body.transformToByteArray());
+    await s3Service.putObject(destinationBucket, line, contentType, await getObjectResponse.Body.transformToByteArray());
   }
   fs.appendFileSync("output.txt", line + "\r\n");
 }
