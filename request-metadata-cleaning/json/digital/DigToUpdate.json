@@ -1,0 +1,41 @@
+{
+    "eventsList": [
+        {
+            "digProgrStatus": {
+                "eventCode": null,
+                "eventDetails": null,
+                "eventTimestamp": "2023-08-31T14:44:15Z",
+                "generatedMessage": null,
+                "status": "booked"
+            },
+            "paperProgrStatus": null
+        },
+        {
+            "digProgrStatus": {
+                "eventCode": null,
+                "eventDetails": null,
+                "eventTimestamp": "2023-08-31T14:44:27Z",
+                "generatedMessage": null,
+                "status": "retry"
+            },
+            "paperProgrStatus": null
+        },
+        {
+            "digProgrStatus": {
+                "eventCode": "M003",
+                "eventDetails": null,
+                "eventTimestamp": "2023-08-31T14:44:41Z",
+                "generatedMessage": {
+                    "id": "0107018a4c0db592-afaa5c64-63cc-4c2e-8f6c-529b2d543ddc-000000",
+                    "location": null,
+                    "system": "toBeDefined"
+                },
+                "status": "sent"
+            },
+            "paperProgrStatus": null
+        }
+    ],
+    "statusRequest": "sent",
+    "version": 5,
+    "XPagopaExtchCxId": "pn-delivery"
+}
