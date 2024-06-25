@@ -201,7 +201,7 @@ async function redriveMessageToSqs(queueUrl, requestId, delaySeconds){
         return false
     }
 
-    await sendSQSMessage(queueUrl, value, delaySeconds)
+    //await sendSQSMessage(queueUrl, value, delaySeconds)
     const okFile = 'ok.json'
     appendJSONToFile(okFile, {
         requestId: requestId,
@@ -278,9 +278,9 @@ async function run(){
         } else {
             console.log('skipped redrive of line '+i+' with delay '+delaySeconds+' seconds')
         }
-        if(i%20==0){
-            delaySeconds++
-        }
+        //if(i%20==0){
+        //    delaySeconds++
+        //}
     }
 }
 
