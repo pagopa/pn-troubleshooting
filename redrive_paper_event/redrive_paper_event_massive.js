@@ -278,9 +278,9 @@ async function run(){
         } else {
             console.log('skipped redrive of line '+i+' with delay '+delaySeconds+' seconds')
         }
-        if(i%20==0){
-            delaySeconds++
-        }
+        //if(i%20==0){
+        //    delaySeconds++
+        //}
     }
 }
 

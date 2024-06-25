@@ -35,7 +35,10 @@ def get_unique_iuns_from_source_filename(filename: str) -> list[str]:
     try:
         with open(filename) as f:
             for line in f:
-                ids.add(line.strip())
+                if 'IUN_' in line.strip():
+                    ids.add(line.strip().split("IUN_")[1].split(".RECINDEX")[0])
+                else:
+                    ids.add(line.strip())
     except FileNotFoundError:
         print(f'File {filename} not found')
         sys.exit(1)
@@ -72,10 +75,12 @@ def get_timelines(iuns: list[str]) -> list:
         
         new_element = {
             "iun": None,
+            "paId": None,
             "timeline": []
         }
         new_element["iun"] = iun
-
+        if len(items) > 0:
+            new_element["paId"] = items[0]['paId']['S']
         if len(items) > 0:
             # for each item in the timeline, add it to the new_element["timeline"] array
             for item in items:

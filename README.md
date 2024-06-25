@@ -297,3 +297,9 @@ Vuoi conoscere lo statusRequest di determinati requestId ed avere un riepilogo?
 ```bash
 node index.js --envName <env-name> --fileName <file-name>
 ```
+
+### find_timeline_elementId
+Vuoi individuare e clusterizzare i timeline elementId di una lista di iun?
+```bash
+node index.js --fileName <file-name> --categories <category1,category2,...> [--outputFolder <output-folder>]
+```
