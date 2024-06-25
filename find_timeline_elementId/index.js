@@ -90,7 +90,6 @@ async function main() {
       await _writeInFile(results[element], resultPath + "/" + element)
     }
   });
-  //await _writeInFile(results, resultPath + "cancelled_"+new Date().toISOString())
   console.log("End Execution")
 }
 
