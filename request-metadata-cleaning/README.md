@@ -61,12 +61,12 @@ che sono stati aggiornati.
 Il package contiene anche uno script di setup per creare dei record appositi per i test.
 
 ```bash
-node data-setup.js --awsProfile <aws-profile> --digRecordsNum <num1 num2 num3> --paperRecordsNum <num1 num2 num3>
+node data-setup.js --awsProfile <aws-profile> --digitalRecordsNum <num1 num2 num3> --paperRecordsNum <num1 num2 num3>
 ```
 
 - `awsProfile` è il profilo dell'account AWS. Se non viene inserito, verranno prese di default le credenziali AWS di
   sistema; `OPZIONALE`
-- `digRecordsNum` è un array di numeri che indica il numero di request digitali da creare per ogni tipologia di entry.
+- `digitalRecordsNum` è un array di numeri che indica il numero di request digitali da creare per ogni tipologia di entry.
 - `paperRecordsNum` è un array di numeri che indica il numero di request cartacee da creare per ogni tipologia di entry.
 
 Le tipologie di entry sono, in ordine di posizionamento nell'array, queste tre:
