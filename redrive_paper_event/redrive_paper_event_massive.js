@@ -201,7 +201,7 @@ async function redriveMessageToSqs(queueUrl, requestId, delaySeconds){
         return false
     }
 
-    //await sendSQSMessage(queueUrl, value, delaySeconds)
+    await sendSQSMessage(queueUrl, value, delaySeconds)
     const okFile = 'ok.json'
     appendJSONToFile(okFile, {
         requestId: requestId,
