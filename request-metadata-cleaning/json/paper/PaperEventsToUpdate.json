@@ -1,0 +1,66 @@
+{
+    "clientRequestTimeStamp": "2023-08-31T15:30:05.946009759Z",
+    "eventsList": [
+        {
+            "digProgrStatus": null,
+            "paperProgrStatus": {
+                "attachments": null,
+                "clientRequestTimeStamp": null,
+                "deliveryFailureCause": null,
+                "discoveredAddress": null,
+                "iun": null,
+                "productType": null,
+                "registeredLetterCode": null,
+                "status": "booked",
+                "statusCode": null,
+                "statusDateTime": "2023-08-31T15:30:08Z",
+                "statusDescription": null
+            }
+        },
+        {
+            "digProgrStatus": null,
+            "paperProgrStatus": {
+                "attachments": null,
+                "clientRequestTimeStamp": null,
+                "deliveryFailureCause": null,
+                "discoveredAddress": null,
+                "iun": null,
+                "productType": null,
+                "registeredLetterCode": null,
+                "status": "retry",
+                "statusCode": null,
+                "statusDateTime": "2023-08-31T15:30:33Z",
+                "statusDescription": null
+            }
+        },
+        {
+            "insertTimestamp": "2023-08-31T15:35:40Z",
+            "digProgrStatus": null,
+            "paperProgrStatus": {
+                "attachments": null,
+                "clientRequestTimeStamp": null,
+                "deliveryFailureCause": null,
+                "discoveredAddress": null,
+                "iun": null,
+                "productType": null,
+                "registeredLetterCode": null,
+                "status": "internalError",
+                "statusCode": "P010",
+                "statusDateTime": "2023-08-31T15:35:40Z",
+                "statusDescription": null
+            }
+        }
+    ],
+    "paperRequestMetadata": {
+        "iun": "iun",
+        "printType": "BN_FRONTE_RETRO",
+        "productType": "890",
+        "requestPaid": null,
+        "vas": null
+    },
+    "requestHash": "5f893ffd7af06f28ef301001be6513dc9e4b2070bd8c8e5412a1988daac146a8",
+    "requestTimestamp": "2023-08-31T17:30:07+02:00",
+    "statusRequest": "internalError",
+    "lastUpdateTimestamp": "2023-08-31T14:44:41Z",
+    "version": 5
+}
