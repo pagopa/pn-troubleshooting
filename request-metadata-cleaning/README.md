@@ -75,3 +75,12 @@ Le tipologie di entry sono, in ordine di posizionamento nell'array, queste tre:
 2) Record con lastUpdateTimestamp e insertTimestamp mancanti.
 3) Record con lastUpdateTimestamp presente ma alcuni eventi vecchi da sanare.
 
+Il package contiene anche uno script di setup per eliminare dei record appositi per i test.
+
+```bash
+node data-cleanup.js --awsProfile <aws-profile> --inputFile <inputFile>
+```
+
+- `awsProfile` è il profilo dell'account AWS. Se non viene inserito, verranno prese di default le credenziali AWS di
+  sistema; `OPZIONALE`
+- `inputFile` è il file contenente le requestId da dover eliminare
