@@ -304,8 +304,14 @@ Vuoi individuare e clusterizzare i timeline elementId di una lista di iun?
 node index.js --fileName <file-name> --categories <category1,category2,...> [--outputFolder <output-folder>]
 ```
 
-### find_timeline_elementId
+### check_ttl_expiration
 Vuoi verificare il ttl in pn-PaperAddress dei requestId?
 ```bash
 node index.js --envName <env-name> --fileName <file-name>
+```
+
+### extend_ttl_expiration
+Vuoi modificare il ttl in pn-PaperAddress dei requestId?
+```bash
+node index.js --envName <env-name> --fileName <file-name> --days <days>
 ```
