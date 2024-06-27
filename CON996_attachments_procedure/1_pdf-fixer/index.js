@@ -1,38 +1,16 @@
 const { PDFDocument } = require('pdf-lib');
 const fs = require('fs').promises;
+const fsAsync = require('fs');
 const { AwsClientsWrapper } = require('./aws');
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 
-if(process.argv.length < 5){
-    console.error('Usage: node index.js <input-file> <aws-account-id> <env>');
+if(process.argv.length < 7){
+    console.error('Usage: node index.js <input-file> <aws-account-id> <env> <margin-percentage> <dpi>');
     process.exit(1);
 }
 
 const awsClient = new AwsClientsWrapper(process.argv[4]);
-
-async function printToPdf(originalPdfPath, newPdfPath) {
-    // Load the original PDF
-    const originalPdfBytes = await fs.readFile(originalPdfPath);
-    const originalPdfDoc = await PDFDocument.load(originalPdfBytes);
-  
-    // Create a new blank PDF
-    const newPdfDoc = await PDFDocument.create();
-  
-    // Copy each page from the original PDF to the new PDF
-    const numPages = originalPdfDoc.getPageCount();
-    for (let i = 0; i < numPages; i++) {
-      const [copiedPage] = await newPdfDoc.copyPages(originalPdfDoc, [i]);
-      newPdfDoc.addPage(copiedPage);
-    }
-  
-    // Remove all content from the copied pages
-    /*newPdfDoc.getPages().forEach(page => {
-      page.node.set('Contents', newPdfDoc.context.obj([]));
-    });*/
-  
-    // Save the new PDF
-    const newPdfBytes = await newPdfDoc.save();
-    await fs.writeFile(newPdfPath, newPdfBytes);
-}
 
 async function scaleContent(inputPath, outputPath, scalePercentage) {
     // Read the PDF file
@@ -105,9 +83,9 @@ async function reduceMargins(inputPath, outputPath, marginPercentage) {
 }
 
 const marginPercentage = 10; // 10% reduction in left and right margins
-const scalePercentage = 20;
+const scalePercentage = parseInt(process.argv[5]);
 
-async function fixPdf(inputPath, outputPath, marginPercentage, scalePercentage) {
+async function fixPdf(inputPath, outputPath, scalePercentage) {
     //await printToPdf(inputPath, outputPath);
     await scaleContent(inputPath, outputPath, scalePercentage);
     //await reduceMargins(outputPath, outputPath, marginPercentage);
@@ -118,6 +96,23 @@ async function downloadFileFromS3(fileKey, bucket, outputPath){
     await fs.writeFile(outputPath, response.Body);
 }
 
+async function printToPdf(inputFilePath){
+    const inputFileName = inputFilePath.split('/').pop();
+    const dpi = parseInt(process.argv[6])
+    const gsParams = '-dNOPAUSE -dBATCH -sDEVICE=pngalpha -r'+dpi+' -sOutputFile=pngs/'+inputFileName+'-%03d.png'
+
+    // execute ghostscript
+    const { stdout, stderr } = await exec('gs '+gsParams+' '+inputFilePath);
+    console.log('stdout:', stdout);
+    console.log('stderr:', stderr);
+
+    // convert pngs to pdf
+    const { stdout2, stderr2 } = await exec('convert pngs/'+inputFileName+'*.png outputs/printed_'+inputFileName);
+    console.log('stdout2:', stdout2);
+    console.log('stderr2:', stderr2);
+
+    return 'outputs/printed_'+inputFileName
+}
 
 const bucket = 'pn-safestorage-eu-south-1-'+process.argv[3]
 
@@ -139,20 +134,34 @@ async function run(){
     }
 
     await fs.mkdir('inputs', { recursive: true });
+    await fs.mkdir('pngs', { recursive: true })
     await fs.mkdir('outputs', { recursive: true });
     for(let i=0; i<fileKeys.length; i++){
         const fileKey = fileKeys[i];
+        // check if file exists in output folder
+        const outputExists = await fsAsync.existsSync('outputs/printed_fixed_'+fileKey);
+        if(outputExists){
+            console.log('file '+fileKey+' already fixed');
+            report[fileKey] = 'outputs/printed_fixed_'+fileKey;
+            continue;
+        }
+
         const outputPath = `inputs/${fileKey}`;
         const fixedOutputPath = `outputs/fixed_${fileKey}`;
         await downloadFileFromS3(fileKey, bucket, outputPath);
-        await fixPdf(outputPath, fixedOutputPath, marginPercentage, scalePercentage);
+        await fixPdf(outputPath, fixedOutputPath, scalePercentage);
         console.log('fixed '+fileKey+' and saved to '+fixedOutputPath);
 
-        report[fileKey] = fixedOutputPath;
+        const printedFixedOutputPath = await printToPdf(fixedOutputPath);
+        console.log(fileKey+' printed to pdf: '+printedFixedOutputPath);
+        report[fileKey] = printedFixedOutputPath;
     }
-
-    await fs.writeFile('report.json', JSON.stringify(report));
 }
 
-run().then(() => console.log('done')).catch(console.error);
+run().then(
+    () => console.log('done'))
+    .catch(console.error)
+    .finally(() => {
+        fs.writeFile('report.json', JSON.stringify(report, null, 2))
+    })
 
