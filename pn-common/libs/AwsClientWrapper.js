@@ -1,31 +1,32 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { DynamoDBClient, QueryCommand, UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
-const { marshall } = require("@aws-sdk/util-dynamodb");
+const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
+const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression } = require("./dynamoUtil");
 
 function awsClientCfg( profile ) {
   const self = this;
-  //if(!profileName){
-    return { 
-      region: "eu-south-1", 
-      credentials: fromIni({ 
-        profile: profile,
-      })
-    }
-  //}
+  return { 
+    region: "eu-south-1", 
+    credentials: fromIni({ 
+      profile: profile,
+    })
+  }
 }
 
 class AwsClientsWrapper {
 
-  constructor( profile, envName, profileName, roleArn ) {
-    let ssoProfile;
+  constructor(profile, envName) {
     if (profile == 'core') {
-      ssoProfile = `sso_pn-core-${envName}`
+      this.ssoProfile = `sso_pn-core-${envName}`
     }
     else {
-      ssoProfile = `sso_pn-confinfo-${envName}`
+      this.ssoProfile = `sso_pn-confinfo-${envName}`
     }
-    this._dynamoClient = new DynamoDBClient( awsClientCfg( ssoProfile, profileName, roleArn ));
+    console.log("AWS Wrapper initialized for env " + envName)
+  }
+
+  _initDynamoDB() {
+    this._dynamoClient = new DynamoDBClient( awsClientCfg( this.ssoProfile ));
   }
 
   async _queryRequest(tableName, key, value){
@@ -42,6 +43,32 @@ class AwsClientsWrapper {
     };
     const command = new QueryCommand(input);
     return await this._dynamoClient.send(command);
+  }
+
+  async _updateItem(tableName, keys, values, operator){
+    const input = {
+      TableName: tableName,
+      Key: prepareKeys(keys),
+      ExpressionAttributeNames: prepareExpressionAttributeNames(values),
+      ExpressionAttributeValues: prepareExpressionAttributeValues(values),
+      UpdateExpression: prepareUpdateExpression(operator, values),
+      ReturnValues: 'ALL_NEW'
+    }
+    const command = new UpdateItemCommand(input)
+    return await this._dynamoClient.send(command)
+  }
+
+  async _describeTable(tableName){
+    const input = { // DescribeTableInput
+      TableName: tableName, // required
+    };
+    const command = new DescribeTableCommand(input);
+    return await this._dynamoClient.send(command)
+  }
+
+  async _getKeyFromSchema(tableName){
+    const tableInfo = await this._describeTable(tableName)
+    return tableInfo.Table.KeySchema
   }
 }
 
