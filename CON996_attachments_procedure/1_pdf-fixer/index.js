@@ -121,7 +121,7 @@ async function run(){
 
     const file = await fs.readFile(process.argv[2], 'utf-8');
     console.log('file read', file)
-    const jsonLines = file.split("\n");
+    const jsonLines = file.split("\n").filter((l) => l!='');
 
     const fileKeys = []
 
@@ -137,9 +137,10 @@ async function run(){
     await fs.mkdir('pngs', { recursive: true })
     await fs.mkdir('outputs', { recursive: true });
     for(let i=0; i<fileKeys.length; i++){
-        const fileKey = fileKeys[i];
+        const fileKeyToUseAsIndex = fileKey
+        const fileKey = fileKeyToUseAsIndex.split('?')[0] // remove '?docDat' from fileKey
         // check if file exists in output folder
-        const outputExists = await fsAsync.existsSync('outputs/printed_fixed_'+fileKey);
+        const outputExists = fsAsync.existsSync('outputs/printed_fixed_'+fileKey);
         if(outputExists){
             console.log('file '+fileKey+' already fixed');
             report[fileKey] = 'outputs/printed_fixed_'+fileKey;
@@ -154,7 +155,7 @@ async function run(){
 
         const printedFixedOutputPath = await printToPdf(fixedOutputPath);
         console.log(fileKey+' printed to pdf: '+printedFixedOutputPath);
-        report[fileKey] = printedFixedOutputPath;
+        report[fileKeyToUseAsIndex] = printedFixedOutputPath;
     }
 }
 
