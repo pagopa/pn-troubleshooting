@@ -11,7 +11,7 @@ function prepareTtl(dateInMs, days) {
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> [--days <days>]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
