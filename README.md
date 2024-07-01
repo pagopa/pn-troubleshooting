@@ -315,3 +315,9 @@ Vuoi modificare il ttl in pn-PaperAddress dei requestId?
 ```bash
 node index.js --envName <env-name> --fileName <file-name> --days <days>
 ```
+
+### remove_from_sqs
+Vuoi rimuovere singoli eventi da una coda?
+```bash
+node index.js --account <account> --envName <env-name> --queueName <queue-name> --visibilityTimeout <visibility-timeout> --fileName <file-name> 
+```
