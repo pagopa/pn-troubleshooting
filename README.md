@@ -321,3 +321,9 @@ Vuoi rimuovere singoli eventi da una coda?
 ```bash
 node index.js --account <account> --envName <env-name> --queueName <queue-name> --visibilityTimeout <visibility-timeout> --fileName <file-name> 
 ```
+
+### check_webhook_events_duplicated
+Vuoi verificare se ci sono degli eventi con campo timeline duplicati nella tabella webhook-events?
+```bash
+node index.js --envName <env-name> --hashKey <hash-key> --sortKey <sort-key>
+```

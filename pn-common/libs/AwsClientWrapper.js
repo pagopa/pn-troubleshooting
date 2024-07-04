@@ -2,7 +2,9 @@
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws-sdk/client-sqs");
-const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression } = require("./dynamoUtil");
+const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, DescribeLogGroupsCommand } = require("@aws-sdk/client-cloudwatch-logs");
+const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
+const { sleep } = require("./utils");
 
 function awsClientCfg( profile ) {
   const self = this;
@@ -33,6 +35,10 @@ class AwsClientsWrapper {
   _initSQS() {
     this._sqsClient = new SQSClient( awsClientCfg( this.ssoProfile ));
   }
+  
+  _initCloudwatch() {
+    this._cloudwatchClient = new CloudWatchLogsClient( awsClientCfg( this.ssoProfile ));
+  }
 
   // DynamoDB
   async _queryRequest(tableName, key, value){
@@ -49,6 +55,18 @@ class AwsClientsWrapper {
     const command = new QueryCommand(input);
     return await this._dynamoClient.send(command);
   }
+
+  async _dynamicQueryRequest(tableName, keys, logicalOperator){
+    const input = {
+      TableName: tableName,
+      ExpressionAttributeNames: prepareExpressionAttributeNames(keys),
+      ExpressionAttributeValues: prepareExpressionAttributeValues(keys),
+      KeyConditionExpression: prepareKeyConditionExpression(keys, logicalOperator),
+    } 
+    const command = new QueryCommand(input);
+    return await this._dynamoClient.send(command)
+  }
+
 
   async _updateItem(tableName, keys, values, operator){
     const input = {
@@ -113,6 +131,47 @@ class AwsClientsWrapper {
     const command = new DeleteMessageCommand(input);
     const response = await this._sqsClient.send(command);
     return response;
+  }
+
+  //Cloudwatch
+  async _executeCloudwatchQuery(logGroupNames, startTime, endTime, queryString, limit) {
+    const input = { // StartQueryRequest
+      logGroupNames: logGroupNames,
+      startTime: startTime, // required
+      endTime: endTime, // required
+      queryString: queryString, // required
+      limit: limit
+      };
+    console.log(input)
+    const command = new StartQueryCommand(input);
+    const response = await this._cloudwatchClient.send(command);
+    //waiting result
+    console.log(response)
+    let logs = null;
+    while( !logs ) {
+      await sleep( 1 * 1000 )
+      try {
+        logs = await this._fetchQueryResult( response.queryId );
+      }
+      catch( error ) {
+        console.log( error );
+        await sleep( 20 * 1000 );
+      }
+      console.log(logs)
+    }
+    return logs;
+  }
+
+  async _fetchQueryResult( queryId ) {
+    const queryPollCommand = new GetQueryResultsCommand({ queryId });
+    var queryPollResponse;
+    queryPollResponse = await this._cloudwatchClient.send( queryPollCommand );
+
+    let logs = null;
+    if( ! ["Scheduled", "Running"].includes( queryPollResponse.status )) {
+      logs = queryPollResponse.results || []
+    }
+    return logs;
   }
 }
 
