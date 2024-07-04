@@ -53,6 +53,7 @@ async function main() {
   });  
   _checkingParameters(args, values)
   const awsClient = new AwsClientsWrapper( 'core', envName );
+  awsClient._initDynamoDB()
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   for(let i = 0; i < fileRows.length; i++){
     const requestId =  fileRows[i]
@@ -71,6 +72,9 @@ async function main() {
         }
       })
       console.log(`${requestId} expires on date ${new Date(tmp).toISOString()} - ${diffDayFromToday(tmp)} days remaining`)
+    }
+    else {
+      console.log(`RequestId ${requestId} not found`)
     }
   }
 }
