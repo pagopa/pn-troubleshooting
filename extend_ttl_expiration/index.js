@@ -10,8 +10,14 @@ function prepareTtl(dateInMs, days) {
   return date.getTime() / 1000
 }
 
+function appendJsonToFile(fileName, data){
+  if(!fs.existsSync("results"))
+    fs.mkdirSync("results", { recursive: true });
+  fs.appendFileSync("results/" + fileName, data + "\n")
+}
+
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> [--days <days>]"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> --days <days> [--dryrun]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -40,10 +46,12 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "days", mandatory: false, subcommand: [] },
+    { name: "days", mandatory: true, subcommand: [] },
+    { name: "dryrun", mandatory: false, subcommand: [] },
+
   ]
   const values = {
-    values: { envName, fileName, days},
+    values: { envName, fileName, days, dryrun },
   } = parseArgs({
     options: {
       envName: {
@@ -54,6 +62,9 @@ async function main() {
       },
       days: {
         type: "string", short: "d", default: undefined
+      },
+      dryrun: {
+        type: "boolean", short: "n", default: false
       },
     },
   });  
@@ -66,9 +77,9 @@ async function main() {
     const requestId =  fileRows[i]
     let result = await awsClient._queryRequest("pn-PaperAddress", "requestId", requestId)
     if(result.Items.length > 0){ 
-      
-      result.Items.forEach(async e => {
-        let item = unmarshall(e)
+      for(let z = 0; z < result.Items.length; z++ ) {
+        let item = unmarshall(result.Items[z])
+        appendJsonToFile('backup.json', JSON.stringify(item))
         item.ttl = item.ttl * 1000 //convert to milliseconds
         let keys = {};
         keySchema.forEach(keyAttribute => {
@@ -81,11 +92,19 @@ async function main() {
             value: prepareTtl(item.ttl, Number(days))
           }
         }
-        const res = await awsClient._updateItem("pn-PaperAddress", keys, data, "SET")
-        console.log(`For ${JSON.stringify(keys)}`)
-        console.log(`TTL modified from ${new Date(item.ttl).toISOString()} to ${new Date(res.Attributes.ttl.N * 1000).toISOString()}`)
-      })
-      
+        if(!dryrun) {
+          const res = await awsClient._updateItem("pn-PaperAddress", keys, data, "SET")
+          console.log(`For ${JSON.stringify(keys)}`)
+          console.log(`TTL modified from ${new Date(item.ttl).toISOString()} to ${new Date(res.Attributes.ttl.N * 1000).toISOString()}`)
+        }
+        else {
+          console.log(`DRYRUN: For ${JSON.stringify(keys)}`)
+          console.log(`DRYRUN: TTL modified from ${new Date(item.ttl).toISOString()} to ${new Date(prepareTtl(item.ttl, Number(days)) * 1000).toISOString()}`)
+        }
+      }
+    }
+    else {
+      console.log(`RequestId ${requestId} not found`)
     }
   }
 }
