@@ -115,8 +115,10 @@ async function processLines(path) {
 }
 
 async function processLine(line) {
-  const response = await dynamoDbService.updateDocumentState("pn-SsDocumenti", line, newStatus);
-  return response;
+  if (!dryrun) {
+      const response = await dynamoDbService.updateDocumentState("pn-SsDocumenti", line, newStatus);
+      return response;
+  }
 }
 
 // Metodo principale
