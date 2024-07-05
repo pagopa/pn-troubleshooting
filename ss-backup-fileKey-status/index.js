@@ -15,14 +15,13 @@ const progressBar = new cliProgress.SingleBar({
 const args = [
   { name: "inputFile", mandatory: true },
   { name: "awsProfile", mandatory: false },
-  { name: "awsRegion", mandatory: false },
-  { name: "dryrun", mandatory: false }
+  { name: "awsRegion", mandatory: false }
 ]
 
 // Parsing degli argomenti da linea di comando.
 // Se awsProfile e awsRegion non vengono impostati, verranno usati i default della macchina attuale.
 const values = {
-  values: { inputFile, awsProfile, awsRegion, dryrun },
+  values: { inputFile, awsProfile, awsRegion },
 } = parseArgs({
   options: {
     inputFile: {
@@ -33,10 +32,7 @@ const values = {
     },
     awsRegion: {
       type: "string",
-    },
-    dryrun: {
-      type: "boolean",
-    },
+    }
   },
 });
 checkingParameters(args, values);

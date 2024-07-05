@@ -16,14 +16,13 @@ const args = [
   { name: "savedRecords", mandatory: true },
   { name: "fileKeys", mandatory: true },
   { name: "awsProfile", mandatory: false },
-  { name: "awsRegion", mandatory: false },
-  { name: "dryrun", mandatory: false }
+  { name: "awsRegion", mandatory: false }
 ]
 
 // Parsing degli argomenti da linea di comando.
 // Se awsProfile e awsRegion non vengono impostati, verranno usati i default della macchina attuale.
 const values = {
-  values: { savedRecords, fileKeys, awsProfile, awsRegion, dryrun },
+  values: { savedRecords, fileKeys, awsProfile, awsRegion },
 } = parseArgs({
   options: {
     savedRecords: {
@@ -37,10 +36,7 @@ const values = {
     },
     awsRegion: {
       type: "string",
-    },
-    dryrun: {
-      type: "boolean",
-    },
+    }
   },
 });
 checkingParameters(args, values);
