@@ -29,7 +29,7 @@ aws sso login --profile sso_pn-confinfo-<env>
 ### Esecuzione
 
 ```bash
-node index.js --inputFile <input-file> --bucket <source-bucket> --awsProfile <aws-profile> --awsRegion <aws-region> --dryrun
+node index.js --inputFile <input-file> --bucket <source-bucket> --awsProfile <aws-profile> --awsRegion <aws-region> --searchPath <search-path>
 ```
 
 Dove:
@@ -38,8 +38,7 @@ Dove:
 - `<source-bucket>` bucket di origine da cui reperire i file.
 - `<aws-profile>` è il profilo dell'account AWS. Se non viene inserito, verranno prese di default le credenziali AWS di sistema; `OPZIONALE`
 - `<aws-region>` è la region dei client AWS. Se non viene inserita, verrà presa la region di default del sistema; `OPZIONALE`
-- `<dryrun>` se inserito, attiva la modalità dryrun. Questa modalità attiva automaticamente anche quella di test, e in piu'
-  disattiva le operazioni di scrittura. `OPZIONALE`
+- `<search-path>` è il path completo in cui eseguire la ricerca dei file S3 dal bucket. Se non viene impostato, la ricerca verrà eseguita senza prefissare il path alla fileKey; `OPZIONALE`
 
 Alla fine del processo, verranno generati tre file:
 

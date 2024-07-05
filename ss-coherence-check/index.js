@@ -17,14 +17,14 @@ const args = [
   { name: "inputFile", mandatory: true },
   { name: "awsProfile", mandatory: false },
   { name: "awsRegion", mandatory: false },
-  { name: "dryrun", mandatory: false },
-  { name: "bucket", mandatory: true }
+  { name: "bucket", mandatory: true },
+  { name: "searchPath", mandatory: false }
 ]
 
 // Parsing degli argomenti da linea di comando.
 // Se awsProfile e awsRegion non vengono impostati, verranno usati i default della macchina attuale.
 const values = {
-  values: { inputFile, awsProfile, awsRegion, dryrun, bucket },
+  values: { inputFile, awsProfile, awsRegion, bucket, searchPath },
 } = parseArgs({
   options: {
     inputFile: {
@@ -36,10 +36,10 @@ const values = {
     awsRegion: {
       type: "string",
     },
-    dryrun: {
-      type: "boolean",
-    },
     bucket: {
+      type: "string",
+    },
+    searchPath: {
       type: "string",
     },
   },
@@ -118,7 +118,9 @@ async function processLine(line) {
   // recupero record da Dynamo
   const record = await dynamoDbService.getItem("pn-SsDocumenti", line);
   // recupero l'oggetto s3
-  const object = await s3Service.getObject(bucket, line);
+  var fileKey = line;
+  if (searchPath) { fileKey = searchPath + "/" + fileKey }
+  const object = await s3Service.getObject(bucket, fileKey);
   // trasformo l'oggetto s3 in bytearray
   let objBA = await object.Body.transformToByteArray();
 
