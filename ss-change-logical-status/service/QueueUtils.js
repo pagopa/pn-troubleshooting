@@ -1,10 +1,8 @@
 const { SQSClient, GetQueueUrlCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
-const AWS = require('aws-sdk');
 
 class QueueUtils {
   constructor(awsRegion) {
     this.client = new SQSClient({ region: awsRegion });
-    this.sqs = new AWS.SQS({ region: awsRegion });
   }
 
   async getQueueLength(queueUrl) {
@@ -19,22 +17,20 @@ class QueueUtils {
   }
 
   async waitForQueuesToEmpty(queueUrls) {
-
     let allQueuesEmpty = false;
 
     while (!allQueuesEmpty) {
       allQueuesEmpty = true;
-      
+
       for (const url of queueUrls) {
         const queueLength = await this.getQueueLength(url);
         if (queueLength > 0) {
           allQueuesEmpty = false;
           await new Promise(resolve => setTimeout(resolve, 10000));
-          break; 
+          break;
         }
       }
     }
-
   }
 
   async getQueueUrls(queueNames) {
@@ -49,6 +45,7 @@ class QueueUtils {
         const data = await this.client.send(new GetQueueUrlCommand(input));
         queueUrls.push(data.QueueUrl);
       } catch (err) {
+        console.error(`Error getting URL for queue ${name}:`, err);
       }
     }
 
