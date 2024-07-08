@@ -110,6 +110,7 @@ async function printToPdf(inputFilePath){
     if(dpi===0){
         // copy input path to outputs/printed_'+inputFileName
         await fs.copyFile(inputFilePath, printedOutputPath);
+        return printedOutputPath
     }
 
     const gsParams = '-dNOPAUSE -dBATCH -sDEVICE=pngalpha -r'+dpi+' -sOutputFile=pngs/'+inputFileName+'-%03d.png'
