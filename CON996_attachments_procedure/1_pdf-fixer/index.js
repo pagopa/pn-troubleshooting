@@ -13,6 +13,12 @@ if(process.argv.length < 7){
 const awsClient = new AwsClientsWrapper(process.argv[4]);
 
 async function scaleContent(inputPath, outputPath, scalePercentage) {
+    if(scalePercentage==0){
+        // copy input path to output path
+        await fs.copyFile(inputPath, outputPath);
+        return;
+    }
+
     // Read the PDF file
     const pdfBytes = await fs.readFile(inputPath);
 
@@ -99,6 +105,14 @@ async function downloadFileFromS3(fileKey, bucket, outputPath){
 async function printToPdf(inputFilePath){
     const inputFileName = inputFilePath.split('/').pop();
     const dpi = parseInt(process.argv[6])
+    const printedOutputPath = 'outputs/printed_'+inputFileName;
+
+    if(dpi===0){
+        // copy input path to outputs/printed_'+inputFileName
+        await fs.copyFile(inputFilePath, printedOutputPath);
+        return printedOutputPath
+    }
+
     const gsParams = '-dNOPAUSE -dBATCH -sDEVICE=pngalpha -r'+dpi+' -sOutputFile=pngs/'+inputFileName+'-%03d.png'
 
     // execute ghostscript
@@ -107,11 +121,11 @@ async function printToPdf(inputFilePath){
     console.log('stderr:', stderr);
 
     // convert pngs to pdf
-    const { stdout2, stderr2 } = await exec('convert pngs/'+inputFileName+'*.png outputs/printed_'+inputFileName);
+    const { stdout2, stderr2 } = await exec('convert pngs/'+inputFileName+'*.png '+printedOutputPath);
     console.log('stdout2:', stdout2);
     console.log('stderr2:', stderr2);
 
-    return 'outputs/printed_'+inputFileName
+    return printedOutputPath
 }
 
 const bucket = 'pn-safestorage-eu-south-1-'+process.argv[3]
