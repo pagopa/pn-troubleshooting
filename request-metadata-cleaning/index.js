@@ -160,7 +160,7 @@ async function recordsCleaning() {
     ProjectionExpression: "requestId, eventsList, version",
     ExpressionAttributeValues: {
         ":nullType": "NULL"
-    }
+    },
     FilterExpression: "attribute_not_exists(lastUpdateTimestamp) OR attribute_not_exists(eventsList[0].insertTimestamp) OR attribute_type(eventsList[0].insertTimestamp, :nullType)",
     Limit: scanLimit,
     ConsistentRead: true
