@@ -151,7 +151,7 @@ async function run(){
     await fs.mkdir('pngs', { recursive: true })
     await fs.mkdir('outputs', { recursive: true });
     for(let i=0; i<fileKeys.length; i++){
-        const fileKeyToUseAsIndex = fileKey
+        const fileKeyToUseAsIndex = fileKeys[i]
         const fileKey = fileKeyToUseAsIndex.split('?')[0] // remove '?docDat' from fileKey
         // check if file exists in output folder
         const outputExists = fsAsync.existsSync('outputs/printed_fixed_'+fileKey);
