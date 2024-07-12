@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # TODO pass profile and region from outside
-AWS_PROFILE=cons_admin_try_spark
+AWS_PROFILE=sso_pn-core-prod
 AWS_REGION=eu-south-1
 
 #######################################
@@ -116,12 +116,9 @@ function run() {
 
   # EC2 is in another state like stopping, pending or shutting-down (we don't want interfere with these states)
   else
-    echo "EC2 cannot be connected or started because it in state: '${ec2_instance_state}'"
+    echo "EC2 cannot be connected or started because ${ec2_instance_id} is in state: '${ec2_instance_state}'"
   fi
 }
 
 # Start entrypoint
 run
-
-
-
