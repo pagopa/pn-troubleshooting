@@ -61,8 +61,8 @@ function _prepareMessage(requestId, event) {
 }
 
 function appendJsonToFile(fileName, jsonData){
-  //fs.mkdirSync("results", { recursive: true });
-  //fs.appendFileSync("results/" + fileName, JSON.stringify(jsonData) + "\n")
+  fs.mkdirSync("results", { recursive: true });
+  fs.appendFileSync("results/" + fileName, JSON.stringify(jsonData) + "\n")
   console.log(JSON.stringify(jsonData))
 }
 

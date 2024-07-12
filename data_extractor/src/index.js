@@ -47,7 +47,7 @@ function _checkingParameters(args, values){
       })
     }
   })
-  if (Number(limit) > 100) {
+  if (Number(limit) > 150) {
     console.log("Limit value must be below 100! Default value is 20")
     process.exit(1)
   }
@@ -109,8 +109,8 @@ async function main() {
   const awsClient = new AwsClientsWrapper( envName, profileName, roleArn);
   const reportLogger = new ReportGenerator();
 
-  if (Number(limit) > 100 ) {
-    var lim = 100;
+  if (Number(limit) > 150 ) {
+    var lim = 150;
   }
   else {
     var lim = Number(limit)
@@ -120,7 +120,7 @@ async function main() {
 
   //PREPARE INTERVAL
   const timestamp = _prepareDate(start)
-  const delay = 1000*60*70;
+  const delay = 1000*60*120;
   const now = Date.now();
   const fromEpochMs = timestamp - 1000*60*60;
   const toEpochMs = fromEpochMs + delay > now ? now : fromEpochMs + delay;

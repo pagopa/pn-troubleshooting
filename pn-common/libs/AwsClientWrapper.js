@@ -2,7 +2,8 @@
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws-sdk/client-sqs");
-const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, DescribeLogGroupsCommand } = require("@aws-sdk/client-cloudwatch-logs");
+const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand } = require("@aws-sdk/client-cloudwatch-logs");
+const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 
@@ -38,6 +39,10 @@ class AwsClientsWrapper {
   
   _initCloudwatch() {
     this._cloudwatchClient = new CloudWatchLogsClient( awsClientCfg( this.ssoProfile ));
+  }
+
+    _initKinesis() {
+    this._kinesisClient = new KinesisClient( awsClientCfg( this.ssoProfile ));
   }
 
   // DynamoDB
@@ -142,11 +147,9 @@ class AwsClientsWrapper {
       queryString: queryString, // required
       limit: limit
       };
-    console.log(input)
     const command = new StartQueryCommand(input);
     const response = await this._cloudwatchClient.send(command);
     //waiting result
-    console.log(response)
     let logs = null;
     while( !logs ) {
       await sleep( 1 * 1000 )
@@ -157,7 +160,6 @@ class AwsClientsWrapper {
         console.log( error );
         await sleep( 20 * 1000 );
       }
-      console.log(logs)
     }
     return logs;
   }
@@ -173,6 +175,31 @@ class AwsClientsWrapper {
     }
     return logs;
   }
+
+  
+  //Kinesis
+  async _getSingleShardInfo(streamName, shardId) {
+    const shardIterator = await this._getShardIterator(streamName, shardId)
+    const input = { // GetRecordsCommand
+      ShardIterator: shardIterator,
+      Limit: 1 // Numero di record da leggere per chiamata
+    };
+    const command = new GetRecordsCommand(input);
+    const response = await this._kinesisClient.send(command);
+    return response;
+  }
+
+  async _getShardIterator(streamName, shardId) {
+    const input = { // GetShardIteratorCommand
+      StreamName: streamName,
+      ShardId: shardId,
+      ShardIteratorType: "TRIM_HORIZON" 
+    };
+    const command = new GetShardIteratorCommand(input);
+    const response = await this._kinesisClient.send(command);
+    return response.ShardIterator;
+  }
+
 }
 
 module.exports = AwsClientsWrapper;
