@@ -1,15 +1,8 @@
 const { AwsClientsWrapper } = require("pn-common");
+const { _getIunFromRequestId, _getAttemptFromRequestId } = require("pn-common/libs/utils");
 const { parseArgs } = require('util');
 const fs = require('fs');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
-
-function _getIunFromRequestId(requestId) {
-  return requestId.split("IUN_")[1].split(".")[0];
-}
-
-function _getAttemptFromRequestId(requestId) {
-  return requestId.split("ATTEMPT_")[1][0];
-}
 
 function _hasSpecificAttemptAnalogFeedbackEvent(timelineEvents, attempt) {
   let tmp = []
