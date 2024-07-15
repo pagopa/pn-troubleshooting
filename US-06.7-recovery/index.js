@@ -4,7 +4,7 @@ const path = require('path');
 const { AwsClientsWrapper } = require("pn-common");
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 
-const MAX_ENDTIMESTAMP_DELAY = 20*60*1000
+const MAX_ENDTIMESTAMP_DELAY = 2*10*60*1000 //2 hours
 
 function elabResult(now, to_submit, event) {
   const isoTimestamp = new Date(now).toISOString()
@@ -101,7 +101,7 @@ async function main() {
   });  
   _checkingParameters(args, values)
   //Prepare AWS
-  const nowTimestamp = Date.now();
+  const nowTimestamp = Date.now() + (2*60*60*1000); // +2h
   const account = 'core'
   const awsClient = new AwsClientsWrapper( account, envName );
   awsClient._initCloudwatch()
@@ -141,7 +141,7 @@ async function main() {
             const result = await awsClient._getSingleShardInfo('pn-action-cdc', shardId)
             const data = Buffer.from(result.Records[0].Data).toString("utf-8")
             actionId = JSON.parse(data).dynamodb.Keys.actionId.S
-            startTimestamp = JSON.parse(data).dynamodb.ApproximateCreationDateTime
+            startTimestamp = JSON.parse(data).dynamodb.ApproximateCreationDateTime + (2*60*60*1000)
           }
           else {
             actionId = JSON.parse(event.Body).actionId  
@@ -153,8 +153,11 @@ async function main() {
           let logs;
           for(; startTimestamp < maxTimestamp; startTimestamp = endTimestamp, endTimestamp += windowSize) {
             endTimestamp = Math.min(endTimestamp, maxTimestamp);
+            console.log(`Query from ${new Date(startTimestamp).toISOString()} to ${new Date(endTimestamp).toISOString()}`)
             const queryString = prepareStringDataQuery(actionId)
+            console.log(queryString)
             logs = await awsClient._executeCloudwatchQuery(['/aws/ecs/pn-delivery-push'], startTimestamp, endTimestamp, queryString, 1)
+            console.log(logs)
             if(logs.length > 0) {
               console.log(`logs found for actionId ${actionId}`)
               const tmp = {
@@ -162,7 +165,6 @@ async function main() {
                 MD5OfMessageAttributes: event.MD5OfMessageAttributes, 
                 Body: event.Body
               }
-              console.log(event)
               console.log(`To remove message with key ${actionId} from DLQ`)
               appendJsonToFile(`results/${new Date(nowTimestamp).toISOString()}`, "to_remove.json", JSON.stringify(tmp))
               break;
@@ -173,7 +175,7 @@ async function main() {
             const res = await awsClient._queryRequest('pn-Action', 'actionId', actionId)
             if(res.Items.length > 0) {
                 res.Items.forEach(action => {
-                  const to_submit = (nowTimestamp - initialTimeStamp / 36e5) > 12
+                  const to_submit = ((nowTimestamp - initialTimeStamp) / 36e5) > 12
                   elabResult(nowTimestamp, to_submit, action)
               });
             }
@@ -194,18 +196,20 @@ async function main() {
     let endTimestamp = startTimestamp + windowSize
     const initialTimeStamp = startTimestamp;
     const maxTimestamp = Math.min(nowTimestamp, startTimestamp + MAX_ENDTIMESTAMP_DELAY);
+    console.log(new Date(maxTimestamp).toISOString())
     let logs;
     for(; startTimestamp < maxTimestamp && Object.keys(actionMap).length > 0; startTimestamp = endTimestamp, endTimestamp += windowSize) {
       endTimestamp = Math.min(endTimestamp, maxTimestamp);
       const queryString = prepareStringDataQuery(actionIds)
       logs = await awsClient._executeCloudwatchQuery(['/aws/ecs/pn-delivery-push'], startTimestamp, endTimestamp, queryString, 1)
-      console.log(logs)
       Object.keys(actionMap).forEach(id => {
         if(!actionMap[id]) {
           logs.forEach(log => {
-            if(log['@message'].contains(id)) {
-              actionMap[id] = true;
-            }
+            log.forEach(element => {
+              if(element.field == '@message' && element.value.includes(id)) {
+                actionMap[id] = true;
+              }
+            });
           });
         } else {
           delete actionMap[id]
@@ -219,7 +223,7 @@ async function main() {
         const res = await awsClient._queryRequest('pn-Action', 'actionId', actionArr[q])
         if(res.Items.length > 0) {
           res.Items.forEach(action => {
-            const to_submit = (nowTimestamp - initialTimeStamp / 36e5) > 12
+            const to_submit = ((nowTimestamp - initialTimeStamp) / 36e5) > 12
             elabResult(nowTimestamp, to_submit, action)
           });
         }
