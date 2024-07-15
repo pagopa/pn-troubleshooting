@@ -159,16 +159,16 @@ async function main() {
           if(!dryrun && !skip){
             await awsClient._sendSQSMessage(queueUrl, event, delay);
           }
+          console.log(event)
+          const res = {
+            [requestId]: messages,
+          }
           if(!skip) {
-            console.log(event)
-            const res = {
-              [requestId]: messages,
-            }
             appendJsonToFile(`${envName}_${date}`, `sentToSQS.json`, JSON.stringify(res))
           }
           else {
             console.log(`RequestId ${requestId} contains different RECAG012 statusDateTime`)
-            appendJsonToFile(`${envName}_${date}`, `skipped.json`, requestId)
+            appendJsonToFile(`${envName}_${date}`, `skipped.json`, JSON.stringify(res))
           }
         }
         else {
