@@ -74,10 +74,11 @@ function _prepareMessage(requestId, event) {
 
 }
 
-function appendJsonToFile(fileName, data){
-  if(!fs.existsSync("results"))
-    fs.mkdirSync("results", { recursive: true });
-  fs.appendFileSync(`results/${fileName}`, JSON.stringify(data) + "\n")
+function appendJsonToFile(filePath, fileName, data){
+  const path = `results/${filePath}`
+  if(!fs.existsSync(path))
+    fs.mkdirSync(path, { recursive: true });
+  fs.appendFileSync(`${path}/${fileName}`, data + "\n")
 }
 
 
@@ -147,20 +148,28 @@ async function main() {
         if(idxResult.length > 0) {
           let messages = []
           let event = null;
+          let skip = false;
           for(let i of idxResult) {
             const message = _prepareMessage(requestId, eventsList[i].paperProgrStatus)
             event == null ? event = message : null
             event.analogMail.clientRequestTimeStamp < message.analogMail.clientRequestTimeStamp ? event = message : null
             messages.push(message)
+            skip = messages[0].analogMail.statusDateTime !== eventsList[i].paperProgrStatus.statusDateTime
           }
-          if(!dryrun){
+          if(!dryrun && !skip){
             await awsClient._sendSQSMessage(queueUrl, event, delay);
           }
-          console.log(event)
-          const res = {
-            [requestId]: messages,
+          if(!skip) {
+            console.log(event)
+            const res = {
+              [requestId]: messages,
+            }
+            appendJsonToFile(`${envName}_${date}`, `sentToSQS.json`, JSON.stringify(res))
           }
-          appendJsonToFile(`sentToSQS_${envName}_${date}.json`, res)
+          else {
+            console.log(`RequestId ${requestId} contains different RECAG012 statusDateTime`)
+            appendJsonToFile(`${envName}_${date}`, `skipped.json`, requestId)
+          }
         }
         else {
           console.log("No RECAG012 found for requestID: " + requestId)
@@ -169,7 +178,7 @@ async function main() {
       }
       else {
         console.log("Found SEND_ANALOG_FEEDBACK for requestID: " + requestId)
-        appendJsonToFile(`analogFeedback_${envName}_${date}.json`, res)
+        appendJsonToFile(`${envName}_${date}`, `analogFeedback_.json`, requestId)
       }
     }
   }
