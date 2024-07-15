@@ -1,7 +1,28 @@
-const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
+const { AwsClientsWrapper } = require("pn-common");
 const { parseArgs } = require('util');
 const fs = require('fs');
-const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
+const { unmarshall } = require('@aws-sdk/util-dynamodb');
+
+function _getIunFromRequestId(requestId) {
+  return requestId.split("IUN_")[1].split(".")[0];
+}
+
+function _getAttemptFromRequestId(requestId) {
+  return requestId.split("ATTEMPT_")[1][0];
+}
+
+function _hasSpecificAttemptAnalogFeedbackEvent(timelineEvents, attempt) {
+  let tmp = []
+  timelineEvents.forEach(tlEvent => {
+    if(tlEvent.timelineElementId.S.startsWith("SEND_ANALOG_FEEDBACK") && tlEvent.timelineElementId.S.includes(`ATTEMPT_${attempt}`)) {
+      tmp.push(unmarshall(tlEvent))
+    }
+  });
+  if(tmp.length > 0) {
+    return true;
+  }
+  return false;
+}
 
 function _checkingParameters(args, values){
   const usage = "Usage: index.js --envName <envName> --fileName <fileName> [--dryrun]"
@@ -60,10 +81,10 @@ function _prepareMessage(requestId, event) {
 
 }
 
-function appendJsonToFile(fileName, jsonData){
-  //fs.mkdirSync("results", { recursive: true });
-  //fs.appendFileSync("results/" + fileName, JSON.stringify(jsonData) + "\n")
-  console.log(JSON.stringify(jsonData))
+function appendJsonToFile(fileName, data){
+  if(!fs.existsSync("results"))
+    fs.mkdirSync("results", { recursive: true });
+  fs.appendFileSync(`results/${fileName}`, JSON.stringify(data) + "\n")
 }
 
 
@@ -91,10 +112,15 @@ async function main() {
   });  
 
   _checkingParameters(args, values)
-  const awsClient = new AwsClientsWrapper( envName );
+  //INIT AWS
+  const awsCoreClient = new AwsClientsWrapper( 'core', envName );
+  const awsConfinfoClient = new AwsClientsWrapper( 'confinfo', envName );
+  awsCoreClient._initDynamoDB();
+  awsCoreClient._initSQS();
+  awsConfinfoClient._initDynamoDB();
   const requestIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
   const batchSize = Math.floor( requestIds.length / (14*60));
-  const sqsUrl = await awsClient._getQueueURL("pn-external_channel_to_paper_channel");
+  const queueUrl = await awsCoreClient._getQueueUrl("pn-external_channel_to_paper_channel");
   const date = new Date().toISOString();
   let index = 0;
   const chunkSize = 2500;
@@ -114,35 +140,44 @@ async function main() {
       if(index%batchSize == 0) {
         delay++
       }
-      const metadati = (await awsClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId, 'eventsList')).Items[0];
-      const eventsList = unmarshall(metadati).eventsList
-      const idxResult = eventsList
-        .map((e, idx) => ({ e, idx }))
-        .filter(({ e }) => e.paperProgrStatus.statusCode == 'RECAG012')
-        .map(({ idx }) => idx);
+      const iun = _getIunFromRequestId(requestId);
+      const attempt = _getAttemptFromRequestId(requestId)
+      let timelineEvents = await awsCoreClient._queryRequest("pn-Timelines", "iun", iun)
+      if(!_hasSpecificAttemptAnalogFeedbackEvent(timelineEvents.Items, attempt)) {
+        const metadati = (await awsConfinfoClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId, 'eventsList')).Items[0];
+        const eventsList = unmarshall(metadati).eventsList
+        const idxResult = eventsList
+          .map((e, idx) => ({ e, idx }))
+          .filter(({ e }) => e.paperProgrStatus.statusCode == 'RECAG012')
+          .map(({ idx }) => idx);
 
-      if(idxResult.length > 0) {
-        let messages = []
-        let event = null;
-        for(let i of idxResult) {
-          const message = _prepareMessage(requestId, eventsList[i].paperProgrStatus)
-          event == null ? event = message : null
-          event.analogMail.clientRequestTimeStamp < message.analogMail.clientRequestTimeStamp ? event = message : null
-          messages.push(message)
+        if(idxResult.length > 0) {
+          let messages = []
+          let event = null;
+          for(let i of idxResult) {
+            const message = _prepareMessage(requestId, eventsList[i].paperProgrStatus)
+            event == null ? event = message : null
+            event.analogMail.clientRequestTimeStamp < message.analogMail.clientRequestTimeStamp ? event = message : null
+            messages.push(message)
+          }
+          if(!dryrun){
+            await awsClient._sendSQSMessage(queueUrl, event, delay);
+          }
+          console.log(event)
+          const res = {
+            [requestId]: messages,
+          }
+          appendJsonToFile(`sentToSQS_${envName}_${date}.json`, res)
         }
-        if(!dryrun){
-          await awsClient._sendSQSMessage(sqsUrl, event, delay);
+        else {
+          console.log("No RECAG012 found for requestID: " + requestId)
         }
-        console.log(event)
-        const res = {
-          [requestId]: messages,
-        }
-        appendJsonToFile(envName + "_" + date + ".json", res)
+        index = index + 1;
       }
       else {
-        console.log("No RECAG012 found for requestID: " + requestId)
+        console.log("Found SEND_ANALOG_FEEDBACK for requestID: " + requestId)
+        appendJsonToFile(`analogFeedback_${envName}_${date}.json`, res)
       }
-      index = index + 1;
     }
   }
 }

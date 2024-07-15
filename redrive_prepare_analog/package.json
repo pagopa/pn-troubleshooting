@@ -9,9 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.499.0",
-    "@aws-sdk/client-sqs": "^3.499.0",
-    "@aws-sdk/credential-provider-ini": "^3.496.0",
-    "@aws-sdk/util-dynamodb": "^3.499.0"
+    "@aws-sdk/util-dynamodb": "^3.614.0",
+    "pn-common": "file:../pn-common"
   }
 }
