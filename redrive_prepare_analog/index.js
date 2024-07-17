@@ -42,14 +42,6 @@ function _checkingParameters(args, values){
   })
 }
 
-function sleep(ms) {
-  return new Promise(resolve => {
-    console.log("Sleep for " + ms / 60 / 1000 + "minutes at " + new Date().toISOString())
-    setTimeout(resolve, ms)
-  });
-
-}
-
 function _prepareMessage(requestId, event) {
   const message = {
     digitalCourtesy: null,
@@ -113,10 +105,8 @@ async function main() {
   awsCoreClient._initSQS();
   awsConfinfoClient._initDynamoDB();
   const requestIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
-  const batchSize = Math.floor( requestIds.length / (14*60));
   const queueUrl = await awsCoreClient._getQueueUrl("pn-external_channel_to_paper_channel");
   const date = new Date().toISOString();
-  let index = 0;
   const chunkSize = 2500;
   const parser = []
   for (let i = 0; i < requestIds.length; i += chunkSize) {
@@ -124,16 +114,8 @@ async function main() {
     parser.push(chunk)
   }
   for(const listPars of parser ) {
-    let delay = 0;
-    if(index != 0) {
-      await sleep(15*60*1000)
-      console.log("Ready to next! " + new Date().toISOString())
-    }
     for(const requestId of listPars ) {
       console.log("elaborating request id: " + requestId)
-      if(index%batchSize == 0) {
-        delay++
-      }
       const iun = _getIunFromRequestId(requestId);
       const attempt = _getAttemptFromRequestId(requestId)
       let timelineEvents = await awsCoreClient._queryRequest("pn-Timelines", "iun", iun)
@@ -157,7 +139,7 @@ async function main() {
             skip = messages[0].analogMail.statusDateTime !== eventsList[i].paperProgrStatus.statusDateTime
           }
           if(!dryrun && !skip){
-            await awsClient._sendSQSMessage(queueUrl, event, delay);
+            await awsCoreClient._sendSQSMessage(queueUrl, event, 0);
           }
           console.log(event)
           const res = {
@@ -174,7 +156,6 @@ async function main() {
         else {
           console.log("No RECAG012 found for requestID: " + requestId)
         }
-        index = index + 1;
       }
       else {
         console.log("Found SEND_ANALOG_FEEDBACK for requestID: " + requestId)
