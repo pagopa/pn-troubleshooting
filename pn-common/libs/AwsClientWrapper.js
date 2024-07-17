@@ -1,7 +1,7 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
-const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws-sdk/client-sqs");
+const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand } = require("@aws-sdk/client-sqs");
 const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, DescribeLogGroupsCommand } = require("@aws-sdk/client-cloudwatch-logs");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
@@ -136,9 +136,10 @@ class AwsClientsWrapper {
   async _sendSQSMessage(queueUrl, body, delay){
     const input = { // SendMessageRequest
       QueueUrl: queueUrl, // required
-      MessageBody: body, // required
+      MessageBody: JSON.stringify(body), // required
       DelaySeconds: delay,
     }
+    console.log(input)
     const command = new SendMessageCommand(input);
     const response = await this._sqsClient.send(command);
     return response;
