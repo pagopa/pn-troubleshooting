@@ -133,6 +133,17 @@ class AwsClientsWrapper {
     return response;
   }
 
+  async _sendSQSMessage(queueUrl, body, delay){
+    const input = { // SendMessageRequest
+      QueueUrl: queueUrl, // required
+      MessageBody: body, // required
+      DelaySeconds: delay,
+    }
+    const command = new SendMessageCommand(input);
+    const response = await this._sqsClient.send(command);
+    return response;
+  }
+
   //Cloudwatch
   async _executeCloudwatchQuery(logGroupNames, startTime, endTime, queryString, limit) {
     const input = { // StartQueryRequest
