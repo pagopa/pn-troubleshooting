@@ -1,5 +1,5 @@
 {
-  "name": "redrive_prepare_analog",
+  "name": "verify_analog_filekey_order",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

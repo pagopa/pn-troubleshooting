@@ -1,5 +1,5 @@
 {
-  "name": "redrive_prepare_analog",
+  "name": "check_feedback_from_requestId_simplified",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/util-dynamodb": "^3.614.0",
+    "@aws-sdk/util-dynamodb": "^3.602.0",
     "pn-common": "file:../pn-common"
   }
 }

@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+      "@aws-sdk/client-cloudformation": "^3.379.1",
+      "@aws-sdk/client-dynamodb": "^3.378.0",
+      "@aws-sdk/client-kms": "^3.379.1",
+      "@aws-sdk/credential-provider-sso": "^3.370.0",
+      "@aws-sdk/lib-dynamodb": "^3.378.0",
+      "json-diff": "^1.0.6",
+      "prompt-sync": "^4.2.0",
+      "@aws-sdk/client-secrets-manager": "^3.465.0",
+      "@aws-sdk/client-sqs": "^3.462.0",
+      "@aws-sdk/util-dynamodb": "^3.462.0",
+      "aws-sdk": "2.1369.0",
+      "axios": "^1.6.2",
+      "dotenv": "^16.3.1"
+  }
+}
