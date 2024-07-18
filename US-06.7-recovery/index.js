@@ -29,7 +29,7 @@ function timestampToLog(timestamp){
 function writeFile(response, nowTs, initialTs, action) {
     if(response.Items.length > 0) {
       console.log(`ActionId "${action}" to perform`)
-      res.Items.forEach(el => {
+      response.Items.forEach(el => {
         const to_submit = ((nowTs - initialTs) / 36e5) > 12
         elabResult(nowTs, to_submit, el)
     });
@@ -161,7 +161,8 @@ async function main() {
           if(kinesis) {
             const kinesisBody = JSON.parse(event.Body)
             const shardId = kinesisBody.KinesisBatchInfo.shardId
-            const result = await awsClient._getSingleShardInfo('pn-action-cdc', shardId)
+            const sequenceNumber = kinesisBody.KinesisBatchInfo.startSequenceNumber
+            const result = await awsClient._getSingleShardInfo('pn-action-cdc', shardId, sequenceNumber)
             const data = Buffer.from(result.Records[0].Data).toString("utf-8")
             actionId = JSON.parse(data).dynamodb.Keys.actionId.S
             startTimestamp = JSON.parse(data).dynamodb.ApproximateCreationDateTime
@@ -173,7 +174,7 @@ async function main() {
           const initialTimeStamp = startTimestamp;
           const maxTimestamp = Math.min(nowTimestamp, startTimestamp + MAX_ENDTIMESTAMP_DELAY);
           let endTimestamp = startTimestamp + windowSize
-          let logs;
+          let logs = [];
           for(; startTimestamp < maxTimestamp; startTimestamp = endTimestamp, endTimestamp += windowSize) {
             endTimestamp = Math.min(endTimestamp, maxTimestamp);
             console.log(`Query from ${timestampToLog(startTimestamp)} to ${timestampToLog(endTimestamp)}`)
@@ -187,7 +188,7 @@ async function main() {
                 Body: event.Body
               }
               console.log(`To remove message with key ${actionId} from DLQ`)
-              appendJsonToFile(`results/${timestampToLog(nowTimestamp)}`, "to_remove.json", JSON.stringify(tmp))
+              appendJsonToFile(`results/${envName}_${timestampToLog(nowTimestamp)}`, "to_remove.json", JSON.stringify(tmp))
               break;
             }
           }
@@ -212,7 +213,7 @@ async function main() {
     let endTimestamp = startTimestamp + windowSize
     const initialTimeStamp = startTimestamp;
     const maxTimestamp = Math.min(nowTimestamp, startTimestamp + MAX_ENDTIMESTAMP_DELAY);
-    let logs;
+    let logs = [];
     for(; startTimestamp < maxTimestamp && Object.keys(actionMap).length > 0; startTimestamp = endTimestamp, endTimestamp += windowSize) {
       endTimestamp = Math.min(endTimestamp, maxTimestamp);
       const queryString = prepareStringDataQuery(actionIds)
@@ -246,4 +247,4 @@ async function main() {
   }
 }
 
-main();
+main(); 

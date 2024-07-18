@@ -150,7 +150,7 @@ class AwsClientsWrapper {
     const command = new StartQueryCommand(input);
     const response = await this._cloudwatchClient.send(command);
     //waiting result
-    let logs = null;
+    let logs = [];
     while( !logs ) {
       await sleep( 1 * 1000 )
       try {
@@ -178,22 +178,23 @@ class AwsClientsWrapper {
 
   
   //Kinesis
-  async _getSingleShardInfo(streamName, shardId) {
-    const shardIterator = await this._getShardIterator(streamName, shardId)
+  async _getSingleShardInfo(streamName, shardId, sequenceNumber) {
+    const shardIterator = await this._getShardIterator(streamName, shardId, sequenceNumber)
     const input = { // GetRecordsCommand
       ShardIterator: shardIterator,
-      Limit: 1 // Numero di record da leggere per chiamata
+      Limit: 1 // Number of record to read
     };
     const command = new GetRecordsCommand(input);
     const response = await this._kinesisClient.send(command);
     return response;
   }
 
-  async _getShardIterator(streamName, shardId) {
+  async _getShardIterator(streamName, shardId, sequenceNumber) {
     const input = { // GetShardIteratorCommand
       StreamName: streamName,
       ShardId: shardId,
-      ShardIteratorType: "TRIM_HORIZON" 
+      ShardIteratorType: "AT_SEQUENCE_NUMBER",
+      StartingSequenceNumber: sequenceNumber
     };
     const command = new GetShardIteratorCommand(input);
     const response = await this._kinesisClient.send(command);
