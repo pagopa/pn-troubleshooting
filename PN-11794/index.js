@@ -13,6 +13,10 @@ function checkListToRemove(checkList){
   return flag
 }
 
+function checkListToRemoveWithoutThirdStep(checkList){
+  return checkList.refinement && checkList.feedback && !checkList.ecmetadati
+}
+
 function appendJsonToFile(fileName, data){
   if(!fs.existsSync("results"))
     fs.mkdirSync("results", { recursive: true });
@@ -129,8 +133,13 @@ async function main() {
         checkList.ecmetadati = found
       }
       else {
-        console.log(`Event with iun ${iun} to keep`)
-        continue
+        if(checkListToRemoveWithoutThirdStep(checkList)){
+          console.log(`Event with iun ${iun} to remove third step`)
+          appendJsonToFile(`no_third_step_to_remove_${fileName}`, JSON.stringify(row))
+        } else {
+          console.log(`Event with iun ${iun} to keep`)
+          continue
+        }
       }
       if(checkListToRemove(checkList)){
         delete row['Body']

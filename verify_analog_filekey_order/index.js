@@ -5,7 +5,7 @@ const fs = require('fs');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <envName> --fileName <fileName> [--dryrun]"
+  const usage = "Usage: index.js --envName <envName> --fileName <fileName>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
