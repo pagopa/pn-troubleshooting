@@ -147,10 +147,11 @@ class AwsClientsWrapper {
       queryString: queryString, // required
       limit: limit
       };
+    console.log(input)
     const command = new StartQueryCommand(input);
     const response = await this._cloudwatchClient.send(command);
     //waiting result
-    let logs = [];
+    let logs;
     while( !logs ) {
       await sleep( 1 * 1000 )
       try {

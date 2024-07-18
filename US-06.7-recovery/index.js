@@ -4,8 +4,6 @@ const path = require('path');
 const { AwsClientsWrapper } = require("pn-common");
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 
-const MAX_ENDTIMESTAMP_DELAY = 2*60*60*1000 //2 hours
-
 function elabResult(now, to_submit, event) {
   const isoTimestamp = timestampToLog(now)
   // Per la spiegazione di questo if fare riferimento a questo paragrafo
@@ -115,7 +113,7 @@ async function main() {
         type: "string", short: "t", default: undefined
       },
       window: {
-        type: "string", short: "w", default: '10'
+        type: "string", short: "w", default: '120'
       },
       kinesis: {
         type: "boolean", short: "k", default: false
@@ -172,14 +170,16 @@ async function main() {
             startTimestamp = Number(event.Attributes.SentTimestamp)
           }
           const initialTimeStamp = startTimestamp;
-          const maxTimestamp = Math.min(nowTimestamp, startTimestamp + MAX_ENDTIMESTAMP_DELAY);
+          const maxTimestamp = nowTimestamp
           let endTimestamp = startTimestamp + windowSize
-          let logs = [];
+          let logs;
           for(; startTimestamp < maxTimestamp; startTimestamp = endTimestamp, endTimestamp += windowSize) {
             endTimestamp = Math.min(endTimestamp, maxTimestamp);
             console.log(`Query from ${timestampToLog(startTimestamp)} to ${timestampToLog(endTimestamp)}`)
             const queryString = prepareStringDataQuery(actionId)
+            console.log(startTimestamp, endTimestamp)
             logs = await awsClient._executeCloudwatchQuery(['/aws/ecs/pn-delivery-push'], startTimestamp, endTimestamp, queryString, 1)
+            console.log(logs)
             if(logs.length > 0) {
               console.log(`logs found for actionId ${actionId}`)
               const tmp = {
@@ -192,7 +192,7 @@ async function main() {
               break;
             }
           }
-          if(logs.length == 0) {
+          if(!logs || logs.length == 0) {
             console.log(`ActionId ${actionId} unhandled`)
             const res = await awsClient._queryRequest('pn-Action', 'actionId', actionId)
             writeFile(res, nowTimestamp, initialTimeStamp, actionId)
@@ -212,7 +212,7 @@ async function main() {
     let startTimestamp = Number(timestamp)
     let endTimestamp = startTimestamp + windowSize
     const initialTimeStamp = startTimestamp;
-    const maxTimestamp = Math.min(nowTimestamp, startTimestamp + MAX_ENDTIMESTAMP_DELAY);
+    const maxTimestamp = nowTimestamp
     let logs = [];
     for(; startTimestamp < maxTimestamp && Object.keys(actionMap).length > 0; startTimestamp = endTimestamp, endTimestamp += windowSize) {
       endTimestamp = Math.min(endTimestamp, maxTimestamp);
