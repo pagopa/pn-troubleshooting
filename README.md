@@ -244,6 +244,12 @@ Vuoi bloccare una notifica in stato PN999 nel flusso cartaceo?
 node index.js --envName <envName> --fileName <fileName> 
 ```
 
+### tech_stop_analog_notification_unlock
+Vuoi sbloccare una notifica in stato PN999 impostando un P000 nel flusso cartaceo?
+```bash  
+node index.js --envName <envName> --fileName <fileName> [--dryrun]
+```
+
 ### remove_from_paper_error
 Vuoi rimuovere dalla tabella pn-paperRequestError dei requestId?
 ```bash  
