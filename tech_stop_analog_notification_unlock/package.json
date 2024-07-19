@@ -1,0 +1,15 @@
+{
+  "name": "tech_stop_analog_notification",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/util-dynamodb": "^3.616.0",
+    "pn-common": "file:../pn-common"
+  }
+}
