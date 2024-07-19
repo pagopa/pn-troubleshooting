@@ -68,13 +68,12 @@ async function main() {
       const ecRichiesteMetadati = unmarshall(res.Items[0])
       if(ecRichiesteMetadati.statusRequest !== 'PN999') {
         console.log(`Request id ${requestId} is not in status PN999 but ${ecRichiesteMetadati.statusRequest}`)
-        break;
+        continue;
       }
       let keys = {};
       keySchema.forEach(keyAttribute => {
         keys[keyAttribute.AttributeName] = ecRichiesteMetadati[keyAttribute.AttributeName]
       });
-      console.log(keys)
       let data = {
         lastUpdateTimestamp: {
           codeAttr: '#D',
