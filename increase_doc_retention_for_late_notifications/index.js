@@ -29,8 +29,8 @@ function _checkingParameters(args, values){
 }
 
 function appendJsonToFile(fileName, jsonData){
-  if(!fs.existsSync("files"))
-    fs.mkdirSync("files", { recursive: true });
+  if(!fs.existsSync(path.join(__dirname, "files")))
+    fs.mkdirSync(path.join(__dirname, "files"), { recursive: true });
   fs.appendFileSync(fileName, JSON.stringify(jsonData) + "\n")
 }
 
@@ -189,12 +189,15 @@ async function processSingleFile(file){
       const json = JSON.parse(line)
       for(let j=0; j<json.attachments.length; j++){
         const fileKey = json.attachments[j]
+        const iun = json.iun
         try{
           const delMarkerRes = await removeDeletionMarkerIfNeeded(fileKey, bucketName)
+          delMarkerRes['iun'] = iun;
           appendJsonToFile(resultPath, delMarkerRes)
         } catch(err){
           if(err.message.indexOf('Deletion marker not found ')===0){
             appendJsonToFile(resultPath, {
+              iun: json.iun,
               fileKey: fileKey,
               deletionMarkerRemoved: false,
               error: err.message

@@ -1,17 +1,21 @@
 package it.pagopa.pn.scripts.commands.utils;
 
 import it.pagopa.pn.scripts.commands.enumerations.FormatEnum;
+import it.pagopa.pn.scripts.commands.exceptions.EmptyDatasetException;
+import it.pagopa.pn.scripts.commands.logs.LoggerFactory;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.spark.sql.DataFrameWriter;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SaveMode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.util.Set;
+import java.util.logging.Logger;
 
 
 public class SparkDatasetWriter {
 
-    private static final Logger log = LoggerFactory.getLogger(SparkDatasetWriter.class);
+    private static final Logger log = LoggerFactory.getLogger();
 
     private static final String CSV_HEADER_OPTION = "header";
     private static final String CSV_DELIMITER_OPTION = "delimiter";
@@ -21,7 +25,8 @@ public class SparkDatasetWriter {
     private FormatEnum format;
     private SaveMode saveMode;
 
-    private int partitions;
+    private Integer partitions;
+    private Set<String> partitionKeys;
 
     private SparkDatasetWriter() {}
 
@@ -45,6 +50,10 @@ public class SparkDatasetWriter {
         this.partitions = partitions;
     }
 
+    public void setPartitionKeys(Set<String> partitionKeys) {
+        this.partitionKeys = partitionKeys;
+    }
+
     public String getOutLocation() {
         return outLocation;
     }
@@ -61,30 +70,47 @@ public class SparkDatasetWriter {
         return partitions;
     }
 
+    public Set<String> getPartitionKeys() {
+        return partitionKeys;
+    }
+
     public static SparkDatasetWriterBuilder builder() {
         return new SparkDatasetWriterBuilder();
     }
 
-    public void write() {
+    /**
+     * Write out a {@link Dataset} object or throw a {@link EmptyDatasetException} when it is empty.
+     *
+     * @throws EmptyDatasetException throws exception when dataset is empty
+     * */
+    public void write() throws EmptyDatasetException {
 
-        Dataset<Row> df = this.partitions > 0
+        if (this.dataset.count() == 0) {
+            throw new EmptyDatasetException("Found empty dataset");
+        }
+
+        Dataset<Row> df = this.partitions != null && this.partitions > 0
             ? this.dataset.repartition(this.partitions)
             : this.dataset;
 
+        /* PartitionBy uses an empty sequence in case of null or empty collection */
         DataFrameWriter<Row> writer = df
             .write()
-            .mode(this.saveMode);
+            .mode(this.saveMode)
+            .partitionBy(CollectionUtils.emptyIfNull(this.partitionKeys).toArray(new String[0]));
 
         switch (this.format) {
             case JSON -> this.writeDatasetToJson(writer, this.outLocation);
             case PARQUET -> this.writeDatasetToParquet(writer, this.outLocation);
             default -> this.writeDatasetToCsv(writer, this.outLocation);
         }
+
+        log.info(() -> "Dataset written to " + this.outLocation);
     }
 
     private void writeDatasetToCsv(DataFrameWriter<Row> writer, String out) {
 
-        log.info("Writing dataset in CSV to location: {}", out);
+        log.info(() -> "Writing dataset in CSV to location " + out);
 
         writer
             .option(CSV_HEADER_OPTION, true)
@@ -94,14 +120,14 @@ public class SparkDatasetWriter {
 
     private void writeDatasetToJson(DataFrameWriter<Row> writer, String out) {
 
-        log.info("Writing dataset in JSON to location: {}", out);
+        log.info(() -> "Writing dataset in JSON to location " + out);
 
         writer.json(out);
     }
 
     private void writeDatasetToParquet(DataFrameWriter<Row> writer, String out) {
 
-        log.info("Writing dataset in PARQUET to location: {}", out);
+        log.info(() -> "Writing dataset in PARQUET to location: " + out);
 
         writer.parquet(out);
     }
@@ -114,6 +140,7 @@ public class SparkDatasetWriter {
         private SaveMode saveMode;
 
         private int partitions;
+        private Set<String> partitionKeys;
 
         public SparkDatasetWriterBuilder dataset(Dataset<Row> dataset) {
             this.dataset = dataset;
@@ -140,6 +167,11 @@ public class SparkDatasetWriter {
             return this;
         }
 
+        public SparkDatasetWriterBuilder partitionKeys(Set<String> partitionKeys) {
+            this.partitionKeys = partitionKeys;
+            return this;
+        }
+
         public SparkDatasetWriter build() {
             SparkDatasetWriter sparkDatasetWriter = new SparkDatasetWriter();
 
@@ -148,6 +180,7 @@ public class SparkDatasetWriter {
             sparkDatasetWriter.setFormat(this.format);
             sparkDatasetWriter.setSaveMode(this.saveMode);
             sparkDatasetWriter.setPartitions(this.partitions);
+            sparkDatasetWriter.setPartitionKeys(this.partitionKeys);
 
             return sparkDatasetWriter;
         }

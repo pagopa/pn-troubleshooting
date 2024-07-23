@@ -76,6 +76,7 @@ async function main() {
         if(recipient.payments != null) {
           for(const payment of recipient.payments) {
             payment.pagoPaForm ? temp.attachments.push(payment.pagoPaForm.ref.key) : null
+            payment["f24"] ? temp.attachments.push(payment["f24"].metadataAttachment.ref.key) : null
           }
         }
           

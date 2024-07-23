@@ -5,38 +5,62 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.printStartLog = exports.printEndLog = void 0;
 var _jsonschema = require("jsonschema");
-var _bunyan = _interopRequireDefault(require("bunyan"));
+var _config = require("./config.cjs");
+var _pino = _interopRequireDefault(require("pino"));
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-const auditTypeStart = 'AUD_DIAG_START';
-const auditTypeEnd = 'AUD_DIAG_END';
+const auditType = 'AUD_DIAG';
 const v = new _jsonschema.Validator();
 
 /**
- * Creates an audit log entry using Bunyan logger.
+ * Creates an audit logger using pino logger.
+ * @param {string} aud_type - Audit type.
+ * @returns {pino} A pino logger instance with the audit log entry.
+ */
+const getAuditLogger = audType => {
+  return (0, _pino.default)({
+    level: 'info',
+    timestamp: _pino.default.stdTimeFunctions.isoTime,
+    messageKey: 'message',
+    formatters: {
+      level(label) {
+        return {
+          level: label.toUpperCase()
+        };
+      },
+      log(obj) {
+        obj.name = 'AUDIT_LOG';
+        obj.logger_name = 'diagnostic-compatibility-logger';
+        obj.tags = ['AUDIT10Y'];
+        obj.aud_type = audType;
+        obj.message = `[${audType}] ${obj.message}`;
+        return obj;
+      }
+    }
+  });
+};
+const logger = getAuditLogger(auditType);
+
+/**
+ * Prints an audit log entry.
  * @param {Object} record - The initial log record data.
  * @param {string} message - Message to include in the log.
- * @param {string} aud_type - Audit type.
+ * @param {string} subAudType - Sub audit type.
  * @param {string} status - Operation status, either 'OK' or 'KO'.
- * @returns {bunyan} A bunyan logger instance with the audit log entry.
  */
-const auditLog = (record, message = '', aud_type, status) => {
-  let statusMessage = `INFO - ${message}`;
+const auditLog = (record, message = '', subAudType, status = 'OK') => {
+  let level_value = status === 'OK' ? 20000 : 40000;
+  let label = status === 'OK' ? 'INFO' : 'ERROR';
+  message = `${subAudType} - ${label} - ${message}`;
+  const outObj = {
+    ...record,
+    message,
+    level_value
+  };
   if (status === 'OK') {
-    statusMessage = `OK - SUCCESS - ${message}`;
+    logger.info(outObj);
+  } else {
+    logger.error(outObj);
   }
-  if (status === 'KO') {
-    statusMessage = `KO - FAILURE - ${message}`;
-  }
-  const auditRecord = Object.assign(record, {
-    name: 'AUDIT_LOG',
-    message: `[${aud_type}] - ${statusMessage}`,
-    aud_type: aud_type,
-    level: status === 'KO' ? 'ERROR' : 'INFO',
-    level_value: status === 'KO' ? 40000 : 20000,
-    logger_name: 'diagnostic-compatibility-logger',
-    tags: ['AUDIT10Y']
-  });
-  return _bunyan.default.createLogger(auditRecord);
 };
 
 /**
@@ -46,7 +70,7 @@ const auditLog = (record, message = '', aud_type, status) => {
  */
 const filterData = (schema, data) => {
   const unmarshall = (instance, schema) => {
-    if (schema.audit) {
+    if (schema[_config.auditSchemaKey]) {
       return instance;
     }
     return undefined;
@@ -71,7 +95,7 @@ const printStartLog = (objectIn, schema, requestID, functionArn) => {
     functionArn,
     event
   };
-  auditLog(record, 'Lambda started', auditTypeStart).info('info');
+  auditLog(record, 'Lambda started', 'BEFORE');
 };
 
 /**
@@ -90,6 +114,6 @@ const printEndLog = (objectOut, schema, requestID, functionArn) => {
     functionArn,
     result
   };
-  auditLog(record, 'Lambda ended', auditTypeEnd).info('info');
+  auditLog(record, 'Lambda ended', 'AFTER');
 };
 exports.printEndLog = printEndLog;

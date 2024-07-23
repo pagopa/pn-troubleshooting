@@ -85,9 +85,10 @@ echo "$dumped_file"
 echo "RETRIEVING IUN..."
 iuns_file="./dump_sqs/result/iuns.txt"
 if [[ "$queue_name" == *"actions"* ]]; then
-  cat $dumped_file | jq -r '.[] | .Body | fromjson | select(.type == "REFINEMENT_NOTIFICATION") | .iun' > $iuns_file 
+  cat $dumped_file | jq -r '.[] | .Body | fromjson | select(.type == "REFINEMENT_NOTIFICATION" or .type == "CHECK_ATTACHMENT_RETENTION") | .iun' | sort | uniq > $iuns_file 
 else
-  cat $dumped_file | jq -r '.[] | .MessageAttributes | select(.eventType.StringValue == "NOTIFICATION_VIEWED") | .iun.StringValue' > $iuns_file
+  echo "JQ EXECUTING"
+  cat $dumped_file | jq -r '.[] | .MessageAttributes | select(.eventType.StringValue == "NOTIFICATION_VIEWED") | .iun.StringValue' | sort | uniq > $iuns_file
 fi
 
 attachments_path="./retrieve_attachments_from_iun/results/"

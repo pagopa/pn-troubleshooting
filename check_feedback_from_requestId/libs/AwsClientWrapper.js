@@ -1,8 +1,7 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { DynamoDBClient, QueryCommand } = require("@aws-sdk/client-dynamodb");
-const { GetQueueUrlCommand, SendMessageCommand, SQSClient } = require("@aws-sdk/client-sqs"); 
-
+const { SQSClient, GetQueueUrlCommand, DeleteMessageCommand } = require("@aws-sdk/client-sqs");
 
 function awsClientCfg( profile ) {
   const self = this;
@@ -19,16 +18,19 @@ function awsClientCfg( profile ) {
 class AwsClientsWrapper {
 
   constructor( envName, profileName, roleArn ) {
-    const ssoConfInfoProfile = `sso_pn-confinfo-${envName}`
     const ssoCoreProfile = `sso_pn-core-${envName}`
-    this._dynamoClient = new DynamoDBClient( awsClientCfg( ssoConfInfoProfile, profileName, roleArn ));
+    const ssoConfinfoProfile = `sso_pn-confinfo-${envName}`
+    this._dynamoClient = {
+      core: new DynamoDBClient( awsClientCfg( ssoCoreProfile, profileName, roleArn )),
+      confinfo: new DynamoDBClient( awsClientCfg( ssoConfinfoProfile, profileName, roleArn )),
+    }
     this._sqsClient = new SQSClient( awsClientCfg( ssoCoreProfile, profileName, roleArn ));
   }
 
-  async _queryRequest(tableName, key, value, projection){
+  async _queryRequest(tableName, key, value, profile = 'core'){
+    
     const input = { // QueryInput
       TableName: tableName, // required
-      ProjectionExpression: projection,
       KeyConditionExpression: "#k = :k",
       ExpressionAttributeNames: { // ExpressionAttributeNameMap
         "#k": key,
@@ -38,26 +40,24 @@ class AwsClientsWrapper {
       },
     };
     const command = new QueryCommand(input);
-    return await this._dynamoClient.send(command);
+    return await this._dynamoClient[profile].send(command);
   }
 
-  async _getQueueURL(sqsName){
-    const getUrlCommand = new GetQueueUrlCommand({ // SendMessageRequest
-      QueueName: sqsName, // required
-    });
-    const result = await this._sqsClient.send(getUrlCommand);
-    return result.QueueUrl
+  async _getQueueUrl(queueName) {
+    const input = { // GetQueueUrlRequest
+      QueueName: queueName, // required
+    };
+    const command = new GetQueueUrlCommand(input);
+    const response = await this._sqsClient.send(command);
+    return response.QueueUrl;
   }
 
-  
-  async _sendSQSMessage(sqsUrl, message, delay){
-    const input = { // SendMessageRequest
-      QueueUrl: sqsUrl, // required
-      MessageBody: JSON.stringify(message), // required
-      DelaySeconds: delay
-    }
-    //console.log(input)
-    const command = new SendMessageCommand(input);
+  async _deleteFromQueueMessage(queueUrl, receiptHandle) {
+    const input = { // DeleteMessageRequest
+      QueueUrl: queueUrl, // required
+      ReceiptHandle: receiptHandle, // required
+    };
+    const command = new DeleteMessageCommand(input);
     const response = await this._sqsClient.send(command);
     return response;
   }

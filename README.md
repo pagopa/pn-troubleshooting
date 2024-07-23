@@ -163,7 +163,7 @@ node index.js --envName <envName> --fileName <fileName>
 ### retrieve_glacier_s3
 Vuoi effettuare delle richieste di recupero su glacier tramite file in input per una serie di documenti?
 ```bash  
-node index.js --envName <envName> --bucketName <bucketName> --fileName <fileName> [--expiration <expiration> --tier <tier>]
+node index.js --envName <envName> --fileName <fileName> [--expiration <expiration> --tier <tier>]
 ```
 
 ### check_pec_events
@@ -244,6 +244,12 @@ Vuoi bloccare una notifica in stato PN999 nel flusso cartaceo?
 node index.js --envName <envName> --fileName <fileName> 
 ```
 
+### tech_stop_analog_notification_unlock
+Vuoi sbloccare una notifica in stato PN999 impostando un P000 nel flusso cartaceo?
+```bash  
+node index.js --envName <envName> --fileName <fileName> [--dryrun]
+```
+
 ### remove_from_paper_error
 Vuoi rimuovere dalla tabella pn-paperRequestError dei requestId?
 ```bash  
@@ -284,4 +290,52 @@ node index.js --from <from> -to <to> [--files]
 Vuoi recuperare informazioni relative ad un soggetto RADD?
 ```bash
 node index.js --envName <envName> --cf <fiscalcode> --operationId <operation-id> 
+```
+
+### check_feedback_from_requestId
+Vuoi recuperare informazioni relative agli eventi presenti in pn-external-channel-to-paper-channel-DLQ?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
+### check_status_request
+Vuoi conoscere lo statusRequest di determinati requestId ed avere un riepilogo?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
+### find_timeline_elementId
+Vuoi individuare e clusterizzare i timeline elementId di una lista di iun?
+```bash
+node index.js --fileName <file-name> --categories <category1,category2,...> [--outputFolder <output-folder>]
+```
+
+### check_ttl_expiration
+Vuoi verificare il ttl in pn-PaperAddress dei requestId?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
+### extend_ttl_expiration
+Vuoi modificare il ttl in pn-PaperAddress dei requestId?
+```bash
+node index.js --envName <env-name> --fileName <file-name> --days <days>
+```
+
+### remove_from_sqs
+Vuoi rimuovere singoli eventi da una coda?
+```bash
+node index.js --account <account> --envName <env-name> --queueName <queue-name> --visibilityTimeout <visibility-timeout> --fileName <file-name> 
+```
+
+### check_webhook_events_duplicated
+Vuoi verificare se ci sono degli eventi con campo timeline duplicati nella tabella webhook-events?
+```bash
+node index.js --envName <env-name> --hashKey <hash-key> --sortKey <sort-key>
+```
+
+### check_feedback_from_requestId_simplified
+Vuoi verificare se per un evento di prepare abbiamo ricevuto un send analog feedback?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
 ```
