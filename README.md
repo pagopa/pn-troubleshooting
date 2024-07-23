@@ -244,6 +244,12 @@ Vuoi bloccare una notifica in stato PN999 nel flusso cartaceo?
 node index.js --envName <envName> --fileName <fileName> 
 ```
 
+### tech_stop_analog_notification_unlock
+Vuoi sbloccare una notifica in stato PN999 impostando un P000 nel flusso cartaceo?
+```bash  
+node index.js --envName <envName> --fileName <fileName> [--dryrun]
+```
+
 ### remove_from_paper_error
 Vuoi rimuovere dalla tabella pn-paperRequestError dei requestId?
 ```bash  
@@ -332,4 +338,16 @@ node index.js --envName <env-name> --hashKey <hash-key> --sortKey <sort-key>
 Vuoi verificare se per un evento di prepare abbiamo ricevuto un send analog feedback?
 ```bash
 node index.js --envName <env-name> --fileName <file-name>
+```
+
+### notificationMetadata_analysis
+Vuoi verificare se una notifica è stata accettata e in quale stato si trova?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
+### notificationMetadata_generation
+Vuoi aggiornare pn-notificationMetadata in base all'output dello script notificationMetadata_analysis?
+```bash
+node index.js --envName <env-name> --fileName <file-name> [--dryrun]
 ```
