@@ -8,7 +8,7 @@ const process = require('node:process');
 class DynamoDBScanner {
   constructor(params) {
     this.tableName = params.tableName || 'pn-EcRichiesteMetadati';
-    this.region = params.region || 'eu-central-1';
+    this.region = params.region || 'eu-south-1';
     this.scanLimit = params.scanLimit ? parseInt(params.scanLimit, 10) : undefined;
     this.outputFilePath1 = 'output_requestId-missing-insertTimestamp.txt';
     this.outputFilePath2 = 'output_requestId-statusDateTime_disorder.txt';
