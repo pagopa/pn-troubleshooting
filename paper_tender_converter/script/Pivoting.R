@@ -1,0 +1,243 @@
+
+#spark_read_csv(sc, 'matrice_costi_def', "data/20230215_Fatturazione/matrice_costi_def.csv")
+
+spark_read_csv(sc, 'matrice_costi_def', "data/20230215_Fatturazione/matrice_costi_def_lotto.csv", delimiter = ';')
+
+spark_read_csv(sc, 'zone', "data/20230215_Fatturazione/zones.csv", delimiter = ';')
+
+matrice_costi_pivot = 
+sdf_collect( 
+  sdf_sql(sc, "
+  WITH 
+    rowWithArray AS (
+      SELECT 
+        CAP, 
+        array(
+          named_struct(
+            'product', 'RS',
+            'recapitista', RS_Recapitista,
+            'lotto', RS_Lotto,
+            'costo_plico', RS_Plico,
+            'costo_foglio', RS_Foglio,
+            'costo_demat', RS_dem,
+            'costo_scaglioni', array(
+              named_struct(
+                'min', 1,
+                'max', 20,
+                'costo', RS_20,
+                'costo_base_20gr', RS_20
+              ),
+              named_struct(
+                'min', 21,
+                'max', 50,
+                'costo', RS_21_50,
+                'costo_base_20gr', RS_20
+              ),
+              named_struct(
+                'min', 51,
+                'max', 100,
+                'costo', RS_51_100,
+                'costo_base_20gr', RS_20
+              ),
+              named_struct(
+                'min', 101,
+                'max', 250,
+                'costo', RS_101_250,
+                'costo_base_20gr', RS_20
+              ),
+              named_struct(
+                'min', 251,
+                'max', 350,
+                'costo', RS_251_350,
+                'costo_base_20gr', RS_20
+              ),
+              named_struct(
+                'min', 351,
+                'max', 1000,
+                'costo', RS_351_1000,
+                'costo_base_20gr', RS_20
+              ),
+              named_struct(
+                'min', 1001,
+                'max', 2000,
+                'costo', RS_1001_2000,
+                'costo_base_20gr', RS_20
+              )
+            )
+          ),
+          named_struct(
+            'product', 'AR',
+            'recapitista', AR_Recapitista,
+            'lotto', AR_Lotto,
+            'costo_plico', AR_Plico,
+            'costo_foglio', AR_Foglio,
+            'costo_demat', AR_dem,
+            'costo_scaglioni', array(
+              named_struct(
+                'min', 1,
+                'max', 20,
+                'costo', AR_20,
+                'costo_base_20gr', AR_20
+              ),
+              named_struct(
+                'min', 21,
+                'max', 50,
+                'costo', AR_21_50,
+                'costo_base_20gr', AR_20
+              ),
+              named_struct(
+                'min', 51,
+                'max', 100,
+                'costo', AR_51_100,
+                'costo_base_20gr', AR_20
+              ),
+              named_struct(
+                'min', 101,
+                'max', 250,
+                'costo', AR_101_250,
+                'costo_base_20gr', AR_20
+              ),
+              named_struct(
+                'min', 251,
+                'max', 350,
+                'costo', AR_251_350,
+                'costo_base_20gr', AR_20
+              ),
+              named_struct(
+                'min', 351,
+                'max', 1000,
+                'costo', AR_351_1000,
+                'costo_base_20gr', AR_20
+              ),
+              named_struct(
+                'min', 1001,
+                'max', 2000,
+                'costo', AR_1001_2000,
+                'costo_base_20gr', AR_20
+              )
+            )
+          ),
+          named_struct(
+            'product', '890',
+            'recapitista', 890_Recapitista,
+            'lotto', 890_Lotto,
+            'costo_plico', 890_Plico,
+            'costo_foglio', 890_Foglio,
+            'costo_demat', 890_dem,
+             'costo_scaglioni', array(
+              named_struct(
+                'min', 1,
+                'max', 20,
+                'costo', 890_20,
+                'costo_base_20gr', 890_20
+              ),
+              named_struct(
+                'min', 21,
+                'max', 50,
+                'costo', 890_21_50,
+                'costo_base_20gr', 890_20
+              ),
+              named_struct(
+                'min', 51,
+                'max', 100,
+                'costo', 890_51_100,
+                'costo_base_20gr', 890_20
+              ),
+              named_struct(
+                'min', 101,
+                'max', 250,
+                'costo', 890_101_250,
+                'costo_base_20gr', 890_20
+              ),
+              named_struct(
+                'min', 251,
+                'max', 350,
+                'costo', 890_251_350,
+                'costo_base_20gr', 890_20
+              ),
+              named_struct(
+                'min', 351,
+                'max', 1000,
+                'costo', 890_351_1000,
+                'costo_base_20gr', 890_20
+              ),
+              named_struct(
+                'min', 1001,
+                'max', 2000,
+                'costo', 890_1001_2000,
+                'costo_base_20gr', 890_20
+              )
+            )
+          )
+        ) as products
+      FROM matrice_costi_def
+    ), 
+      partialPivot AS (
+        SELECT 
+          CAP,
+          product.*
+        FROM 
+          rowWithArray 
+          lateral view explode (products) p as product
+    ), completePivot AS (
+      SELECT
+        CAP,
+        product,
+        recapitista,
+        lotto,
+        costo_plico,
+        costo_foglio,
+        costo_demat,
+        costoScaglioni.*
+      FROM 
+        partialPivot
+        lateral view explode (costo_scaglioni) c as costoScaglioni
+    ), geokeyPivot AS (
+      SELECT 
+        coalesce(z.countryIt, c.CAP) as geokey,
+        CASE
+          WHEN z.countryIt is not null AND product ='RS' THEN 'RIS'
+          WHEN z.countryIt is not null AND product ='AR' THEN 'RIR'
+          WHEN z.countryIt is not null AND product ='890' THEN 'delete'
+          ELSE product
+        END as product,
+        recapitista,
+        lotto,
+        costo_plico,
+        costo_foglio,
+        costo_demat,
+        min,
+        max,
+        costo,
+        costo_base_20gr
+      FROM
+        completePivot c 
+        LEFT JOIN zone z
+        ON c.CAP = z.zone
+    ) SELECT 
+      *
+      FROM geokeyPivot
+      WHERE product != 'delete'
+  ")
+)
+
+matrice_costi_pivot$costo_plico = as.numeric(gsub(",",".",matrice_costi_pivot$costo_plico)) *100
+matrice_costi_pivot$costo_foglio = as.numeric(gsub(",",".",matrice_costi_pivot$costo_foglio)) *100
+matrice_costi_pivot$costo_demat = as.numeric(gsub(",",".",matrice_costi_pivot$costo_demat)) *100
+matrice_costi_pivot$costo = as.numeric(gsub(",",".",matrice_costi_pivot$costo)) *100
+matrice_costi_pivot$costo_base_20gr = as.numeric(gsub(",",".",matrice_costi_pivot$costo_base_20gr)) *100
+  
+
+write.csv(matrice_costi_pivot, "data/20230215_Fatturazione/matrice_costi_2023_pivot.csv", row.names=FALSE, na = "")
+
+spark_read_csv(sc, 'matrice_costi_def_final', "data/20230215_Fatturazione/matrice_costi_2023_pivot.csv.gz")
+
+
+matrice_costi_pivot_test = 
+  sdf_collect( 
+    sdf_sql(sc, "
+  SELECT *
+  FROM matrice_costi_def_final
+  WHERE product = 'RIR'
+  ") 
+  )
