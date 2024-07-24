@@ -46,6 +46,19 @@ function appendJsonToFile(filePath, fileName, data){
   fs.appendFileSync(path.join(filePath, fileName), data + "\n")
 }
 
+function prepareStringDataQuery(data){
+  let stringDataQuery = 'filter @message like "Handle action"'
+  if(Array.isArray(data)) {
+    stringDataQuery = `${stringDataQuery} and ( @message like "${data.join('" or @message like "')}")`
+  }
+  else {
+    const actionId = data       
+    stringDataQuery = `${stringDataQuery} and @message like "${actionId}"`
+  }
+  console.log(stringDataQuery)
+  return stringDataQuery;
+}
+
 function prepareDataQuery(data, startDate, endDate) {
   const message = `Handle .*`
   let dataQuery = {
@@ -124,9 +137,10 @@ async function main() {
     { name: "timestamp", mandatory: false, subcommand: ['fileName'] },
     { name: "window", mandatory: false, subcommand: [] },
     { name: "kinesis", mandatory: false, subcommand: [] },
+    { name: "cloudwatch", mandatory: false, subcommand: [] }
   ]
   const values = {
-    values: { envName, dlq, visibilityTimeout, fileName, timestamp, window, kinesis },
+    values: { envName, dlq, visibilityTimeout, fileName, timestamp, window, kinesis, cloudwatch },
   } = parseArgs({
     options: {
       envName: {
@@ -150,11 +164,15 @@ async function main() {
       kinesis: {
         type: "boolean", short: "k", default: false
       },
+      cloudwatch: {
+        type: "boolean", short: "k", default: false
+      }
     },
   });  
   _checkingParameters(args, values)
   //Prepare AWS
   const nowTimestamp = Date.now()
+  const windowSize = 2*60*60*1000 //2h
   const account = 'core'
   const awsClient = new AwsClientsWrapper( account, envName );
   awsClient._initCloudwatch()
@@ -201,22 +219,53 @@ async function main() {
             actionId = JSON.parse(event.Body).actionId  
             startTimestamp = Number(event.Attributes.SentTimestamp)
           }
-          const dataQuery = prepareDataQuery(actionId, new Date(startTimestamp).toISOString(), new Date(endTimestamp).toISOString())
-          const result = await ApiClient.requestToOpensearch(dataQuery)
-          if(result.hits.hits.length > 0) {
-            console.log(`logs found for actionId ${actionId}`)
-            const tmp = {
-              MD5OfBody: event.MD5OfBody, 
-              MD5OfMessageAttributes: event.MD5OfMessageAttributes, 
-              Body: event.Body
+          if(!cloudwatch) {
+            const dataQuery = prepareDataQuery(actionId, new Date(startTimestamp).toISOString(), new Date(endTimestamp).toISOString())
+            const result = await ApiClient.requestToOpensearch(dataQuery)
+            if(result.hits.hits.length > 0) {
+              console.log(`logs found for actionId ${actionId}`)
+              const tmp = {
+                MD5OfBody: event.MD5OfBody, 
+                MD5OfMessageAttributes: event.MD5OfMessageAttributes, 
+                Body: event.Body
+              }
+              console.log(`To remove message with key ${actionId} from DLQ`)
+              appendJsonToFile(`results/${envName}_${timestampToLog(nowTimestamp)}`, "to_remove.json", JSON.stringify(tmp))
             }
-            console.log(`To remove message with key ${actionId} from DLQ`)
-            appendJsonToFile(`results/${envName}_${timestampToLog(nowTimestamp)}`, "to_remove.json", JSON.stringify(tmp))
+            else {
+              console.log(`ActionId ${actionId} unhandled`)
+              const res = await awsClient._queryRequest('pn-Action', 'actionId', actionId)
+              writeFile(res, nowTimestamp, startTimestamp, actionId)
+            }
           }
           else {
-            console.log(`ActionId ${actionId} unhandled`)
-            const res = await awsClient._queryRequest('pn-Action', 'actionId', actionId)
-            writeFile(res, nowTimestamp, startTimestamp, actionId)
+            const initialTimeStamp = startTimestamp;
+            const maxTimestamp = nowTimestamp
+            let endTimestamp = startTimestamp + windowSize
+            let logs;
+            for(; startTimestamp < maxTimestamp; startTimestamp = endTimestamp, endTimestamp += windowSize) {
+              endTimestamp = Math.min(endTimestamp, maxTimestamp);
+              console.log(`Query from ${timestampToLog(startTimestamp)} to ${timestampToLog(endTimestamp)}`)
+              const queryString = prepareStringDataQuery(actionId)
+              logs = await awsClient._executeCloudwatchQuery(['/aws/ecs/pn-delivery-push'], startTimestamp, endTimestamp, queryString, 1)
+              console.log(logs)
+              if(logs.length > 0) {
+                console.log(`logs found for actionId ${actionId}`)
+                const tmp = {
+                  MD5OfBody: event.MD5OfBody, 
+                  MD5OfMessageAttributes: event.MD5OfMessageAttributes, 
+                  Body: event.Body
+                }
+                console.log(`To remove message with key ${actionId} from DLQ`)
+                appendJsonToFile(`results/${envName}_${timestampToLog(nowTimestamp)}`, "to_remove.json", JSON.stringify(tmp))
+                break;
+              }
+            }
+            if(!logs || logs.length == 0) {
+              console.log(`ActionId ${actionId} unhandled`)
+              const res = await awsClient._queryRequest('pn-Action', 'actionId', actionId)
+              writeFile(res, nowTimestamp, initialTimeStamp, actionId)
+            }
           }
         }
       } else {
@@ -227,33 +276,58 @@ async function main() {
   } else {
     const actionIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
     let startTimestamp = Number(timestamp)
-    const dataQuery = prepareDataQuery(actionIds, new Date(startTimestamp).toISOString(), new Date(endTimestamp).toISOString())
-    const result = await ApiClient.requestToOpensearch(dataQuery)
-    if(result.hits.hits.length > 0) {
-      result.hits.hits.forEach(hit => {
+    if(!cloudwatch) {
+      let endTimestamp = startTimestamp + windowSize
+      const maxTimestamp = nowTimestamp
+      let logs = [];
+      for(; startTimestamp < maxTimestamp && actionIds.length > 0; startTimestamp = endTimestamp, endTimestamp += windowSize) {
+        endTimestamp = Math.min(endTimestamp, maxTimestamp);
+        const queryString = prepareStringDataQuery(actionIds)
+        console.log(`Query from ${timestampToLog(startTimestamp)} to ${timestampToLog(endTimestamp)}`)
+        logs = await awsClient._executeCloudwatchQuery(['/aws/ecs/pn-delivery-push'], startTimestamp, endTimestamp, queryString, 1)
         actionIds.forEach(actionId => {
-          if(hit._source.message.includes(actionId)) {
-            const index = actionIds.indexOf(actionId);
-            if (index > -1) { // only splice array when item is found
-              actionIds.splice(index, 1); // 2nd parameter means remove one item only
-            }
-            console.log(`logs found for actionId ${actionId}`)
-          }
-        });
-      });
-      if(actionIds.length > 0) {
-        for(let q = 0; q < actionIds.length; q++) {
-          console.log(`ActionId ${actionId} unhandled`)
-          const res = await awsClient._queryRequest('pn-Action', 'actionId', actionIds[q])
-          writeFile(res, nowTimestamp, startTimestamp, actionIds[q])
-        }
+          logs.forEach(log => {
+            log.forEach(element => {
+              if(element.field == '@message' && element.value.includes(actionId)) {
+                const index = actionIds.indexOf(actionId);
+                if (index > -1) { // only splice array when item is found
+                  actionIds.splice(index, 1); // 2nd parameter means remove one item only
+                }
+                console.log(`logs found for actionId ${actionId}`)
+              }
+            });
+          });
+        })
       }
-      else {
-        console.log("No actionId to perform")
+    } else {
+      const dataQuery = prepareDataQuery(actionIds, new Date(startTimestamp).toISOString(), new Date(endTimestamp).toISOString())
+      const result = await ApiClient.requestToOpensearch(dataQuery)
+      if(result.hits.hits.length > 0) {
+        result.hits.hits.forEach(hit => {
+          actionIds.forEach(actionId => {
+            if(hit._source.message.includes(actionId)) {
+              const index = actionIds.indexOf(actionId);
+              if (index > -1) { // only splice array when item is found
+                actionIds.splice(index, 1); // 2nd parameter means remove one item only
+              }
+              console.log(`logs found for actionId ${actionId}`)
+            }
+          });
+        });
       }
     }
-    console.log('Execution complete.');
+    if(actionIds.length > 0) {
+      for(let q = 0; q < actionIds.length; q++) {
+        console.log(`ActionId ${actionId} unhandled`)
+        const res = await awsClient._queryRequest('pn-Action', 'actionId', actionIds[q])
+        writeFile(res, nowTimestamp, startTimestamp, actionIds[q])
+      }
+    }
+    else {
+      console.log("No actionId to perform")
+    }
   }
+  console.log('Execution complete.');
 }
 
 main(); 
