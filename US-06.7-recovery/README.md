@@ -26,7 +26,7 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash
-node index.js --envName <envName> [--visibilityTimeout <visibilityTimeout>] [--fileName <fileName> [--timestamp <timestamp>]] [--window] [kinesis [--dlq <dlq>]]
+node index.js --envName <envName> [--visibilityTimeout <visibilityTimeout>] [--fileName <fileName> [--timestamp <timestamp>]] [--window] [kinesis [--dlq <dlq>]] [--cloudwatch]
 ```
 Dove:
 - `<env-name>` l'ambiente su cui verrà eseguito lo script;
@@ -36,6 +36,7 @@ Dove:
 - `<window>` indica la finestra temporale di ogni ricerca nei log;
 - `<kinesis>` indica se abilitare la ricerca per kinesis;
 - `<dlq>` indica la dlq kinesis sul quale intervenire ('pn-delivery_push_action_router_DLQ' | 'pn-delivery_push_action_enqueuer_DLQ' );
+- `<cloudwatch>` indica se eseguire la query su cloudwatch (in alternativa la esegue su opensearch tunnel necessario!!!)
 
 esempio di esecuzione per file
 node index.js --envName dev --fileName actionIds.txt --timestamp 1720682511
