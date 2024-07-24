@@ -12,6 +12,12 @@ const progressBar = new cliProgress.SingleBar({
     hideCursor: true,
     noTTYOutput: true
 });
+const REGION = 'eu-south-1';
+const MISSING_TIMESTAMP_FILENAME = "missing_timestamp.csv";
+const FAILURES_FILENAME = "failures.csv";
+const TEST_FILENAME = "test-records.csv";
+
+
 
 console.log(`Starting process at ${new Date().toISOString()}`);
 
@@ -49,7 +55,6 @@ const values = {
     },
 });
 
-if (dryrun) { test = true; }
 
 var confinfoCredentials;
 if (awsProfile != null) { confinfoCredentials = fromSSO({ profile: awsProfile })(); }
@@ -75,7 +80,7 @@ retryStrategy.mode = 'STANDARD';
 
 const dynamoDbClient = new DynamoDBClient({
     credentials: confinfoCredentials,
-    region: 'eu-south-1',
+    region: REGION,
     retryStrategy: retryStrategy
 });
 const dynamoDbDocumentClient = DynamoDBDocumentClient.from(dynamoDbClient);
@@ -121,7 +126,7 @@ async function updateRecord(record) {
         };
 
         if (test) {
-            fs.appendFileSync("test-records.csv", requestId.toString() + "\r\n");
+            fs.appendFileSync(TEST_FILENAME, requestId.toString() + "\r\n");
         }
 
         if (!dryrun) {
@@ -131,7 +136,7 @@ async function updateRecord(record) {
     } catch (error) {
         console.warn(`\nError while updating record "${requestId}" : ${error}`);
         itemFailures++;
-        fs.appendFileSync("failures.csv", requestId.toString() + "," + error + "\r\n");
+        fs.appendFileSync(FAILURES_FILENAME, requestId.toString() + "," + error + "\r\n");
         return;
     }
     itemUpdates++;
@@ -149,16 +154,11 @@ async function recordsCleaningFromFile(requestIdsPath) {
         progressBar.update(++workedRecords);
         try{
             const record = await getRecord(requestId);
-            if(record.lastUpdateTimestamp == null) {
-                fs.appendFileSync("not_updated.csv", requestId + ", lastUpdateTimestamp null" + "\r\n");
-            }
-            if (isTimestampInTheFuture(record.lastUpdateTimestamp)) {
-                await updateRecord(record);
-            }
+            await processRecord(record);
         } catch (error) {
             console.log("Error while getting record from table with requestId: " + requestId + ": " + error);
             itemFailures++;
-            fs.appendFileSync("failures.csv", requestId + "," + error + "\r\n");
+            fs.appendFileSync(FAILURES_FILENAME, requestId + "," + error + "\r\n");
         }
     }
 }
@@ -213,7 +213,6 @@ async function recordsCleaning() {
     var input = {
         TableName: tableName,
         ProjectionExpression: "requestId, eventsList, version, lastUpdateTimestamp",
-        FilterExpression: "attribute_exists(lastUpdateTimestamp)",
         Limit: scanLimit,
         ConsistentRead: true
     };
@@ -234,14 +233,7 @@ async function recordsCleaning() {
                 exclusiveStartKey = data.LastEvaluatedKey.requestId;
             }
             for (const record of data.Items) {
-                if(record.lastUpdateTimestamp == null){
-                    fs.appendFileSync("not_updated.csv", record.requestId + "\r\n");
-
-                }
-                if (isTimestampInTheFuture(record.lastUpdateTimestamp)){
-                    await updateRecord(record);
-
-                }
+                await processRecord(record);
             }
         }
         catch (error) {
@@ -253,6 +245,16 @@ async function recordsCleaning() {
     }
 }
 
+async function processRecord(record){
+    if(!record.hasOwnProperty('lastUpdateTimeStamp') || record.lastUpdateTimestamp == null){
+        fs.appendFileSync(MISSING_TIMESTAMP_FILENAME, record.requestId + "\r\n");
+    }
+    if (isTimestampInTheFuture(record.lastUpdateTimestamp)){
+        await updateRecord(record);
+    }
+
+}
+
 async function getRecords(input) {
     const command = new ScanCommand(input);
     return dynamoDbDocumentClient.send(command);
@@ -261,7 +263,7 @@ async function getRecords(input) {
 function logFinalReport() {
     console.log(`Ending process at ${new Date(Date.now()).toISOString()}`)
     console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}.`);
-    console.log(`Check "failures.csv" file for individual failures.`)
+    console.log("Check "+ FAILURES_FILENAME  +" file for individual failures.")
 }
 
 function isTimestampInTheFuture(timestamp) {

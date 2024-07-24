@@ -50,7 +50,6 @@ const values = {
   },
 });
 
-if (dryrun) { test = true; }
 
 var confinfoCredentials;
 if (awsProfile != null) { confinfoCredentials = fromSSO({ profile: awsProfile })(); }
