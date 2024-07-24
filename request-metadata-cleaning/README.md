@@ -11,9 +11,15 @@ Script per la bonifica dei dati contenuti nella tabella pnEc-RichiesteMetadati.
 
 ## Descrizione
 
-Il package contiene uno script atto alla bonifica dei requestMetadata.
+Il package contiene due script atti alla bonifica dei requestMetadata.
+
+### index.js
 La bonifica consiste nell'inserire in ogni record il nuovo attributo "lastUpdateTimestamp"
 e in ogni evento della lista "eventsList" l'attributo "insertTimestamp".
+
+### lastUpdateTimestamp-future.js
+La bonifica consiste nella verifica del valore dell'attributo "lastUpdateTimestamp" di ogni record.
+Se il valore è impostato nel futuro, viene aggiornato con la data corrente.
 
 ## Installazione
 
