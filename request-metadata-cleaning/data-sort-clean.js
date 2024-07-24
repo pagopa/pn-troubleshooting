@@ -77,10 +77,7 @@ class DynamoDBScanner {
     const params = {
       TableName: this.tableName,
       ProjectionExpression: "requestId, eventsList",
-      FilterExpression: "attribute_exists(eventsList) AND attribute_exists(eventsList[0].paperProgrStatus) AND attribute_type(eventsList[0].paperProgrStatus, :nullType)",
-        ExpressionAttributeValues: {
-            ":nullType": "NULL"
-        },
+      FilterExpression: "attribute_exists(eventsList) AND attribute_exists(eventsList[0].paperProgrStatus)",
       Limit: this.scanLimit,
     };
 
@@ -162,7 +159,6 @@ scanner.run()
   .then(() => console.log('Processo completato con successo.'))
   .catch(error => console.error(`Errore nel processo: ${error}`));
 
-// Handling of signals coming from the process.
 function handleProcessSignal(signal) {
   console.log(`Received ${signal} signal. Ending script execution.`);
   process.exit();
