@@ -10,6 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/util-dynamodb": "^3.602.0",
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
     "pn-common": "file:../pn-common"
   }
 }

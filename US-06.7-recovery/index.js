@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { AwsClientsWrapper } = require("pn-common");
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
+const { ApiClient } = require("./libs/api");
+require('dotenv').config()
 
 function elabResult(now, to_submit, event) {
   const isoTimestamp = timestampToLog(now)
@@ -44,17 +46,47 @@ function appendJsonToFile(filePath, fileName, data){
   fs.appendFileSync(path.join(filePath, fileName), data + "\n")
 }
 
-function prepareStringDataQuery(data){
-  let stringDataQuery = 'filter @message like "Handle action"'
+function prepareDataQuery(data, startDate, endDate) {
+  const message = `Handle .*`
+  let dataQuery = {
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "range": {
+              "@timestamp": {
+                "gte": startDate,
+                "lte": endDate
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
   if(Array.isArray(data)) {
-    stringDataQuery = `${stringDataQuery} and ( @message like "${data.join('" or @message like "')}")`
+    dataQuery.query.bool["should"] = []
+    dataQuery.query.bool["minimum_should_match"] = 1
+    data.forEach(actionId => {
+      dataQuery.query.bool.should.push(
+        {
+          "regexp": {
+            "message": `${message} ${actionId} .*`
+          }
+        }
+      )
+    });
   }
   else {
-    const actionId = data       
-    stringDataQuery = `${stringDataQuery} and @message like "${actionId}"`
+    const actionId = data   
+    dataQuery.query.bool.must.push({
+      "regexp": {
+        "message": `${message} ${actionId} .*`
+      }
+    }) 
+    dataQuery.size = 1
   }
-  console.log(stringDataQuery)
-  return stringDataQuery;
+  return dataQuery;
 }
 
 function _checkingParameters(args, values){
@@ -127,7 +159,7 @@ async function main() {
   const awsClient = new AwsClientsWrapper( account, envName );
   awsClient._initCloudwatch()
   awsClient._initDynamoDB()
-  const windowSize = 1000*60*Number(window)
+  const endTimestamp = Date.now() + (2*60*60*1000)
   if(!fileName) {
     awsClient._initSQS()
     let queueName;
@@ -169,33 +201,22 @@ async function main() {
             actionId = JSON.parse(event.Body).actionId  
             startTimestamp = Number(event.Attributes.SentTimestamp)
           }
-          const initialTimeStamp = startTimestamp;
-          const maxTimestamp = nowTimestamp
-          let endTimestamp = startTimestamp + windowSize
-          let logs;
-          for(; startTimestamp < maxTimestamp; startTimestamp = endTimestamp, endTimestamp += windowSize) {
-            endTimestamp = Math.min(endTimestamp, maxTimestamp);
-            console.log(`Query from ${timestampToLog(startTimestamp)} to ${timestampToLog(endTimestamp)}`)
-            const queryString = prepareStringDataQuery(actionId)
-            console.log(startTimestamp, endTimestamp)
-            logs = await awsClient._executeCloudwatchQuery(['/aws/ecs/pn-delivery-push'], startTimestamp, endTimestamp, queryString, 1)
-            console.log(logs)
-            if(logs.length > 0) {
-              console.log(`logs found for actionId ${actionId}`)
-              const tmp = {
-                MD5OfBody: event.MD5OfBody, 
-                MD5OfMessageAttributes: event.MD5OfMessageAttributes, 
-                Body: event.Body
-              }
-              console.log(`To remove message with key ${actionId} from DLQ`)
-              appendJsonToFile(`results/${envName}_${timestampToLog(nowTimestamp)}`, "to_remove.json", JSON.stringify(tmp))
-              break;
+          const dataQuery = prepareDataQuery(actionId, new Date(startTimestamp).toISOString(), new Date(endTimestamp).toISOString())
+          const result = await ApiClient.requestToOpensearch(dataQuery)
+          if(result.hits.hits.length > 0) {
+            console.log(`logs found for actionId ${actionId}`)
+            const tmp = {
+              MD5OfBody: event.MD5OfBody, 
+              MD5OfMessageAttributes: event.MD5OfMessageAttributes, 
+              Body: event.Body
             }
+            console.log(`To remove message with key ${actionId} from DLQ`)
+            appendJsonToFile(`results/${envName}_${timestampToLog(nowTimestamp)}`, "to_remove.json", JSON.stringify(tmp))
           }
-          if(!logs || logs.length == 0) {
+          else {
             console.log(`ActionId ${actionId} unhandled`)
             const res = await awsClient._queryRequest('pn-Action', 'actionId', actionId)
-            writeFile(res, nowTimestamp, initialTimeStamp, actionId)
+            writeFile(res, nowTimestamp, startTimestamp, actionId)
           }
         }
       } else {
@@ -205,43 +226,31 @@ async function main() {
     }
   } else {
     const actionIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
-    let actionMap = {};
-    actionIds.forEach(actionId => {
-      actionMap[actionId] = false
-    })
     let startTimestamp = Number(timestamp)
-    let endTimestamp = startTimestamp + windowSize
-    const initialTimeStamp = startTimestamp;
-    const maxTimestamp = nowTimestamp
-    let logs = [];
-    for(; startTimestamp < maxTimestamp && Object.keys(actionMap).length > 0; startTimestamp = endTimestamp, endTimestamp += windowSize) {
-      endTimestamp = Math.min(endTimestamp, maxTimestamp);
-      const queryString = prepareStringDataQuery(actionIds)
-      console.log(`Query from ${timestampToLog(startTimestamp)} to ${timestampToLog(endTimestamp)}`)
-      logs = await awsClient._executeCloudwatchQuery(['/aws/ecs/pn-delivery-push'], startTimestamp, endTimestamp, queryString, 1)
-      Object.keys(actionMap).forEach(id => {
-        if(!actionMap[id]) {
-          logs.forEach(log => {
-            log.forEach(element => {
-              if(element.field == '@message' && element.value.includes(id)) {
-                actionMap[id] = true;
-              }
-            });
-          });
-        } else {
-          delete actionMap[id]
+    const dataQuery = prepareDataQuery(actionIds, new Date(startTimestamp).toISOString(), new Date(endTimestamp).toISOString())
+    const result = await ApiClient.requestToOpensearch(dataQuery)
+    if(result.hits.hits.length > 0) {
+      result.hits.hits.forEach(hit => {
+        actionIds.forEach(actionId => {
+          if(hit._source.message.includes(actionId)) {
+            const index = actionIds.indexOf(actionId);
+            if (index > -1) { // only splice array when item is found
+              actionIds.splice(index, 1); // 2nd parameter means remove one item only
+            }
+            console.log(`logs found for actionId ${actionId}`)
+          }
+        });
+      });
+      if(actionIds.length > 0) {
+        for(let q = 0; q < actionIds.length; q++) {
+          console.log(`ActionId ${actionId} unhandled`)
+          const res = await awsClient._queryRequest('pn-Action', 'actionId', actionIds[q])
+          writeFile(res, nowTimestamp, startTimestamp, actionIds[q])
         }
-      })
-    }
-    const actionArr = Object.keys(actionMap)
-    if(actionArr.length > 0) {
-      for(let q = 0; q < actionArr.length; q++) {
-        const res = await awsClient._queryRequest('pn-Action', 'actionId', actionArr[q])
-        writeFile(res, nowTimestamp, initialTimeStamp, actionArr[q])
       }
-    }
-    else {
-      console.log("No actionId to perform")
+      else {
+        console.log("No actionId to perform")
+      }
     }
     console.log('Execution complete.');
   }
