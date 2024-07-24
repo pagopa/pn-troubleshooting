@@ -77,7 +77,10 @@ class DynamoDBScanner {
     const params = {
       TableName: this.tableName,
       ProjectionExpression: "requestId, eventsList",
-      FilterExpression: "attribute_exists(eventsList) AND attribute_exists(eventsList[0].paperProgrStatus)",
+      FilterExpression: "attribute_exists(eventsList) AND attribute_exists(eventsList[0].paperProgrStatus) AND attribute_type(eventsList[0].paperProgrStatus, :nullType)",
+        ExpressionAttributeValues: {
+            ":nullType": "NULL"
+        },
       Limit: this.scanLimit,
     };
 
