@@ -75,3 +75,13 @@ Le tipologie di entry sono, in ordine di posizionamento nell'array, queste tre:
 2) Record con lastUpdateTimestamp e insertTimestamp mancanti.
 3) Record con lastUpdateTimestamp presente ma alcuni eventi vecchi da sanare.
 
+
+Il package contiene anche uno script che genera due file txt in cui vengono riportate le sole requestId, per tutti quei 
+record che hanno insertTimestamp non valorizzato e statusDateTime degli eventi non in ordine cronologico.
+
+```bash
+node data-sort-clean.js --awsProfile <aws-profile> --scanLimit <scanLimit>
+```
+- `awsProfile` è il profilo dell'account AWS. Se non viene inserito, verranno prese di default le credenziali AWS di
+  sistema; `OPZIONALE`
+- `scanLimit` è il parametro che indica il numero di record presi in considerazione in ogni scan; `OPZIONALE`
