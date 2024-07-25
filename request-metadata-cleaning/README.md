@@ -57,8 +57,11 @@ Dove:
   Alla fine del processo di bonifica, verrà generato un file _"failures.csv"_ contenente i requestId dei record
   su cui l'update è andato in eccezione e la causa dell'errore.
 
-Se è attiva la modalità test, verrà anche generato un file _"test-records.csv"_ contenente i requestId dei record
+Se è attiva la modalità dryrun, verrà generato un file _"dryrun-updated.csv"_ contenente i requestId dei record che sarebbero stati aggiornati.
+Altrimenti, se è attiva la modalità test, verrà generato un file _"test-updated.csv"_ contenente i requestId dei record
 che sono stati aggiornati.
+Se nessuna delle due modalità è attiva, verrà generato un file _"updated.csv"_ contenente i requestId dei record che sono stati aggiornati.
+
 
 Se è attiva la modalià dryrun, verrà generato un file _"dryrun-updated.csv"_ contenente i requestId dei record che sarebbero stati aggiornati.
 

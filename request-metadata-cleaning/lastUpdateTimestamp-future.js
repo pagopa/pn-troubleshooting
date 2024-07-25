@@ -15,8 +15,9 @@ const progressBar = new cliProgress.SingleBar({
 const REGION = 'eu-south-1';
 const MISSING_TIMESTAMP_FILENAME = "missing_timestamp.csv";
 const FAILURES_FILENAME = "failures.csv";
-const TEST_FILENAME = "test-records.csv";
+const TEST_FILENAME = "test-updated.csv";
 const DRYRUN_FILENAME = "dryrun-updated.csv";
+const DEFAULT_FILENAME = "updated.csv";
 
 
 
@@ -126,16 +127,15 @@ async function updateRecord(record) {
             UpdateExpression: "SET #lctKey = :lctValue, #version = :newVersion"
         };
 
-        if (test) {
-            fs.appendFileSync(TEST_FILENAME, requestId.toString() + "\r\n");
-        }
-
         if (!dryrun) {
             const command = new UpdateCommand(input);
             await dynamoDbDocumentClient.send(command);
         } else {
             fs.appendFileSync(DRYRUN_FILENAME, requestId.toString() + "\r\n");
         }
+
+        fs.appendFileSync(getFileName(), requestId.toString() + "\r\n");
+
     } catch (error) {
         console.warn(`\nError while updating record "${requestId}" : ${error}`);
         itemFailures++;
@@ -256,6 +256,12 @@ async function processRecord(record){
         await updateRecord(record);
     }
 
+}
+
+function getFileName() {
+    if(dryrun)return DRYRUN_FILENAME;
+    if(test)return TEST_FILENAME;
+    return DEFAULT_FILENAME;
 }
 
 async function getRecords(input) {
