@@ -1,9 +1,21 @@
+source( "common.R")
 
-#spark_read_csv(sc, 'matrice_costi_def', "data/20230215_Fatturazione/matrice_costi_def.csv")
+spark_disconnect_all()
+Sys.setenv("SPARK_MEM" = "8g")
 
-spark_read_csv(sc, 'matrice_costi_def', "data/20230215_Fatturazione/matrice_costi_def_lotto.csv", delimiter = ';')
+conf <- spark_config()
+conf$spark.driver.memory <- "8G"
+conf$spark.driver.cores <- 1
+conf$spark.executor.memory <- "8G"
+conf$spark.executor.cores <- 1
+conf$spark.dynamicAllocation.enabled <- "false"
 
-spark_read_csv(sc, 'zone', "data/20230215_Fatturazione/zones.csv", delimiter = ';')
+sc <- spark_connect(master = "local", version = "3.5.0", hadoop_version = "3", config = conf)
+
+
+spark_read_csv(sc, 'matrice_costi_def', "data/20240625 - Matrice CAP - COSTI_variazioni cap Sailpost e Fulmine_v2.0.xlsx - Matrice Fatturazione.csv", delimiter = ',')
+
+spark_read_csv(sc, 'zone', "data/20240625_zones.csv", delimiter = ';')
 
 matrice_costi_pivot = 
 sdf_collect( 
@@ -11,7 +23,7 @@ sdf_collect(
   WITH 
     rowWithArray AS (
       SELECT 
-        CAP, 
+        if(CAP not like 'ZONE%',  lpad(CAP, 5, '0'), CAP ) as CAP, 
         array(
           named_struct(
             'product', 'RS',
@@ -221,23 +233,25 @@ sdf_collect(
   ")
 )
 
+
+
 matrice_costi_pivot$costo_plico = as.numeric(gsub(",",".",matrice_costi_pivot$costo_plico)) *100
 matrice_costi_pivot$costo_foglio = as.numeric(gsub(",",".",matrice_costi_pivot$costo_foglio)) *100
 matrice_costi_pivot$costo_demat = as.numeric(gsub(",",".",matrice_costi_pivot$costo_demat)) *100
 matrice_costi_pivot$costo = as.numeric(gsub(",",".",matrice_costi_pivot$costo)) *100
 matrice_costi_pivot$costo_base_20gr = as.numeric(gsub(",",".",matrice_costi_pivot$costo_base_20gr)) *100
   
+write.csv(matrice_costi_pivot, "data/out/matrice_costi_202408_pivot.csv", row.names=FALSE, na = "")
 
-write.csv(matrice_costi_pivot, "data/20230215_Fatturazione/matrice_costi_2023_pivot.csv", row.names=FALSE, na = "")
-
-spark_read_csv(sc, 'matrice_costi_def_final', "data/20230215_Fatturazione/matrice_costi_2023_pivot.csv.gz")
+spark_read_csv(sc, 'matrice_costi_def_final_2023', "data/out/matrice_costi_2023_pivot.csv.gz")
+spark_read_csv(sc, 'matrice_costi_def_final_202408', "data/out/matrice_costi_202408_pivot.csv.gz")
 
 
 matrice_costi_pivot_test = 
   sdf_collect( 
     sdf_sql(sc, "
   SELECT *
-  FROM matrice_costi_def_final
+  FROM matrice_costi_def_final_202408
   WHERE product = 'RIR'
   ") 
   )
