@@ -285,6 +285,8 @@ async function updateRecord(record) {
       if (!dryrun) {
         const command = new UpdateCommand(input);
         await dynamoDbDocumentClient.send(command);
+      } else {
+        fs.appendFileSync("dryrun-updated.csv", requestId.toString() + "\r\n");
       }
     }
     else {

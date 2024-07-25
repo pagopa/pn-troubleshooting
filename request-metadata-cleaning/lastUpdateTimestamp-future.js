@@ -16,6 +16,7 @@ const REGION = 'eu-south-1';
 const MISSING_TIMESTAMP_FILENAME = "missing_timestamp.csv";
 const FAILURES_FILENAME = "failures.csv";
 const TEST_FILENAME = "test-records.csv";
+const DRYRUN_FILENAME = "dryrun-updated.csv";
 
 
 
@@ -132,6 +133,8 @@ async function updateRecord(record) {
         if (!dryrun) {
             const command = new UpdateCommand(input);
             await dynamoDbDocumentClient.send(command);
+        } else {
+            fs.appendFileSync(DRYRUN_FILENAME, requestId.toString() + "\r\n");
         }
     } catch (error) {
         console.warn(`\nError while updating record "${requestId}" : ${error}`);
