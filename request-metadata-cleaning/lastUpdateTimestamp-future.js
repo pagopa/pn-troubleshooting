@@ -249,7 +249,7 @@ async function recordsCleaning() {
 }
 
 async function processRecord(record){
-    if(!record.hasOwnProperty('lastUpdateTimeStamp') || record.lastUpdateTimestamp == null){
+    if(!record.hasOwnProperty('lastUpdateTimestamp') || record.lastUpdateTimestamp == null){
         fs.appendFileSync(MISSING_TIMESTAMP_FILENAME, record.requestId + "\r\n");
     }
     if (isTimestampInTheFuture(record.lastUpdateTimestamp)){
