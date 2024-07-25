@@ -9,8 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-cloudwatch-logs": "^3.606.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.614.0",
     "@aws-sdk/client-dynamodb": "^3.602.0",
+    "@aws-sdk/client-kinesis": "^3.614.0",
     "@aws-sdk/client-sqs": "^3.600.0",
     "@aws-sdk/credential-provider-ini": "^3.598.0",
     "@aws-sdk/util-dynamodb": "^3.602.0",
