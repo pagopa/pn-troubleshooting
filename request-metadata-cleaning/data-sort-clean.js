@@ -114,14 +114,15 @@ async function scanTable(params, processItem) {
 
       for (const item of newItems) {
         await processItem(item);
-        scannedCount++;
-        progressBar.update(scannedCount);
       }
 
+      scannedCount += data.scannedCount;
+      progressBar.update(scannedCount);
+
       lastEvaluatedKey = data.LastEvaluatedKey;
-      if (!lastEvaluatedKey || (scanLimitParsed && scannedCount >= scanLimitParsed)) {
+      if (!lastEvaluatedKey) {
         isScanning = false;
-        console.log('\nScan complete or limit reached.');
+        console.log('\nScan complete.');
       }
     } catch (err) {
       console.error('\nError scanning table:', err);
@@ -147,13 +148,10 @@ async function scanAndProcessItems() {
   const params = {
     TableName: tableName,
     ProjectionExpression: "requestId, eventsList",
-    FilterExpression: "attribute_exists(eventsList) AND attribute_exists(eventsList[0].paperProgrStatus) AND NOT attribute_type(eventsList[0].paperProgrStatus, :nullType) "+
-                        "OR attribute_exists(eventsList[0].digProgrStatus) AND NOT attribute_type(eventsList[0].digProgrStatus, :nullType)",
-    ExpressionAttributeValues: { ":nullType": "NULL" },
+    FilterExpression: "attribute_exists(eventsList)",
     Limit: scanLimitParsed,
   };
 
-  const processedRequestIds = new Set();
 
   const processItem = async item => {
     const requestId = item.requestId;
@@ -175,32 +173,22 @@ async function scanAndProcessItems() {
       }
     });
 
-    if (processedRequestIds.has(requestId)) {
-      return;
-    }
 
-    if (!isInChronologicalOrder(statusDateTimes)) {
+    if (updateEventOrder && !isInChronologicalOrder(statusDateTimes)) {
       const outputLine = `${requestId}\n`;
       fileStream2.write(outputLine);
 
-      if (updateEventOrder) {
         await updateRecordEventListOrdered(requestId, sortEventsByInsertTimestamp(eventsList));
-      }
     }
 
-    if (missingInsertTimestamp) {
+    if (updateInsertTimestamp && missingInsertTimestamp) {
       const outputLine = `${requestId}\n`;
       fileStream1.write(outputLine);
 
-      if (updateInsertTimestamp) {
-        const maxInsertTimestamp = getMaxInsertTimestamp(eventsList);
-        const newInsertTimestamp = new Date(maxInsertTimestamp.getTime() + 1).toISOString();
-        await updateRecordInsertTimestamp(requestId, newInsertTimestamp, eventsList);
+        await updateRecordInsertTimestamp(requestId, eventsList);
         await updateRecordEventListOrdered(requestId, sortEventsByInsertTimestamp(eventsList));
-      }
     }
 
-    processedRequestIds.add(requestId);
   };
 
   await scanTable(params, processItem);
@@ -230,16 +218,15 @@ function sortEventsByInsertTimestamp(eventsList) {
 }
 
 // Update di insertTimestamp
-async function updateRecordInsertTimestamp(requestId, insertTimestamp, eventsList) {
+async function updateRecordInsertTimestamp(requestId, eventsList) {
   try {
     const maxInsertTimestamp1970 = getMaxInsertTimestamp(eventsList);
-    const newInsertTimestamp = maxInsertTimestamp1970
-      ? new Date(maxInsertTimestamp1970.getTime() + 1).toISOString()
-      : new Date().toISOString();
+    const newInsertTimestamp = new Date(maxInsertTimestamp1970.getTime() + 1).toISOString;
 
     const updatedEventsList = eventsList.map(event => {
       if (!event.insertTimestamp) {
         event.insertTimestamp = newInsertTimestamp;
+        newInsertTimestamp++;
       }
       return event;
     });
@@ -254,9 +241,7 @@ async function updateRecordInsertTimestamp(requestId, insertTimestamp, eventsLis
       },
     };
 
-    if (dryrun) {
-      console.log(`Dry run: Update record ${requestId} with insertTimestamp ${newInsertTimestamp}`);
-    } else {
+    if (!dryrun) {
       await dynamoDbDocumentClient.send(new UpdateCommand(updateParams));
       itemUpdates++;
     }
@@ -277,9 +262,8 @@ async function updateRecordEventListOrdered(requestId, sortedEventsList) {
       ReturnValues: "UPDATED_NEW"
     };
 
-    if (dryrun) {
-      console.log(`Dry run: Update record ${requestId} with ordered events list`);
-    } else {
+    if (!dryrun) {
+
       await dynamoDbDocumentClient.send(new UpdateCommand(updateParams));
       itemUpdates++;
     }
