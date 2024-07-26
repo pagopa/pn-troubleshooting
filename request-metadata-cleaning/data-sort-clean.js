@@ -77,7 +77,7 @@ retryStrategy.mode = 'STANDARD';
 
 const dynamoDbClient = new DynamoDBClient({
   credentials: confinfoCredentials,
-  region: 'eu-central-1',
+  region: 'eu-south-1',
   retryStrategy: retryStrategy
 });
 const dynamoDbDocumentClient = DynamoDBDocumentClient.from(dynamoDbClient);

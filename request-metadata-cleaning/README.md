@@ -11,7 +11,7 @@ Script per la bonifica dei dati contenuti nella tabella pnEc-RichiesteMetadati.
 
 ## Descrizione
 
-Il package contiene uno script atto alla bonifica dei requestMetadata.
+Il package contiene quattro script atti alla bonifica dei requestMetadata.
 
 ### index.js
 La bonifica consiste nell'inserire in ogni record il nuovo attributo "lastUpdateTimestamp"
@@ -19,7 +19,7 @@ e in ogni evento della lista "eventsList" l'attributo "insertTimestamp".
 
 ### lastUpdateTimestamp-future.js
 La bonifica consiste nella verifica del valore dell'attributo "lastUpdateTimestamp" di ogni record.
-Se il valore è impostato nel futuro, viene aggiornato con la data corrente.
+Se il valore è impostato nel futuro, viene aggiornato con la data ora corrente.
 
 ### data-sort-clean.js
 La bonifica consiste nel verificare la presenza di "insertTimestamp" all'interno di ogni evento di ogni record. 
@@ -29,6 +29,8 @@ la data di inizio epoche.
 Se viene eseguito l'aggiornamento, gli eventi vengono ordinati cronologicamente secondo il valore di "insertTimestamp".
 L'ordinamento può anche essere eseguito indipendentemente dall'esecuzione dell'aggiornamento.
 
+### data-setup.js
+Script atto alla creazione di dati appositi per i test.
 
 ## Installazione
 
@@ -104,7 +106,7 @@ Se nessuna delle due modalità è attiva, verrà generato un file _"updated.csv"
 ### data-sort-clean.js
 
 ```bash
-node data-sort-clean.js --awsProfile <aws-profile> --scanLimit <scanLimit> --updateInsertTimestamp <updateInsertTimestamp> --updateEventOrder <updateEventOrder> --test --dryrun
+node data-sort-clean.js --awsProfile <aws-profile> --scanLimit <scanLimit> --updateInsertTimestamp --updateEventOrder --test --dryrun
 ```
 
 Dove:
