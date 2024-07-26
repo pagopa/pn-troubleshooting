@@ -187,8 +187,8 @@ async function scanAndProcessItems() {
       const outputLine = `${requestId}\n`;
       fileStream1.write(outputLine);
 
-        await updateRecordInsertTimestamp(requestId, eventsList);
-        await updateRecordEventListOrdered(requestId, sortEventsByInsertTimestamp(eventsList));
+        await updateRecordInsertTimestamp(requestId, eventsList, item.version);
+        await updateRecordEventListOrdered(requestId, sortEventsByInsertTimestamp(eventsList), item.version);
     }
 
   };
@@ -220,7 +220,7 @@ function sortEventsByInsertTimestamp(eventsList) {
 }
 
 // Update di insertTimestamp
-async function updateRecordInsertTimestamp(requestId, eventsList) {
+async function updateRecordInsertTimestamp(requestId, eventsList, currentVersion) {
   try {
     const maxInsertTimestamp1970 = getMaxInsertTimestamp(eventsList);
     let newInsertTimestamp = new Date(maxInsertTimestamp1970.getTime() + 1).toISOString;
@@ -262,7 +262,7 @@ async function updateRecordInsertTimestamp(requestId, eventsList) {
 }
 
 // Update degli eventi ordinati
-async function updateRecordEventListOrdered(requestId, sortedEventsList) {
+async function updateRecordEventListOrdered(requestId, sortedEventsList, currentVersion) {
   try {
     const updateParams = {
       TableName: tableName,
