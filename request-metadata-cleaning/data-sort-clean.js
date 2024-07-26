@@ -114,9 +114,10 @@ async function scanTable(params, processItem) {
 
       for (const item of newItems) {
         await processItem(item);
-      }
 
-      scannedCount += data.scannedCount;
+
+      }
+      scannedCount += data.ScannedCount;
       progressBar.update(scannedCount);
 
       lastEvaluatedKey = data.LastEvaluatedKey;
@@ -150,6 +151,7 @@ async function scanAndProcessItems() {
     ProjectionExpression: "requestId, eventsList",
     FilterExpression: "attribute_exists(eventsList)",
     Limit: scanLimitParsed,
+    ConsistentRead: true,
   };
 
 
@@ -221,7 +223,7 @@ function sortEventsByInsertTimestamp(eventsList) {
 async function updateRecordInsertTimestamp(requestId, eventsList) {
   try {
     const maxInsertTimestamp1970 = getMaxInsertTimestamp(eventsList);
-    const newInsertTimestamp = new Date(maxInsertTimestamp1970.getTime() + 1).toISOString;
+    let newInsertTimestamp = new Date(maxInsertTimestamp1970.getTime() + 1).toISOString;
 
     const updatedEventsList = eventsList.map(event => {
       if (!event.insertTimestamp) {
@@ -234,11 +236,19 @@ async function updateRecordInsertTimestamp(requestId, eventsList) {
     const updateParams = {
       TableName: tableName,
       Key: { requestId },
-      UpdateExpression: 'SET insertTimestamp = :insertTimestamp, eventsList = :eventsList',
-      ExpressionAttributeValues: {
-        ':insertTimestamp': newInsertTimestamp,
-        ':eventsList': updatedEventsList
+      ExpressionAttributeNames: {
+        "#eventsList": "eventsList",
+        '#version': 'version'
       },
+
+      ConditionExpression: "#version = :expectedVersion",
+      UpdateExpression: 'SET #eventsList = :eventsList, #version = :newVersion',
+
+      ExpressionAttributeValues: {
+        ':eventsList': updatedEventsList,
+        ':expectedVersion': currentVersion,
+        ':newVersion': currentVersion + 1,
+      }
     };
 
     if (!dryrun) {
@@ -257,9 +267,19 @@ async function updateRecordEventListOrdered(requestId, sortedEventsList) {
     const updateParams = {
       TableName: tableName,
       Key: { requestId },
-      UpdateExpression: "SET eventsList = :sortedEventsList",
-      ExpressionAttributeValues: { ":sortedEventsList": sortedEventsList },
-      ReturnValues: "UPDATED_NEW"
+      ExpressionAttributeNames: {
+        "#eventsList": "eventsList",
+        '#version': 'version'
+      },
+
+      ConditionExpression: "#version = :expectedVersion",
+      UpdateExpression: 'SET #eventsList = :eventsList, #version = :newVersion',
+
+      ExpressionAttributeValues: {
+        ':eventsList': sortedEventsList,
+        ':expectedVersion': currentVersion,
+        ':newVersion': currentVersion + 1,
+      }
     };
 
     if (!dryrun) {
