@@ -222,7 +222,7 @@ sdf_collect(
         max,
         CAST(CAST(REPLACE(costo, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo,
         CAST(CAST(REPLACE(costo_base_20gr, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo_base_20gr,
-        '2024-07-30T22:00:00.000Z' as startDate, 
+        '2024-07-31T22:00:00.000Z' as startDate, 
         '2999-01-01T23:59:59.999Z' as endDate
       FROM
         completePivot c 
