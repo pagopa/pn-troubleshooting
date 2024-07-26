@@ -215,13 +215,15 @@ sdf_collect(
         END as product,
         recapitista,
         lotto,
-        costo_plico,
-        costo_foglio,
-        costo_demat,
+        CAST(CAST(REPLACE(costo_plico, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo_plico,
+        CAST(CAST(REPLACE(costo_foglio, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo_foglio,
+        CAST(CAST(REPLACE(costo_demat, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo_demat,
         min,
         max,
-        costo,
-        costo_base_20gr
+        CAST(CAST(REPLACE(costo, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo,
+        CAST(CAST(REPLACE(costo_base_20gr, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo_base_20gr,
+        '2024-07-30T22:00:00.000Z' as startDate, 
+        '2999-01-01T23:59:59.999Z' as endDate
       FROM
         completePivot c 
         LEFT JOIN zone z
@@ -233,14 +235,6 @@ sdf_collect(
   ")
 )
 
-
-
-matrice_costi_pivot$costo_plico = as.numeric(gsub(",",".",matrice_costi_pivot$costo_plico)) *100
-matrice_costi_pivot$costo_foglio = as.numeric(gsub(",",".",matrice_costi_pivot$costo_foglio)) *100
-matrice_costi_pivot$costo_demat = as.numeric(gsub(",",".",matrice_costi_pivot$costo_demat)) *100
-matrice_costi_pivot$costo = as.numeric(gsub(",",".",matrice_costi_pivot$costo)) *100
-matrice_costi_pivot$costo_base_20gr = as.numeric(gsub(",",".",matrice_costi_pivot$costo_base_20gr)) *100
-  
 write.csv(matrice_costi_pivot, "data/out/matrice_costi_202408_pivot.csv", row.names=FALSE, na = "")
 
 spark_read_csv(sc, 'matrice_costi_def_final_2023', "data/out/matrice_costi_2023_pivot.csv.gz")
