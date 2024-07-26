@@ -138,13 +138,15 @@ class AwsClientsWrapper {
     return response;
   }
 
-  async _sendSQSMessage(queueUrl, body, delay){
+  async _sendSQSMessage(queueUrl, body, delay, attributes, messageGroupId, messageDeduplicationId){
     const input = { // SendMessageRequest
       QueueUrl: queueUrl, // required
       MessageBody: JSON.stringify(body), // required
       DelaySeconds: delay,
     }
-    console.log(input)
+    attributes ? input.MessageAttributes = attributes : null
+    messageGroupId ? input.MessageGroupId = messageGroupId : null;
+    messageDeduplicationId ? input.MessageDeduplicationId = messageDeduplicationId : null;
     const command = new SendMessageCommand(input);
     const response = await this._sqsClient.send(command);
     return response;
