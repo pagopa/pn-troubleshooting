@@ -357,3 +357,9 @@ Vuoi ricreare eventi di notification view della coda SQS delivery push inputs a 
 ```bash
 node index.js --envName <env-name> --fileName <file-name>
 ```
+
+### temporary_fix_automation_script_dp-actions
+Vuoi aggiornare pn-SsDocumenti aggiornado lo stato di una serie di documenti in attached?
+```bash
+node index.js --envName <env-name> --fileName <file-name> [--dryrun]
+```
