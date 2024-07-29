@@ -67,14 +67,17 @@ Dove:
   SOLO per le requestId indicate. Questa modalità non prevede scan della tabella. `OPZIONALE`
 - `<test>` se inserito, attiva la modalità test. In questa modalità, viene eseguita una singola scan di 10 record dalla
   tabella. `OPZIONALE`
-- `<dryrun>` se inserito, attiva la modalità dryrun. Questa modalità attiva automaticamente anche quella di test, e in
-  piu'
-  disattiva le operazioni di scrittura. `OPZIONALE`
+- `<dryrun>` se inserito, attiva la modalità dryrun. Questa modalità disattiva le operazioni di scrittura. `OPZIONALE`
   Alla fine del processo di bonifica, verrà generato un file _"failures.csv"_ contenente i requestId dei record
   su cui l'update è andato in eccezione e la causa dell'errore.
 
-Se è attiva la modalità test, verrà anche generato un file _"test-records.csv"_ contenente i requestId dei record
+Se è attiva la modalità dryrun, verrà generato un file _"dryrun-updated.csv"_ contenente i requestId dei record che sarebbero stati aggiornati.
+Altrimenti, se è attiva la modalità test, verrà generato un file _"test-updated.csv"_ contenente i requestId dei record
 che sono stati aggiornati.
+Se nessuna delle due modalità è attiva, verrà generato un file _"updated.csv"_ contenente i requestId dei record che sono stati aggiornati.
+
+
+Se è attiva la modalià dryrun, verrà generato un file _"dryrun-updated.csv"_ contenente i requestId dei record che sarebbero stati aggiornati.
 
 #### lastUpdateTimestamp-future.js
 
