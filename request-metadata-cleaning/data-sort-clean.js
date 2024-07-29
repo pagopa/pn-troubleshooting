@@ -38,7 +38,7 @@ const { values } = parseArgs({
 
 const { awsProfile, scanLimit, test, dryrun, updateInsertTimestamp, updateEventOrder } = values;
 let scanLimitParsed = parseInt(scanLimit) || null;
-if (test) { scanLimitParsed = 10; }
+if (test) { scanLimitParsed = 1; }
 
 var confinfoCredentials;
 if (awsProfile != null) { confinfoCredentials = fromSSO({ profile: awsProfile })(); }
@@ -65,6 +65,7 @@ const dynamoDbClient = new DynamoDBClient({
   region: 'eu-south-1',
   retryStrategy: retryStrategy
 });
+
 const dynamoDbDocumentClient = DynamoDBDocumentClient.from(dynamoDbClient);
 const tableName = "pn-EcRichiesteMetadati";
 const outputFilePath1 = 'output_requestId-missing-insertTimestamp.txt';
@@ -121,7 +122,7 @@ async function scanTable(params, processItem) {
       progressBar.update(scannedCount);
 
       lastEvaluatedKey = data.LastEvaluatedKey;
-      if (!lastEvaluatedKey) {
+      if (!lastEvaluatedKey || test && scannedCount >= 10) {
         isScanning = false;
         console.log('\nScan complete.');
       }
@@ -173,8 +174,9 @@ async function scanAndProcessItems() {
 
 
     if (!isInChronologicalOrder(insertTimestamps)) {
-      const outputLine = `${requestId}\n`;
-      fileStream2.write(outputLine);
+      const outputLine = `${toDynamoDBJson(item)}\n`;
+       fileStream2.write(outputLine);
+
         if(updateEventOrder){
         var newSortedEventsList = sortEventsByInsertTimestamp(eventsList);
         await updateRecordEventListOrdered(requestId, newSortedEventsList, version);
@@ -182,8 +184,9 @@ async function scanAndProcessItems() {
     }
 
     if (missingInsertTimestamp) {
-      const outputLine = `${requestId}\n`;
-      fileStream1.write(outputLine);
+      const outputLine = `${toDynamoDBJson(item)}\n`;
+        fileStream1.write(outputLine);
+
         if(updateInsertTimestamp){
         await updateRecordInsertTimestamp(requestId, eventsList, version);
         }
@@ -297,6 +300,34 @@ async function updateRecordEventListOrdered(requestId, sortedEventsList, current
     console.error(`Failed to update event list for record ${requestId}: ${err}`);
     itemFailures++;
   }
+}
+
+// Conversione di un oggetto in formato DynamoDB JSON
+function toDynamoDBJson(item) {
+  const convert = (value) => {
+    if (Array.isArray(value)) {
+      return { L: value.map(convert) };
+    }
+    if (typeof value === 'object' && value !== null) {
+      const map = {};
+      for (const key in value) {
+        map[key] = convert(value[key]);
+      }
+      return { M: map };
+    }
+    if (typeof value === 'string') {
+      return { S: value };
+    }
+    if (typeof value === 'number') {
+      return { N: value.toString() };
+    }
+    if (typeof value === 'boolean') {
+      return { BOOL: value };
+    }
+    return { NULL: true };
+  };
+
+  return JSON.stringify(convert(item));
 }
 
 async function run() {
