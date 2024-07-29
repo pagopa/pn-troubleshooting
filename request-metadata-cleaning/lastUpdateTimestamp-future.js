@@ -268,6 +268,7 @@ async function getRecords(input) {
 }
 
 function logFinalReport() {
+    progressBar.stop();
     console.log(`Ending process at ${new Date(Date.now()).toISOString()}`)
     console.log(`Scanned items: ${totalScannedRecords}, Updated items: ${itemUpdates}. Last evaluated key : ${exclusiveStartKey}. Failures : ${itemFailures}.`);
     console.log("Check "+ FAILURES_FILENAME  +" file for individual failures.")
@@ -280,7 +281,7 @@ function isTimestampInTheFuture(timestamp) {
 switchUpdateMethod()
     .then(
         function (data) {
-            console.log("Successful operation.");
+            console.log("\nSuccessful operation.");
             logFinalReport();
             process.exit();
             return;
@@ -300,7 +301,6 @@ function handleProcessSignal(signal) {
     process.exit();
 }
 
-progressBar.stop();
 process.on('SIGINT', handleProcessSignal);
 process.on('SIGTERM', handleProcessSignal);
 process.on('SIGHUP', handleProcessSignal);
