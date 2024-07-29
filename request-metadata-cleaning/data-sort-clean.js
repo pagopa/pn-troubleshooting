@@ -144,11 +144,11 @@ function isInChronologicalOrder(dates) {
   return true;
 }
 
-// Scan and process items from the table
+// Scan and process items dalla tabella
 async function scanAndProcessItems() {
   const params = {
     TableName: tableName,
-    ProjectionExpression: "requestId, eventsList",
+    ProjectionExpression: "requestId, eventsList, version",
     FilterExpression: "attribute_exists(eventsList)",
     Limit: scanLimitParsed,
     ConsistentRead: true,
@@ -158,37 +158,35 @@ async function scanAndProcessItems() {
   const processItem = async item => {
     const requestId = item.requestId;
     const eventsList = item.eventsList || [];
-    let statusDateTimes = [];
+    let insertTimestamps = [];
     let missingInsertTimestamp = false;
+    let version = item.version;
 
     eventsList.forEach(event => {
-      if (event.paperProgrStatus && typeof event.paperProgrStatus === 'object') {
-        const status = event.paperProgrStatus;
-        if (status && status.statusDateTime) {
-          const date = new Date(status.statusDateTime);
-          statusDateTimes.push(date);
-        }
-      }
-
-      if (!event.insertTimestamp) {
-        missingInsertTimestamp = true;
-      }
+   if (event.insertTimestamp) {
+           const date = new Date(event.insertTimestamp);
+           insertTimestamps.push(date);
+         } else {
+           missingInsertTimestamp = true;
+         }
     });
 
 
-    if (updateEventOrder && !isInChronologicalOrder(statusDateTimes)) {
+    if (!isInChronologicalOrder(insertTimestamps)) {
       const outputLine = `${requestId}\n`;
       fileStream2.write(outputLine);
-
-        await updateRecordEventListOrdered(requestId, sortEventsByInsertTimestamp(eventsList));
+        if(updateEventOrder){
+        var newSortedEventsList = sortEventsByInsertTimestamp(eventsList);
+        await updateRecordEventListOrdered(requestId, newSortedEventsList, version);
+        }
     }
 
-    if (updateInsertTimestamp && missingInsertTimestamp) {
+    if (missingInsertTimestamp) {
       const outputLine = `${requestId}\n`;
       fileStream1.write(outputLine);
-
-        await updateRecordInsertTimestamp(requestId, eventsList, item.version);
-        await updateRecordEventListOrdered(requestId, sortEventsByInsertTimestamp(eventsList), item.version);
+        if(updateInsertTimestamp){
+        await updateRecordInsertTimestamp(requestId, eventsList, version);
+        }
     }
 
   };
@@ -221,44 +219,52 @@ function sortEventsByInsertTimestamp(eventsList) {
 
 // Update di insertTimestamp
 async function updateRecordInsertTimestamp(requestId, eventsList, currentVersion) {
-  try {
-    const maxInsertTimestamp1970 = getMaxInsertTimestamp(eventsList);
-    let newInsertTimestamp = new Date(maxInsertTimestamp1970.getTime() + 1).toISOString;
+    try {
+        const maxInsertTimestamp1970 = getMaxInsertTimestamp(eventsList);
+        let newInsertTimestamp = new Date(maxInsertTimestamp1970.getTime() + 1).toISOString();
 
-    const updatedEventsList = eventsList.map(event => {
-      if (!event.insertTimestamp) {
-        event.insertTimestamp = newInsertTimestamp;
-        newInsertTimestamp++;
+        const updatedEventsList = eventsList.map(event => {
+          if (!event.insertTimestamp) {
+            event.insertTimestamp = newInsertTimestamp;
+               newInsertTimestamp = new Date(new Date(newInsertTimestamp).getTime() + 1).toISOString();          }
+          return event;
+        });
+
+        const sortedEventsList = sortEventsByInsertTimestamp(updatedEventsList);
+
+        const updateParams = {
+          TableName: tableName,
+          Key: { requestId },
+          ExpressionAttributeNames: {
+            "#eventsList": "eventsList",
+            '#version': 'version'
+          },
+          ConditionExpression: "#version = :expectedVersion",
+          UpdateExpression: 'SET #eventsList = :eventsList, #version = :newVersion',
+          ExpressionAttributeValues: {
+            ':eventsList': sortedEventsList,
+            ':expectedVersion': currentVersion,
+            ':newVersion': currentVersion + 1,
+          }
+        };
+
+        if (!dryrun) {
+          try {
+            await dynamoDbDocumentClient.send(new UpdateCommand(updateParams));
+            itemUpdates++;
+          } catch (err) {
+            if (err.name === 'ConditionalCheckFailedException') {
+              console.error(`Conditional check failed for record ${requestId}: ${err}`);
+            } else {
+              console.error(`Failed to update record ${requestId}: ${err}`);
+            }
+            itemFailures++;
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to update record ${requestId}: ${err}`);
+        itemFailures++;
       }
-      return event;
-    });
-
-    const updateParams = {
-      TableName: tableName,
-      Key: { requestId },
-      ExpressionAttributeNames: {
-        "#eventsList": "eventsList",
-        '#version': 'version'
-      },
-
-      ConditionExpression: "#version = :expectedVersion",
-      UpdateExpression: 'SET #eventsList = :eventsList, #version = :newVersion',
-
-      ExpressionAttributeValues: {
-        ':eventsList': updatedEventsList,
-        ':expectedVersion': currentVersion,
-        ':newVersion': currentVersion + 1,
-      }
-    };
-
-    if (!dryrun) {
-      await dynamoDbDocumentClient.send(new UpdateCommand(updateParams));
-      itemUpdates++;
-    }
-  } catch (err) {
-    console.error(`Failed to update record ${requestId}: ${err}`);
-    itemFailures++;
-  }
 }
 
 // Update degli eventi ordinati
