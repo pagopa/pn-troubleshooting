@@ -38,7 +38,7 @@ const { values } = parseArgs({
 
 const { awsProfile, scanLimit, test, dryrun, updateInsertTimestamp, updateEventOrder } = values;
 let scanLimitParsed = parseInt(scanLimit) || null;
-if (test) { scanLimitParsed = 10; }
+if (test) { scanLimitParsed = 1; }
 
 var confinfoCredentials;
 if (awsProfile != null) { confinfoCredentials = fromSSO({ profile: awsProfile })(); }
@@ -65,13 +65,18 @@ const dynamoDbClient = new DynamoDBClient({
   region: 'eu-south-1',
   retryStrategy: retryStrategy
 });
+
 const dynamoDbDocumentClient = DynamoDBDocumentClient.from(dynamoDbClient);
 const tableName = "pn-EcRichiesteMetadati";
 const outputFilePath1 = 'output_requestId-missing-insertTimestamp.txt';
 const outputFilePath2 = 'output_requestId-insertTimestamp_disorder.txt';
+const TEST_FILENAME = "test-disorder-insertTimestamp.csv";
+const TEST_FILENAME_2 = "test-missing-insertTimestamp.csv";
 
 const fileStream1 = createFileStream(outputFilePath1);
 const fileStream2 = createFileStream(outputFilePath2);
+const fileStreamTest = createFileStream(TEST_FILENAME);
+const fileStreamTest2 = createFileStream(TEST_FILENAME_2);
 
 function createFileStream(filePath) {
   const fileStream = fs.createWriteStream(filePath, { flags: 'a' });
@@ -121,7 +126,7 @@ async function scanTable(params, processItem) {
       progressBar.update(scannedCount);
 
       lastEvaluatedKey = data.LastEvaluatedKey;
-      if (!lastEvaluatedKey) {
+      if (!lastEvaluatedKey || test && scannedCount >= 10) {
         isScanning = false;
         console.log('\nScan complete.');
       }
@@ -173,8 +178,12 @@ async function scanAndProcessItems() {
 
 
     if (!isInChronologicalOrder(insertTimestamps)) {
-      const outputLine = `${requestId}\n`;
-      fileStream2.write(outputLine);
+          const outputLine = `${requestId}\n`;
+        if(test){
+            fileStreamTest.write(outputLine);
+        } else {
+           fileStream2.write(outputLine);
+        }
         if(updateEventOrder){
         var newSortedEventsList = sortEventsByInsertTimestamp(eventsList);
         await updateRecordEventListOrdered(requestId, newSortedEventsList, version);
@@ -183,7 +192,11 @@ async function scanAndProcessItems() {
 
     if (missingInsertTimestamp) {
       const outputLine = `${requestId}\n`;
-      fileStream1.write(outputLine);
+        if(test){
+            fileStreamTest2.write(outputLine);
+        } else {
+            fileStream1.write(outputLine);
+        }
         if(updateInsertTimestamp){
         await updateRecordInsertTimestamp(requestId, eventsList, version);
         }
