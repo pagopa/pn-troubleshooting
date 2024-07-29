@@ -118,7 +118,7 @@ Dove:
   sistema; `OPZIONALE`
 - `<scanLimit>` è il parametro che indica il numero di record presi in considerazione in ogni scan; `OPZIONALE`
 - `<updateInsertTimestamp>` è il parametro che indica se deve essere fatto o meno l'aggiornamento; `OPZIONALE`
-- `<updateEventOrder>` è il parametro che permette l'ordinamento degli eventi senza prima fare l'aggiornamento; `OPZIONALE`
+- `<updateEventOrder>` **DEPRECATED** è il parametro che permette l'ordinamento degli eventi senza prima fare l'aggiornamento; è stato implementato, ma non essendo più necessario non sono stati eseguiti test esaustivi; `OPZIONALE`
 - `<test>` se inserito, attiva la modalità test. In questa modalità, viene eseguita una singola scan di 10 record dalla
   tabella. `OPZIONALE`
 - `<dryrun>` se inserito, attiva la modalità dryrun. Questa modalità attiva automaticamente anche quella di test, e 
