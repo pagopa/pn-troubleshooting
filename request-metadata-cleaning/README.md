@@ -46,11 +46,14 @@ npm install
 aws sso login --profile sso_pn-confinfo-<env>
 ```
 
-### Esecuzione
+### index.js
 
 ```bash
 node index.js --awsProfile <aws-profile> --exclusiveStartKey <exclusive-start-key> --scanLimit <scan-limit> --requestIdsPath <request-ids-path> --test --dryrun
 ```
+
+**DEPRECATED**
+Questo script è stato utilizzato nel primo run della bonifica, ma non va utilizzato in quanto presenta un problema nell'aggiornamento di eventi non correttamente ordinati e ne salva una nuova copia ordinata quando non dovrebbe
 
 Dove:
 
@@ -111,11 +114,11 @@ node data-sort-clean.js --awsProfile <aws-profile> --scanLimit <scanLimit> --upd
 
 Dove:
 
-- `awsProfile` è il profilo dell'account AWS. Se non viene inserito, verranno prese di default le credenziali AWS di
+- `<awsProfile>` è il profilo dell'account AWS. Se non viene inserito, verranno prese di default le credenziali AWS di
   sistema; `OPZIONALE`
-- `scanLimit` è il parametro che indica il numero di record presi in considerazione in ogni scan; `OPZIONALE`
-- `updateInsertTimestamp` è il parametro che indica se deve essere fatto o meno l'aggiornamento; `OPZIONALE`
-- `updateEventOrder` è il parametro che permette l'ordinamento degli eventi senza prima fare l'aggiornamento; `OPZIONALE`
+- `<scanLimit>` è il parametro che indica il numero di record presi in considerazione in ogni scan; `OPZIONALE`
+- `<updateInsertTimestamp>` è il parametro che indica se deve essere fatto o meno l'aggiornamento; `OPZIONALE`
+- `<updateEventOrder>` è il parametro che permette l'ordinamento degli eventi senza prima fare l'aggiornamento; `OPZIONALE`
 - `<test>` se inserito, attiva la modalità test. In questa modalità, viene eseguita una singola scan di 10 record dalla
   tabella. `OPZIONALE`
 - `<dryrun>` se inserito, attiva la modalità dryrun. Questa modalità attiva automaticamente anche quella di test, e 
@@ -135,10 +138,10 @@ Il package contiene anche uno script di setup per creare dei record appositi per
 node data-setup.js --awsProfile <aws-profile> --digitalRecordsNum <num1 num2 num3> --paperRecordsNum <num1 num2 num3>
 ```
 
-- `awsProfile` è il profilo dell'account AWS. Se non viene inserito, verranno prese di default le credenziali AWS di
+- `<awsProfile>` è il profilo dell'account AWS. Se non viene inserito, verranno prese di default le credenziali AWS di
   sistema; `OPZIONALE`
-- `digitalRecordsNum` è un array di numeri che indica il numero di request digitali da creare per ogni tipologia di entry.
-- `paperRecordsNum` è un array di numeri che indica il numero di request cartacee da creare per ogni tipologia di entry.
+- `<digitalRecordsNum>` è un array di numeri che indica il numero di request digitali da creare per ogni tipologia di entry.
+- `<paperRecordsNum>` è un array di numeri che indica il numero di request cartacee da creare per ogni tipologia di entry.
 
 Le tipologie di entry sono, in ordine di posizionamento nell'array, queste tre:
 
