@@ -142,9 +142,8 @@ async function main() {
         }
       }
       if(checkListToRemove(checkList)){
-        delete row['Body']
         console.log(`Event with iun ${iun} to remove`)
-        appendJsonToFile(`${fileName}_result.json`, JSON.stringify(row))
+        appendJsonToFile(`to_remove_${fileName}`, JSON.stringify(row))
       }
     }
   }

@@ -112,19 +112,20 @@ async function main() {
     if (messages && messages.length > 0) {
       i = messages.length + i
       console.log(`Hai ricevuto ${i} messaggi dalla coda.`);
-      messages.forEach((message) => {
+      for(let z = 0; z < messages.length; z++){
+        const event = messages[z]
         let key;
-        if(message.MD5OfMessageAttributes) {
-          key = `${message.MD5OfBody}#${message.MD5OfMessageAttributes}`
+        if(event.MD5OfMessageAttributes) {
+          key = `${event.MD5OfBody}#${event.MD5OfMessageAttributes}`
         }
         else {
-          key = `${message.MD5OfBody}`
+          key = `${event.MD5OfBody}`
         }
         if(data[key]) {
-          //const res = await awsClient._deleteMessageFromQueue(queueUrl, message.ReceiptHandle)
+          const res = await awsClient._deleteMessageFromQueue(queueUrl, event.ReceiptHandle)
           data[key] = data[key] - 1
         }
-      });
+      }
     } else {
       hasNext = false;
       console.log('La coda è vuota.');
@@ -135,7 +136,7 @@ async function main() {
       delete data[k]
     }
   });
-  appendJsonToFile(`${fileName}_result.json`, data)
+  appendJsonToFile(`${fileName}_result.json`, JSON.stringify(data))
 }
 
 main();

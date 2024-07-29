@@ -1,7 +1,7 @@
 #! /bin/bash -e
 
 
-AWS_PROFILE=cons_admin_try_spark
+AWS_PROFILE=sso_pn-core-prod
 AWS_REGION=eu-south-1
 
 

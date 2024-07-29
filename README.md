@@ -351,3 +351,9 @@ Vuoi aggiornare pn-notificationMetadata in base all'output dello script notifica
 ```bash
 node index.js --envName <env-name> --fileName <file-name> [--dryrun]
 ```
+
+### temporary_fix_automation_script_dp-actions
+Vuoi aggiornare pn-SsDocumenti aggiornado lo stato di una serie di documenti in attached?
+```bash
+node index.js --envName <env-name> --fileName <file-name> [--dryrun]
+```
