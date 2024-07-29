@@ -339,3 +339,21 @@ Vuoi verificare se per un evento di prepare abbiamo ricevuto un send analog feed
 ```bash
 node index.js --envName <env-name> --fileName <file-name>
 ```
+
+### notificationMetadata_analysis
+Vuoi verificare se una notifica è stata accettata e in quale stato si trova?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
+### notificationMetadata_generation
+Vuoi aggiornare pn-notificationMetadata in base all'output dello script notificationMetadata_analysis?
+```bash
+node index.js --envName <env-name> --fileName <file-name> [--dryrun]
+```
+
+### temporary_fix_automation_script_dp-actions
+Vuoi aggiornare pn-SsDocumenti aggiornado lo stato di una serie di documenti in attached?
+```bash
+node index.js --envName <env-name> --fileName <file-name> [--dryrun]
+```
