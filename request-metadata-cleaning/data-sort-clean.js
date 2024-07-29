@@ -122,7 +122,7 @@ async function scanTable(params, processItem) {
       progressBar.update(scannedCount);
 
       lastEvaluatedKey = data.LastEvaluatedKey;
-      if (!lastEvaluatedKey || test && scannedCount >= 10) {
+      if (!lastEvaluatedKey || test && itemUpdates >= 10) {
         isScanning = false;
         console.log('\nScan complete.');
       }
@@ -268,6 +268,8 @@ async function updateRecordInsertTimestamp(requestId, eventsList, currentVersion
         console.error(`Failed to update record ${requestId}: ${err}`);
         itemFailures++;
       }
+      itemUpdates ++;
+      return;
 }
 
 // Update degli eventi ordinati
@@ -300,6 +302,8 @@ async function updateRecordEventListOrdered(requestId, sortedEventsList, current
     console.error(`Failed to update event list for record ${requestId}: ${err}`);
     itemFailures++;
   }
+  itemUpdates++;
+  return;
 }
 
 

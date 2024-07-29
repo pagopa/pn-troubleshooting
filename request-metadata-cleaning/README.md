@@ -65,8 +65,8 @@ Dove:
   fino a che non viene raggiunta la soglia massima (definita da AWS) di 1MB per singola scan. `OPZIONALE`
 - `<request-ids-path>` indica il path di un file contenente delle requestId. Se inserito, attiva il metadata cleaning
   SOLO per le requestId indicate. Questa modalità non prevede scan della tabella. `OPZIONALE`
-- `<test>` se inserito, attiva la modalità test. In questa modalità, viene eseguita una singola scan di 10 record dalla
-  tabella. `OPZIONALE`
+- `<test>` se inserito, attiva la modalità test. In questa modalità, viene eseguita una scan della tabella fino a che non 
+   vengono aggiornati 10 record `OPZIONALE`
 - `<dryrun>` se inserito, attiva la modalità dryrun. Questa modalità disattiva le operazioni di scrittura. `OPZIONALE`
   Alla fine del processo di bonifica, verrà generato un file _"failures.csv"_ contenente i requestId dei record
   su cui l'update è andato in eccezione e la causa dell'errore.
@@ -95,8 +95,8 @@ Dove:
   fino a che non viene raggiunta la soglia massima (definita da AWS) di 1MB per singola scan. `OPZIONALE`
 - `<request-ids-path>` indica il path di un file contenente delle requestId. Se inserito, attiva il metadata cleaning
   SOLO per le requestId indicate. Questa modalità non prevede scan della tabella. `OPZIONALE`
-- `<test>` se inserito, attiva la modalità test. In questa modalità, viene eseguita una singola scan di 10 record dalla
-  tabella. `OPZIONALE`
+- `<test>` se inserito, attiva la modalità test. In questa modalità, viene eseguita una scan della tabella fino a che non
+   vengono aggiornati 10 record `OPZIONALE`
 - `<dryrun>` se inserito, attiva la modalità dryrun. Questa modalità attiva automaticamente anche quella di test, e in
   piu'
   disattiva le operazioni di scrittura. `OPZIONALE`
@@ -122,8 +122,8 @@ Dove:
 - `<scanLimit>` è il parametro che indica il numero di record presi in considerazione in ogni scan; `OPZIONALE`
 - `<updateInsertTimestamp>` è il parametro che indica se deve essere fatto o meno l'aggiornamento; `OPZIONALE`
 - `<updateEventOrder>` **DEPRECATED** è il parametro che permette l'ordinamento degli eventi senza prima fare l'aggiornamento; è stato implementato, ma non essendo più necessario non sono stati eseguiti test esaustivi; `OPZIONALE`
-- `<test>` se inserito, attiva la modalità test. In questa modalità, viene eseguita una singola scan di 10 record dalla
-  tabella. `OPZIONALE`
+- `<test>` se inserito, attiva la modalità test. In questa modalità, viene eseguita una scan della tabella fino a che non 
+   vengono aggiornati 10 record `OPZIONALE`
 - `<dryrun>` se inserito, attiva la modalità dryrun. Questa modalità attiva automaticamente anche quella di test, e 
 disattiva le operazioni di scrittura. `OPZIONALE`
 
