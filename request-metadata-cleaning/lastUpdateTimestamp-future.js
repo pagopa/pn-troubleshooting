@@ -130,8 +130,6 @@ async function updateRecord(record) {
         if (!dryrun) {
             const command = new UpdateCommand(input);
             await dynamoDbDocumentClient.send(command);
-        } else {
-            fs.appendFileSync(DRYRUN_FILENAME, requestId.toString() + "\r\n");
         }
 
         fs.appendFileSync(getFileName(), requestId.toString() + "\r\n");
