@@ -174,7 +174,7 @@ async function scanAndProcessItems() {
 
 
     if (!isInChronologicalOrder(insertTimestamps)) {
-      const outputLine = `${toDynamoDBJson(item)}\n`;
+      const outputLine = `${requestId};${JSON.stringify(item)}\n`;
        fileStream2.write(outputLine);
 
         if(updateEventOrder){
@@ -184,7 +184,7 @@ async function scanAndProcessItems() {
     }
 
     if (missingInsertTimestamp) {
-      const outputLine = `${toDynamoDBJson(item)}\n`;
+      const outputLine = `${requestId};${JSON.stringify(item)}\n`;
         fileStream1.write(outputLine);
 
         if(updateInsertTimestamp){
@@ -302,33 +302,6 @@ async function updateRecordEventListOrdered(requestId, sortedEventsList, current
   }
 }
 
-// Conversione di un oggetto in formato DynamoDB JSON
-function toDynamoDBJson(item) {
-  const convert = (value) => {
-    if (Array.isArray(value)) {
-      return { L: value.map(convert) };
-    }
-    if (typeof value === 'object' && value !== null) {
-      const map = {};
-      for (const key in value) {
-        map[key] = convert(value[key]);
-      }
-      return { M: map };
-    }
-    if (typeof value === 'string') {
-      return { S: value };
-    }
-    if (typeof value === 'number') {
-      return { N: value.toString() };
-    }
-    if (typeof value === 'boolean') {
-      return { BOOL: value };
-    }
-    return { NULL: true };
-  };
-
-  return JSON.stringify(convert(item));
-}
 
 async function run() {
   try {
