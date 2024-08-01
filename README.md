@@ -352,6 +352,12 @@ Vuoi aggiornare pn-notificationMetadata in base all'output dello script notifica
 node index.js --envName <env-name> --fileName <file-name> [--dryrun]
 ```
 
+### recovery_dp-inputs
+Vuoi ricreare eventi di notification view della coda SQS delivery push inputs a partire da un file
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
 ### temporary_fix_automation_script_dp-actions
 Vuoi aggiornare pn-SsDocumenti aggiornado lo stato di una serie di documenti in attached?
 ```bash
