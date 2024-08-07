@@ -363,3 +363,9 @@ Vuoi aggiornare pn-SsDocumenti aggiornado lo stato di una serie di documenti in 
 ```bash
 node index.js --envName <env-name> --fileName <file-name> [--dryrun]
 ```
+
+### find_discovered_address
+Vuoi individuare i requestId che hanno in pn-ecRichiesteMetadati un evento con discoveredAddress valorizzato?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
