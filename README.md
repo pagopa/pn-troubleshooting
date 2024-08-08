@@ -313,7 +313,7 @@ node index.js --fileName <file-name> --categories <category1,category2,...> [--o
 ### check_ttl_expiration
 Vuoi verificare il ttl in pn-PaperAddress dei requestId?
 ```bash
-node index.js --envName <env-name> --fileName <file-name>
+node index.js --envName <env-name> --fileName <file-name> [--expires <expires>]
 ```
 
 ### extend_ttl_expiration
@@ -366,6 +366,12 @@ node index.js --envName <env-name> --fileName <file-name> [--dryrun]
 
 ### find_discovered_address
 Vuoi individuare i requestId che hanno in pn-ecRichiesteMetadati un evento con discoveredAddress valorizzato?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
+### retrieve_requestId_from_iun
+Vuoi recuperare tutti i requestId di prepare analogiche a partire da una serie di iun?
 ```bash
 node index.js --envName <env-name> --fileName <file-name>
 ```
