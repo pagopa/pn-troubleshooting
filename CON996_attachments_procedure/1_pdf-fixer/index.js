@@ -101,10 +101,19 @@ async function transformLandscapeToPortrait(inputPath, outputPath) {
     const pages = pdfDoc.getPages();
   
     pages.forEach(page => {
-      const rotationAngle = page.getRotation().angle
-      if(rotationAngle==90){
+      // check width and height
+      const { width, height } = page.getSize();
+      if(width>height){
+        console.log('width > height')
         // Rotate the page 90 degrees to make it portrait
-        page.setRotation(degrees(0));
+        page.setRotation(degrees(-90));
+      } else {
+        const rotationAngle = page.getRotation().angle
+        console.log('rotation angle', rotationAngle)
+        if(rotationAngle==90){
+          // Rotate the page 90 degrees to make it portrait
+          page.setRotation(degrees(0));
+        }
       }
     });
   
