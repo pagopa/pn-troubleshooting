@@ -1,6 +1,6 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, BatchWriteItemCommand } = require("@aws-sdk/client-dynamodb");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand } = require("@aws-sdk/client-sqs");
 const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand } = require("@aws-sdk/client-cloudwatch-logs");
 const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
@@ -23,8 +23,11 @@ class AwsClientsWrapper {
     if (profile == 'core') {
       this.ssoProfile = `sso_pn-core-${envName}`
     }
-    else {
+    else if (profile == 'confinfo') {
       this.ssoProfile = `sso_pn-confinfo-${envName}`
+    }
+    else if (profile == 'interop') {
+      this.ssoProfile = `sso_interop-safe-storage-${envName}`
     }
     console.log("AWS Wrapper initialized for profile " + this.ssoProfile)
   }
@@ -83,6 +86,16 @@ class AwsClientsWrapper {
       ReturnValues: 'ALL_NEW'
     }
     const command = new UpdateItemCommand(input)
+    return await this._dynamoClient.send(command)
+  }
+
+  async _batchWriteItem(tableName, values){
+    const input = {
+      RequestItems: {
+        [tableName]: values
+      }
+    }
+    const command = new BatchWriteItemCommand(input)
     return await this._dynamoClient.send(command)
   }
 
