@@ -5,20 +5,19 @@ const { AwsClientsWrapper } = require("pn-common");
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const crypto = require('crypto');
 
-function prepareTtl(dateInMs, days) { 
-  let date = new Date(dateInMs)
-  date.setDate(date.getDate() + days)
-  return date.getTime() / 1000
-}
-
-function appendJsonToFile(fileName, data){
-  if(!fs.existsSync("results"))
-    fs.mkdirSync("results", { recursive: true });
-  fs.appendFileSync("results/" + fileName, data + "\n")
+function prepareMessageAttributes(attributes) {
+  let att = {}
+  Object.keys(attributes).forEach(k => {
+    att[k] = {
+      DataType: "String",
+      StringValue: attributes[k]
+    }
+  });
+  return att;
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> [--visibilityTimeout <visibility-timeout>] [--dryrun]"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>] [--dryrun]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -73,15 +72,16 @@ async function main() {
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   for(let i = 0; i < fileRows.length; i++){
     const event = JSON.parse(fileRows[i])
+    const messageAttributes = prepareMessageAttributes(event.MessageAttributes)
     const messageDeduplicationId = `${crypto.randomUUID()}-${i}`
-    const messageGroupId = event.MessageAttributes.eventId.StringValue
+    const messageGroupId = event.MessageAttributes.eventId
     if(!dryrun) {
-      const eventBody = JSON.parse(JSON.parse(event.Body))
+      const eventBody = event.Body
       console.log(`Sending message`, eventBody)
-      await awsClient._sendSQSMessage(queueUrl, eventBody, 0, event.MessageAttributes, messageGroupId, messageDeduplicationId)
+      await awsClient._sendSQSMessage(queueUrl, eventBody, 0, messageAttributes, messageGroupId, messageDeduplicationId)
     }
     else {
-      console.log(`DRYRUN: Sending message ${event.Body}`)
+      console.log(`DRYRUN: Sending message ${JSON.stringify(event.Body)}`)
     }
   }
 }
