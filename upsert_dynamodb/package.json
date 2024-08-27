@@ -1,5 +1,5 @@
 {
-  "name": "check_ttl_expiration",
+  "name": "upsert_dynamodb",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
