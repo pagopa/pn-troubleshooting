@@ -1,6 +1,6 @@
-# temporary_fix_automation_script_dp-actions
+# temporary_fix_automation_script_dp-inputs
 
-script che modifica lo stato di un documento in pn-SsDocumenti in attached
+script che inserisce in coda degli elementi a partire da un file
 
 ## Tabella dei Contenuti
 
@@ -10,7 +10,7 @@ script che modifica lo stato di un documento in pn-SsDocumenti in attached
 
 ## Descrizione
 
-script che modifica lo stato di un documento in pn-SsDocumenti in attached
+script che inserisce in coda degli elementi a partire da un file
 
 ## Installazione
 
