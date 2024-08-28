@@ -182,6 +182,13 @@ elif ([ $account_type == "core" ]); then
         --report-fleet ${resource_root}/analog-delivery-monitoring/reports/ReportFleet.json \
         --source-path ${resource_root} \
         --export-bucket ${export_bucket_name}
+      \
+      \
+      \
+      taskDagExecutor \
+        --report-fleet ${resource_root}/analog-delivery-monitoring/reports/export_celonis_s3.json \
+        --source-path ${resource_root} \
+        --export-bucket ${export_bucket_name}
       "
 
   elif ([ $env_type == "uat" ]); then
@@ -233,6 +240,13 @@ elif ([ $account_type == "core" ]); then
       \
       taskDagExecutor \
         --report-fleet ${resource_root}/analog-delivery-monitoring/reports/ReportFleet.json \
+        --source-path ${resource_root} \
+        --export-bucket ${export_bucket_name}
+      \
+      \
+      \
+      taskDagExecutor \
+        --report-fleet ${resource_root}/analog-delivery-monitoring/reports/export_celonis_s3.json \
         --source-path ${resource_root} \
         --export-bucket ${export_bucket_name}
       "
