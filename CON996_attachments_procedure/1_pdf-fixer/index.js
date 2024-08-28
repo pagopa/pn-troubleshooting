@@ -1,12 +1,12 @@
-const { PDFDocument } = require('pdf-lib');
+const { PDFDocument, degrees } = require('pdf-lib');
 const fs = require('fs').promises;
 const fsAsync = require('fs');
 const { AwsClientsWrapper } = require('./aws');
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
-if(process.argv.length < 7){
-    console.error('Usage: node index.js <input-file> <aws-account-id> <env> <margin-percentage> <dpi>');
+if(process.argv.length < 8){
+    console.error('Usage: node index.js <input-file> <aws-account-id> <env> <margin-percentage> <dpi> <rotate>');
     process.exit(1);
 }
 
@@ -90,11 +90,50 @@ async function reduceMargins(inputPath, outputPath, marginPercentage) {
 
 const marginPercentage = 10; // 10% reduction in left and right margins
 const scalePercentage = parseInt(process.argv[5]);
+const requiresLandscapeToPortraitTransformation = process.argv[7] === 'true';
 
-async function fixPdf(inputPath, outputPath, scalePercentage) {
+async function transformLandscapeToPortrait(inputPath, outputPath) {
+    // Load the existing PDF
+    const existingPdfBytes = await fs.readFile(inputPath);
+    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+  
+    // Get all pages of the PDF
+    const pages = pdfDoc.getPages();
+  
+    pages.forEach(page => {
+      // check width and height
+      const { width, height } = page.getSize();
+      if(width>height){
+        console.log('width > height')
+        // Rotate the page 90 degrees to make it portrait
+        page.setRotation(degrees(-90));
+      } else {
+        const rotationAngle = page.getRotation().angle
+        console.log('rotation angle', rotationAngle)
+        if(rotationAngle==90){
+          // Rotate the page 90 degrees to make it portrait
+          page.setRotation(degrees(0));
+        }
+      }
+    });
+  
+    // Serialize the PDFDocument to bytes (a Uint8Array)
+    const pdfBytes = await pdfDoc.save();
+  
+    // Write the modified PDF to a new file
+    await fs.writeFile(outputPath, pdfBytes);
+}
+  
+
+async function fixPdf(inputPath, outputPath, scalePercentage, fromLandscapeToPortrait = false) {
     //await printToPdf(inputPath, outputPath);
     await scaleContent(inputPath, outputPath, scalePercentage);
     //await reduceMargins(outputPath, outputPath, marginPercentage);
+
+    if(fromLandscapeToPortrait){
+        console.log('transform landscape to portrait')
+        await transformLandscapeToPortrait(outputPath, outputPath);
+    }
 }
 
 async function downloadFileFromS3(fileKey, bucket, outputPath){
@@ -164,7 +203,7 @@ async function run(){
         const outputPath = `inputs/${fileKey}`;
         const fixedOutputPath = `outputs/fixed_${fileKey}`;
         await downloadFileFromS3(fileKey, bucket, outputPath);
-        await fixPdf(outputPath, fixedOutputPath, scalePercentage);
+        await fixPdf(outputPath, fixedOutputPath, scalePercentage, requiresLandscapeToPortraitTransformation);
         console.log('fixed '+fileKey+' and saved to '+fixedOutputPath);
 
         const printedFixedOutputPath = await printToPdf(fixedOutputPath);

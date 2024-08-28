@@ -313,7 +313,7 @@ node index.js --fileName <file-name> --categories <category1,category2,...> [--o
 ### check_ttl_expiration
 Vuoi verificare il ttl in pn-PaperAddress dei requestId?
 ```bash
-node index.js --envName <env-name> --fileName <file-name>
+node index.js --envName <env-name> --fileName <file-name> [--expires <expires>]
 ```
 
 ### extend_ttl_expiration
@@ -338,4 +338,46 @@ node index.js --envName <env-name> --hashKey <hash-key> --sortKey <sort-key>
 Vuoi verificare se per un evento di prepare abbiamo ricevuto un send analog feedback?
 ```bash
 node index.js --envName <env-name> --fileName <file-name>
+```
+
+### notificationMetadata_analysis
+Vuoi verificare se una notifica è stata accettata e in quale stato si trova?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
+### notificationMetadata_generation
+Vuoi aggiornare pn-notificationMetadata in base all'output dello script notificationMetadata_analysis?
+```bash
+node index.js --envName <env-name> --fileName <file-name> [--dryrun]
+```
+
+### recovery_dp-inputs
+Vuoi ricreare eventi di notification view della coda SQS delivery push inputs a partire da un file
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
+### temporary_fix_automation_script_dp-actions
+Vuoi aggiornare pn-SsDocumenti aggiornado lo stato di una serie di documenti in attached?
+```bash
+node index.js --envName <env-name> --fileName <file-name> [--dryrun]
+```
+
+### find_discovered_address
+Vuoi individuare i requestId che hanno in pn-ecRichiesteMetadati un evento con discoveredAddress valorizzato?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
+### retrieve_requestId_from_iun
+Vuoi recuperare tutti i requestId di prepare analogiche a partire da una serie di iun?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
+
+### upsert_dynamodb
+Vuoi aggiornare i dati di una tabella dynamo partendo da un file (dump)?
+```bash
+node index.js --envName <env-name> --account <account> --tableName <table-name> --fileName <file-name>
 ```

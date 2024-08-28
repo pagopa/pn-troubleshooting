@@ -1,0 +1,17 @@
+{
+  "name": "US-06.7-recovery",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/util-dynamodb": "^3.602.0",
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "pn-common": "file:../pn-common"
+  }
+}

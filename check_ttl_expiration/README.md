@@ -27,9 +27,10 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash
-node index.js --envName <env-name> --fileName <file-name>
+node index.js --envName <env-name> --fileName <file-name> [--expires <expires>]
 
 ```
 Dove:
 - `<env-name>` l'environment sul quale si intende avviare lo script
 - `<file-name>` file contenente la lista dei requestId
+- `<expires>` limite massimo di giorni utili alla identificazione di ricerca 

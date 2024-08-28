@@ -252,13 +252,13 @@ x
       await sleep( 1 * 1000 )
       try {
         logs = await this._fetchQueryResult( profile, queryScheduleResponse.queryId );
+        console.log(logs)
       }
       catch( error ) {
         console.log( error );
         await sleep( 20 * 1000 );
       }
     }
-    
     return this._remapLogQueryResults( logs );
   }
 
@@ -310,7 +310,7 @@ x
     const allLogGroupsNames = [ ... apiGwLogGroups, ... this._ecsLogGroupsNames.core, ... this._ecsLogGroupsNames.confinfo ]
     const fullQueryResult = await this.executeLogInsightQuery( 
       profile, allLogGroupsNames, fromEpochMs, toEpochMs, 
-      `fields @timestamp, @log, message | sort @timestamp asc | filter ${fullQueryFilterClause}`
+      `fields @timestamp, @log, message | sort @timestamp asc | filter ${fullQueryFilterClause} | limit 10000`
     );
   
     return fullQueryResult;
@@ -335,6 +335,7 @@ x
       await sleep( 1 * 1000 )
       try {
         logs = await this._fetchQueryResult( profile , queryScheduleResponse.queryId );
+        console.log(logs)
       }
       catch( error ) {
         console.log( error );
@@ -356,8 +357,10 @@ x
     })
     if (trace_ids.length > 0) {
       const reviewed = trace_ids.splice(0, limit);
+      const logs = await this._getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, reviewed)
+      console.log(logs)
       return {
-        logs: await this._getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, reviewed),
+        logs: logs,
         trace_ids: {
           'reviewed': reviewed,
           'to_review': trace_ids
@@ -369,7 +372,7 @@ x
   async _getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, traceIds) {
     let queryString = "fields @timestamp, @log, @message | filter "
     traceIds.map( el => queryString = queryString + "@message like \"" + el.replace("Root=", "") +"\" or " );
-    queryString = queryString.substring(0, queryString.length - 3) + " | sort @timestamp desc"
+    queryString = queryString.substring(0, queryString.length - 3) + " | sort @timestamp desc | limit 10000"
     console.log(queryString)
     var profile = "core"
     if(logGroupNames[0].includes("ecs")){

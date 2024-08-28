@@ -1,8 +1,9 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, BatchWriteItemCommand } = require("@aws-sdk/client-dynamodb");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand } = require("@aws-sdk/client-sqs");
-const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, DescribeLogGroupsCommand } = require("@aws-sdk/client-cloudwatch-logs");
+const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand } = require("@aws-sdk/client-cloudwatch-logs");
+const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 
@@ -22,8 +23,11 @@ class AwsClientsWrapper {
     if (profile == 'core') {
       this.ssoProfile = `sso_pn-core-${envName}`
     }
-    else {
+    else if (profile == 'confinfo') {
       this.ssoProfile = `sso_pn-confinfo-${envName}`
+    }
+    else if (profile == 'interop') {
+      this.ssoProfile = `sso_interop-safe-storage-${envName}`
     }
     console.log("AWS Wrapper initialized for profile " + this.ssoProfile)
   }
@@ -38,6 +42,10 @@ class AwsClientsWrapper {
   
   _initCloudwatch() {
     this._cloudwatchClient = new CloudWatchLogsClient( awsClientCfg( this.ssoProfile ));
+  }
+
+    _initKinesis() {
+    this._kinesisClient = new KinesisClient( awsClientCfg( this.ssoProfile ));
   }
 
   // DynamoDB
@@ -78,6 +86,16 @@ class AwsClientsWrapper {
       ReturnValues: 'ALL_NEW'
     }
     const command = new UpdateItemCommand(input)
+    return await this._dynamoClient.send(command)
+  }
+
+  async _batchWriteItem(tableName, values){
+    const input = {
+      RequestItems: {
+        [tableName]: values
+      }
+    }
+    const command = new BatchWriteItemCommand(input)
     return await this._dynamoClient.send(command)
   }
 
@@ -133,13 +151,15 @@ class AwsClientsWrapper {
     return response;
   }
 
-  async _sendSQSMessage(queueUrl, body, delay){
+  async _sendSQSMessage(queueUrl, body, delay, attributes, messageGroupId, messageDeduplicationId){
     const input = { // SendMessageRequest
       QueueUrl: queueUrl, // required
       MessageBody: JSON.stringify(body), // required
       DelaySeconds: delay,
     }
-    console.log(input)
+    attributes ? input.MessageAttributes = attributes : null
+    messageGroupId ? input.MessageGroupId = messageGroupId : null;
+    messageDeduplicationId ? input.MessageDeduplicationId = messageDeduplicationId : null;
     const command = new SendMessageCommand(input);
     const response = await this._sqsClient.send(command);
     return response;
@@ -158,8 +178,7 @@ class AwsClientsWrapper {
     const command = new StartQueryCommand(input);
     const response = await this._cloudwatchClient.send(command);
     //waiting result
-    console.log(response)
-    let logs = null;
+    let logs;
     while( !logs ) {
       await sleep( 1 * 1000 )
       try {
@@ -169,7 +188,6 @@ class AwsClientsWrapper {
         console.log( error );
         await sleep( 20 * 1000 );
       }
-      console.log(logs)
     }
     return logs;
   }
@@ -185,6 +203,32 @@ class AwsClientsWrapper {
     }
     return logs;
   }
+
+  
+  //Kinesis
+  async _getSingleShardInfo(streamName, shardId, sequenceNumber) {
+    const shardIterator = await this._getShardIterator(streamName, shardId, sequenceNumber)
+    const input = { // GetRecordsCommand
+      ShardIterator: shardIterator,
+      Limit: 1 // Number of record to read
+    };
+    const command = new GetRecordsCommand(input);
+    const response = await this._kinesisClient.send(command);
+    return response;
+  }
+
+  async _getShardIterator(streamName, shardId, sequenceNumber) {
+    const input = { // GetShardIteratorCommand
+      StreamName: streamName,
+      ShardId: shardId,
+      ShardIteratorType: "AT_SEQUENCE_NUMBER",
+      StartingSequenceNumber: sequenceNumber
+    };
+    const command = new GetShardIteratorCommand(input);
+    const response = await this._kinesisClient.send(command);
+    return response.ShardIterator;
+  }
+
 }
 
 module.exports = AwsClientsWrapper;
