@@ -44,6 +44,7 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
 
     private static final String APPLICATION_NAME = "taskDagExecutor";
     private static final String REPORT_FOLDER = "/reports";
+    public static final String PN_DATA_MONITORING_LOCAL_RUN_PROPERTY_NAME = "pn.data-monitoring.local-run";
 
     private final ObjectMapper mapper = ObjectMapperResolver.getObjectMapper();
 
@@ -101,8 +102,23 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
         MsgListenerImpl logger = new MsgListenerImpl();
         SparkConf sparkConf = new SparkConf()
             .set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-            .set("spark.hadoop.fs.s3a.path.style.access", "true")
-            .set("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.ContainerCredentialsProvider");
+            .set("spark.hadoop.fs.s3a.path.style.access", "true");
+
+        if( "true".equalsIgnoreCase( System.getProperty(PN_DATA_MONITORING_LOCAL_RUN_PROPERTY_NAME)) ) {
+            sparkConf = sparkConf
+                    .set("fs.s3a.access.key", System.getProperty("aws.accessKeyId"))
+                    .set("fs.s3a.secret.key", System.getProperty("aws.secretAccessKey"))
+                    .set("fs.s3a.session.token", System.getProperty("aws.sessionToken"))
+                    ;
+        }
+        else {
+            sparkConf = sparkConf
+                    .set("spark.hadoop.fs.s3a.aws.credentials.provider",
+                                        "com.amazonaws.auth.ContainerCredentialsProvider");
+        }
+
+
+                ;
 
         SparkSqlWrapper spark = SparkSqlWrapper.local(APPLICATION_NAME, sparkConf, true);
         spark.addListener(logger);

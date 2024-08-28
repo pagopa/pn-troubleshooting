@@ -10,9 +10,7 @@ import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3AsyncClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
-import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -28,6 +26,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -265,9 +264,33 @@ public class S3ClientWrapper extends MsgSenderSupport {
         fireMessage( Msg.fileUploadEnd( destinationS3Url ));
     }
 
+    public void copy( String bucketName, String from, String to) {
+        if( ! Objects.equals( from, to) ) {
 
-    private record BucketAndPath(String bucketName, String path ) {
-        private static BucketAndPath parseFromUrl(String s3Url) {
+            CopyObjectRequest build = CopyObjectRequest.builder()
+                    .sourceBucket( bucketName )
+                    .sourceKey( from )
+                    .destinationBucket( bucketName )
+                    .destinationKey( to )
+                    .build();
+
+            this.s3.copyObject(build).copyObjectResult();
+        }
+    }
+
+    public void delete( String bucketName, String key ) {
+        DeleteObjectRequest request = DeleteObjectRequest.builder()
+                .bucket( bucketName )
+                .key( key )
+                .build();
+
+        this.s3.deleteObject( request );
+    }
+
+
+
+    public record BucketAndPath(String bucketName, String path ) {
+        public static BucketAndPath parseFromUrl(String s3Url) {
             URI uri = URI.create(s3Url);
             String bucket = uri.getHost();
             String path = uri.getPath();
