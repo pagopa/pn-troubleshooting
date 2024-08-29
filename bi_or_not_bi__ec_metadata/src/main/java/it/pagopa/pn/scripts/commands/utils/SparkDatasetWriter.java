@@ -78,6 +78,8 @@ public class SparkDatasetWriter {
         return new SparkDatasetWriterBuilder();
     }
 
+
+
     /**
      * Write out a {@link Dataset} object or throw a {@link EmptyDatasetException} when it is empty.
      *
@@ -85,7 +87,7 @@ public class SparkDatasetWriter {
      * */
     public void write() throws EmptyDatasetException {
 
-        if (this.dataset.count() == 0) {
+        if ( this.dataset.isEmpty() ) {
             throw new EmptyDatasetException("Found empty dataset");
         }
 

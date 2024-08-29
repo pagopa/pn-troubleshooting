@@ -23,6 +23,8 @@ $QueryMetadata
         get_json_object( json_string, '$.tableName') as tablename,
         get_json_object( json_string, '$.dynamodb.ApproximateCreationDateTime') as kinesis_dynamodb_ApproximateCreationDateTime,
         get_json_object( img, '$.iun.S') as iun,
+        get_json_object( img, '$.paFee.S') as paFee,
+        get_json_object( img, '$.vat.S') as vat,
         get_json_object( img, '$.cancelledByIun.S') as cancelledByIun,
         get_json_object( img, '$.cancelledIun.S') as cancelledIun,
         get_json_object( img, '$.group.S') as group,

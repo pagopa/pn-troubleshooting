@@ -7,6 +7,7 @@ $QueryMetadata
 */
     SELECT
       get_json_object(json_string, '$.Metadata_WriteTimestampMicros') as Metadata_WriteTimestampMicros,
+      get_json_object(json_string, '$.Item.lastUpdateTimestamp.S') as lastUpdateTimestamp,
       get_json_object(json_string, '$.Item.requestId.S') as requestId,
       get_json_object(json_string, '$.Item.XPagopaExtchCxId.S') as clientId,
       get_json_object(json_string, '$.Item.digitalRequestMetadata.M.channel.S') as digitalMeta_channel,
@@ -25,6 +26,7 @@ $QueryMetadata
           x  -> get_json_object(json_string, concat('$.Item.eventsList.L[', x-1, '].M'))
         ),
         x -> named_struct(
+          'insertTimestamp', get_json_object(x, '$.insertTimestamp.S'),
           'paperProg_statusDescription', get_json_object(x, '$.paperProgrStatus.M.statusDescription.S'),
           'paperProg_iun', get_json_object(x, '$.paperProgrStatus.M.iun.S'),
           'paperProg_deliveryFailureCause', get_json_object(x, '$.paperProgrStatus.M.deliveryFailureCause.S'),
