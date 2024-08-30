@@ -8,10 +8,7 @@ const crypto = require('crypto');
 function prepareMessageAttributes(attributes) {
   let att = {}
   Object.keys(attributes).forEach(k => {
-    att[k] = {
-      DataType: "String",
-      StringValue: attributes[k]
-    }
+    att[k] = attributes[k]
   });
   return att;
 }
@@ -74,9 +71,9 @@ async function main() {
     const event = JSON.parse(fileRows[i])
     const messageAttributes = prepareMessageAttributes(event.MessageAttributes)
     const messageDeduplicationId = `${crypto.randomUUID()}-${i}`
-    const messageGroupId = event.MessageAttributes.eventId
+    const messageGroupId = event.MessageAttributes.eventId.StringValue
     if(!dryrun) {
-      const eventBody = event.Body
+      const eventBody = JSON.parse(event.Body)
       console.log(`Sending message`, eventBody)
       await awsClient._sendSQSMessage(queueUrl, eventBody, 0, messageAttributes, messageGroupId, messageDeduplicationId)
     }
