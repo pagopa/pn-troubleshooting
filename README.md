@@ -381,3 +381,9 @@ Vuoi aggiornare i dati di una tabella dynamo partendo da un file (dump)?
 ```bash
 node index.js --envName <env-name> --account <account> --tableName <table-name> --fileName <file-name>
 ```
+
+### check_safestorage_to_deliverypush
+Vuoi verificare la DLQ safestorage_to_delivery_push?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
