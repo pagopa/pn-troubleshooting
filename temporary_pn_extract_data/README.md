@@ -1,6 +1,6 @@
 # Dump SQS messages
 
-Script temporaneo di estrazione dati settimanali
+Script temporaneo di estrazione dati settimanali, lo script esegue automaticamente i Tunnel SSM e li chiude in completa autonomia.
 
 ## Tabella dei Contenuti
 
