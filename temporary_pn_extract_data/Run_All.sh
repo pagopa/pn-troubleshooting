@@ -83,11 +83,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # Execute third script
- echo "Running PnContacts.sh with AWS_PROFILE=$AWS_PROFILE and OUTPUT_DIR=$OUTPUT_DIR..."
- "$PN_CONTACTS_SCRIPT" -p "$AWS_PROFILE" -o "$OUTPUT_DIR"
- if [ $? -ne 0 ]; then
-     echo "Error running PnContacts.sh."
-     exit 1
-# fi
+echo "Running PnContacts.sh with AWS_PROFILE=$AWS_PROFILE and OUTPUT_DIR=$OUTPUT_DIR..."
+"$PN_CONTACTS_SCRIPT" -p "$AWS_PROFILE" -o "$OUTPUT_DIR"
+if [ $? -ne 0 ]; then
+    echo "Error running PnContacts.sh."
+    exit 1
+fi
 
 echo "All scripts executed successfully. Check Output in $OUTPUT_DIR/$OUTPUT_FILE"
