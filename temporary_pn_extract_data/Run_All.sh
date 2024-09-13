@@ -46,8 +46,8 @@ fi
 
 # Define scripts to start
 SCRIPT_DIR="$(pwd)"
-OPENSEARCH_QUERY_SCRIPT="${SCRIPT_DIR}/opensearch_query.sh"
-QUERY_SPARK_SCRIPT="${SCRIPT_DIR}/query_spark.sh"
+OPENSEARCH_QUERY_SCRIPT="${SCRIPT_DIR}/OpensearchQuery.sh"
+QUERY_SPARK_SCRIPT="${SCRIPT_DIR}/SparkQuery.sh"
 PN_CONTACTS_SCRIPT="${SCRIPT_DIR}/PnContacts.sh"
 
 # Verify if the scripts exists
@@ -66,28 +66,28 @@ if [ ! -x "$PN_CONTACTS_SCRIPT" ]; then
     exit 1
 fi
 
-# # Execute first script
-# echo "Running opensearch_query.sh with AWS_PROFILE=$AWS_PROFILE, SECRET_NAME=$SECRET_NAME, and OUTPUT_DIR=$OUTPUT_DIR..."
-# "$OPENSEARCH_QUERY_SCRIPT" -p "$AWS_PROFILE" -s "$SECRET_NAME" -o "$OUTPUT_DIR"
-# if [ $? -ne 0 ]; then
-#     echo "Error running opensearch_query.sh."
-#     exit 1
-# fi
-
-# Execute second script
-echo "Running query_spark.sh with AWS_PROFILE=$AWS_PROFILE and OUTPUT_DIR=$OUTPUT_DIR..."
-"$QUERY_SPARK_SCRIPT" -p "$AWS_PROFILE" -o "$OUTPUT_DIR"
+# Execute first script
+echo "Running OpensearchQuery.sh with AWS_PROFILE=$AWS_PROFILE, SECRET_NAME=$SECRET_NAME, and OUTPUT_DIR=$OUTPUT_DIR..."
+"$OPENSEARCH_QUERY_SCRIPT" -p "$AWS_PROFILE" -s "$SECRET_NAME" -o "$OUTPUT_DIR"
 if [ $? -ne 0 ]; then
-    echo "Error running query_spark.sh."
+    echo "Error running OpensearchQuery.sh"
     exit 1
 fi
 
-# # Execute third script
-# echo "Running PnContacts.sh with AWS_PROFILE=$AWS_PROFILE and OUTPUT_DIR=$OUTPUT_DIR..."
-# "$PN_CONTACTS_SCRIPT" -p "$AWS_PROFILE" -o "$OUTPUT_DIR"
-# if [ $? -ne 0 ]; then
-#     echo "Error running PnContacts.sh."
-#     exit 1
+# Execute second script
+echo "Running SparkQuery.sh with AWS_PROFILE=$AWS_PROFILE and OUTPUT_DIR=$OUTPUT_DIR..."
+"$QUERY_SPARK_SCRIPT" -p "$AWS_PROFILE" -o "$OUTPUT_DIR"
+if [ $? -ne 0 ]; then
+    echo "Error running SparkQuery.sh"
+    exit 1
+fi
+
+# Execute third script
+ echo "Running PnContacts.sh with AWS_PROFILE=$AWS_PROFILE and OUTPUT_DIR=$OUTPUT_DIR..."
+ "$PN_CONTACTS_SCRIPT" -p "$AWS_PROFILE" -o "$OUTPUT_DIR"
+ if [ $? -ne 0 ]; then
+     echo "Error running PnContacts.sh."
+     exit 1
 # fi
 
 echo "All scripts executed successfully. Check Output in $OUTPUT_DIR/$OUTPUT_FILE"
