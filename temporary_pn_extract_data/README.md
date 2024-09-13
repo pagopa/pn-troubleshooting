@@ -1,6 +1,6 @@
-# Dump SQS messages
+# Script Temporaneo di estrazione dati settimanali
 
-Script temporaneo di estrazione dati settimanali, lo script esegue automaticamente i Tunnel SSM e li chiude in completa autonomia.
+Script temporaneo di estrazione dati settimanali, lo script esegue automaticamente i Tunnel SSM e li chiude in completa autonomia ed eseguento il RunAll.sh vengono eseguiti 3 script.
 
 ## Tabella dei Contenuti
 
@@ -14,6 +14,8 @@ Lo Script, dato in intput il profilo AWS e il nome del secret di Opensearch
 1) Query su Opensearch
 2) Query su Spark mediante un client hive
 3) Scan su DynamoDB
+
+Il RunAll.sh esegue i 3 script che possono essere anche avviati singolarmente a seconda dell'esigenza. Lo script per Spark e' modulare, le query possono essere messe nel file queries.sql. 
 
 ## Requisit
 
