@@ -40,10 +40,6 @@ SECRET_OUTPUT=$(aws secretsmanager get-secret-value --profile "$AWS_PROFILE" --s
 OPENSEARCH_USERNAME=$(echo "$SECRET_OUTPUT" | jq -r .username)
 OPENSEARCH_PASS=$(echo "$SECRET_OUTPUT" | jq -r .password)
 
-# Show Username and Password for Checking
-echo "The OpenSearch Username Retrieved by Secret is: $OPENSEARCH_USERNAME"
-echo "The OpenSearch Password Retrieved by Secret is: $OPENSEARCH_PASS"
-
 if [ -z "$OPENSEARCH_USERNAME" ] || [ -z "$OPENSEARCH_PASS" ]; then
     echo "Error: Unable to retrieve OpenSearch credentials from secret."
     exit 1
