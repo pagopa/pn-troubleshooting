@@ -33,7 +33,7 @@ aws sso login --profile sso_pn-core-<env>
 node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--format <output-format> --limit <limit-value> --remove]
 ```
 Dove:
-- jq -c '.[]' dump_pn-racca-input_2024-09-13T07-35-44-603Z.json > output.txt<aws-profile>` è il profilo dell'account AWS;
+- `<aws-profile>` è il profilo dell'account AWS;
 - `<queue-name>` è il nome della coda SQS;
 - `<visibility-timeout>` è il valore del visibilityTimeout nella receiveMessage verso SQS (default 20 secondi);
 - `<output-format>` è il formato della coda che può assumere i valori "raw" (default) o "ss" (per post-analisi SafeStorage).
@@ -46,4 +46,4 @@ Se la coda è una fifo per poter eliminare gli eventi dalla DLQ è necessario in
 
 **Nota 2**:
 Se vuoi esportare il risultato degli eventi in JSON inline, esegui il seguente comando:
-`jq -c '.[]' dump_pn-racca-input_2024-09-13T07-35-44-603Z.json > output.txt`
+`jq -c '.[]' dump_file.json > output.txt`
