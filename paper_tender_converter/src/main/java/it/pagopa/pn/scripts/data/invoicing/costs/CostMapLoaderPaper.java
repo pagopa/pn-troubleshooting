@@ -145,8 +145,8 @@ public class CostMapLoaderPaper {
     public static void main(String[] args) throws IOException, URISyntaxException {
 
         //String input = "20240117 - NEW24 - Matrice CAP - COSTI_v0.4.xlsx - DEF_Costi_SEND.csv";
-        String input = "20240625 - Matrice CAP - COSTI_variazioni cap Sailpost e Fulmine_v2.0.xlsx - DEF_Costi_SEND.csv";
-
+        //String input = "20240625 - Matrice CAP - COSTI_variazioni cap Sailpost e Fulmine_v2.0.xlsx - DEF_Costi_SEND.csv";
+        String input = "20240911_DEF Costi SEND - correzione problema formula.xlsx - DEF_Costi_SEND.csv";
 
         CostMap costMap = load(
                 Paths.get(CostMapLoaderPaper.class.getClassLoader().getResource(input).toURI())
