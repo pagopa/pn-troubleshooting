@@ -1,9 +1,9 @@
 const { parseArgs } = require('util');
 const fs = require('fs');
 const path = require('path');
-const { AwsClientsWrapper } = require("pn-common");
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const crypto = require('crypto');
+const AwsClientWrapperWithRegion  = require("./libs/AwsClientWrapperWithRegion");
 
 function prepareMessageAttributes(attributes) {
   let att = {}
@@ -44,17 +44,21 @@ async function main() {
 
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
+    { name: "region", mandatory: false, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
     { name: "outputQueue", mandatory: true, subcommand: [] },
     { name: "dryrun", mandatory: false, subcommand: [] },
 
   ]
   const values = {
-    values: { envName, fileName, outputQueue, dryrun },
+    values: { envName, region, fileName, outputQueue, dryrun },
   } = parseArgs({
     options: {
       envName: {
         type: "string", short: "e", default: undefined
+      },
+      region: {
+        type: "string", short: "r", default: undefined
       },
       fileName: {
         type: "string", short: "f", default: undefined
@@ -68,7 +72,7 @@ async function main() {
     },
   });  
   _checkingParameters(args, values)
-  const awsClient = new AwsClientsWrapper( 'core', envName );
+  const awsClient = new AwsClientWrapperWithRegion( 'core', envName, region );
   awsClient._initSQS()
   const queueUrl = await awsClient._getQueueUrl(outputQueue);
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
