@@ -3,7 +3,7 @@ Aprire il tunneling verso l'env contenente pdfraster
 `aws ssm start-session --target "<target_id>" --document-name AWS-StartPortForwardingSessionToRemoteHost --parameters "{\"portNumber\":[\"8080\"],\"localPortNumber\":[\"8080\"],\"host\": [\"<host>\"]}" --profile <profile>`
 
 ## Esecuzione
-` node index.js --envName <envName> --fileName <fileName> --bucketName <bucketName>`
+` node index.js --envName <envName> --fileName <fileName> --accountConfinfoId <accountConfinfoId>`
 
 Il file di input è nel formato JSON-line
 ```
@@ -14,7 +14,7 @@ Il file di input è nel formato JSON-line
 
 - `<envName`: l'environment sul quale si intende eseguire l'operazione
 - `<fileName>`: path del file da fornire in input
-- `<bucketName>`: nome del bucket dal quale recuperare i pdf
+- `<accountConfinfoId>`: account id per costruire il nome del bucket nel quale recuperare i pdf
 
 ## Output
 Genera un output nel seguente formato

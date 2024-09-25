@@ -30,7 +30,7 @@ function saveFileFromBuffer(sourceStream, outputPath) {
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> --accountConfinfoId <accountConfinfoId>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -59,11 +59,11 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "bucketName", mandatory: true, subcommand: [] },
+    { name: "accountConfinfoId", mandatory: true, subcommand: [] },
     
   ]
   const values = {
-    values: { envName, fileName, bucketName },
+    values: { envName, fileName, accountConfinfoId },
   } = parseArgs({
     options: {
       envName: {
@@ -72,7 +72,7 @@ async function main() {
       fileName: {
         type: "string", short: "f", default: undefined
       },
-      bucketName: {
+      accountConfinfoId: {
         type: "string", short: "b", default: undefined
       }
     },

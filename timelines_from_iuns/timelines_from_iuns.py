@@ -90,6 +90,7 @@ def get_timelines(iuns: list[str]) -> list:
                 category = item['category']['S']
                 timestamp = item['timestamp']['S']
                 notification_sent_at = item['notificationSentAt']['S']
+               # details = item['details']['M']
 
                 new_element["notificationSentAt"] = notification_sent_at # we could perform this assignment only once, but it's not a big deal
 
@@ -97,6 +98,7 @@ def get_timelines(iuns: list[str]) -> list:
                     "timelineElementId": timeline_element_id,
                     "category": category,
                     "timestamp": timestamp
+               #     "details": details
                 });
             
             # sort new_element["timeline"] by timestamp
