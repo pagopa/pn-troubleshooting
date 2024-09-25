@@ -27,11 +27,11 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash
-node index.js --envName <env-name> --fileName <file-name> --outputQueue <output-queue> [--dryrun]
+node index.js --envName <env-name> [--profile <profile>] --fileName <file-name> --outputQueue <output-queue> [--dryrun]
 
 ```
 Dove:
 - `<env-name>` l'environment sul quale si intende avviare lo script
-- `<file-name>` file contenente la lista dei requestId
+- `<file-name>` file DUMP di una coda SQS in formato JSON inline
 - `<output-queue>` nome della coda SQS su cui inviare gli eventi. Può essere una coda standard o fifo.
 - `<dryrun>` per eseguire in readonly mode
