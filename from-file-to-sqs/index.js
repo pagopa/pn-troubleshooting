@@ -14,7 +14,7 @@ function prepareMessageAttributes(attributes) {
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> [--profile <profile>] --fileName <file-name> --outputQueue <output-queue>] [--dryrun]"
+  const usage = "Usage: node index.js --envName <env-name> [--region <region>] --fileName <file-name> --outputQueue <output-queue>] [--dryrun]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
