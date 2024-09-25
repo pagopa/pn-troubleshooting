@@ -6,8 +6,9 @@
   "scripts": {},
   "license": "MIT",
   "dependencies": {
-    "fast-xml-parser": "^4.2.2",
+    "@aws-sdk/client-sqs": "^3.379.1",
     "@aws-sdk/credential-provider-ini": "^3.321.1",
-    "@aws-sdk/client-sqs": "^3.379.1"
+    "fast-xml-parser": "^4.2.2",
+    "vlc-player": "^2.0.0"
   }
 }

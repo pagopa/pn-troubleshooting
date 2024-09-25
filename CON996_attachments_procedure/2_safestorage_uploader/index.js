@@ -13,7 +13,7 @@ const data = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
 const cacheData = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
 
 // start tunnel https://pagopa.atlassian.net/wiki/spaces/PN/pages/706183466/Bastion+Host+SSM
-const safeStorageUrl = process.env.SAFESTORAGE_URL;
+const safeStorageUrl = "http://localhost:8080";
 
 function computeSha256Base64(filePath) {
     // Read the file in binary mode

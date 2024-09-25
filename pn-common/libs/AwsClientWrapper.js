@@ -4,6 +4,7 @@ const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, B
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand } = require("@aws-sdk/client-sqs");
 const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand } = require("@aws-sdk/client-cloudwatch-logs");
 const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
+const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 
@@ -44,8 +45,12 @@ class AwsClientsWrapper {
     this._cloudwatchClient = new CloudWatchLogsClient( awsClientCfg( this.ssoProfile ));
   }
 
-    _initKinesis() {
+  _initKinesis() {
     this._kinesisClient = new KinesisClient( awsClientCfg( this.ssoProfile ));
+  }
+
+  _initS3() {
+  this._s3Client = new S3Client( awsClientCfg( this.ssoProfile ));
   }
 
   // DynamoDB
@@ -227,6 +232,18 @@ class AwsClientsWrapper {
     const command = new GetShardIteratorCommand(input);
     const response = await this._kinesisClient.send(command);
     return response.ShardIterator;
+  }
+
+  //S3
+  async _getObjectCommand(bucket, fileKey) {
+    const input = {
+      Bucket: bucket,
+      Key: fileKey,
+    };
+
+    const command = new GetObjectCommand(input);
+    const response = await this._s3Client.send(command);
+    return response;
   }
 
 }
