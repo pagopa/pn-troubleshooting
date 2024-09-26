@@ -13,6 +13,7 @@ async function _writeInFile(result) {
 async function dumpSQS() {
   const args = [
     { name: "awsProfile", mandatory: true, subcommand: [] },
+    { name: "region", mandatory: false, subcommand: [] },
     { name: "queueName", mandatory: true, subcommand: [] },
     { name: "visibilityTimeout", mandatory: false, subcommand: [] },
     { name: "format", mandatory: false, subcommand: [] },
@@ -21,12 +22,15 @@ async function dumpSQS() {
   ]
   
   const values = {
-    values: { awsProfile, queueName, format, visibilityTimeout, remove, limit },
+    values: { awsProfile, region, queueName, format, visibilityTimeout, remove, limit },
   } = parseArgs({
     options: {
       awsProfile: {
         type: "string",
         short: "a"
+      },
+      region: {
+        type: "string", short: "r", default: undefined
       },
       queueName: {
         type: "string",
@@ -55,7 +59,7 @@ async function dumpSQS() {
   });
   
   function _checkingParameters(args, values){
-    const usage = "Usage: node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--format <output-format> --limit <limit-value> --remove]"
+    const usage = "Usage: node dump_sqs.js --awsProfile <aws-profile> [--region <region>] --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--format <output-format> --limit <limit-value> --remove]"
     //CHECKING PARAMETER
     args.forEach(el => {
       if(el.mandatory && !values.values[el.name]){
@@ -86,7 +90,7 @@ async function dumpSQS() {
   
   var elementsElaborated = []
 
-  const awsClient = new AwsClientsWrapper( awsProfile );
+  const awsClient = new AwsClientsWrapper( awsProfile, region );
   const queueUrl = await awsClient._getQueueUrl(queueName);
   let maxNumberOfMessages = queueName.includes(".fifo") ? 10: 10;
   try {

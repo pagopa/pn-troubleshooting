@@ -30,10 +30,11 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash
-node dump_sqs.js --awsProfile <aws-profile> --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--format <output-format> --limit <limit-value> --remove]
+node dump_sqs.js --awsProfile <aws-profile> [--region region] --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--format <output-format> --limit <limit-value> --remove]
 ```
 Dove:
 - `<aws-profile>` è il profilo dell'account AWS;
+- `<region>` region su cui exportare il DUMP sulla coda. Opzionale, di default è eu-south-1 (Milano);
 - `<queue-name>` è il nome della coda SQS;
 - `<visibility-timeout>` è il valore del visibilityTimeout nella receiveMessage verso SQS (default 20 secondi);
 - `<output-format>` è il formato della coda che può assumere i valori "raw" (default) o "ss" (per post-analisi SafeStorage).
