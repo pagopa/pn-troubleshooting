@@ -12,7 +12,7 @@ function appendJsonToFile(fileName, data){
   fs.appendFileSync("results/" + fileName, data + "\n")
 }
 
-function _checkingParameters(docState){
+function _checkingDocumentState(docState){
   if(!DOCUMENTSTATE.includes(docState)) {
     console.log("You can use only: available, staged or attached as documentState")
     process.exit(1)
@@ -54,7 +54,7 @@ async function main() {
 
   ]
   const values = {
-    values: { envName, fileName, dryrun },
+    values: { envName, fileName, documentState, dryrun },
   } = parseArgs({
     options: {
       envName: {
