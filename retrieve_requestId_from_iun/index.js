@@ -21,7 +21,7 @@ function appendJsonToFile(outputFolder, fileName, data){
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> [--visibilityTimeout <visibility-timeout>] [--dryrun]"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -72,7 +72,7 @@ async function main() {
   const fileNameWithoutExtension = removeExtension(fileName)
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   for(let i = 0; i < fileRows.length; i++){
-    const iun = fileRows[i]
+    const iun = fileRows[i].trim()
     console.log(`Elaborating iun ${iun}`)
     let result = await awsCoreClient._queryRequest("pn-Timelines", "iun", iun)
     for(let x = 0; x < result.Items.length; x++){

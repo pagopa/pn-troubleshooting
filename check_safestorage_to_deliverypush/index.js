@@ -94,7 +94,7 @@ function prepareDataQuery(data, startDate, endDate) {
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <envName> [--visibilityTimeout <visibilityTimeout>] [--fileName <fileName> [--timestamp <timestamp>]] [--window] [kinesis [--dlq <dlq>]]"
+  const usage = "Usage: node index.js --envName <envName> --fileName <fileName>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
