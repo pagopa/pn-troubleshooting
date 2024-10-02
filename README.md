@@ -387,3 +387,9 @@ Vuoi verificare la DLQ safestorage_to_delivery_push?
 ```bash
 node index.js --envName <env-name> --fileName <file-name>
 ```
+
+### paper_address_limit_correction
+Vuoi bonificare la tabella pn-paper-address da indirizzi con nameRow2 superiore a 44 caratteri?
+```bash
+node index.js --envName <env-name> --fileName <file-name> [--dryrun]
+```
