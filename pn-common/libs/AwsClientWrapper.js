@@ -5,6 +5,8 @@ const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageComma
 const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand } = require("@aws-sdk/client-cloudwatch-logs");
 const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
+const { KMSClient, DecryptCommand, EncryptCommand } = require("@aws-sdk/client-kms");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 
@@ -50,7 +52,15 @@ class AwsClientsWrapper {
   }
 
   _initS3() {
-  this._s3Client = new S3Client( awsClientCfg( this.ssoProfile ));
+    this._s3Client = new S3Client( awsClientCfg( this.ssoProfile ));
+  }
+
+  _initCloudFormation() {
+    this._cloudFormationClient = new CloudFormationClient( awsClientCfg( this.ssoProfile ));
+  }
+
+  _initKMS() {
+    this._kmsClient = new KMSClient( awsClientCfg( this.ssoProfile ));
   }
 
   // DynamoDB
@@ -246,6 +256,41 @@ class AwsClientsWrapper {
     return response;
   }
 
+  //CloudFormation
+  async _getKeyArn(stackName){
+    const input = { // DescribeStacksInput
+        StackName: stackName,
+      };
+    const command = new DescribeStacksCommand(input);
+    const response = await this._cloudFormationClient.send(command);
+
+    return response;
+  }
+
+
+  //KMS
+  async _getDecryptedValue(value, kmsArn){
+    const input = { // DecryptRequest
+        CiphertextBlob: Buffer.from(value, 'base64'), 
+        KeyId: kmsArn
+    };
+    const command = new DecryptCommand(input);
+    const response = await this._kmsClient.send(command);
+
+    return response;
+  }
+
+  async _getEncryptedValue(value, kmsArn){
+    const base64Value = Buffer.from(value, 'utf-8').toString('base64')
+    const input = { // EncryptRequest
+      Plaintext: Buffer.from(base64Value, 'base64'), 
+      KeyId: kmsArn
+    };
+    const command = new EncryptCommand(input);
+    const response = await this._kmsClient.send(command);
+
+    return response;
+  }
 }
 
 module.exports = AwsClientsWrapper;
