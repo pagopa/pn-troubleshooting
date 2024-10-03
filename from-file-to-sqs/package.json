@@ -1,8 +1,8 @@
 {
-  "name": "temporary_fix_automation_script_dp-inputs",
+  "name": "from_file_to_sqs",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "from_file_to_sqs.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

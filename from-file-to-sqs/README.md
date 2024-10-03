@@ -27,7 +27,7 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash
-node index.js --envName <env-name> [--region <region>] --fileName <file-name> --outputQueue <output-queue> [--dryrun]
+node from_file_to_sqs.js --envName <env-name> [--region <region>] --fileName <file-name> --outputQueue <output-queue> [--dryrun]
 
 ```
 Dove:
