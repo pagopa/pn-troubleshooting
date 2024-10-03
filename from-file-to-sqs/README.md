@@ -1,4 +1,4 @@
-# temporary_fix_automation_script_dp-inputs
+# from-file-to-sqs
 
 script che inserisce in una coda SQS (standard o fifo) degli elementi a partire da un file
 
