@@ -95,8 +95,17 @@ async function dumpSQSWithDelete() {
       }
     })
   }
+
+  function validateDeleteMode(deleteMode) {
+    if(deleteMode) {
+      if(deleteMode !== 'single' || deleteMode !== 'batch') {
+        throw Error('The deleteMode parameter can only take the values batch and single')
+      }
+    }
+  }
   
   _checkingParameters(args, values)
+  validateDeleteMode(deleteMode);
   
   console.log("Using DLQ Name: " + queueName)
   console.log("Using Format: " + format)
