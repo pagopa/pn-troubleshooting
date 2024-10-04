@@ -2,13 +2,13 @@
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws-sdk/client-sqs");
 
-function awsClientCfg( profile ) {
+function awsClientCfg( profile, region ) {
   const self = this;
   //if(!profileName){
-    return { 
-      region: "eu-south-1", 
+    return {
+      region: region,
       credentials: fromIni({ 
-        profile: profile,
+        profile: profile
       })
     }
   //}
@@ -16,8 +16,14 @@ function awsClientCfg( profile ) {
 
 class AwsClientsWrapper {
 
-  constructor( profile, profileName, roleArn ) {
-    this._sqsClient = new SQSClient( awsClientCfg( profile, profileName, roleArn ));
+  constructor( profile, region, profileName, roleArn) {
+    if(region) {
+      this.region = region;
+    }
+    else {
+      this.region = "eu-south-1";
+    }
+    this._sqsClient = new SQSClient( awsClientCfg( profile, this.region, profileName, roleArn ));
   }
 
   async init() {
