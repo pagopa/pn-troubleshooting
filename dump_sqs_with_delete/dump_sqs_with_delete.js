@@ -98,7 +98,7 @@ async function dumpSQSWithDelete() {
 
   function validateDeleteMode(deleteMode) {
     if(deleteMode) {
-      if(deleteMode !== 'single' || deleteMode !== 'batch') {
+      if(deleteMode !== 'single' && deleteMode !== 'batch') {
         throw Error('The deleteMode parameter can only take the values batch and single')
       }
     }
