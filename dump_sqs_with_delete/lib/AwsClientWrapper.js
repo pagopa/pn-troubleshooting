@@ -2,6 +2,8 @@
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, DeleteMessageBatchCommand } = require("@aws-sdk/client-sqs");
 
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function awsClientCfg( profile, region ) {
   const self = this;
   //if(!profileName){
@@ -54,36 +56,71 @@ class AwsClientsWrapper {
       //ReceiveRequestAttemptId: "STRING_VALUE",
     };
     const command = new ReceiveMessageCommand(input);
-    const response = await this._sqsClient.send(command);
-    return response
+    return await this._sqsClient.send(command)
   }
 
 
-  async _deleteMessages(queueUrl, messages) {
-    let command;
-    if (!messages) {
+  async _deleteMessages(queueUrl, messages, deleteMode) {
+
+    if (!messages || messages.length === 0) {
       return;
     }
 
-    if (messages.length === 1) {
-      console.log(messages[0].Body);
-      let input = {
-        QueueUrl: queueUrl,
-        ReceiptHandle: messages[0].ReceiptHandle,
-      };
-      command = new DeleteMessageCommand(input);
+    if (messages.length === 1 && deleteMode === 'single') {
+      await this.deleteSingleMessage(queueUrl, messages[0])
     }
     else {
+      await this.deleteInBatch(queueUrl, messages);
+    }
+  }
+
+  async deleteSingleMessage(queueUrl, message) {
+    try {
       let input = {
         QueueUrl: queueUrl,
-        Entries: messages.map((message) => ({
-          Id: message.MessageId,
-          ReceiptHandle: message.ReceiptHandle,
-        })),
+        ReceiptHandle: message.ReceiptHandle,
       };
-      command = new DeleteMessageBatchCommand(input);
+      const command = new DeleteMessageCommand(input);
+      return await this._sqsClient.send(command);
     }
-    return  await this._sqsClient.send(command);
+    catch (error) {
+      console.error(`Errore nella deleteMessage, con messaggio: ${message}`)
+    }
+  }
+
+  async deleteInBatch(queueUrl, messages, retries = 2) {
+    let input = {
+      QueueUrl: queueUrl,
+      Entries: messages.map((message) => ({
+        Id: message.MessageId,
+        ReceiptHandle: message.ReceiptHandle,
+      })),
+    };
+    try {
+      const command = new DeleteMessageBatchCommand(input);
+      const result = await this._sqsClient.send(command);
+
+      if (result.Failed && result.Failed.length > 0) {
+        console.log(`Some messages were not deleted: ${result.Failed.length}`);
+
+        // Ritenta solo i messaggi che sono falliti
+        const failedMessages = messages.filter((message) =>
+            result.Failed.some((failed) => failed.Id === message.MessageId)
+        );
+
+        if (retries > 0) {
+          console.log(`Retry for failed messages...`);
+          await delay(3000); //aspetto 3 secondi
+          await this._deleteMessages(queueUrl, failedMessages, retries - 1);
+        } else {
+          console.error(`The following messages were not deleted after N attempts:`, failedMessages);
+          throw new Error('Some messages were not deleted after N attempts');
+        }
+      }
+    } catch (error) {
+      console.error(`Some messages were not deleted after N attempts: ${error}: ${messages}`);
+      throw error;
+    }
   }
 
 }

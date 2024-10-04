@@ -17,6 +17,8 @@ Lo Script, dato in input una coda SQS, effettua le seguenti operazioni:
    1) Scrive i messaggi all'interno di un file JSON inline
    2) Elimina i 10 messaggi della coda, se non ci sono errori. Altrimenti lo script si ferma.
 
+**Nota**: l'ultima riga del dump è una riga vuota.
+
 ## Installazione
 
 ```bash
@@ -32,7 +34,7 @@ aws sso login --profile <aws-profile>
 
 ### Esecuzione
 ```bash
-node dump_sqs_with_delete.js --awsProfile <aws-profile> [--region region] --queueName <queue-name> [--visibilityTimeout <visibility-timeout>] [--limit <limit-value>]
+node dump_sqs_with_delete.js --awsProfile <aws-profile> [--region region] --queueName <queue-name> [--visibilityTimeout <visibility-timeout>] [--limit <limit-value>] [--deleteMode <delete-mode>]
 ```
 Dove:
 - `<aws-profile>` è il profilo dell'account AWS;
@@ -41,3 +43,4 @@ Dove:
 - `<visibility-timeout>` è il valore del visibilityTimeout nella receiveMessage verso SQS (default 60 secondi);
 - `<output-format>` è il formato della coda che può assumere i valori "raw" (default) o "ss" (per post-analisi SafeStorage).
 - `<limit-value>` è il limite massimo di messaggi che si vogliono estrarre dalla coda.
+- `<delete-mode>` può assumere i valori `batch` (default) o `single`.

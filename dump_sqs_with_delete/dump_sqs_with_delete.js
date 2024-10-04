@@ -12,12 +12,9 @@ async function appendMessagesToFile(messages, filePath) {
         if (err) {
           console.error('Errore durante la scrittura dei messaggi nel file:', err);
           throw err;
-        } else {
-          console.log('Messaggio aggiunto in append nel file:', filePath);
         }
       });
     }
-    console.log('Messaggi aggiunti in append nel file:', filePath);
   } catch (error) {
     console.error('Errore durante la scrittura dei messaggi nel file:', error);
     throw error;
@@ -32,11 +29,12 @@ async function dumpSQSWithDelete() {
     { name: "queueName", mandatory: true, subcommand: [] },
     { name: "visibilityTimeout", mandatory: false, subcommand: [] },
     { name: "format", mandatory: false, subcommand: [] },
-    { name: "limit", mandatory: false, subcommand: [] }
+    { name: "limit", mandatory: false, subcommand: [] },
+    { name: "deleteMode", mandatory: false, subcommand: [] }
   ]
   
   const values = {
-    values: { awsProfile, region, queueName, format, visibilityTimeout, limit },
+    values: { awsProfile, region, queueName, format, visibilityTimeout, limit, deleteMode },
   } = parseArgs({
     options: {
       awsProfile: {
@@ -65,11 +63,16 @@ async function dumpSQSWithDelete() {
         short: "l",
         default: "undefined"
       },
+      deleteMode: {
+        type: "string",
+        short: "d",
+        default: "batch"
+      },
     },
   });
   
   function _checkingParameters(args, values){
-    const usage = "Usage: node dump_sqs.js --awsProfile <aws-profile> [--region <region>] --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--limit <limit-value> ]"
+    const usage = "Usage: node dump_sqs.js --awsProfile <aws-profile> [--region <region>] --queueName <queue-name> --visibilityTimeout <visibility-timeout> [--limit <limit-value> [--deleteMode <delete-mode>]"
     //CHECKING PARAMETER
     args.forEach(el => {
       if(el.mandatory && !values.values[el.name]){
@@ -116,7 +119,7 @@ async function dumpSQSWithDelete() {
         i = messages.length + i
         console.log(`Hai ricevuto ${i} messaggi dalla coda.`);
         await appendMessagesToFile(messages, resultPath)
-        await awsClient._deleteMessages(queueUrl, messages);
+        await awsClient._deleteMessages(queueUrl, messages, deleteMode);
         if (i > limit){
           hasNext = false;
         }
