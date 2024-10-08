@@ -77,7 +77,7 @@ async function main() {
   awsClient._initDynamoDB()
   const tableName = "pn-SsDocumenti"
   const keySchema = await awsClient._getKeyFromSchema(tableName)
-  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter(x => x != "")
   for(let i = 0; i < fileRows.length; i++){
     const fileKey =  fileRows[i]
     let result = await awsClient._queryRequest(tableName, "documentKey", fileKey)
