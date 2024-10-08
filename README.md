@@ -393,3 +393,15 @@ Vuoi bonificare la tabella pn-paper-address da indirizzi con nameRow2 superiore 
 ```bash
 node index.js --envName <env-name> --fileName <file-name> [--dryrun]
 ```
+
+### change_document_state
+Vuoi modificare lo stato dei documenti nella tabella pn-SsDocumenti?
+```bash
+node index.js --envName <env-name> --fileName <file-name> --documentState <document-state> [--dryrun]
+```
+
+### check_category_from_iun
+Vuoi verificare se una category è presente in timeline data una lista di iun?
+```bash
+node index.js --envName <env-name> --fileName <file-name> --category <category>
+```

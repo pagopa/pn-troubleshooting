@@ -84,6 +84,10 @@ async function main() {
     if(result.Items.length > 0){ 
       for(let z = 0; z < result.Items.length; z++ ) {
         let item = unmarshall(result.Items[z])
+        if(item.documentState == documentState) {
+          appendJsonToFile('not_updated.txt', fileKey)
+          continue
+        } 
         appendJsonToFile('backup.json', JSON.stringify(item))
         let keys = {};
         keySchema.forEach(keyAttribute => {
@@ -98,6 +102,7 @@ async function main() {
         }
         if(!dryrun) {
           const res = await awsClient._updateItem(tableName, keys, data, "SET")
+          appendJsonToFile('updated.txt', fileKey)
           console.log(`Document state for document ${JSON.stringify(keys)} updated to ${documentState}`)
         }
         else {

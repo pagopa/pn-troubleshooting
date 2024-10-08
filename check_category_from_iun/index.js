@@ -3,18 +3,16 @@ const fs = require('fs');
 const path = require('path');
 const { AwsClientsWrapper } = require("pn-common");
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
-const crypto = require('crypto');
 
-function prepareMessageAttributes(attributes) {
-  let att = {}
-  Object.keys(attributes).forEach(k => {
-    att[k] = attributes[k]
-  });
-  return att;
+function appendJsonToFile(fileName, data){
+  const resultPath = path.join(__dirname, 'results')
+  if(!fs.existsSync(resultPath))
+    fs.mkdirSync(resultPath, { recursive: true });
+  fs.appendFileSync(resultPath + "/" + fileName, data + "\n")
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>] [--dryrun]"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> --category <category>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -43,11 +41,10 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "dryrun", mandatory: false, subcommand: [] },
-
+    { name: "category", mandatory: true, subcommand: [] }
   ]
   const values = {
-    values: { envName, fileName, dryrun },
+    values: { envName, fileName, category },
   } = parseArgs({
     options: {
       envName: {
@@ -56,29 +53,32 @@ async function main() {
       fileName: {
         type: "string", short: "f", default: undefined
       },
-      dryrun: {
-        type: "boolean", short: "n", default: false
-      },
+      category: {
+        type: "string", short: "c", default: undefined
+      }
     },
   });  
   _checkingParameters(args, values)
+  //Prepare AWS Core
   const awsClient = new AwsClientsWrapper( 'core', envName );
-  awsClient._initSQS()
-  const queueName = "pn-delivery_push_actions-DLQ"
-  const queueUrl = await awsClient._getQueueUrl(queueName);
-  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+  awsClient._initDynamoDB()
+  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter(line=>line.trim()!='')
   for(let i = 0; i < fileRows.length; i++){
-    const event = JSON.parse(fileRows[i])
-    const messageAttributes = prepareMessageAttributes(event.MessageAttributes)
-    const messageDeduplicationId = null
-    const messageGroupId = null
-    if(!dryrun) {
-      const eventBody = JSON.parse(event.Body)
-      console.log(`Sending message`, eventBody)
-      await awsClient._sendSQSMessage(queueUrl, eventBody, 0, messageAttributes, messageGroupId, messageDeduplicationId)
-    }
-    else {
-      console.log(`DRYRUN: Sending message ${JSON.stringify(event.Body)}`)
+    const iun = fileRows[i]
+    console.log(`Handling iun ${iun}` )
+    const results = await awsClient._queryRequest("pn-Timelines", "iun", iun)
+    if(results.Items.length > 0) { 
+      const found = results.Items.find(e => {
+        return e.category.S.toLowerCase() === category.toLowerCase()
+      })
+      if(found) {
+        appendJsonToFile("found.txt", iun)
+        console.log(`found ${category} for iun ${iun}` )
+      }
+      else {
+        appendJsonToFile("notfound.txt", iun)
+        console.log(`${category} not found for iun ${iun}` )
+      }
     }
   }
 }
