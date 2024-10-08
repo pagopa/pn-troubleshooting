@@ -113,12 +113,12 @@ class AwsClientsWrapper {
           await delay(3000); //aspetto 3 secondi
           await this._deleteMessages(queueUrl, failedMessages, retries - 1);
         } else {
-          console.error(`The following messages were not deleted after N attempts:`, failedMessages);
+          console.error(`The following messages were not deleted after N attempts: ${JSON.stringify(failedMessages)}`);
           throw new Error('Some messages were not deleted after N attempts');
         }
       }
     } catch (error) {
-      console.error(`Some messages were not deleted after N attempts: ${error}: ${messages}`);
+      console.error(`Some messages were not deleted: ${error}: ${JSON.stringify(messages)}`);
       throw error;
     }
   }
