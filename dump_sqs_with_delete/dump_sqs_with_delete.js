@@ -122,13 +122,27 @@ async function dumpSQSWithDelete() {
   try {
     let hasNext = true;
     while (hasNext) {
+      const startTimeReceived = Date.now();
       const response = await awsClient._receiveMessages(queueUrl, maxNumberOfMessages, visibilityTimeout);
+      const endTimeReceived = Date.now();
+      const timeTakenReceived = endTimeReceived - startTimeReceived;
+      console.log(`tempo impiegato RECEIVED ${timeTakenReceived} ms`);
       const messages = response.Messages;
       if (messages && messages.length > 0) {
         i = messages.length + i
         console.log(`Hai ricevuto ${i} messaggi dalla coda.`);
-        await appendMessagesToFile(messages, resultPath)
+        const startTimeAppend = Date.now();
+        await appendMessagesToFile(messages, resultPath);
+        const endTimeAppend = Date.now();
+        const timeTakenAppend = endTimeAppend - startTimeAppend;
+        console.log(`tempo impiegato dell'APPEND ${timeTakenAppend} ms`);
+        const startTimeDelete = Date.now();
         await awsClient._deleteMessages(queueUrl, messages, deleteMode);
+        const endTimeDelete = Date.now();
+        const timeTakenDelete = endTimeDelete - startTimeDelete;
+        const timeTakenBetweenReceivedAndDelete = endTimeDelete - startTimeReceived;
+        console.log(`tempo impiegato DELETE ${timeTakenDelete} ms`);
+        console.log(`tempo impiegato tra RECEIVED e DELETE ${timeTakenBetweenReceivedAndDelete} ms`);
         if (i > limit){
           hasNext = false;
         }
