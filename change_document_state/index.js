@@ -77,13 +77,17 @@ async function main() {
   awsClient._initDynamoDB()
   const tableName = "pn-SsDocumenti"
   const keySchema = await awsClient._getKeyFromSchema(tableName)
-  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter(x => x != "")
   for(let i = 0; i < fileRows.length; i++){
     const fileKey =  fileRows[i]
     let result = await awsClient._queryRequest(tableName, "documentKey", fileKey)
     if(result.Items.length > 0){ 
       for(let z = 0; z < result.Items.length; z++ ) {
         let item = unmarshall(result.Items[z])
+        if(item.documentState == documentState) {
+          appendJsonToFile('not_updated.txt', fileKey)
+          continue
+        } 
         appendJsonToFile('backup.json', JSON.stringify(item))
         let keys = {};
         keySchema.forEach(keyAttribute => {
@@ -98,6 +102,7 @@ async function main() {
         }
         if(!dryrun) {
           const res = await awsClient._updateItem(tableName, keys, data, "SET")
+          appendJsonToFile('updated.txt', fileKey)
           console.log(`Document state for document ${JSON.stringify(keys)} updated to ${documentState}`)
         }
         else {
