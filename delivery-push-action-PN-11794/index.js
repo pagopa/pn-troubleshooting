@@ -18,9 +18,10 @@ function checkListToRemoveWithoutThirdStep(checkList){
 }
 
 function appendJsonToFile(fileName, data){
-  if(!fs.existsSync("results"))
-    fs.mkdirSync("results", { recursive: true });
-  fs.appendFileSync(fileName, data + "\n")
+  const pathResult = path.join(__dirname, 'results');
+  if(!fs.existsSync(pathResult))
+    fs.mkdirSync(pathResult, { recursive: true });
+  fs.appendFileSync(`${pathResult}/${fileName}`, data + "\n")
 }
 
 function _checkingParameters(args, values){
@@ -104,8 +105,9 @@ async function main() {
           return current 
         }
       }));
-      if(latestSAFeedback.details.deliveryDetailCode === "PNAG012") {
+      if(latestSAFeedback.details.deliveryDetailCode) {
         checkList.feedback = true
+        row["deliveryDetailCode"] = latestSAFeedback.details.deliveryDetailCode
       }
       else {
         console.log(`Event with iun ${iun} to keep`)
@@ -135,7 +137,7 @@ async function main() {
       else {
         if(checkListToRemoveWithoutThirdStep(checkList)){
           console.log(`Event with iun ${iun} to remove third step`)
-          appendJsonToFile(`no_third_step_to_remove_${fileName}`, JSON.stringify(row))
+          appendJsonToFile(`to_remove_${path.basename(fileName)}`, JSON.stringify(row))
         } else {
           console.log(`Event with iun ${iun} to keep`)
           continue
@@ -143,7 +145,7 @@ async function main() {
       }
       if(checkListToRemove(checkList)){
         console.log(`Event with iun ${iun} to remove`)
-        appendJsonToFile(`to_remove_${fileName}`, JSON.stringify(row))
+        appendJsonToFile(`to_remove_${path.basename(fileName)}`, JSON.stringify(row))
       }
     }
   }

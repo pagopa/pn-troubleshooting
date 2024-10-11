@@ -99,7 +99,7 @@ echo "STARTING EXECUTION"
 
 echo "DUMPING SQS..."
 cd "$work_dir"
-node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-core-$env_name --queueName $queue_name --visibilityTimeout 180
+node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-core-$env_name --queueName $queue_name --visibilityTimeout 120
 dumped_file=$(find ./dump_sqs/result -type f -exec ls -t1 {} + | head -1)
 echo "$dumped_file"
 
@@ -107,13 +107,30 @@ echo "RETRIEVING IUN..."
 refinement_file="./dump_sqs/result/refinement.txt"
 iuns_file="./dump_sqs/result/iuns.txt"
 cat $dumped_file | jq -c '.[]' | grep "REFINEMENT_NOTIFICATION" > $refinement_file 
+cat $dumped_file | jq -r '.[] | .Body | fromjson | select(.type == "REFINEMENT_NOTIFICATION") | .iun' > $iuns_file
 
-jq -r -c '.[]' $dumped_file | jq -r -c '{"Body": .Body, "MD5OfBody": .MD5OfBody, "MD5OfMessageAttributes": .MD5OfMessageAttributes}' | grep "REFINEMENT_NOTIFICATION" > $refinement_file
+category_path="./check_category_from_iun/results"
+category_path_result=${category_path}/found.txt
+echo "CHECK CATEGORY FROM IUN..."
+remove_dir "$category_path"
+node ./check_category_from_iun/index.js --envName $env_name-ro --fileName $iuns_file --category REFINEMENT
 
-result="./delivery-push-action-PN-11794/results/to_remove_refinement.txt"
+
+regex=$(paste -sd '|' "$category_path_result")
+result_tmp="./automation_scripts/to_remove_tmp.txt"
+result="./automation_scripts/to_remove.txt"
+
+remove_file "$result_tmp"
 remove_file "$result"
 
-node ./delivery-push-action-PN-11794/index.js --envName $env_name-ro --fileName $refinement_file
+echo "PREPARING FILE WITH DELETE INFO..."
+while IFS= read -r row; do
+  grep $row $refinement_file >> $result_tmp
+done < "$category_path_result"
+
+cat $result_tmp | jq -r -c '{"Body": .Body, "MD5OfBody": .MD5OfBody, "MD5OfMessageAttributes": .MD5OfMessageAttributes}' > $result
+
+remove_file "$result_tmp"
 
 echo "OUTPUT AVAILABLE IN $result"
 
