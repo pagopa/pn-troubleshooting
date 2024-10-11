@@ -105,9 +105,8 @@ async function main() {
           return current 
         }
       }));
-      if(latestSAFeedback.details.deliveryDetailCode) {
+      if(latestSAFeedback.details.deliveryDetailCode === "PNAG012" || latestSAFeedback.details.deliveryDetailCode === "PNRN012" ) {
         checkList.feedback = true
-        row["deliveryDetailCode"] = latestSAFeedback.details.deliveryDetailCode
       }
       else {
         console.log(`Event with iun ${iun} to keep`)
