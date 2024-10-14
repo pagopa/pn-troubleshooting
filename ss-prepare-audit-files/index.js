@@ -146,6 +146,7 @@ async function processLine(line) {
     let dynamoDbChecksum = dynamoDbRecord.checkSum;
     if (hashType != "NONE") {
       await retrieveFromOriginal(ssFileKeyWithPrefix != null ? ssFileKeyWithPrefix : ssFileKey, s3CheckSum, dynamoDbChecksum, s3ObjectBA);
+      fs.appendFileSync("output.txt", ssFileKey + "\r\n");
     } else {
       fs.appendFileSync("incoherent.txt", line + ";hashtype not available;" + new Date(Date.now()).toISOString() + "\r\n");
       return;
