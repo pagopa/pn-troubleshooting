@@ -16,7 +16,6 @@ usage() {
     Usage: $(basename "${BASH_SOURCE[0]}") [-h] -e <env-name> -q <queue-name> -w <work-dir>
     [-h]                      : this help message
     -e <env-name>             : env name
-    -q <queue-name>           : queue name
     -w <work-dir>             : work directory
     
 EOF

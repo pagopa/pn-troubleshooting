@@ -64,7 +64,6 @@ dump_params(){
   echo "######      PARAMETERS      ######"
   echo "##################################"
   echo "Env:                ${env_name}"
-  echo "Queue Name:         ${queue_name}"
   echo "Work directory:     ${work_dir}"
 }
 
