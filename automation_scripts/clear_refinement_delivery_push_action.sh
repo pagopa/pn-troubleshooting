@@ -25,7 +25,7 @@ EOF
 
 parse_params() {
   # default values of variables set from params
-  queue_name=""
+  queue_name="pn-delivery_push_actions-DLQ"
   work_dir=$HOME
   env_name=""
 
@@ -55,7 +55,6 @@ parse_params() {
   # check required params and arguments
   [[ -z "${env_name-}" ]] && usage 
   [[ -z "${work_dir-}" ]] && usage
-  [[ -z "${queue_name-}" ]] && usage
 
   return 0
 }
@@ -65,7 +64,6 @@ dump_params(){
   echo "######      PARAMETERS      ######"
   echo "##################################"
   echo "Env:                ${env_name}"
-  echo "Queue Name:         ${queue_name}"
   echo "Work directory:     ${work_dir}"
 }
 
@@ -80,6 +78,17 @@ remove_file() {
   fi
 }
 
+remove_dir() {
+  directory_path=$1  
+  echo "cleaning $directory_path"
+  if [[ -d $directory_path ]]; then
+    rm -r $directory_path
+    echo "directory $directory_path has been removed"
+  else
+    echo "directory $directory_path does not exist."
+  fi
+}
+
 # START SCRIPT
 
 parse_params "$@"
@@ -89,39 +98,23 @@ echo "STARTING EXECUTION"
 
 echo "DUMPING SQS..."
 cd "$work_dir"
-node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-core-$env_name --queueName $queue_name --visibilityTimeout 120
+node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-core-$env_name --queueName $queue_name --visibilityTimeout 180
 dumped_file=$(find ./dump_sqs/result -type f -exec ls -t1 {} + | head -1)
 echo "$dumped_file"
 
 echo "RETRIEVING IUN..."
+refinement_file="./dump_sqs/result/refinement.txt"
 iuns_file="./dump_sqs/result/iuns.txt"
-if [[ "$queue_name" == *"actions"* ]]; then
-  cat $dumped_file | jq -r '.[] | .Body | fromjson | select(.type == "REFINEMENT_NOTIFICATION" or .type == "CHECK_ATTACHMENT_RETENTION") | .iun' | sort | uniq > $iuns_file 
-else
-  echo "JQ EXECUTING"
-  cat $dumped_file | jq -r '.[] | .MessageAttributes | select(.eventType.StringValue == "NOTIFICATION_VIEWED") | .iun.StringValue' | sort | uniq > $iuns_file
-fi
+cat $dumped_file | jq -c '.[]' | grep "REFINEMENT_NOTIFICATION" > $refinement_file 
 
-attachments_path="./retrieve_attachments_from_iun/results/"
-remove_file "$attachments_path/attachments.json"
-echo "RETRIEVING ATTACHMENT..."
-node ./retrieve_attachments_from_iun/index.js --envName $env_name-ro --fileName $iuns_file
+jq -r -c '.[]' $dumped_file | jq -r -c '{"Body": .Body, "MD5OfBody": .MD5OfBody, "MD5OfMessageAttributes": .MD5OfMessageAttributes}' | grep "REFINEMENT_NOTIFICATION" > $refinement_file
 
-result_file="./increase_doc_retention_for_late_notifications/files/log.json"
-echo "REMOVING DELETE MARKER..."
-remove_file "$result_file"
-node increase_doc_retention_for_late_notifications/index.js --envName $env_name --directory $attachments_path
+result="./delivery-push-action-PN-11794/results/to_remove_refinement.txt"
+remove_file "$result"
 
+node ./delivery-push-action-PN-11794/index.js --envName $env_name-ro --fileName $refinement_file
 
-fileKey_tmp="./automation_scripts/fileKey_tmp.txt"
-#JQ di estrazione degli attachments che hanno il delete marker removed a true
-jq -r 'select(.deletionMarkerRemoved == true) | .fileKey' $attachments_path > $fileKey_tmp
-#Avvio dello script change document state in staged per gli attachments di cui sopra
-node change_document_state/index.js --envName $env_name --fileName $fileKey_tmp --documentState staged
-#Sleep di 10 secondi
-sleep 10
-#Avvio dello script change document state in attached per gli attachments di cui sopra sopra
-node change_document_state/index.js --envName $env_name --fileName $fileKey_tmp --documentState attached
+echo "OUTPUT AVAILABLE IN $result"
 
 echo "EXECUTION COMPLETE"
 

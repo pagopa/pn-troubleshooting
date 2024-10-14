@@ -14,7 +14,7 @@ function prepareMessageAttributes(attributes) {
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> [--region <region>] --fileName <file-name> --outputQueue <output-queue>] [--dryrun]"
+  const usage = "Usage: node index.js --envName <env-name> --awsAccount <aws-account> [--region <region>] --fileName <file-name> --outputQueue <output-queue>] [--dryrun]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -42,6 +42,7 @@ async function main() {
 
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
+    { name: "awsAccount", mandatory: true, subcommand: [] },
     { name: "region", mandatory: false, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
     { name: "outputQueue", mandatory: true, subcommand: [] },
@@ -49,11 +50,14 @@ async function main() {
 
   ]
   const values = {
-    values: { envName, region, fileName, outputQueue, dryrun },
+    values: { envName, awsAccount, region, fileName, outputQueue, dryrun },
   } = parseArgs({
     options: {
       envName: {
         type: "string", short: "e", default: undefined
+      },
+      awsAccount: {
+        type: "string", short: "a", default: undefined
       },
       region: {
         type: "string", short: "r", default: undefined
@@ -70,13 +74,16 @@ async function main() {
     },
   });  
   _checkingParameters(args, values)
-  const awsClient = new AwsClientWrapperWithRegion( 'core', envName, region );
+  const awsClient = new AwsClientWrapperWithRegion( awsAccount, envName, region );
   awsClient._initSQS()
   const queueUrl = await awsClient._getQueueUrl(outputQueue);
-  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter(x=>x!="")
   for(let i = 0; i < fileRows.length; i++){
     const event = JSON.parse(fileRows[i])
-    const messageAttributes = prepareMessageAttributes(event.MessageAttributes)
+    let messageAttributes = null;
+    if(event.messageAttributes) {
+      messageAttributes = prepareMessageAttributes(event.MessageAttributes)
+    }
     let messageDeduplicationId
     let messageGroupId
     if(outputQueue.endsWith('fifo')) {

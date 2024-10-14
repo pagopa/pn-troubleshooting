@@ -27,10 +27,11 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash
-node index.js --envName <env-name> --fileName <file-name> [--dryrun]
+node index.js --envName <env-name> --fileName <file-name> --documentState <document-state> [--dryrun]
 
 ```
 Dove:
 - `<env-name>` l'environment sul quale si intende avviare lo script
-- `<file-name>` file contenente la lista dei requestId
+- `<file-name>` file contenente la lista dei documenti
+- `<document-state>` stato in cui si vuole portare il documento in pn-SsDocumenti
 - `<dryrun>` per eseguire in readonly mode

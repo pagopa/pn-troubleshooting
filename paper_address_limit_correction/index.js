@@ -98,10 +98,11 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
+    { name: "backup", mandatory: false, subcommand: [] },
     { name: "dryrun", mandatory: false, subcommand: [] },
   ]
   const values = {
-    values: { envName, fileName, dryrun },
+    values: { envName, fileName, backup, dryrun },
   } = parseArgs({
     options: {
       envName: {
@@ -109,6 +110,9 @@ async function main() {
       },
       fileName: {
         type: "string", short: "f", default: undefined
+      },
+      backup: {
+        type: "boolean", short: "b", default: false
       },
       dryrun: {
         type: "boolean", short: "d", default: false
@@ -119,60 +123,83 @@ async function main() {
  
   const awsClient = new AwsClientsWrapper( 'core', envName );
   awsClient._initDynamoDB()
-  awsClient._initCloudFormation()
-  awsClient._initKMS()
   const outputPath = fileName.split('.')[0]
-  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
-
-  const stackName = `pn-paper-channel-storage-${envName}`
   const paperAddressTableName = "pn-PaperAddress"
   const paperRequestDeliveryTableName = "pn-PaperRequestDelivery"
-  const result = await awsClient._getKeyArn(stackName)
-  const kmsArnKey = result.Stacks[0].Outputs.find((k) => {
-    return k.OutputKey==='PCKmsEncDecDynamoDataKeyARN'
-  })
-  if(!kmsArnKey) { 
-    console.log(`arnKey ${stackName} not found`)
-    process.exit(1)
-  }
-  const kmsKey = kmsArnKey.OutputValue
-  for(let i = 0; i < fileRows.length; i++){
-    const requestId =  fileRows[i]
-    let paperAddressResponse = await awsClient._queryRequest(paperAddressTableName, "requestId", requestId)
-    let paperRequestDelivery = (await awsClient._queryRequest(paperRequestDeliveryTableName, "requestId", requestId)).Items[0]
-    if(paperAddressResponse.Items.length > 0){ 
-      const encodedAddress = unmarshall(paperAddressResponse.Items.find(x => {
-        return x.addressType.S === 'RECEIVER_ADDRESS'
-      }))
-      const decodedAddress = await getDecodedAddressData(awsClient, encodedAddress, kmsKey)
-      if (decodedAddress.nameRow2.length > 44 && !encodedAddress.city2) {
-        //to correct
-        const nameRow2decodedTruncated = decodedAddress.nameRow2.substring(0, 44)
-        const encryptedValueResponse = await awsClient._getEncryptedValue(nameRow2decodedTruncated, kmsKey)
-        encodedAddress.nameRow2 = Buffer.from(encryptedValueResponse.CiphertextBlob).toString('base64'); 
-        const hashedAddress = getAddressHash(decodedAddress)
-        if(!dryrun) {
-          //pn-paperAddressCorrection
-          await _updateDataTable(awsClient, paperAddressTableName, encodedAddress, 'nameRow2', encodedAddress.nameRow2)
-          //pn-paperRequestDeliveryCorrection
-          await _updateDataTable(awsClient, paperRequestDeliveryTableName, paperRequestDelivery, 'addressHash', hashedAddress)
-        }
-        console.log("CORRECTED " + requestId)
-        appendJsonToFile(outputPath, "corrected.json", JSON.stringify({
-          requestId: requestId,
-          nameRow2: encodedAddress.nameRow2,
-          addressHash: hashedAddress
+  if(backup) {
+    const fileRows = fs.readFileSync(`results/${outputPath}/backup.json`, { encoding: 'utf8', flag: 'r' }).split('\n').filter(x=> x!='');
+    for(let i = 0; i < fileRows.length; i++){
+      const backup = JSON.parse(fileRows[i])
+      const requestId = backup.requestId
+      let paperAddressResponse = await awsClient._queryRequest(paperAddressTableName, "requestId", requestId)
+      let paperRequestDelivery = (await awsClient._queryRequest(paperRequestDeliveryTableName, "requestId", requestId)).Items[0]
+      if(paperAddressResponse.Items.length > 0){ 
+        const encodedAddress = unmarshall(paperAddressResponse.Items.find(x => {
+          return x.addressType.S === 'RECEIVER_ADDRESS'
         }))
+        await _updateDataTable(awsClient, paperAddressTableName, encodedAddress, 'nameRow2', backup.nameRow2)
+        await _updateDataTable(awsClient, paperRequestDeliveryTableName, paperRequestDelivery, 'addressHash', backup.addressHash)
       }
-      else if (decodedAddress.nameRow2.length > 44 && encodedAddress.city2) {
-        //to analyze
-        console.log("TO ANALYZE " + requestId)
-        appendJsonToFile(outputPath, "toAnalyze.json", requestId)
-      }
-      else if (decodedAddress.nameRow2.length < 44 && !encodedAddress.city2) {
-        //to raster
-        console.log("TO RASTER " + requestId)
-        appendJsonToFile(outputPath, "toRaster.json", requestId)
+    }
+  }
+  else {
+    const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter(x=> x!='');
+    awsClient._initCloudFormation()
+    awsClient._initKMS()
+    const stackName = `pn-paper-channel-storage-${envName}`
+    const result = await awsClient._getKeyArn(stackName)
+    const kmsArnKey = result.Stacks[0].Outputs.find((k) => {
+      return k.OutputKey==='PCKmsEncDecDynamoDataKeyARN'
+    })
+    if(!kmsArnKey) { 
+      console.log(`arnKey ${stackName} not found`)
+      process.exit(1)
+    }
+    const kmsKey = kmsArnKey.OutputValue
+    for(let i = 0; i < fileRows.length; i++){
+      const requestId =  fileRows[i]
+      let paperAddressResponse = await awsClient._queryRequest(paperAddressTableName, "requestId", requestId)
+      let paperRequestDelivery = (await awsClient._queryRequest(paperRequestDeliveryTableName, "requestId", requestId)).Items[0]
+      if(paperAddressResponse.Items.length > 0){ 
+        const encodedAddress = unmarshall(paperAddressResponse.Items.find(x => {
+          return x.addressType.S === 'RECEIVER_ADDRESS'
+        }))
+        const decodedAddress = await getDecodedAddressData(awsClient, encodedAddress, kmsKey)
+        if (decodedAddress.nameRow2.length > 44 && !encodedAddress.city2) {
+          //to correct
+          const nameRow2decodedTruncated = decodedAddress.nameRow2.substring(0, 44)
+          const encryptedValueResponse = await awsClient._getEncryptedValue(nameRow2decodedTruncated, kmsKey)
+          const nameRow2 = Buffer.from(encryptedValueResponse.CiphertextBlob).toString('base64'); 
+          decodedAddress.nameRow2 = nameRow2decodedTruncated
+          const hashedAddress = getAddressHash(decodedAddress)
+          if(!dryrun) {
+            //pn-paperAddressCorrection
+            appendJsonToFile(outputPath, `backup.json`, JSON.stringify({
+              requestId: requestId,
+              nameRow2: encodedAddress.nameRow2,
+              addressHash: unmarshall(paperRequestDelivery).addressHash
+            }))
+            await _updateDataTable(awsClient, paperAddressTableName, encodedAddress, 'nameRow2', nameRow2)
+            //pn-paperRequestDeliveryCorrection
+            await _updateDataTable(awsClient, paperRequestDeliveryTableName, paperRequestDelivery, 'addressHash', hashedAddress)
+          }
+          console.log("CORRECTED " + requestId)
+          appendJsonToFile(outputPath, "corrected.json", JSON.stringify({
+            requestId: requestId,
+            nameRow2: nameRow2,
+            addressHash: hashedAddress
+          }))
+        }
+        else if (decodedAddress.nameRow2.length > 44 && encodedAddress.city2) {
+          //to analyze
+          console.log("TO ANALYZE " + requestId)
+          appendJsonToFile(outputPath, "toAnalyze.json", requestId)
+        }
+        else if (decodedAddress.nameRow2.length < 44 && !encodedAddress.city2) {
+          //to raster
+          console.log("TO RASTER " + requestId)
+          appendJsonToFile(outputPath, "toRaster.json", requestId)
+        }
       }
     }
   }
