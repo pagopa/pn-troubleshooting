@@ -1,4 +1,4 @@
-const { S3Client, HeadObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, HeadObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadBucketCommand } = require('@aws-sdk/client-s3');
 const { Upload } = require("@aws-sdk/lib-storage");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 var crypto = require("crypto");
@@ -59,6 +59,15 @@ class S3Service {
             {
                 Bucket: bucketName,
                 Key: key
+            }
+        );
+        return await this.s3Client.send(command);
+    }
+
+    async headBucket(bucketName) {
+        var command = new HeadBucketCommand(
+            {
+                Bucket: bucketName,
             }
         );
         return await this.s3Client.send(command);

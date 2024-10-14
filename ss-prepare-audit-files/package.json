@@ -1,5 +1,5 @@
 {
-  "name": "retrieve-original-docs",
+  "name": "ss-prepare-audit-files",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

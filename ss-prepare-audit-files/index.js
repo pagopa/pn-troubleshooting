@@ -18,14 +18,15 @@ const args = [
   { name: "inputFile", mandatory: true },
   { name: "awsProfile", mandatory: false },
   { name: "awsRegion", mandatory: false },
-  { name: "bucket", mandatory: true },
+  { name: "sourceBucket", mandatory: true },
+  { name: "availabilityBucket", mandatory: true },
   { name: "searchPath", mandatory: false }
 ]
 
 // Parsing degli argomenti da linea di comando.
 // Se awsProfile e awsRegion non vengono impostati, verranno usati i default della macchina attuale.
 const values = {
-  values: { inputFile, awsProfile, awsRegion, bucket, searchPath },
+  values: { inputFile, awsProfile, awsRegion, sourceBucket, availabilityBucket, searchPath },
 } = parseArgs({
   options: {
     inputFile: {
@@ -37,7 +38,10 @@ const values = {
     awsRegion: {
       type: "string",
     },
-    bucket: {
+    sourceBucket: {
+      type: "string",
+    },
+    availabilityBucket: {
       type: "string",
     },
     searchPath: {
@@ -100,6 +104,7 @@ async function countLines(path) {
 
 // Per ogni riga, applichiamo un'operazione asincrona.
 async function processLines(path) {
+  await checkBucketsExistence([sourceBucket, availabilityBucket]);
   for await (const line of readLines(path)) {
     readItems++;
     await processLine(line)
@@ -121,51 +126,64 @@ async function processLine(line) {
   var paFileName = splittedLine[1];
   // Se il nome del file è tra virgolette, le rimuoviamo
   paFileName = paFileName.startsWith("\"") && paFileName.endsWith("\"") ? paFileName.substring(1, paFileName.length - 2) : paFileName;
-  const fileKey = splittedLine[2];
+  var ssFileKey = splittedLine[2];
 
-  if (searchPath) {
-    paFileName = searchPath + "/" + paFileName;
-    fileKey = searchPath + "/" + fileKey;
-  }
   // Vanno recuperati solo i file che NON si trovano nel bucket di disponibilità
-  if (!(await s3Service.isInBucket("pn-safestorage-eu-south-1-089813480515", fileKey))) {
+  if (!(await s3Service.isInBucket(availabilityBucket, ssFileKey))) {
 
-    const record = await dynamoDbService.getItem("pn-SsDocumenti", fileKey);
-    const object = await s3Service.getObject(bucket, paFileName);
-    let objBA = await object.Body.transformToByteArray();
-    let hashType = record.documentType.checksum;
+    // Se è stato indicato un path di ricerca, creo delle variabili che si riferiscono alle fileKey prefissate con quel path.
+    if (searchPath) {
+      var paFileNameWithPrefix = searchPath + "/" + paFileName;
+      var ssFileKeyWithPrefix = searchPath + "/" + ssFileKey;
+    }
 
-    let s3CheckSum = hashObject(hashType, objBA);
-    let dynamoDbChecksum = record.checkSum;
+    const dynamoDbRecord = await dynamoDbService.getItem("pn-SsDocumenti", ssFileKey);
+    const s3Object = await s3Service.getObject(sourceBucket, paFileNameWithPrefix != null ? paFileNameWithPrefix : paFileName);
+    let s3ObjectBA = await s3Object.Body.transformToByteArray();
+    let hashType = dynamoDbRecord.documentType.checksum;
+
+    let s3CheckSum = hashObject(hashType, s3ObjectBA);
+    let dynamoDbChecksum = dynamoDbRecord.checkSum;
     if (hashType != "NONE") {
-      retrieveFromOriginal(s3CheckSum, dynamoDbChecksum, objBA);
+      await retrieveFromOriginal(ssFileKeyWithPrefix != null ? ssFileKeyWithPrefix : ssFileKey, s3CheckSum, dynamoDbChecksum, s3ObjectBA);
     } else {
       fs.appendFileSync("incoherent.txt", line + ";hashtype not available;" + new Date(Date.now()).toISOString() + "\r\n");
       return;
     }
   }
   // Il file è già presente nel bucket di disponibilità e lo segnaliamo.
-  else fs.appendFileSync("incoherent.txt", `File with key "${fileKey}" is already in availability bucket.` + ";" + new Date(Date.now()).toISOString() + "\r\n");
+  else fs.appendFileSync("incoherent.txt", `File with key "${ssFileKey}" is already in availability bucket.` + ";" + new Date(Date.now()).toISOString() + "\r\n");
 }
 
-async function retrieveFromOriginal(s3CheckSum, dynamoDbChecksum, objBA) {
+async function retrieveFromOriginal(ssFileKey, s3CheckSum, dynamoDbChecksum, s3ObjectBA) {
   // Controllo se il checksum tra file e database è coerente.
   if (s3CheckSum != dynamoDbChecksum) {
     fs.appendFileSync("incoherent.txt", line + ";hash is not coherent;" + new Date(Date.now()).toISOString() + "\r\n");
     return;
   }
-  var contentType = mime.lookup(fileKey) ? mime.lookup(fileKey) : null;
-  // Ricarico il file con la fileKey di SS e cancello l'originale.
-  s3Service.putObject(bucket, fileKey, contentType, objBA)
-    .then(result => s3Service.deleteObject(bucket, paFileName));
+  var contentType = mime.lookup(ssFileKey) ? mime.lookup(ssFileKey) : null;
+  // Ricarico il file con la fileKey di SS.
+  await s3Service.putObject(sourceBucket, ssFileKey, contentType, s3ObjectBA);
 }
 
 // hashing dell'oggetto s3
-function hashObject(hashType, objBA) {
+function hashObject(hashType, s3ObjectBA) {
   const hash = crypto.createHash(hashType);
-  hash.update(objBA);
+  hash.update(s3ObjectBA);
   s3CheckSum = hash.digest('base64');
   return s3CheckSum;
+}
+
+async function checkBucketsExistence(buckets) {
+  for (bucket of buckets) {
+    console.log("Checking if bucket " + bucket + " exists...");
+    try {
+      await s3Service.headBucket(bucket);
+    }
+    catch (error) {
+      throw new Error(`Bucket "${bucket}" does not exist.`)
+    }
+  }
 }
 
 // Metodo principale
