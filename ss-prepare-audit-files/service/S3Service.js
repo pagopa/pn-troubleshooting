@@ -70,7 +70,14 @@ class S3Service {
                 Bucket: bucketName,
             }
         );
-        return await this.s3Client.send(command);
+        try {
+            return await this.s3Client.send(command);
+        }
+        catch (error) {
+            if (error.name == "NotFound" && error.$metadata.httpStatusCode == 404)
+                throw new Error(`Bucket "${bucketName}" does not exist.`);
+            else throw error;
+        }
     }
 
     getMD5HashFromFile(file) {

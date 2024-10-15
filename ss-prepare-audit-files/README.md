@@ -38,8 +38,8 @@ Dove:
 - `<source-bucket>` bucket di origine da cui reperire i file.
 - `<search-path>` è il path completo in cui eseguire la ricerca dei file S3 dal source bucket. Se non viene impostato, la ricerca verrà eseguita senza prefissare il path alla fileKey; `OPZIONALE`
 - `<availability-bucket>` bucket di disponibilità dei file di SafeStorage.
+- `<aws-region>` è la region dei client AWS.
 - `<aws-profile>` è il profilo dell'account AWS. Se non viene inserito, verranno prese di default le credenziali AWS di sistema; `OPZIONALE`
-- `<aws-region>` è la region dei client AWS. Se non viene inserita, verrà presa la region di default del sistema; `OPZIONALE`
 
 Alla fine del processo, verranno generati tre file:
 
