@@ -19,13 +19,14 @@ const args = [
   { name: "destinationBucket", mandatory: true },
   { name: "awsProfile", mandatory: false },
   { name: "awsRegion", mandatory: false },
+  { name: "searchPath", mandatory: false },
   { name: "dryrun", mandatory: false }
 ]
 
 // Parsing degli argomenti da linea di comando.
 // Se awsProfile e awsRegion non vengono impostati, verranno usati i default della macchina attuale.
 const values = {
-  values: { inputFile, awsProfile, awsRegion, sourceBucket, destinationBucket, dryrun },
+  values: { inputFile, awsProfile, awsRegion, sourceBucket, destinationBucket, searchPath, dryrun },
 } = parseArgs({
   options: {
     inputFile: {
@@ -41,6 +42,9 @@ const values = {
       type: "string",
     },
     destinationBucket: {
+      type: "string",
+    },
+    searchPath: {
       type: "string",
     },
     dryrun: {
@@ -119,7 +123,8 @@ async function processLines(path) {
 }
 
 async function processLine(line) {
-  const getObjectResponse = await s3Service.getObject(sourceBucket, line);
+  if (searchPath) { var lineWithPrefix = searchPath + "/" + line }
+  const getObjectResponse = await s3Service.getObject(sourceBucket, lineWithPrefix != null ? lineWithPrefix : line);
   var contentType = mime.lookup(line) ? mime.lookup(line) : null;
   if (!dryrun) {
     await s3Service.putObject(destinationBucket, line, contentType, await getObjectResponse.Body.transformToByteArray());
