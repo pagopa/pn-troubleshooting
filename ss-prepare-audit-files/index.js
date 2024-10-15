@@ -17,7 +17,7 @@ const progressBar = new cliProgress.SingleBar({
 const args = [
   { name: "inputFile", mandatory: true },
   { name: "awsProfile", mandatory: false },
-  { name: "awsRegion", mandatory: false },
+  { name: "awsRegion", mandatory: true },
   { name: "sourceBucket", mandatory: true },
   { name: "availabilityBucket", mandatory: true },
   { name: "searchPath", mandatory: false }
@@ -125,7 +125,7 @@ async function processLine(line) {
   const splittedLine = line.split(",");
   var paFileName = splittedLine[1];
   // Se il nome del file è tra virgolette, le rimuoviamo
-  paFileName = paFileName.startsWith("\"") && paFileName.endsWith("\"") ? paFileName.substring(1, paFileName.length - 2) : paFileName;
+  paFileName = paFileName.startsWith("\"") && paFileName.endsWith("\"") ? paFileName.substring(1, paFileName.length - 1) : paFileName;
   var ssFileKey = splittedLine[2];
 
   // Vanno recuperati solo i file che NON si trovano nel bucket di disponibilità
@@ -148,7 +148,7 @@ async function processLine(line) {
       await retrieveFromOriginal(ssFileKeyWithPrefix != null ? ssFileKeyWithPrefix : ssFileKey, s3CheckSum, dynamoDbChecksum, s3ObjectBA);
       fs.appendFileSync("output.txt", ssFileKey + "\r\n");
     } else {
-      fs.appendFileSync("incoherent.txt", line + ";hashtype not available;" + new Date(Date.now()).toISOString() + "\r\n");
+      fs.appendFileSync("incoherent.txt", ssFileKey + ";hashtype not available;" + new Date(Date.now()).toISOString() + "\r\n");
       return;
     }
   }
@@ -159,7 +159,7 @@ async function processLine(line) {
 async function retrieveFromOriginal(ssFileKey, s3CheckSum, dynamoDbChecksum, s3ObjectBA) {
   // Controllo se il checksum tra file e database è coerente.
   if (s3CheckSum != dynamoDbChecksum) {
-    fs.appendFileSync("incoherent.txt", line + ";hash is not coherent;" + new Date(Date.now()).toISOString() + "\r\n");
+    fs.appendFileSync("incoherent.txt", ssFileKey + ";hash is not coherent;" + new Date(Date.now()).toISOString() + "\r\n");
     return;
   }
   var contentType = mime.lookup(ssFileKey) ? mime.lookup(ssFileKey) : null;
@@ -178,12 +178,7 @@ function hashObject(hashType, s3ObjectBA) {
 async function checkBucketsExistence(buckets) {
   for (bucket of buckets) {
     console.log("Checking if bucket " + bucket + " exists...");
-    try {
-      await s3Service.headBucket(bucket);
-    }
-    catch (error) {
-      throw new Error(`Bucket "${bucket}" does not exist.`)
-    }
+    await s3Service.headBucket(bucket);
   }
 }
 
