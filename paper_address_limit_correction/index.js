@@ -192,7 +192,7 @@ async function main() {
         }
         else if (decodedAddress.nameRow2.length > 44 && encodedAddress.city2) {
           //to analyze
-          console.log("TO ANALYZE " + requestId)
+          console.log(`TO ANALYZE ${requestId} - CITY2 LENGTH: ${decodedAddress.city2.length}`)
           appendJsonToFile(outputPath, "toAnalyze.json", requestId)
         }
         else if (decodedAddress.nameRow2.length < 44 && !encodedAddress.city2) {
