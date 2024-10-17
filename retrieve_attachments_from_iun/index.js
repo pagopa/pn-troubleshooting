@@ -29,10 +29,10 @@ function _checkingParameters(args, values){
   })
 }
 
-function appendJsonToFile(fileName, jsonData){
-  if(!fs.existsSync("results"))
-    fs.mkdirSync("results", { recursive: true });
-  fs.appendFileSync(fileName, JSON.stringify(jsonData) + "\n")
+function appendJsonToFile(resultPath, jsonData){
+  if(!fs.existsSync(resultPath))
+    fs.mkdirSync(resultPath, { recursive: true });
+  fs.appendFileSync(`${resultPath}/attachments.json`, JSON.stringify(jsonData) + "\n")
 }
 
 async function main() {
@@ -56,7 +56,7 @@ async function main() {
 
   _checkingParameters(args, values)
   const awsClient = new AwsClientsWrapper( envName );
-  const resultPath = path.join(__dirname, "results/attachments.json");
+  const resultPath = path.join(__dirname, "results");
   const data = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
   for (iun of data) {
     if (iun === '')
