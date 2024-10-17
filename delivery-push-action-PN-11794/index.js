@@ -4,17 +4,16 @@ const path = require('path');
 const { AwsClientsWrapper } = require("pn-common");
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 
-function checkListToRemove(checkList){
-  let flag = true
-  Object.keys(checkList).forEach(k => {
-    if(!checkList[k]) 
-      flag = false
-  });
-  return flag
+function isPNdeliveryDetailsCode(deliveryDetailCode) {
+  return deliveryDetailCode === "PNAG012" || deliveryDetailCode === "PNRN012" 
 }
 
-function checkListToRemoveWithoutThirdStep(checkList){
-  return checkList.refinement && checkList.feedback && !checkList.ecmetadati
+function isRECdeliveryDetailsCode(deliveryDetailCode) {
+  return deliveryDetailCode === "RECAG001C" || 
+         deliveryDetailCode === "RECAG003C" ||
+         deliveryDetailCode === "RECAG005C" ||
+         deliveryDetailCode === "RECAG006C" ||
+         deliveryDetailCode === "RECRN002C" 
 }
 
 function appendJsonToFile(fileName, data){
@@ -78,8 +77,7 @@ async function main() {
   for(let i = 0; i < fileRows.length; i++){
     let checkList = {
       refinement: false,
-      feedback: false,
-      ecmetadati: false
+      feedback: false
     }
     const row = JSON.parse(fileRows[i])
     const body = JSON.parse(row.Body)
@@ -105,46 +103,17 @@ async function main() {
           return current 
         }
       }));
-      if(latestSAFeedback.details.deliveryDetailCode === "PNAG012" || latestSAFeedback.details.deliveryDetailCode === "PNRN012" ) {
+      if(isPNdeliveryDetailsCode(latestSAFeedback.details.deliveryDetailCode)) {
+        console.log(`Event with iun ${iun} to remove`)
+        appendJsonToFile(`to_remove_PN_${path.basename(fileName)}`, JSON.stringify(row))
         checkList.feedback = true
+      }
+      else if(isRECdeliveryDetailsCode(latestSAFeedback.details.deliveryDetailCode)){
+        console.log(`Event with iun ${iun} to remove`)
+        appendJsonToFile(`to_remove_REC_${path.basename(fileName)}`, JSON.stringify(row))
       }
       else {
         console.log(`Event with iun ${iun} to keep`)
-        continue
-      }
-      const requestId = `${latestSAFeedback.timelineElementId.replace("SEND_ANALOG_FEEDBACK", "PREPARE_ANALOG_DOMICILE")}` 
-      //Prendere da EcRichiesteMetadati l’ultimo PCRetry e certificare la lista degli eventi contenga un RECAG008C
-      let flag = true;
-      let pcRetryIdx = 0;
-      let latestMetadata;
-      while(flag) {
-        const tmpMetadataResult = await awsConfinfoClient._queryRequest("pn-EcRichiesteMetadati", "requestId", `pn-cons-000~${requestId}.PCRETRY_${pcRetryIdx}`)
-        if(tmpMetadataResult.Items.length > 0) {
-          latestMetadata = unmarshall(tmpMetadataResult.Items[0]);
-          pcRetryIdx = pcRetryIdx + 1
-        }
-        else{
-          flag = false;
-        }
-      }
-      const found = latestMetadata.eventsList.find(event => {
-        return event.paperProgrStatus.status === 'RECAG008C'
-      });
-      if(found) {
-        checkList.ecmetadati = found
-      }
-      else {
-        if(checkListToRemoveWithoutThirdStep(checkList)){
-          console.log(`Event with iun ${iun} to remove third step`)
-          appendJsonToFile(`to_remove_${path.basename(fileName)}`, JSON.stringify(row))
-        } else {
-          console.log(`Event with iun ${iun} to keep`)
-          continue
-        }
-      }
-      if(checkListToRemove(checkList)){
-        console.log(`Event with iun ${iun} to remove`)
-        appendJsonToFile(`to_remove_${path.basename(fileName)}`, JSON.stringify(row))
       }
     }
   }
