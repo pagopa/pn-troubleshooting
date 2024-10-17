@@ -112,7 +112,21 @@ jq -r -c '.[]' $dumped_file | jq -r -c '{"Body": .Body, "MD5OfBody": .MD5OfBody,
 result="./delivery-push-action-PN-11794/results/to_remove_refinement.txt"
 remove_file "$result"
 
+resultPN="./delivery-push-action-PN-11794/results/to_remove_PN_refinement.txt"
+remove_file "$resultPN"
+
+resultREC="./delivery-push-action-PN-11794/results/to_remove_REC_refinement.txt"
+remove_file "$resultREC"
+
 node ./delivery-push-action-PN-11794/index.js --envName $env_name-ro --fileName $refinement_file
+
+if [[ -f $resultPN ]]; then
+    cat $resultPN >> $result
+fi 
+
+if [[ -f $resultREC ]]; then
+    cat $resultREC >> $result
+fi 
 
 echo "OUTPUT AVAILABLE IN $result"
 
