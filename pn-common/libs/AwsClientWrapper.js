@@ -7,6 +7,7 @@ const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
 const { KMSClient, DecryptCommand, EncryptCommand } = require("@aws-sdk/client-kms");
+const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 
@@ -61,6 +62,10 @@ class AwsClientsWrapper {
 
   _initKMS() {
     this._kmsClient = new KMSClient( awsClientCfg( this.ssoProfile ));
+  }
+  
+  _initLambda() {
+    this._lambdaClient = new LambdaClient( awsClientCfg( this.ssoProfile ));
   }
 
   // DynamoDB
@@ -288,6 +293,20 @@ class AwsClientsWrapper {
     };
     const command = new EncryptCommand(input);
     const response = await this._kmsClient.send(command);
+
+    return response;
+  }
+ 
+  //LAMBDA
+  async _invokeCommand(lambdaName, invocationType, data){
+    const payload = Buffer.from(data)
+    const input = { // InvocationRequest
+      FunctionName: lambdaName, // required
+      InvocationType: invocationType,
+      Payload: payload, // e.g. Buffer.from("") or new TextEncoder().encode("")
+    };
+    const command = new InvokeCommand(input);
+    const response = await this._lambdaClient.send(command);
 
     return response;
   }
