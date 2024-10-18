@@ -146,7 +146,6 @@ async function processLine(line) {
     let dynamoDbChecksum = dynamoDbRecord.checkSum;
     if (hashType != "NONE") {
       await retrieveFromOriginal(ssFileKeyWithPrefix != null ? ssFileKeyWithPrefix : ssFileKey, s3CheckSum, dynamoDbChecksum, s3ObjectBA);
-      fs.appendFileSync("output.txt", ssFileKey + "\r\n");
     } else {
       fs.appendFileSync("incoherent.txt", ssFileKey + ";hashtype not available;" + new Date(Date.now()).toISOString() + "\r\n");
       return;
@@ -165,6 +164,8 @@ async function retrieveFromOriginal(ssFileKey, s3CheckSum, dynamoDbChecksum, s3O
   var contentType = mime.lookup(ssFileKey) ? mime.lookup(ssFileKey) : null;
   // Ricarico il file con la fileKey di SS.
   await s3Service.putObject(sourceBucket, ssFileKey, contentType, s3ObjectBA);
+
+  fs.appendFileSync("output.txt", ssFileKey + "\r\n");
 }
 
 // hashing dell'oggetto s3
