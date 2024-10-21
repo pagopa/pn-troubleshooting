@@ -1,5 +1,6 @@
 const { parseArgs } = require('util');
 const { AwsClientsWrapper } = require("pn-common");
+const { sleep } = require('pn-common/libs/utils');
 
 async function listSymmetricCloudformationKMS(awsClient) {
   console.log(`Getting Symmetric Key with tag cloudformation...`)
@@ -86,6 +87,7 @@ async function main() {
     console.log(`${keyId} starting rotation`)
     if(!dryrun) { 
       await awsClient._rotateKeyOnDemand(keyId)
+      await sleep(1000)
     }
     console.log(`${keyId} rotated correctly`)
   }
