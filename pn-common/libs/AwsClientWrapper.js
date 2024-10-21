@@ -6,10 +6,9 @@ const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand } = requ
 const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
-const { KMSClient, DecryptCommand, EncryptCommand } = require("@aws-sdk/client-kms");
+const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
-
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 
@@ -302,6 +301,17 @@ class AwsClientsWrapper {
 
     return response;
   }
+
+  async _listKeyCommand(limit, marker){
+    const input = { // ListKeysRequest
+      Limit: limit,
+      Marker: marker
+    };
+    const command = new ListKeysCommand(input);
+    const response = await this._kmsClient.send(command);
+
+    return response;
+  }
  
   //LAMBDA
   async _invokeCommand(lambdaName, invocationType, data){
@@ -317,13 +327,54 @@ class AwsClientsWrapper {
     return response;
   }
 
-    //STS
-    async _getCallerIdentity(){
-      const command = new GetCallerIdentityCommand();
-      const response = await this._stsClient.send(command);
+  async _describeKeyCommand(keyId){
+    const input = { // GetKeyRotationStatusRequest
+      KeyId: keyId, // required
+    };
+    const command = new DescribeKeyCommand(input);
+    const response = await this._kmsClient.send(command);
+
+    return response;
+  }
+
+  async _getKeyRotationStatusCommand(keyId){
+    const input = { // GetKeyRotationStatusRequest
+      KeyId: keyId, // required
+    };
+    const command = new GetKeyRotationStatusCommand(input);
+    const response = await this._kmsClient.send(command);
+
+    return response;
+  }
+
+  async _listResourceTags(keyId, limit){
+    const input = { // GetKeyRotationStatusRequest
+      KeyId: keyId, // required
+      Limit: limit
+    };
+    const command = new ListResourceTagsCommand(input);
+    const response = await this._kmsClient.send(command);
+
+    return response;
+  }
+
+  async _rotateKeyOnDemand(keyId){
+    const input = { // RotateKeyOnDemandRequest
+      KeyId: keyId, // required
+    };
+    const command = new RotateKeyOnDemandCommand(input);
+    const response = await this._kmsClient.send(command);
+
+    return response;
+  }
   
-      return response;
-    }
+  //STS
+  async _getCallerIdentity(){
+    const command = new GetCallerIdentityCommand();
+    const response = await this._stsClient.send(command);
+
+    return response;
+  }
 }
 
 module.exports = AwsClientsWrapper;

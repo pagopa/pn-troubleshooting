@@ -13,7 +13,7 @@
     "@aws-sdk/client-cloudwatch-logs": "^3.614.0",
     "@aws-sdk/client-dynamodb": "^3.602.0",
     "@aws-sdk/client-kinesis": "^3.614.0",
-    "@aws-sdk/client-kms": "^3.658.0",
+    "@aws-sdk/client-kms": "^3.670.0",
     "@aws-sdk/client-lambda": "^3.670.0",
     "@aws-sdk/client-s3": "^3.645.0",
     "@aws-sdk/client-sqs": "^3.600.0",
