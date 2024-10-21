@@ -79,11 +79,12 @@ async function main() {
     console.log("Handling event", JSON.stringify(body))
     if(!dryrun) {
       await awsClient._invokeCommand(lambdaName, "RequestResponse", JSON.stringify(body))
+      await sleep(1000)
     }
     else {
       console.log(body)
     }
-    await sleep(1000)
+    
   }
   
 }
