@@ -1,16 +1,17 @@
-const { parseArgs } = require('util');ì
+const { parseArgs } = require('util');
 const { AwsClientsWrapper } = require("pn-common");
 const { _parseCSV, sleep } = require('pn-common/libs/utils');
+const crypto = require('crypto');
 
-function prepareBody(data) {
+function prepareBody(accountId, data) {
   const body = {
     "kinesisSeqNumber": "49642115848638112355480323782160580827394338152236711954",
     "version": "0",
     "isFake": true,
-    "id": "340f3708-f0cb-405a-13bf-96d2849994bf",
+    "id": crypto.randomUUID(),
     "detail-type": "SafeStorageOutcomeEvent",
     "source": "GESTORE DISPONIBILITA",
-    "account": "350578575906",
+    "account": accountId,
     "time": new Date().toISOString(),
     "region": "eu-south-1",
     "resources": [],
@@ -70,12 +71,17 @@ async function main() {
   const data = await _parseCSV(fileName, ",")
   const awsClient = new AwsClientsWrapper( 'confinfo', envName );
   awsClient._initLambda()
+  awsClient._initSTS()
   const lambdaName = "pn-legalConservationStarter"
+  const accId = (await awsClient._getCallerIdentity()).Account
   for(const d of data) {
-    const body = prepareBody(d)
+    const body = prepareBody(accId, d)
     console.log("Handling event", JSON.stringify(body))
     if(!dryrun) {
       await awsClient._invokeCommand(lambdaName, "Event", JSON.stringify(body))
+    }
+    else {
+      console.log(body)
     }
     await sleep(1000)
   }

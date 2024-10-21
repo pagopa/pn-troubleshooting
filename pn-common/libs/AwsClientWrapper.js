@@ -8,6 +8,8 @@ const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
 const { KMSClient, DecryptCommand, EncryptCommand } = require("@aws-sdk/client-kms");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
+
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 
@@ -66,6 +68,10 @@ class AwsClientsWrapper {
   
   _initLambda() {
     this._lambdaClient = new LambdaClient( awsClientCfg( this.ssoProfile ));
+  }
+
+  _initSTS() {
+    this._stsClient = new STSClient( awsClientCfg( this.ssoProfile ));
   }
 
   // DynamoDB
@@ -310,6 +316,14 @@ class AwsClientsWrapper {
 
     return response;
   }
+
+    //STS
+    async _getCallerIdentity(){
+      const command = new GetCallerIdentityCommand();
+      const response = await this._stsClient.send(command);
+  
+      return response;
+    }
 }
 
 module.exports = AwsClientsWrapper;
