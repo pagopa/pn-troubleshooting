@@ -78,7 +78,7 @@ async function main() {
     const body = prepareBody(accId, d)
     console.log("Handling event", JSON.stringify(body))
     if(!dryrun) {
-      await awsClient._invokeCommand(lambdaName, "Event", JSON.stringify(body))
+      await awsClient._invokeCommand(lambdaName, "RequestResponse", JSON.stringify(body))
     }
     else {
       console.log(body)
