@@ -405,3 +405,9 @@ Vuoi verificare se una category è presente in timeline data una lista di iun?
 ```bash
 node index.js --envName <env-name> --fileName <file-name> --category <category>
 ```
+
+### legal_conservation_inject
+Vuoi mandare dei documenti in conservazione a norma?
+```bash
+node index.js --envName <env-name> --fileName <file-name> --dryrun
+```
