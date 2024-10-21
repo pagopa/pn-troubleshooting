@@ -31,7 +31,7 @@ openssl rsa -in private.key -pubout -outform PEM -out public.key
 ### Esecuzione Generate JWT
 
 ```bash
-generate-jwt.js --privateKey <privateKey> --aud <aud> --iss <iss> --jti <jti> --kid <kid> --expiresIn <expiresIn>
+generate-jwt.js --privateKey <privateKey> --aud <aud> --iss <iss> --jti <jti> --kid <kid> --expiresIn <expiresIn> --virtual_key <virtual_key>
 ```
 
 Dove:
@@ -41,6 +41,7 @@ Dove:
 - `<jti>` è il valore per il campo `jti` del JWT
 - `<kid>` è il nome della coppia di chiavi RSA
 - `<expiresIn>` è la durata del token (es. `1y` , `1h` , `30m` ...)
+- `<virtual_key>` la virtual key associata all'utente (non mandatoria)
 
 Usage Example:
 ```bash
