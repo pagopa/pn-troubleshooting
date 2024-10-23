@@ -178,8 +178,8 @@ async function processLine(line, hashKeyMap) {
   var title = splittedLine[1];
   var safestorage = splittedLine[2];
   var sha256 = splittedLine[3];
-const paFileInfo = hashKeyMap.get(sha256);
 sha256 = sha256.startsWith("\"") && sha256.endsWith("\"") ? sha256.substring(1, sha256.length - 1) : sha256;
+const paFileInfo = hashKeyMap.get(sha256);
 if (paFileInfo) {
     paFileInfo.foundInInput = true;  // l'oggetto è stato trovato nel file di input
     const fileName = paFileInfo.key.substring(paFileInfo.key.lastIndexOf('/') + 1);
