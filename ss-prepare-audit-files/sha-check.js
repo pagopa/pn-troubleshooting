@@ -19,20 +19,18 @@ const args = [
   { name: "awsProfile", mandatory: false },
   { name: "awsRegion", mandatory: true },
   { name: "sourceBucket", mandatory: true },
-  { name: "availabilityBucket", mandatory: true },
   { name: "searchPath", mandatory: false }
 ];
 
 // Parsing degli argomenti da linea di comando.
 const values = {
-  values: { inputFile, awsProfile, awsRegion, sourceBucket, availabilityBucket, searchPath },
+  values: { inputFile, awsProfile, awsRegion, sourceBucket, searchPath },
 } = parseArgs({
   options: {
     inputFile: { type: "string" },
     awsProfile: { type: "string" },
     awsRegion: { type: "string" },
     sourceBucket: { type: "string" },
-    availabilityBucket: { type: "string" },
     searchPath: { type: "string" },
   },
 });
@@ -93,7 +91,7 @@ async function countLines(path) {
 
 // Per ogni riga, applichiamo un'operazione asincrona.
 async function processLines(path) {
-  await checkBucketsExistence([sourceBucket, availabilityBucket]);
+  await checkBucketsExistence([sourceBucket]);
 
  var hashKeyMap = await createHashKeyMap(sourceBucket);
 

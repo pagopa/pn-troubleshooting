@@ -69,7 +69,7 @@ npm install
 
 ### Esecuzione
 ```bash
-node sha-check.js --inputFile <input-file> --awsRegion <aws-region> --sourceBucket <source-bucket> --availabilityBucket <availability-bucket> --searchPath <search-path>
+node sha-check.js --inputFile <input-file> --awsRegion <aws-region> --sourceBucket <source-bucket> --searchPath <search-path>
 ```
 
 Dove:
@@ -77,7 +77,6 @@ Dove:
 - `<input-file>` file di input contenente le informazioni dei documenti originali.
 - `<aws-region>` è la region dei client AWS.
 - `<source-bucket>` bucket di origine da cui reperire i file.
-- `<availability-bucket>` bucket di disponibilità dei file di SafeStorage.
 - `<search-path>` è il path completo in cui eseguire la ricerca dei file S3 dal source bucket. Se non viene impostato, la ricerca verrà eseguita senza prefissare il path alla fileKey; `OPZIONALE`
 
 Alla fine del processo, verranno generati tre file:
