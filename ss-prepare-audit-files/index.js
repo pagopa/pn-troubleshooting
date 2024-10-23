@@ -128,9 +128,6 @@ async function processLine(line) {
   paFileName = paFileName.startsWith("\"") && paFileName.endsWith("\"") ? paFileName.substring(1, paFileName.length - 1) : paFileName;
   var ssFileKey = splittedLine[2];
 
-if (ssFileKey.includes("/")) {
-    ssFileKey = ssFileKey.substring(ssFileKey.lastIndexOf("/") + 1);
-  }
 
   // Vanno recuperati solo i file che NON si trovano nel bucket di disponibilità
   if (!(await s3Service.isInBucket(availabilityBucket, ssFileKey))) {
@@ -169,6 +166,9 @@ async function retrieveFromOriginal(ssFileKey, s3CheckSum, dynamoDbChecksum, s3O
   // Ricarico il file con la fileKey di SS.
   await s3Service.putObject(sourceBucket, ssFileKey, contentType, s3ObjectBA);
 
+  if (ssFileKey.includes("/")) {
+      ssFileKey = ssFileKey.substring(ssFileKey.lastIndexOf("/") + 1);
+  }
   fs.appendFileSync("output.txt", ssFileKey + "\r\n");
 }
 
