@@ -1,6 +1,8 @@
 const { S3Client, HeadObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadBucketCommand } = require('@aws-sdk/client-s3');
 const { Upload } = require("@aws-sdk/lib-storage");
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
+const { ListObjectsV2Command } = require('@aws-sdk/client-s3');
+
 var crypto = require("crypto");
 
 class S3Service {
@@ -77,6 +79,21 @@ class S3Service {
             if (error.name == "NotFound" && error.$metadata.httpStatusCode == 404)
                 throw new Error(`Bucket "${bucketName}" does not exist.`);
             else throw error;
+        }
+    }
+
+    async listObjectsV2(bucketName, prefix) {
+        const listObjectsCommand = new ListObjectsV2Command({
+            Bucket: bucketName,
+            Prefix: prefix,
+        });
+
+        try {
+            const data = await this.s3Client.send(listObjectsCommand);
+            return data.Contents || [];
+        } catch (error) {
+            console.error("Error in listObjectsV2: ", error);
+            throw error;
         }
     }
 
