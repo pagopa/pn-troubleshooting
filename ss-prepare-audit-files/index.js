@@ -128,6 +128,10 @@ async function processLine(line) {
   paFileName = paFileName.startsWith("\"") && paFileName.endsWith("\"") ? paFileName.substring(1, paFileName.length - 1) : paFileName;
   var ssFileKey = splittedLine[2];
 
+if (ssFileKey.includes("/")) {
+    ssFileKey = ssFileKey.substring(ssFileKey.lastIndexOf("/") + 1);
+  }
+
   // Vanno recuperati solo i file che NON si trovano nel bucket di disponibilità
   if (!(await s3Service.isInBucket(availabilityBucket, ssFileKey))) {
 
