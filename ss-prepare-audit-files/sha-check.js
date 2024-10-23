@@ -154,6 +154,8 @@ async function listAllS3Keys(bucketName) {
           const s3Object = await s3Service.getObject(bucketName, key);
           let s3ObjectBA = await s3Object.Body.transformToByteArray();
           let computedSha256 = hashObject('sha256', s3ObjectBA);
+          computedSha256 = computedSha256.startsWith("\"") && computedSha256.endsWith("\"") ? computedSha256.substring(1, computedSha256.length - 1) : computedSha256;
+
           //bool per il check sulla corrispondenza: impostato a false perchè all'inizio non so ancora se sono presenti nel file in input
            hashKeyMap.set(computedSha256, { key: key, foundInInput: false });
 
@@ -177,6 +179,7 @@ async function processLine(line, hashKeyMap) {
   var safestorage = splittedLine[2];
   var sha256 = splittedLine[3];
 const paFileInfo = hashKeyMap.get(sha256);
+sha256 = sha256.startsWith("\"") && sha256.endsWith("\"") ? sha256.substring(1, sha256.length - 1) : sha256;
 if (paFileInfo) {
     paFileInfo.foundInInput = true;  // l'oggetto è stato trovato nel file di input
     const fileName = paFileInfo.key.substring(paFileInfo.key.lastIndexOf('/') + 1);
