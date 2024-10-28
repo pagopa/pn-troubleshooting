@@ -14,7 +14,7 @@ async function listSymmetricCloudformationKMS(awsClient) {
         const resTags = await awsClient._listResourceTags(keyId)
         if(resTags.Tags.length > 0) {
           for(const tag of resTags.Tags) {
-            if(tag.TagKey.toLowerCase() == 'createdby' && tag.TagValue.toLowerCase() == 'cloudformation') {
+            if(tag.TagKey.toLowerCase() == 'microservice' || (tag.TagKey.toLowerCase() == 'project' && tag.TagValue.toLowerCase() == 'spidhub') ) {
               const res = await awsClient._getKeyRotationStatusCommand(keyId)
               if(!res.KeyRotationEnabled) {
                 console.log(`Found key ${keyId}`)
