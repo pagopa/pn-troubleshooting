@@ -79,7 +79,7 @@ async function main() {
   });  
   _checkingParameters(args, values)
   
-  const bucket = 'pn-safestorage-eu-south-1-'+bucketName
+  const bucket = 'pn-safestorage-eu-south-1-'+accountConfinfoId
   const awsClient = new AwsClientsWrapper( 'confinfo', envName );
   awsClient._initS3()
   const fileKeys = []

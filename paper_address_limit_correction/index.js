@@ -165,7 +165,10 @@ async function main() {
           return x.addressType.S === 'RECEIVER_ADDRESS'
         }))
         const decodedAddress = await getDecodedAddressData(awsClient, encodedAddress, kmsKey)
-        if (decodedAddress.nameRow2.length > 44 && !encodedAddress.city2) {
+        if(!decodedAddress.nameRow2) {
+          appendJsonToFile(outputPath, "nameRow2notPresent.json", requestId)
+        }
+        else if (decodedAddress.nameRow2.length > 44 && !encodedAddress.city2) {
           //to correct
           const nameRow2decodedTruncated = decodedAddress.nameRow2.substring(0, 44)
           const encryptedValueResponse = await awsClient._getEncryptedValue(nameRow2decodedTruncated, kmsKey)
@@ -193,7 +196,7 @@ async function main() {
         else if (decodedAddress.nameRow2.length > 44 && encodedAddress.city2) {
           //to analyze
           console.log(`TO ANALYZE ${requestId} - CITY2 LENGTH: ${decodedAddress.city2.length}`)
-          appendJsonToFile(outputPath, "toAnalyze.json", requestId)
+          appendJsonToFile(outputPath, "toAnalyze.json", JSON.stringify({[requestId]: `CITY2 LENGTH ${decodedAddress.city2.length}`}))
         }
         else if (decodedAddress.nameRow2.length < 44 && !encodedAddress.city2) {
           //to raster
