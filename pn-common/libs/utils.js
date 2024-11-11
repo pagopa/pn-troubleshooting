@@ -1,5 +1,6 @@
 const fs = require('fs');
 const { parse } = require('csv-parse');
+const path = require('path');
 
 async function sleep( ms ) {
     return new Promise( ( accept, reject) => {
@@ -35,8 +36,15 @@ function _parseCSV(fileName, delimiter) {
   })
 }
 
+function appendJsonToFile(filePath, fileName, data){
+  if(!fs.existsSync(filePath))
+    fs.mkdirSync(filePath, { recursive: true });
+  fs.appendFileSync(path.join(filePath, fileName), data + "\n")
+}
+
 module.exports = { 
   sleep,
+  appendJsonToFile,
   _getIunFromRequestId,
   _getAttemptFromRequestId,
   _parseCSV

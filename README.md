@@ -411,3 +411,9 @@ Vuoi mandare dei documenti in conservazione a norma?
 ```bash
 node index.js --envName <env-name> --fileName <file-name> --dryrun
 ```
+
+### retrieve_from_dynamo_by_pk
+Vuoi ricercare su una tabella dynamo tramite query su chiavi?
+```bash
+node index.js --envName <env-name> --account <account> --fileName <file-name> --tableName <table-name> --keyName <key-name> [--prefix <prefix> --suffix <suffix>]
+```
