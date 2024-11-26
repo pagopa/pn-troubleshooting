@@ -417,3 +417,9 @@ Vuoi ricercare su una tabella dynamo tramite query su chiavi?
 ```bash
 node index.js --envName <env-name> --account <account> --fileName <file-name> --tableName <table-name> --keyName <key-name> [--prefix <prefix> --suffix <suffix>]
 ```
+
+### paper_address_decode
+Vuoi fare la codifica della pn-paperAddress fornendo dei requestId in input?
+```bash
+node index.js --envName <env-name> --fileName <file-name>
+```
