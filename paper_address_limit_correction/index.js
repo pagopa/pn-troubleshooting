@@ -65,7 +65,7 @@ async function _updateDataTable(awsClient, tableName, item, keyValue, keyData) {
     data: ${JSON.stringify(data)}
     `
   )
-  //await awsClient._updateItem(tableName, keys, data, "SET")
+  await awsClient._updateItem(tableName, keys, data, "SET")
 }
 
 function _checkingParameters(args, values){
@@ -138,7 +138,7 @@ async function main() {
           return x.addressType.S === 'RECEIVER_ADDRESS'
         }))
         await _updateDataTable(awsClient, paperAddressTableName, encodedAddress, 'nameRow2', backup.nameRow2)
-        await _updateDataTable(awsClient, paperRequestDeliveryTableName, paperRequestDelivery, 'addressHash', backup.addressHash)
+        await _updateDataTable(awsClient, paperRequestDeliveryTableName, unmarshall(paperRequestDelivery), 'addressHash', backup.addressHash)
       }
     }
   }
@@ -168,9 +168,16 @@ async function main() {
         if(!decodedAddress.nameRow2) {
           appendJsonToFile(outputPath, "nameRow2notPresent.json", requestId)
         }
-        else if (decodedAddress.nameRow2.length > 44 && !encodedAddress.city2) {
+        else if (decodedAddress.nameRow2.length > 44) {
           //to correct
-          const nameRow2decodedTruncated = decodedAddress.nameRow2.substring(0, 44)
+          let nameRow2decodedTruncated;
+          if (decodedAddress.city2) {
+            console.log(`TO ANALYZE ${requestId} - CITY2 LENGTH: ${decodedAddress.city2.length}`)
+            nameRow2decodedTruncated = decodedAddress.nameRow2.substring(0, (44 - (decodedAddress.city2.length + 1)))
+          }
+          else {
+            nameRow2decodedTruncated = decodedAddress.nameRow2.substring(0, 44)
+          }
           const encryptedValueResponse = await awsClient._getEncryptedValue(nameRow2decodedTruncated, kmsKey)
           const nameRow2 = Buffer.from(encryptedValueResponse.CiphertextBlob).toString('base64'); 
           decodedAddress.nameRow2 = nameRow2decodedTruncated
@@ -184,7 +191,7 @@ async function main() {
             }))
             await _updateDataTable(awsClient, paperAddressTableName, encodedAddress, 'nameRow2', nameRow2)
             //pn-paperRequestDeliveryCorrection
-            await _updateDataTable(awsClient, paperRequestDeliveryTableName, paperRequestDelivery, 'addressHash', hashedAddress)
+            await _updateDataTable(awsClient, paperRequestDeliveryTableName, unmarshall(paperRequestDelivery), 'addressHash', hashedAddress)
           }
           console.log("CORRECTED " + requestId)
           appendJsonToFile(outputPath, "corrected.json", JSON.stringify({
@@ -192,11 +199,6 @@ async function main() {
             nameRow2: nameRow2,
             addressHash: hashedAddress
           }))
-        }
-        else if (decodedAddress.nameRow2.length > 44 && encodedAddress.city2) {
-          //to analyze
-          console.log(`TO ANALYZE ${requestId} - CITY2 LENGTH: ${decodedAddress.city2.length}`)
-          appendJsonToFile(outputPath, "toAnalyze.json", JSON.stringify({[requestId]: `CITY2 LENGTH ${decodedAddress.city2.length}`}))
         }
         else if (decodedAddress.nameRow2.length < 44 && !encodedAddress.city2) {
           //to raster
