@@ -179,7 +179,7 @@ elif ([ $account_type == "core" ]); then
         --aws-bucket ${export_bucket_name} \
         --aws-dynexport-folder-prefix %s/incremental2024/ \
         --result-upload-url s3://${export_bucket_name}/parquet/ \
-        pn-Action 2025-5-1 3035-1-1 \
+        pn-Action 2024-5-1 3035-1-1 \
       \
       \
       \
