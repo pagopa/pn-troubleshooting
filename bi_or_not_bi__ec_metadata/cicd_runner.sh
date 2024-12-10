@@ -171,10 +171,15 @@ elif ([ $account_type == "core" ]); then
       \
       \
       dynamoExportsIndexing \
-      --aws-bucket ${export_bucket_name} \
-      --aws-dynexport-folder-prefix %s/incremental2024/ \
-      --result-upload-url s3://${export_bucket_name}/parquet/ \
+        --aws-bucket ${export_bucket_name} \
+        --aws-dynexport-folder-prefix %s/incremental2024/ \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
       pn-PaperRequestError 2023-6-1 3035-1-1 \
+      dynamoExportsIndexing \
+        --aws-bucket ${export_bucket_name} \
+        --aws-dynexport-folder-prefix %s/incremental2024/ \
+        --result-upload-url s3://${export_bucket_name}/parquet/ \
+        pn-Action 2024-5-1 3035-1-1 \
       \
       \
       \

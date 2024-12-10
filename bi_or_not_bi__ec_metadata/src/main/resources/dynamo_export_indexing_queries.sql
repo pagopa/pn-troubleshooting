@@ -131,3 +131,34 @@ $QueryMetadata
     FROM
       json_objects
 ;
+
+
+/*
+$QueryMetadata
+{
+    "name": "pn-Action",
+    "dependencies": []
+}
+*/
+    SELECT
+      get_json_object(json_string, '$.Metadata_WriteTimestampMicros') as Metadata_WriteTimestampMicros,
+      if( get_json_object(json_string, '$.Item') is null, 'REMOVE', 'INSERT/MODIFY') as Metadata_Operation,
+
+      coalesce(
+        get_json_object(json_string, '$.Keys.actionId.S'),
+        get_json_object(json_string, '$.Item.actionId.S')
+      )
+       as actionId,
+
+      get_json_object(json_string, '$.Item.details.M') as details_json,
+      get_json_object(json_string, '$.Item.iun.S') as iun,
+      get_json_object(json_string, '$.Item.notBefore.S') as notBefore,
+      get_json_object(json_string, '$.Item.recipientIndex.N') as recipientIndex,
+      get_json_object(json_string, '$.Item.timelineId.S') as timelineId,
+      get_json_object(json_string, '$.Item.timeslot.S') as timeslot,
+      get_json_object(json_string, '$.Item.ttl.N') as ttl,
+      get_json_object(json_string, '$.Item.type.S') as type,
+      get_json_object(json_string, '$.Item.logicalDeleted.BOOL') as logicalDeleted
+    FROM
+      json_objects
+;
