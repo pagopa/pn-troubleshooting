@@ -157,7 +157,8 @@ $QueryMetadata
       get_json_object(json_string, '$.Item.timelineId.S') as timelineId,
       get_json_object(json_string, '$.Item.timeslot.S') as timeslot,
       get_json_object(json_string, '$.Item.ttl.N') as ttl,
-      get_json_object(json_string, '$.Item.type.S') as type
+      get_json_object(json_string, '$.Item.type.S') as type,
+      get_json_object(json_string, '$.Item.logicalDeleted.BOOL') as logicalDeleted
     FROM
       json_objects
 ;
