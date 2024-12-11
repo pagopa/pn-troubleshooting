@@ -13,10 +13,9 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
 usage() {
       cat <<EOF
-    Usage: $(basename "${BASH_SOURCE[0]}") [-h] -e <env-name> -q <queue-name> -w <work-dir>
+    Usage: $(basename "${BASH_SOURCE[0]}") [-h] -e <env-name> -w <work-dir>
     [-h]                      : this help message
     -e <env-name>             : env name
-    -q <queue-name>           : queue name
     -w <work-dir>             : work directory
     
 EOF
@@ -34,10 +33,6 @@ parse_params() {
     -h | --help) usage ;;
     -e | --env-name) 
       env_name="${2-}"
-      shift
-      ;;
-    -q | --queue-name) 
-      queue_name="${2-}"
       shift
       ;;
     -w | --work-dir) 
