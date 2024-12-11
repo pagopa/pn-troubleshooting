@@ -7,7 +7,7 @@ require('dotenv').config()
 const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> [--modify]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -106,9 +106,10 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
+    { name: "modify", mandatory: false, subcommand: [] },
   ]
   const values = {
-    values: { envName, fileName },
+    values: { envName, fileName, modify },
   } = parseArgs({
     options: {
       envName: {
@@ -116,6 +117,9 @@ async function main() {
       },
       fileName: {
         type: "string", short: "t", default: undefined
+      },
+      modify: {
+        type: "boolean", short: "t", default: false
       },
     },
   });  
@@ -138,14 +142,33 @@ async function main() {
 
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   for(let i = 0; i < fileRows.length; i++){
-    const fileData = JSON.parse(fileRows[i])
-    const requestId = fileData.requestId.S
-    const created = fileData.created.S
+    //const fileData = JSON.parse(fileRows[i])
+    //const requestId = fileData.requestId.S
+    const requestId = fileRows[i]
+    //const created = fileData.created.S
+    if(requestId.indexOf("ATTEMPT_1") < 0 ) {
+      console.log(`${requestId} skipped`)
+      continue
+    }
     console.log('Handling requestId: ' + requestId)
     let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
     let isDiscoveredAddress = res.some((e) => {
       return unmarshall(e).addressType == 'DISCOVERED_ADDRESS'
     })
+    if(modify) {
+      let requestIdFirstAttemp = requestId.replace("ATTEMPT_1", "ATTEMPT_0")
+      let res = await awsClient._queryRequest("pn-PaperAddress", requestIdFirstAttemp)
+      if(res.length > 0) {
+        let receiverAddressesFirstAttempt = res.filter(x => {
+          return unmarshall(x).addressType == 'RECEIVER_ADDRESS'
+        })
+        let firstReceiverAddress = unmarshall(receiverAddressesFirstAttempt[0])
+        firstReceiverAddress.requestId = requestId
+        console.log(receiverAddressesFirstAttempt[0])
+        console.log(firstReceiverAddress)
+        await awsClient._putRequest("pn-PaperAddress", firstReceiverAddress)
+      }
+    }
     console.log(isDiscoveredAddress)
     if(isDiscoveredAddress){
       console.log("Postal Flow. Preparing data...")
@@ -159,7 +182,7 @@ async function main() {
       res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
       if ('MD5OfMessageBody' in res) {
         console.log("RequestId " + requestId + " sent successfully!!!")
-        await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
+        //await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
         /*if('ConsumedCapacity' in res) {
           if(res.ConsumedCapacity.CapacityUnits == 1) {
             console.log("RequestId " + requestId + " deleted successfully!!!")
@@ -206,7 +229,7 @@ async function main() {
       console.log(result)
       await ApiClient.sendNationalRegistriesRequest(result.taxId, result.correlationId, result.receiverType)
 
-      await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
+      //await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
       /*if('ConsumedCapacity' in res) {
         if(res.ConsumedCapacity.CapacityUnits == 1) {
           console.log("RequestId " + requestId + " deleted successfully!!!")
@@ -224,4 +247,4 @@ async function main() {
 main()
 .then(function(){
   console.log(JSON.stringify(failedRequestIds))
-})
+}) 

@@ -429,3 +429,9 @@ Vuoi rimuovere i falsi negativi dalla DLQ ec tracker?
 ```bash
 node index.js --envName <envName> --fileName <fileName> --channelType <channel-type>
 ```
+
+### disable_future_actions
+Vuoi disabilitare delle future actions?
+```bash
+node index.js --envName <envName> --fileName <fileName> [--dryrun]
+```
