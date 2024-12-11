@@ -423,3 +423,9 @@ Vuoi fare la codifica della pn-paperAddress fornendo dei requestId in input?
 ```bash
 node index.js --envName <env-name> --fileName <file-name>
 ```
+
+### false_negative_ec_tracker
+Vuoi rimuovere i falsi negativi dalla DLQ ec tracker?
+```bash
+node index.js --envName <envName> --fileName <fileName> --channelType <channel-type>
+```
