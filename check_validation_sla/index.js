@@ -97,7 +97,7 @@ async function main() {
         if(result.Items.length>0) {
           console.log(result.Items)
           let validations = result.Items.filter(item => {
-            return item.type.S === 'SEND_PAPER_AR_890'
+            return item.type.S === 'VALIDATION'
           })
           console.log()
           validationSla = validationSla.concat(validations)
@@ -106,7 +106,7 @@ async function main() {
       }
     }
     console.log(`FOUND ${validationSla.length}`)
-    await awsClient._putSingleMetricData("OER/Violation", "SEND_PAPER_AR_890", "Count", validationSla.length)
+    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length)
     console.log(`SAVING ${dateAtMinute(timestamp.toISOString())}`)
     createTimestampFile(`latestTimestamp.txt`, dateAtMinute(timestamp.toISOString()))
   }
