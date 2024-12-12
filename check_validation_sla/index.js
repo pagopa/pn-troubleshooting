@@ -69,13 +69,13 @@ async function main() {
   awsClient._initDynamoDB()
   awsClient._initCloudwatch()
   let timestamp = new Date();
-  timestamp.setHours(timestamp.getHours() + 2); 
+  timestamp.setHours(timestamp.getHours() + 1); 
   timestamp.setMinutes(timestamp.getMinutes() - 6); 
   startLastTimeValidated = dateAtMinute(timestamp.toISOString());
   if(fileName) {
     startLastTimeValidated = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
     timestamp = new Date(startLastTimeValidated);
-    timestamp.setHours(timestamp.getHours() + 2); 
+    timestamp.setHours(timestamp.getHours() + 1); 
   }
   for(let x = 0; x < 5; x++) {
     timestamp.setMinutes(timestamp.getMinutes() + 1);
