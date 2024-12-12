@@ -3,6 +3,7 @@ const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, BatchWriteItemCommand } = require("@aws-sdk/client-dynamodb");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand } = require("@aws-sdk/client-sqs");
 const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand } = require("@aws-sdk/client-cloudwatch-logs");
+const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
 const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
@@ -25,6 +26,7 @@ function awsClientCfg( profile ) {
 class AwsClientsWrapper {
 
   constructor(profile, envName) {
+    this.ssoProfile;
     if (profile == 'core') {
       this.ssoProfile = `sso_pn-core-${envName}`
     }
@@ -38,39 +40,40 @@ class AwsClientsWrapper {
   }
 
   _initDynamoDB() {
-    this._dynamoClient = new DynamoDBClient( awsClientCfg( this.ssoProfile ));
+    this._dynamoClient = this.ssoProfile ? new DynamoDBClient(awsClientCfg(this.ssoProfile)) : new DynamoDBClient()
   }
 
   _initSQS() {
-    this._sqsClient = new SQSClient( awsClientCfg( this.ssoProfile ));
+    this._sqsClient = this.ssoProfile ? new SQSClient(awsClientCfg(this.ssoProfile)) : new SQSClient()
   }
   
   _initCloudwatch() {
-    this._cloudwatchClient = new CloudWatchLogsClient( awsClientCfg( this.ssoProfile ));
+    this._cloudwatchLogClient = this.ssoProfile ? new CloudWatchLogsClient(awsClientCfg(this.ssoProfile)) : new CloudWatchLogsClient()
+    this._cloudwatchClient = this.ssoProfile ? new CloudWatchClient(awsClientCfg(this.ssoProfile)) : new CloudWatchClient()
   }
 
   _initKinesis() {
-    this._kinesisClient = new KinesisClient( awsClientCfg( this.ssoProfile ));
+    this._kinesisClient = this.ssoProfile ? new KinesisClient(awsClientCfg(this.ssoProfile)) : new KinesisClient()
   }
 
   _initS3() {
-    this._s3Client = new S3Client( awsClientCfg( this.ssoProfile ));
+    this._s3Client = this.ssoProfile ? new S3Client(awsClientCfg(this.ssoProfile)) : new S3Client()
   }
 
   _initCloudFormation() {
-    this._cloudFormationClient = new CloudFormationClient( awsClientCfg( this.ssoProfile ));
+    this._cloudFormationClient = this.ssoProfile ? new CloudFormationClient(awsClientCfg(this.ssoProfile)) : new CloudFormationClient()
   }
 
   _initKMS() {
-    this._kmsClient = new KMSClient( awsClientCfg( this.ssoProfile ));
+    this._kmsClient = this.ssoProfile ? new KMSClient(awsClientCfg(this.ssoProfile)) : new KMSClient()
   }
   
   _initLambda() {
-    this._lambdaClient = new LambdaClient( awsClientCfg( this.ssoProfile ));
+    this._lambdaClient = this.ssoProfile ? new LambdaClient(awsClientCfg(this.ssoProfile)) : new LambdaClient()
   }
 
   _initSTS() {
-    this._stsClient = new STSClient( awsClientCfg( this.ssoProfile ));
+    this._stsClient = this.ssoProfile ? new STSClient(awsClientCfg(this.ssoProfile)) : new STSClient()
   }
 
   // DynamoDB
@@ -89,6 +92,23 @@ class AwsClientsWrapper {
     return await this._dynamoClient.send(command);
   }
 
+  async _queryRequestByIndex(tableName, indexName, key, value, lastEvaluatedKey){
+    const input = { // QueryInput
+      TableName: tableName, // required
+      IndexName: indexName,
+      KeyConditionExpression: "#k = :k",
+      ExpressionAttributeNames: { // ExpressionAttributeNameMap
+        "#k": key,
+      },
+      ExpressionAttributeValues: {
+        ":k": { "S": value }
+      },
+    };
+    lastEvaluatedKey ? input['ExclusiveStartKey'] = lastEvaluatedKey : null
+    const command = new QueryCommand(input);
+    return await this._dynamoClient.send(command);
+  }
+
   async _dynamicQueryRequest(tableName, keys, logicalOperator){
     const input = {
       TableName: tableName,
@@ -99,7 +119,6 @@ class AwsClientsWrapper {
     const command = new QueryCommand(input);
     return await this._dynamoClient.send(command)
   }
-
 
   async _updateItem(tableName, keys, values, operator){
     const input = {
@@ -201,7 +220,7 @@ class AwsClientsWrapper {
       };
     console.log(input)
     const command = new StartQueryCommand(input);
-    const response = await this._cloudwatchClient.send(command);
+    const response = await this._cloudwatchLogClient.send(command);
     //waiting result
     let logs;
     while( !logs ) {
@@ -220,7 +239,7 @@ class AwsClientsWrapper {
   async _fetchQueryResult( queryId ) {
     const queryPollCommand = new GetQueryResultsCommand({ queryId });
     var queryPollResponse;
-    queryPollResponse = await this._cloudwatchClient.send( queryPollCommand );
+    queryPollResponse = await this._cloudwatchLogClient.send( queryPollCommand );
 
     let logs = null;
     if( ! ["Scheduled", "Running"].includes( queryPollResponse.status )) {
@@ -229,6 +248,21 @@ class AwsClientsWrapper {
     return logs;
   }
 
+  async _putSingleMetricData(namespace, metricName, unit, value) {
+    const input = { // PutMetricDataInput
+      Namespace: namespace, // required
+      MetricData: [ // MetricData
+        { // MetricDatum
+          MetricName: metricName, // required
+          Value: value,
+          Unit: unit,
+        },
+      ]
+    };
+    const command = new PutMetricDataCommand(input);
+    const response = await this._cloudwatchClient.send(command);
+    return response;
+  }
   
   //Kinesis
   async _getSingleShardInfo(streamName, shardId, sequenceNumber) {
