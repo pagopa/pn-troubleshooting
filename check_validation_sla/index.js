@@ -99,7 +99,6 @@ async function main() {
           let validations = result.Items.filter(item => {
             return item.type.S === 'VALIDATION'
           })
-          console.log()
           validationSla = validationSla.concat(validations)
         }
         lastEvaluatedKey = result.LastEvaluatedKey
