@@ -68,14 +68,16 @@ async function main() {
   }
   awsClient._initDynamoDB()
   awsClient._initCloudwatch()
-  let timestamp = new Date();
-  timestamp.setHours(timestamp.getHours() + 1); 
-  timestamp.setMinutes(timestamp.getMinutes() - 6); 
-  startLastTimeValidated = dateAtMinute(timestamp.toISOString());
+  let timestamp;
   if(fileName) {
-    startLastTimeValidated = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
+    console.log("From file")
+    startLastTimeValidated = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).trimEnd()
     timestamp = new Date(startLastTimeValidated);
-    timestamp.setHours(timestamp.getHours() + 1); 
+  }
+  else {
+    console.log("No file")
+    timestamp = new Date();
+    timestamp.setMinutes(timestamp.getMinutes() - 6); 
   }
   for(let x = 0; x < 5; x++) {
     timestamp.setMinutes(timestamp.getMinutes() + 1);
@@ -95,7 +97,6 @@ async function main() {
           first = false;
         }
         if(result.Items.length>0) {
-          console.log(result.Items)
           let validations = result.Items.filter(item => {
             return item.type.S === 'VALIDATION'
           })
@@ -105,8 +106,8 @@ async function main() {
       }
     }
     console.log(`FOUND ${validationSla.length}`)
-    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length)
     console.log(`SAVING ${dateAtMinute(timestamp.toISOString())}`)
+    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length, timestamp)
     createTimestampFile(`latestTimestamp.txt`, dateAtMinute(timestamp.toISOString()))
   }
 }
