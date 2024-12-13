@@ -248,7 +248,7 @@ class AwsClientsWrapper {
     return logs;
   }
 
-  async _putSingleMetricData(namespace, metricName, unit, value) {
+  async _putSingleMetricData(namespace, metricName, unit, value, timestamp) {
     const input = { // PutMetricDataInput
       Namespace: namespace, // required
       MetricData: [ // MetricData
@@ -256,6 +256,7 @@ class AwsClientsWrapper {
           MetricName: metricName, // required
           Value: value,
           Unit: unit,
+          Timestamp: timestamp
         },
       ]
     };

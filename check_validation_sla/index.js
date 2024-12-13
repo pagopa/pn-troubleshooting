@@ -69,16 +69,21 @@ async function main() {
   awsClient._initDynamoDB()
   awsClient._initCloudwatch()
   let timestamp = new Date();
+  let timestampNow = new Date();
+  timestampNow.setMinutes(timestampNow.getMinutes() - 6); 
   timestamp.setHours(timestamp.getHours() + 1); 
   timestamp.setMinutes(timestamp.getMinutes() - 6); 
   startLastTimeValidated = dateAtMinute(timestamp.toISOString());
   if(fileName) {
     startLastTimeValidated = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
     timestamp = new Date(startLastTimeValidated);
+    timestampNow = new Date();
     timestamp.setHours(timestamp.getHours() + 1); 
+    timestampNow.setHours(timestampNow.getHours() + 1); 
   }
   for(let x = 0; x < 5; x++) {
     timestamp.setMinutes(timestamp.getMinutes() + 1);
+    timestampNow.setMinutes(timestampNow.getMinutes() + 1);
     lastTimeValidated = dateAtMinute(timestamp.toISOString());
     let validationSla = []
     for(let i = 1; i <= 10; i++) {
@@ -104,7 +109,7 @@ async function main() {
       }
     }
     console.log(`FOUND ${validationSla.length}`)
-    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length)
+    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length, timestampNow)
     console.log(`SAVING ${dateAtMinute(timestamp.toISOString())}`)
     createTimestampFile(`latestTimestamp.txt`, dateAtMinute(timestamp.toISOString()))
   }
