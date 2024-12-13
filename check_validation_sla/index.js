@@ -75,7 +75,7 @@ async function main() {
   timestamp.setMinutes(timestamp.getMinutes() - 6); 
   startLastTimeValidated = dateAtMinute(timestamp.toISOString());
   if(fileName) {
-    startLastTimeValidated = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
+    startLastTimeValidated = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).trimEnd()
     timestamp = new Date(startLastTimeValidated);
     timestampNow = new Date(startLastTimeValidated);
     timestamp.setHours(timestamp.getHours() + 1); 
