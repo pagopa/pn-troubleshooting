@@ -71,13 +71,15 @@ async function main() {
   let timestamp;
   let localTimestamp;
   if(fileName) {
+    console.log("From file")
     startLastTimeValidated = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).trimEnd()
     timestamp = new Date(startLastTimeValidated);
     localTimestamp = new Date(startLastTimeValidated);
     timestamp.setHours(timestamp.getHours() + 1); 
     localTimestamp.setHours(localTimestamp.getHours() + 1); 
   }
-  else {
+  else {
+    console.log("No file")
     timestamp = new Date();
     localTimestamp = new Date();
     localTimestamp.setMinutes(localTimestamp.getMinutes() - 6); 
@@ -112,8 +114,8 @@ async function main() {
       }
     }
     console.log(`FOUND ${validationSla.length}`)
-    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length, localTimestamp)
     console.log(`SAVING ${dateAtMinute(localTimestamp.toISOString())}`)
+    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length, localTimestamp)
     createTimestampFile(`latestTimestamp.txt`, dateAtMinute(localTimestamp.toISOString()))
   }
 }
