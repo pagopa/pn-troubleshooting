@@ -68,22 +68,25 @@ async function main() {
   }
   awsClient._initDynamoDB()
   awsClient._initCloudwatch()
-  let timestamp = new Date();
-  let timestampNow = new Date();
-  timestampNow.setMinutes(timestampNow.getMinutes() - 6); 
-  timestamp.setHours(timestamp.getHours() + 1); 
-  timestamp.setMinutes(timestamp.getMinutes() - 6); 
-  startLastTimeValidated = dateAtMinute(timestamp.toISOString());
+  let timestamp;
+  let localTimestamp;
   if(fileName) {
     startLastTimeValidated = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).trimEnd()
     timestamp = new Date(startLastTimeValidated);
-    timestampNow = new Date(startLastTimeValidated);
+    localTimestamp = new Date(startLastTimeValidated);
     timestamp.setHours(timestamp.getHours() + 1); 
-    timestampNow.setHours(timestampNow.getHours() + 1); 
+    localTimestamp.setHours(localTimestamp.getHours() + 1); 
+  }
+  else {
+    timestamp = new Date();
+    localTimestamp = new Date();
+    localTimestamp.setMinutes(localTimestamp.getMinutes() - 6); 
+    timestamp.setMinutes(timestamp.getMinutes() - 6); 
+    timestamp.setHours(timestamp.getHours() + 1); 
   }
   for(let x = 0; x < 5; x++) {
     timestamp.setMinutes(timestamp.getMinutes() + 1);
-    timestampNow.setMinutes(timestampNow.getMinutes() + 1);
+    localTimestamp.setMinutes(localTimestamp.getMinutes() + 1);
     lastTimeValidated = dateAtMinute(timestamp.toISOString());
     let validationSla = []
     for(let i = 1; i <= 10; i++) {
@@ -109,9 +112,9 @@ async function main() {
       }
     }
     console.log(`FOUND ${validationSla.length}`)
-    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length, timestampNow)
-    console.log(`SAVING ${dateAtMinute(timestampNow.toISOString())}`)
-    createTimestampFile(`latestTimestamp.txt`, dateAtMinute(timestampNow.toISOString()))
+    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length, localTimestamp)
+    console.log(`SAVING ${dateAtMinute(localTimestamp.toISOString())}`)
+    createTimestampFile(`latestTimestamp.txt`, dateAtMinute(localTimestamp.toISOString()))
   }
 }
 
