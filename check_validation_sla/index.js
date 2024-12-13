@@ -110,8 +110,8 @@ async function main() {
     }
     console.log(`FOUND ${validationSla.length}`)
     await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length, timestampNow)
-    console.log(`SAVING ${dateAtMinute(timestamp.toISOString())}`)
-    createTimestampFile(`latestTimestamp.txt`, dateAtMinute(timestamp.toISOString()))
+    console.log(`SAVING ${dateAtMinute(timestampNow.toISOString())}`)
+    createTimestampFile(`latestTimestamp.txt`, dateAtMinute(timestampNow.toISOString()))
   }
 }
 
