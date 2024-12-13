@@ -76,7 +76,7 @@ async function main() {
     timestamp = new Date(startLastTimeValidated);
     localTimestamp = new Date(startLastTimeValidated);
     timestamp.setHours(timestamp.getHours() + 1); 
-    localTimestamp.setHours(localTimestamp.getHours() + 1); 
+    localTimestamp.setHours(localTimestamp.getHours()); 
   }
   else {
     console.log("No file")
