@@ -40,40 +40,40 @@ class AwsClientsWrapper {
   }
 
   _initDynamoDB() {
-    this._dynamoClient = this.ssoProfile ? new DynamoDBClient(awsClientCfg(this.ssoProfile)) : new DynamoDBClient(awsClientCfg())
+    this._dynamoClient = this.ssoProfile ? new DynamoDBClient(awsClientCfg(this.ssoProfile)) : new DynamoDBClient()
   }
 
   _initSQS() {
-    this._sqsClient = this.ssoProfile ? new SQSClient(awsClientCfg(this.ssoProfile)) : new SQSClient(awsClientCfg())
+    this._sqsClient = this.ssoProfile ? new SQSClient(awsClientCfg(this.ssoProfile)) : new SQSClient()
   }
   
   _initCloudwatch() {
-    this._cloudwatchLogClient = this.ssoProfile ? new CloudWatchLogsClient(awsClientCfg(this.ssoProfile)) : new CloudWatchLogsClient(awsClientCfg())
-    this._cloudwatchClient = this.ssoProfile ? new CloudWatchClient(awsClientCfg(this.ssoProfile)) : new CloudWatchClient(awsClientCfg())
+    this._cloudwatchLogClient = this.ssoProfile ? new CloudWatchLogsClient(awsClientCfg(this.ssoProfile)) : new CloudWatchLogsClient()
+    this._cloudwatchClient = this.ssoProfile ? new CloudWatchClient(awsClientCfg(this.ssoProfile)) : new CloudWatchClient()
   }
 
   _initKinesis() {
-    this._kinesisClient = this.ssoProfile ? new KinesisClient(awsClientCfg(this.ssoProfile)) : new KinesisClient(awsClientCfg())
+    this._kinesisClient = this.ssoProfile ? new KinesisClient(awsClientCfg(this.ssoProfile)) : new KinesisClient()
   }
 
   _initS3() {
-    this._s3Client = this.ssoProfile ? new S3Client(awsClientCfg(this.ssoProfile)) : new S3Client(awsClientCfg())
+    this._s3Client = this.ssoProfile ? new S3Client(awsClientCfg(this.ssoProfile)) : new S3Client()
   }
 
   _initCloudFormation() {
-    this._cloudFormationClient = this.ssoProfile ? new CloudFormationClient(awsClientCfg(this.ssoProfile)) : new CloudFormationClient(awsClientCfg())
+    this._cloudFormationClient = this.ssoProfile ? new CloudFormationClient(awsClientCfg(this.ssoProfile)) : new CloudFormationClient()
   }
 
   _initKMS() {
-    this._kmsClient = this.ssoProfile ? new KMSClient(awsClientCfg(this.ssoProfile)) : new KMSClient(awsClientCfg())
+    this._kmsClient = this.ssoProfile ? new KMSClient(awsClientCfg(this.ssoProfile)) : new KMSClient()
   }
   
   _initLambda() {
-    this._lambdaClient = this.ssoProfile ? new LambdaClient(awsClientCfg(this.ssoProfile)) : new LambdaClient(awsClientCfg())
+    this._lambdaClient = this.ssoProfile ? new LambdaClient(awsClientCfg(this.ssoProfile)) : new LambdaClient()
   }
 
   _initSTS() {
-    this._stsClient = this.ssoProfile ? new STSClient(awsClientCfg(this.ssoProfile)) : new STSClient(awsClientCfg())
+    this._stsClient = this.ssoProfile ? new STSClient(awsClientCfg(this.ssoProfile)) : new STSClient()
   }
 
   // DynamoDB

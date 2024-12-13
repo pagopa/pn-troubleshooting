@@ -95,7 +95,6 @@ async function main() {
           first = false;
         }
         if(result.Items.length>0) {
-          console.log(result.Items)
           let validations = result.Items.filter(item => {
             return item.type.S === 'VALIDATION'
           })
