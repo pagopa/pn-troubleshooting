@@ -39,13 +39,13 @@ function _checkingParameters(args, values){
 async function main() {
 
   const args = [
-    { name: "envName", mandatory: true, subcommand: [] },
+    { name: "envName", mandatory: false, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
     { name: "dryrun", mandatory: false, subcommand: [] },
 
   ]
   const values = {
-    values: { envName, fileName, days, dryrun },
+    values: { envName, fileName, dryrun },
   } = parseArgs({
     options: {
       envName: {
@@ -60,7 +60,13 @@ async function main() {
     },
   });  
   _checkingParameters(args, values)
-  const awsClient = new AwsClientsWrapper( 'core', envName );
+  let awsClient;
+  if(envName) {
+    awsClient = new AwsClientsWrapper('core', envName);
+  }
+  else {
+    awsClient = new AwsClientsWrapper();
+  }
   const tableName = "pn-FutureAction"
   awsClient._initDynamoDB()
   const keySchema = await awsClient._getKeyFromSchema(tableName)
