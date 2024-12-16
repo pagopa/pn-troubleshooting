@@ -129,13 +129,11 @@ async function main() {
       let keys = createKeys(keySchema, iun, "REQUEST_ACCEPTED")
       let result = await awsClient._dynamicQueryRequest('pn-Timelines', keys, "and")
       if(result.Items.length > 0) {
-        console.log('AcceptedFound')
         continue
       }
       keys = createKeys(keySchema, iun, "REQUEST_REFUSED")
       result = await awsClient._dynamicQueryRequest('pn-Timelines', keys, "and")
       if(result.Items.length > 0) {
-        console.log('RefusedFound')
         continue
       }
       slaValidationIun.push(iun)
