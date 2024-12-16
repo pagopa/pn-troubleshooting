@@ -71,7 +71,6 @@ async function main() {
   awsClient._initDynamoDB()
   const keySchema = await awsClient._getKeyFromSchema(tableName)
   const datas = await _parseCSV(fileName, ",")
-  console.log(keySchema)
   for(let i = 0; i < datas.length; i++){
     let data = datas[i]
     let keys = {}
@@ -83,7 +82,6 @@ async function main() {
           operator: "="
       }
     }
-    console.log(keys)
     let result = await awsClient._dynamicQueryRequest(tableName, keys, "and")
     if(result.Items.length > 0){ 
       for(let z = 0; z < result.Items.length; z++ ) {
@@ -102,12 +100,10 @@ async function main() {
         }
         if(!dryrun) {
           const res = await awsClient._updateItem(tableName, keys, data, "SET")
-          console.log(`For ${JSON.stringify(keys)}`)
-          console.log(`logicalDeleted setted True`)
+          console.log(`For ${JSON.stringify(keys)} logicalDeleted setted True`)
         }
         else {
-          console.log(`DRYRUN: For ${JSON.stringify(keys)}`)
-          console.log(`DRYRUN: logicalDeleted setted True `)
+          console.log(`DRYRUN: For ${JSON.stringify(keys)} logicalDeleted setted True`)
         }
       }
     }
