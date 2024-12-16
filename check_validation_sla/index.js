@@ -14,6 +14,23 @@ function dateAtMinute(date){
   return date.substring(0, date.lastIndexOf(':'))
 }
 
+function createKeys(keySchema, iun, type){
+  const data = {
+    iun: iun,
+    timelineElementId: `${type}.IUN_${iun}`
+  }
+  let keys = {}
+  for(const key of keySchema) {
+    keys[key.AttributeName] = {
+        codeAttr: `#${key.KeyType}`,
+        codeValue: `:${key.KeyType}`,
+        value: data[key.AttributeName],
+        operator: "="
+    }
+  }
+  return keys;
+}
+
 function _checkingParameters(args, values){
   const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> --days <days> [--dryrun]"
   //CHECKING PARAMETER
@@ -68,6 +85,7 @@ async function main() {
   }
   awsClient._initDynamoDB()
   awsClient._initCloudwatch()
+  let keySchema = await awsClient._getKeyFromSchema('pn-Timelines')
   let timestamp;
   if(fileName) {
     console.log("From file")
@@ -105,9 +123,24 @@ async function main() {
         lastEvaluatedKey = result.LastEvaluatedKey
       }
     }
-    console.log(`FOUND ${validationSla.length}`)
+    let slaValidationIun = []
+    for (let y = 0; y < validationSla.length; y++) {
+      const iun = validationSla[y].relatedEntityId.S
+      let keys = createKeys(keySchema, iun, "REQUEST_ACCEPTED")
+      let result = await awsClient._dynamicQueryRequest('pn-Timelines', keys, "and")
+      if(result.Items.length > 0) {
+        continue
+      }
+      keys = createKeys(keySchema, iun, "REQUEST_REFUSED")
+      result = await awsClient._dynamicQueryRequest('pn-Timelines', keys, "and")
+      if(result.Items.length > 0) {
+        continue
+      }
+      slaValidationIun.push(iun)
+    }
+    console.log(`FOUND ${slaValidationIun.length}: ${slaValidationIun}`)
     console.log(`SAVING ${dateAtMinute(timestamp.toISOString())}`)
-    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", validationSla.length, timestamp)
+    await awsClient._putSingleMetricData("OER/Violation", "validation", "Count", slaValidationIun.length, timestamp)
     createTimestampFile(`latestTimestamp.txt`, dateAtMinute(timestamp.toISOString()))
   }
 }
