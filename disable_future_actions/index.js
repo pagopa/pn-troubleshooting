@@ -39,13 +39,13 @@ function _checkingParameters(args, values){
 async function main() {
 
   const args = [
-    { name: "envName", mandatory: true, subcommand: [] },
+    { name: "envName", mandatory: false, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
     { name: "dryrun", mandatory: false, subcommand: [] },
 
   ]
   const values = {
-    values: { envName, fileName, days, dryrun },
+    values: { envName, fileName, dryrun },
   } = parseArgs({
     options: {
       envName: {
@@ -60,12 +60,17 @@ async function main() {
     },
   });  
   _checkingParameters(args, values)
-  const awsClient = new AwsClientsWrapper( 'core', envName );
+  let awsClient;
+  if(envName) {
+    awsClient = new AwsClientsWrapper('core', envName);
+  }
+  else {
+    awsClient = new AwsClientsWrapper();
+  }
   const tableName = "pn-FutureAction"
   awsClient._initDynamoDB()
   const keySchema = await awsClient._getKeyFromSchema(tableName)
   const datas = await _parseCSV(fileName, ",")
-  console.log(keySchema)
   for(let i = 0; i < datas.length; i++){
     let data = datas[i]
     let keys = {}
@@ -77,7 +82,6 @@ async function main() {
           operator: "="
       }
     }
-    console.log(keys)
     let result = await awsClient._dynamicQueryRequest(tableName, keys, "and")
     if(result.Items.length > 0){ 
       for(let z = 0; z < result.Items.length; z++ ) {
@@ -96,12 +100,10 @@ async function main() {
         }
         if(!dryrun) {
           const res = await awsClient._updateItem(tableName, keys, data, "SET")
-          console.log(`For ${JSON.stringify(keys)}`)
-          console.log(`logicalDeleted setted True`)
+          console.log(`For ${JSON.stringify(keys)} logicalDeleted setted True`)
         }
         else {
-          console.log(`DRYRUN: For ${JSON.stringify(keys)}`)
-          console.log(`DRYRUN: logicalDeleted setted True `)
+          console.log(`DRYRUN: For ${JSON.stringify(keys)} logicalDeleted setted True`)
         }
       }
     }
