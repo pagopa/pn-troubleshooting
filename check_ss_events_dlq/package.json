@@ -1,6 +1,7 @@
 {
     "name": "check_ss_events_dlq",
     "version": "1.0.0",
+    "type": "module",
     "description": "Script to analyze DLQ messages from SafeStorage events queue and validate related resources",
     "main": "index.js",
     "scripts": {

@@ -1,10 +1,10 @@
 // --- Required Dependencies ---
-const fs = require('fs');                                    // File system operations
-const path = require('path');                               // Path manipulation utilities
-const { AwsClientsWrapper } = require("pn-common");          // AWS services wrapper
-const { unmarshall } = require('@aws-sdk/util-dynamodb');   // DynamoDB response parser
-const { parseArgs } = require('util');                      // Command line argument parser
-const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];   // Valid environment names
+import { existsSync, mkdirSync, appendFileSync } from 'fs';             // File system operations
+import { dirname } from 'path';                                         // Path manipulation utilities
+import { AwsClientsWrapper } from "pn-common";                          // AWS services wrapper
+import { unmarshall } from '@aws-sdk/util-dynamodb';                    // DynamoDB response parser
+import { parseArgs } from 'util';                                       // Command line argument parser
+const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];    // Valid environment names
 
 /**
  * Validates command line arguments and displays usage information
@@ -63,13 +63,13 @@ Example:
  * Creates the directory structure if it doesn't exist
  */
 function appendJsonToFile(fileName, data) {
-    const dir = path.dirname(fileName);
+    const dir = dirname(fileName);
     // Ensure target directory exists
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+    if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
     }
     // Append JSON string with newline
-    fs.appendFileSync(fileName, JSON.stringify(data) + "\n");
+    appendFileSync(fileName, JSON.stringify(data) + "\n");
 }
 
 /**
@@ -78,7 +78,7 @@ function appendJsonToFile(fileName, data) {
  * @returns {Promise<string>} AWS Account ID
  */
 async function getAccountId(awsClient) {
-    const stsClient = await awsClient._initSTS();
+    const stsClient = awsClient._initSTS();
     const identity = await stsClient.getCallerIdentity({});
     return identity.Account;
 }
@@ -90,12 +90,12 @@ async function getAccountId(awsClient) {
  */
 async function dumpSQSMessages(awsClient) {
     // Ensure temp directory exists
-    if (!fs.existsSync('temp')) {
-        fs.mkdirSync('temp');
+    if (!existsSync('temp')) {
+        mkdirSync('temp');
     }
 
-    await awsClient._initSQS();
-    const queueUrl = await awsClient._getSQSQueueURL('pn-ss-main-bucket-events-queue-DLQ');
+    awsClient._initSQS();
+    const queueUrl = await awsClient._getQueueUrl('pn-ss-main-bucket-events-queue-DLQ');
     let messages = [];
 
     // Keep polling until no more messages are available
@@ -118,14 +118,14 @@ async function dumpSQSMessages(awsClient) {
 }
 
 /**
- * Verifies S3 object presence in correct buckets
+ * Verifies S3 object presence in the correct buckets
  * @param {AwsClientsWrapper} awsClient - Initialized AWS client
  * @param {string} fileKey - S3 object key to check
  * @param {string} accountId - AWS Account ID for bucket names
  * @returns {Promise<boolean>} True if object exists in main bucket but not in staging
  */
 async function checkS3Objects(awsClient, fileKey, accountId) {
-    await awsClient._initS3();
+    awsClient._initS3();
 
     const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
     const stagingBucket = `pn-safestorage-staging-eu-south-1-${accountId}`;
@@ -143,9 +143,9 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
                 Bucket: stagingBucket,
                 Key: fileKey
             }).promise();
-            return false; // Failed: Object exists in staging
+            return false; // Failed: Object exists in staging bucket
         } catch (e) {
-            return true;  // Success: Object doesn't exist in staging
+            return true;  // Success: Object doesn't exist in staging bucket
         }
     } catch (e) {
         return false; // Failed: Object doesn't exist in main bucket
@@ -159,7 +159,7 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
  * @returns {Promise<boolean>} True if document state matches expected value
  */
 async function checkDocumentState(awsClient, fileKey) {
-    await awsClient._initDynamoDB();
+    awsClient._initDynamoDB();
 
     // Search for document by key
     const result = await awsClient._scanRequest('pn-SsDocumenti', {
@@ -187,7 +187,7 @@ async function checkDocumentState(awsClient, fileKey) {
  * @returns {Promise<boolean>} True if timeline status is valid
  */
 async function checkTimeline(coreAwsClient, fileKey) {
-    await coreAwsClient._initDynamoDB();
+    coreAwsClient._initDynamoDB();
 
     // Find document creation request
     const docRequest = await coreAwsClient._scanRequest('pn-DocumentCreationRequestTable', {
