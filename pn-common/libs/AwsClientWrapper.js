@@ -2,7 +2,7 @@
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, BatchWriteItemCommand } = require("@aws-sdk/client-dynamodb");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand } = require("@aws-sdk/client-sqs");
-const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand } = require("@aws-sdk/client-cloudwatch-logs");
+const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, GetLogEventsCommand } = require("@aws-sdk/client-cloudwatch-logs");
 const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
 const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
@@ -234,6 +234,21 @@ class AwsClientsWrapper {
       }
     }
     return logs;
+  }
+
+  async _getLogsEvents(logGroup, logStream, startDate, endDate, limit, token) {
+    const input = { // GetLogEventsRequest
+      logGroupName: logGroup,
+      logStreamName: logStream, // required
+      startTime: startDate,
+      endTime: endDate,
+      nextToken: token,
+      limit: limit,
+      startFromHead: true
+    };
+    const command = new GetLogEventsCommand(input);
+    const response = await this._cloudwatchLogClient.send(command);
+    return response;
   }
 
   async _fetchQueryResult( queryId ) {
