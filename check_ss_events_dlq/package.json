@@ -1,0 +1,24 @@
+{
+    "name": "check_ss_events_dlq",
+    "version": "1.0.0",
+    "description": "Script to analyze DLQ messages from SafeStorage events queue and validate related resources",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "check": "node index.js --envName"
+    },
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.421.0",
+        "@aws-sdk/client-s3": "^3.421.0",
+        "@aws-sdk/client-sqs": "^3.421.0",
+        "@aws-sdk/client-sts": "^3.421.0",
+        "@aws-sdk/credential-provider-ini": "^3.421.0",
+        "@aws-sdk/util-dynamodb": "^3.421.0",
+        "pn-common": "file:../pn-common/"
+    },
+    "author": "PagoPA S.p.A.",
+    "license": "ISC"
+}

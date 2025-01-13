@@ -1,0 +1,253 @@
+// --- Required Dependencies ---
+const fs = require('fs');                                    // File system operations
+const path = require('path');                               // Path manipulation utilities
+const { AwsClientsWrapper } = require("pn-common");          // AWS services wrapper
+const { unmarshall } = require('@aws-sdk/util-dynamodb');   // DynamoDB response parser
+const { parseArgs } = require('util');                      // Command line argument parser
+const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];   // Valid environment names
+
+/**
+ * Validates command line arguments and displays usage information
+ * @returns {Object} Parsed and validated arguments
+ * @throws {Error} If required arguments are missing or invalid
+ */
+function validateArgs() {
+    const usage = `
+Usage: node index.js --envName|-e <environment>
+
+Description:
+    Analyzes DLQ messages from SafeStorage events queue and validates related resources.
+
+Parameters:
+    --envName, -e    Required. Environment to check (dev|uat|test|prod|hotfix)
+    --help, -h       Display this help message
+
+Example:
+    node index.js --envName dev
+    node index.js -e prod`;
+
+    const args = parseArgs({
+        options: {
+            envName: { type: "string", short: "e" },
+            help: { type: "boolean", short: "h" }
+        },
+        strict: true
+    });
+
+    // Show help and exit
+    if (args.values.help) {
+        console.log(usage);
+        process.exit(0);
+    }
+
+    // Validate required parameters
+    if (!args.values.envName) {
+        console.error("Error: Missing required parameter --envName");
+        console.log(usage);
+        process.exit(1);
+    }
+
+    // Validate environment value
+    if (!VALID_ENVIRONMENTS.includes(args.values.envName)) {
+        console.error(`Error: Invalid environment. Must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
+        process.exit(1);
+    }
+
+    return args;
+}
+
+/**
+ * Appends a JSON object as a new line to a file
+ * @param {string} fileName - Target file path
+ * @param {object} data - JSON data to append
+ * Creates the directory structure if it doesn't exist
+ */
+function appendJsonToFile(fileName, data) {
+    const dir = path.dirname(fileName);
+    // Ensure target directory exists
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    // Append JSON string with newline
+    fs.appendFileSync(fileName, JSON.stringify(data) + "\n");
+}
+
+/**
+ * Retrieves the current AWS Account ID
+ * @param {AwsClientsWrapper} awsClient - Initialized AWS client
+ * @returns {Promise<string>} AWS Account ID
+ */
+async function getAccountId(awsClient) {
+    const stsClient = await awsClient._initSTS();
+    const identity = await stsClient.getCallerIdentity({});
+    return identity.Account;
+}
+
+/**
+ * Retrieves all messages from the DLQ and saves them to a file
+ * @param {AwsClientsWrapper} awsClient - Initialized AWS client
+ * @returns {Array} Array of parsed message bodies
+ */
+async function dumpSQSMessages(awsClient) {
+    // Ensure temp directory exists
+    if (!fs.existsSync('temp')) {
+        fs.mkdirSync('temp');
+    }
+
+    await awsClient._initSQS();
+    const queueUrl = await awsClient._getSQSQueueURL('pn-ss-main-bucket-events-queue-DLQ');
+    let messages = [];
+
+    // Keep polling until no more messages are available
+    while (true) {
+        const response = await awsClient.sqs.receiveMessage({
+            QueueUrl: queueUrl,
+            MaxNumberOfMessages: 10,  // Batch size for each request
+            WaitTimeSeconds: 1        // Long polling timeout
+        }).promise();
+
+        // Exit loop when no more messages
+        if (!response.Messages || response.Messages.length === 0) break;
+
+        // Parse message bodies from JSON string to objects
+        messages = messages.concat(response.Messages.map(m => JSON.parse(m.Body)));
+        appendJsonToFile('temp/sqs_dump.txt', messages);
+    }
+
+    return messages;
+}
+
+/**
+ * Verifies S3 object presence in correct buckets
+ * @param {AwsClientsWrapper} awsClient - Initialized AWS client
+ * @param {string} fileKey - S3 object key to check
+ * @param {string} accountId - AWS Account ID for bucket names
+ * @returns {Promise<boolean>} True if object exists in main bucket but not in staging
+ */
+async function checkS3Objects(awsClient, fileKey, accountId) {
+    await awsClient._initS3();
+
+    const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
+    const stagingBucket = `pn-safestorage-staging-eu-south-1-${accountId}`;
+
+    try {
+        // Check if object exists in main bucket
+        await awsClient.s3.headObject({
+            Bucket: mainBucket,
+            Key: fileKey
+        }).promise();
+
+        try {
+            // Check if object exists in staging bucket (shouldn't)
+            await awsClient.s3.headObject({
+                Bucket: stagingBucket,
+                Key: fileKey
+            }).promise();
+            return false; // Failed: Object exists in staging
+        } catch (e) {
+            return true;  // Success: Object doesn't exist in staging
+        }
+    } catch (e) {
+        return false; // Failed: Object doesn't exist in main bucket
+    }
+}
+
+/**
+ * Validates document state in DynamoDB
+ * @param {AwsClientsWrapper} awsClient - Initialized AWS client
+ * @param {string} fileKey - Document key to check
+ * @returns {Promise<boolean>} True if document state matches expected value
+ */
+async function checkDocumentState(awsClient, fileKey) {
+    await awsClient._initDynamoDB();
+
+    // Search for document by key
+    const result = await awsClient._scanRequest('pn-SsDocumenti', {
+        FilterExpression: 'contains(documentKey, :key)',
+        ExpressionAttributeValues: { ':key': fileKey }
+    });
+
+    if (!result.Items.length) return false;
+
+    const item = unmarshall(result.Items[0]);
+    // Determine expected state based on document type prefix
+    const expectedState = fileKey.startsWith('PN_AAR') || fileKey.startsWith('PN_LEGAL_FACTS')
+        ? 'SAVED'
+        : fileKey.startsWith('PN_NOTIFICATION_ATTACHMENT') || fileKey.startsWith('PN_PRINTED')
+            ? 'ATTACHED'
+            : null;
+
+    return item.documentLogicalState === expectedState;
+}
+
+/**
+ * Validates document timeline status
+ * @param {AwsClientsWrapper} coreAwsClient - Initialized AWS client for core services
+ * @param {string} fileKey - Document key to check
+ * @returns {Promise<boolean>} True if timeline status is valid
+ */
+async function checkTimeline(coreAwsClient, fileKey) {
+    await coreAwsClient._initDynamoDB();
+
+    // Find document creation request
+    const docRequest = await coreAwsClient._scanRequest('pn-DocumentCreationRequestTable', {
+        FilterExpression: 'contains(#key, :key)',
+        ExpressionAttributeNames: { '#key': 'key' },
+        ExpressionAttributeValues: { ':key': fileKey }
+    });
+
+    if (!docRequest.Items.length) return false;
+
+    // Extract IUN and timeline ID
+    const request = unmarshall(docRequest.Items[0]);
+    const { iun, timelineId } = request;
+
+    // Get timeline entries and sort by timestamp
+    const timeline = await coreAwsClient._queryRequest('pn-Timelines', 'iun', iun);
+    const sortedTimeline = timeline.Items
+        .map(i => unmarshall(i))
+        .sort((a, b) => b.timestamp - a.timestamp);
+
+    // Check if current timeline entry isn't the latest
+    return sortedTimeline[0].timelineId !== timelineId;
+}
+
+/**
+ * Main execution function
+ * Processes DLQ messages and performs validation checks
+ */
+async function main() {
+    const args = validateArgs();
+    const { envName } = args.values;
+
+    // Initialize AWS clients and get account ID
+    const confAwsClient = new AwsClientsWrapper('confinfo', envName);
+    const accountId = await getAccountId(confAwsClient);
+
+    // Dump and process DLQ messages
+    const messages = await dumpSQSMessages(confAwsClient);
+
+    // Process each message
+    for (const message of messages) {
+        // Extract S3 object key from message
+        const fileKey = message.Records?.[0]?.s3?.object?.key;
+        if (!fileKey) continue;
+
+        // Perform validation checks
+        const s3Check = await checkS3Objects(confAwsClient, fileKey, accountId);
+        const docStateCheck = await checkDocumentState(confAwsClient, fileKey);
+
+        const coreAwsClient = new AwsClientsWrapper('core', envName);
+        const timelineCheck = await checkTimeline(coreAwsClient, fileKey);
+
+        // Log results to appropriate file
+        if (!s3Check || !docStateCheck || !timelineCheck) {
+            appendJsonToFile('results/errors.json', message);
+        } else {
+            appendJsonToFile('results/ok.json', message);
+        }
+    }
+}
+
+// Start execution with error handling
+main().catch(console.error);
