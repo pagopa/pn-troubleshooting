@@ -104,7 +104,7 @@ async function dumpSQSMessages(awsClient) {
             QueueUrl: queueUrl,
             MaxNumberOfMessages: 10,  // Batch size for each request
             WaitTimeSeconds: 1        // Long polling timeout
-        }).promise();
+        });
 
         // Exit loop when no more messages
         if (!response.Messages || response.Messages.length === 0) break;
@@ -135,14 +135,14 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
         await awsClient.s3.headObject({
             Bucket: mainBucket,
             Key: fileKey
-        }).promise();
+        });
 
         try {
             // Check if object exists in staging bucket (shouldn't)
             await awsClient.s3.headObject({
                 Bucket: stagingBucket,
                 Key: fileKey
-            }).promise();
+            });
             return false; // Failed: Object exists in staging bucket
         } catch (e) {
             return true;  // Success: Object doesn't exist in staging bucket
