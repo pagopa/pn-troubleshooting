@@ -79,9 +79,6 @@ function appendJsonToFile(fileName, data) {
  */
 async function getAccountId(awsClient) {
     const stsClient = awsClient._initSTS();
-    if (!stsClient) {
-        throw new Error("Failed to initialize STS client");
-    }
     const identity = await stsClient.getCallerIdentity({});
     return identity.Account;
 }
