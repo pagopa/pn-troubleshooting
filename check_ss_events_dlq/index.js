@@ -57,6 +57,25 @@ Example:
 }
 
 /**
+ * Logs result to appropriate file and console
+ * @param {Object} message - Message being processed
+ * @param {string} status - Status of processing (error/ok)
+ * @param {string} reason - Reason for failure
+ */
+function logResult(message, status, reason = '') {
+    const result = {
+        message,
+        timestamp: new Date().toISOString(),
+        status,
+        reason
+    };
+
+    const fileName = status === 'error' ? 'results/errors.json' : 'results/ok.json';
+    appendJsonToFile(fileName, result);
+    console.log(`${status.toUpperCase()}: ${reason || 'All checks passed'}`);
+}
+
+/**
  * Appends a JSON object as a new line to a file
  * @param {string} fileName - Target file path
  * @param {object} data - JSON data to append
