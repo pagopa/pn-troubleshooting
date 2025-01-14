@@ -100,7 +100,7 @@ async function dumpSQSMessages(awsClient) {
 
     // Keep polling until no more messages are available
     while (true) {
-        const response = await awsClient.sqs.receiveMessage({
+        const response = await awsClient._receiveMessages({
             QueueUrl: queueUrl,
             MaxNumberOfMessages: 10,  // Batch size for each request
             WaitTimeSeconds: 1        // Long polling timeout
