@@ -80,7 +80,6 @@ function appendJsonToFile(fileName, data) {
 async function getAccountId(awsClient) {
     const stsClient = awsClient._initSTS();
     const identity = (await awsClient._getCallerIdentity());
-    console.log(`Current AWS Account ID: ${identity.Account}`);
     return identity.Account;
 }
 
@@ -263,7 +262,8 @@ async function main() {
 
     // Initialize AWS clients and get account ID
     const confinfoAwsClient = new AwsClientsWrapper('confinfo', envName);
-    const accountId = await getAccountId(confinfoAwsClient);
+    const confinfoAccountId = await getAccountId(confinfoAwsClient);
+    console.log(`Switching to CONFINFO Profile with AccountID: ${confinfoAccountId}`);
 
     // Dump and process DLQ messages
     const messages = dumpSQSMessages(confinfoAwsClient);
@@ -279,6 +279,8 @@ async function main() {
         const docStateCheck = await checkDocumentState(confinfoAwsClient, fileKey);
 
         const coreAwsClient = new AwsClientsWrapper('core', envName);
+        const coreAccountId = await getAccountId(coreAwsClient);
+        console.log(`Switching to CORE Profile with AccountID: ${coreAccountId}`);
         const timelineCheck = await checkTimeline(coreAwsClient, fileKey);
 
         // Log results to appropriate file
