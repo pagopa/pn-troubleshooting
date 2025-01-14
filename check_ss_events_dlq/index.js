@@ -164,28 +164,22 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
     const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
     const stagingBucket = `pn-safestorage-staging-eu-south-1-${accountId}`;
 
-    console.log(`Searching for object with key: ${fileKey}`);
+    console.log(`Searching for S3 object with key: ${fileKey}`);
 
     try {
         // Check if object exists in main bucket
-        await awsClient.s3.headObject({
-            Bucket: mainBucket,
-            Key: fileKey
-        });
-
+        await awsClient._getObjectCommand(mainBucket, fileKey);
         console.log(`Found object "${fileKey}" in main bucket ${mainBucket}`);
 
         try {
             // Check if object exists in staging bucket (shouldn't)
-            await awsClient.s3.headObject({
-                Bucket: stagingBucket,
-                Key: fileKey
-            });
+            await awsClient._getObjectCommand(stagingBucket, fileKey);
             return false; // Failed: Object exists in staging bucket
         } catch (e) {
             return true;  // Success: Object doesn't exist in staging bucket
         }
     } catch (e) {
+        console.log(`Object "${fileKey}" not found in main bucket ${mainBucket}`);
         return false; // Failed: Object doesn't exist in main bucket
     }
 }
