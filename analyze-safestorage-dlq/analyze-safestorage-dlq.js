@@ -16,7 +16,7 @@ function validateArgs() {
 Usage: node analyze-safestorage-dlq.js --envName|-e <environment>
 
 Description:
-    Analyzes DLQ messages from SafeStorage events queue and validates related resources.
+    Analyzes DLQ messages from SafeStorage events queue and validates related documents.
 
 Parameters:
     --envName, -e    Required. Environment to check (dev|uat|test|prod|hotfix)
@@ -73,6 +73,27 @@ function logResult(message, status, reason = '') {
     const fileName = status === 'error' ? 'results/errors.json' : 'results/ok.json';
     appendJsonToFile(fileName, result);
     console.log(`${status.toUpperCase()}: ${reason || 'All checks passed'}`);
+}
+
+/**
+ * Prints a summary of the DLQ message processing statistics to the console.
+ * @param {Object} stats - The statistics object containing the processing results
+ * @param {number} stats.total - Total number of messages processed
+ * @param {number} stats.passed - Number of messages that passed all checks
+ * @param {number} stats.s3Failed - Number of messages that failed S3 bucket checks
+ * @param {number} stats.stateCheckFailed - Number of messages that failed document state checks
+ * @param {number} stats.timelineFailed - Number of messages that failed timeline checks
+ * @returns {void}
+ */
+function printSummary(stats) {
+    console.log('\n=== Execution Summary ===');
+    console.log(`Total messages processed: ${stats.total}`);
+    console.log(`Messages that passed all checks: ${stats.passed}`);
+    console.log(`Total messages that failed a check: ${stats.total - stats.passed}`);
+    console.log('\nFailures breakdown:');
+    console.log(`- S3 buckets checks failed: ${stats.s3Failed}`);
+    console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
+    console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
 }
 
 /**
@@ -313,6 +334,25 @@ async function main() {
     const args = validateArgs();
     const { envName } = args.values;
 
+    const stats = {
+        total: 0,
+        passed: 0,
+        s3Failed: 0,
+        stateCheckFailed: 0,
+        timelineFailed: 0
+    };
+
+    function printSummary(stats) {
+        console.log('\n=== Execution Summary ===');
+        console.log(`Total messages processed: ${stats.total}`);
+        console.log(`Messages passed all checks: ${stats.passed}`);
+        console.log(`Total messages failed: ${stats.total - stats.passed}`);
+        console.log('\nFailures breakdown:');
+        console.log(`- S3 bucket checks failed: ${stats.s3Failed}`);
+        console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
+        console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
+    }
+
     // Initialize AWS Client and switch to CONFINFO profile
     const confinfoAwsClient = new AwsClientsWrapper('confinfo', envName);
     const confinfoAccountId = await getAccountId(confinfoAwsClient);
@@ -320,6 +360,7 @@ async function main() {
 
     // Dump and process DLQ messages
     const messages = await dumpSQSMessages(confinfoAwsClient);
+    stats.total = messages.length;
 
     // Process each message separately
     for (const message of messages) {
@@ -336,6 +377,7 @@ async function main() {
         const s3Check = await checkS3Objects(confinfoAwsClient, fileKey, confinfoAccountId);
         if (!s3Check) {
             logResult(message, 'error', 'S3 check failed');
+            stats.s3Failed++;
             continue;
         }
 
@@ -343,6 +385,7 @@ async function main() {
         const docStateCheck = await checkDocumentState(confinfoAwsClient, fileKey);
         if (!docStateCheck) {
             logResult(message, 'error', 'Document state check failed');
+            stats.stateCheckFailed++;
             continue;
         }
 
@@ -353,12 +396,16 @@ async function main() {
         const timelineCheck = await checkTimeline(coreAwsClient, fileKey);
         if (!timelineCheck) {
             logResult(message, 'error', 'Timeline check failed');
+            stats.timelineFailed++;
             continue;
         }
 
         // All checks passed
+        stats.passed++;
         logResult(message, 'ok');
     }
+
+    printSummary(stats);
 }
 
 // Start execution with error handling
