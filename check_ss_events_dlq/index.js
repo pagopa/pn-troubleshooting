@@ -177,7 +177,10 @@ async function checkDocumentState(awsClient, fileKey) {
 
     if (!result.Items.length) return false;
 
+    console.log('Raw DynamoDB Item:', JSON.stringify(result.Items[0], null, 2));
+
     const item = unmarshall(result.Items[0]);
+    console.log('Unmarshalled Item:', JSON.stringify(item, null, 2));
     // Determine expected state based on document type prefix
     const expectedState = fileKey.startsWith('PN_AAR') || fileKey.startsWith('PN_LEGAL_FACTS')
         ? 'SAVED'
