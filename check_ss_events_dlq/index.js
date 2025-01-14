@@ -106,6 +106,7 @@ async function dumpSQSMessages(awsClient) {
     const visibilityTimeout = 30;
     let messages = [];
     let totalMessages = 0;
+    const messageLimit = 1; // Message limit for testing
 
     // Keep polling until no more messages are available
     while (true) {
@@ -114,10 +115,17 @@ async function dumpSQSMessages(awsClient) {
         // Exit loop when no more messages
         if (!response.Messages || response.Messages.length === 0) break;
 
+        // Only take enough messages to reach the limit
+        const remainingNeeded = messageLimit - totalMessages;
+        const messagesToProcess = response.Messages.slice(0, remainingNeeded);
+
         // Parse message bodies from JSON string to objects
-        messages = messages.concat(response.Messages.map(m => JSON.parse(m.Body)));
-        totalMessages += response.Messages.length;
-        appendJsonToFile('temp/sqs_dump.txt', messages);
+        messages = messages.concat(messagesToProcess.map(m => JSON.parse(m.Body)));
+        totalMessages += messagesToProcess.length;
+        appendJsonToFile('temp/sqs_dump.txt', messagesToProcess.map(m => JSON.parse(m.Body)));
+
+        // Break if we've reached the limit
+        if (totalMessages >= messageLimit) break;
     }
 
     console.log(`Total messages processed: ${totalMessages}`);
