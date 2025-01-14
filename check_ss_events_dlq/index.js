@@ -80,7 +80,7 @@ function appendJsonToFile(fileName, data) {
 async function getAccountId(awsClient) {
     const stsClient = awsClient._initSTS();
     const identity = (await awsClient._getCallerIdentity());
-    console.log(`AWS Account ID: ${identity.Account}`);
+    console.log(`Current AWS Account ID: ${identity.Account}`);
     return identity.Account;
 }
 
@@ -217,7 +217,9 @@ async function checkDocumentState(awsClient, fileKey) {
 async function checkTimeline(coreAwsClient, fileKey) {
     coreAwsClient._initDynamoDB();
 
-    // Find document creation request
+    console.log('Searching document with key:', fileKey);
+
+    // Scan document creation request table for matching key
     const docRequest = await coreAwsClient._scanRequest('pn-DocumentCreationRequestTable', {
         FilterExpression: 'contains(#key, :key)',
         ExpressionAttributeNames: { '#key': 'key' },
@@ -228,13 +230,24 @@ async function checkTimeline(coreAwsClient, fileKey) {
 
     // Extract IUN and timeline ID
     const request = unmarshall(docRequest.Items[0]);
+    console.log('Found document with complete key:', request.key);
     const { iun, timelineId } = request;
+    console.log('Document details:', {
+        iun: iun,
+        timelineId: timelineId
+    });
+
 
     // Get timeline entries and sort by timestamp
     const timeline = await coreAwsClient._queryRequest('pn-Timelines', 'iun', iun);
     const sortedTimeline = timeline.Items
         .map(i => unmarshall(i))
         .sort((a, b) => b.timestamp - a.timestamp);
+
+    console.log('Timeline analysis:', {
+        latestTimestamp: new Date(sortedTimeline[0].timestamp).toISOString(),
+        checkingTimestamp: new Date(sortedTimeline.find(t => t.timelineId === timelineId)?.timestamp).toISOString()
+    });
 
     // Check if current timeline entry isn't the latest
     return sortedTimeline[0].timelineId !== timelineId;
@@ -249,11 +262,11 @@ async function main() {
     const { envName } = args.values;
 
     // Initialize AWS clients and get account ID
-    const confAwsClient = new AwsClientsWrapper('confinfo', envName);
-    const accountId = await getAccountId(confAwsClient);
+    const confinfoAwsClient = new AwsClientsWrapper('confinfo', envName);
+    const accountId = await getAccountId(confinfoAwsClient);
 
     // Dump and process DLQ messages
-    const messages = await dumpSQSMessages(confAwsClient);
+    const messages = dumpSQSMessages(confinfoAwsClient);
 
     // Process each message
     for (const message of messages) {
@@ -262,8 +275,8 @@ async function main() {
         if (!fileKey) continue;
 
         // Perform validation checks
-        const s3Check = await checkS3Objects(confAwsClient, fileKey, accountId);
-        const docStateCheck = await checkDocumentState(confAwsClient, fileKey);
+        const s3Check = await checkS3Objects(confinfoAwsClient, fileKey, accountId);
+        const docStateCheck = await checkDocumentState(confinfoAwsClient, fileKey);
 
         const coreAwsClient = new AwsClientsWrapper('core', envName);
         const timelineCheck = await checkTimeline(coreAwsClient, fileKey);
