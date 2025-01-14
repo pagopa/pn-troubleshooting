@@ -178,41 +178,56 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
  * @returns {Promise<boolean>} True if document state matches expected value
  */
 async function checkDocumentState(awsClient, fileKey) {
+    // Input validation
+    if (!fileKey || typeof fileKey !== 'string') {
+        console.error('Invalid fileKey:', fileKey);
+        return false;
+    }
+
     awsClient._initDynamoDB();
+    console.log('Searching match on pn-SsDocumenti with key:', fileKey);
 
-    // Search for document by key
-    const result = await awsClient._scanRequest('pn-SsDocumenti', {
-        FilterExpression: 'contains(documentKey, :key)',
-        ExpressionAttributeValues: { ':key': fileKey }
-    });
+    try {
+        // Search for document by key
+        const result = await awsClient._scanRequest('pn-SsDocumenti', {
+            FilterExpression: 'contains(documentKey, :key)',
+            ExpressionAttributeValues: { ':key': { S: fileKey } }  // Explicitly specify DynamoDB string type
+        });
 
-    if (!result.Items.length) return false;
+        if (!result?.Items?.length) {
+            console.log('No match on pn-SsDocumenti found for key:', fileKey);
+            return false;
+        }
 
-    console.log('Raw DynamoDB Item:', JSON.stringify(result.Items[0], null, 2));
+        console.log('Raw DynamoDB Item:', JSON.stringify(result.Items[0], null, 2));
 
-    const item = unmarshall(result.Items[0]);
-    console.log('Unmarshalled Item:', JSON.stringify(item, null, 2));
+        const item = unmarshall(result.Items[0]);
+        console.log('Unmarshalled Item:', JSON.stringify(item, null, 2));
 
-    // Extract prefix and log document details
-    const prefix = fileKey.split('_')[0] + '_' + fileKey.split('_')[1];
-    console.log('Document Analysis:', {
-        name: fileKey,
-        prefix: prefix,
-        expectedState: fileKey.startsWith('PN_AAR') || fileKey.startsWith('PN_LEGAL_FACTS')
+        // Extract prefix and log document details
+        const prefix = fileKey.split('_')[0] + '_' + fileKey.split('_')[1];
+        console.log('Document Analysis:', {
+            name: fileKey,
+            prefix: prefix,
+            expectedState: fileKey.startsWith('PN_AAR') || fileKey.startsWith('PN_LEGAL_FACTS')
+                ? 'SAVED'
+                : fileKey.startsWith('PN_NOTIFICATION_ATTACHMENT') || fileKey.startsWith('PN_PRINTED')
+                    ? 'ATTACHED'
+                    : 'UNKNOWN'
+        });
+
+        // Determine expected state based on document type prefix
+        const expectedState = fileKey.startsWith('PN_AAR') || fileKey.startsWith('PN_LEGAL_FACTS')
             ? 'SAVED'
             : fileKey.startsWith('PN_NOTIFICATION_ATTACHMENT') || fileKey.startsWith('PN_PRINTED')
                 ? 'ATTACHED'
-                : 'UNKNOWN'
-    });
+                : null;
 
-    // Determine expected state based on document type prefix
-    const expectedState = fileKey.startsWith('PN_AAR') || fileKey.startsWith('PN_LEGAL_FACTS')
-        ? 'SAVED'
-        : fileKey.startsWith('PN_NOTIFICATION_ATTACHMENT') || fileKey.startsWith('PN_PRINTED')
-            ? 'ATTACHED'
-            : null;
-
-    return item.documentLogicalState === expectedState;
+        return item.documentLogicalState === expectedState;
+    } catch (error) {
+        console.error('DynamoDB scan error:', error);
+        return false;
+    }
 }
 
 /**
@@ -222,42 +237,61 @@ async function checkDocumentState(awsClient, fileKey) {
  * @returns {Promise<boolean>} True if timeline status is valid
  */
 async function checkTimeline(coreAwsClient, fileKey) {
+    // Input validation
+    if (!fileKey || typeof fileKey !== 'string') {
+        console.error('Invalid fileKey:', fileKey);
+        return false;
+    }
+
     coreAwsClient._initDynamoDB();
+    console.log('Searching DocumentCreationRequest with key:', fileKey);
 
-    console.log('Searching document with key:', fileKey);
+    try {
+        // Scan document creation request table for matching key
+        const docRequest = await coreAwsClient._scanRequest('pn-DocumentCreationRequestTable', {
+            FilterExpression: 'contains(#key, :key)',
+            ExpressionAttributeNames: { '#key': 'key' },
+            ExpressionAttributeValues: { ':key': { S: fileKey } }
+        });
 
-    // Scan document creation request table for matching key
-    const docRequest = await coreAwsClient._scanRequest('pn-DocumentCreationRequestTable', {
-        FilterExpression: 'contains(#key, :key)',
-        ExpressionAttributeNames: { '#key': 'key' },
-        ExpressionAttributeValues: { ':key': fileKey }
-    });
+        if (!docRequest?.Items?.length) {
+            console.log('No DocumentCreationRequest found for key:', fileKey);
+            return false;
+        }
 
-    if (!docRequest.Items.length) return false;
+        // Extract IUN and timeline ID with null checks
+        const request = unmarshall(docRequest.Items[0]);
+        if (!request?.iun || !request?.timelineId) {
+            console.log('Missing IUN or timelineId in request:', request);
+            return false;
+        }
 
-    // Extract IUN and timeline ID
-    const request = unmarshall(docRequest.Items[0]);
-    console.log('Found document with complete key:', request.key);
-    const { iun, timelineId } = request;
-    console.log('Document details:', {
-        iun: iun,
-        timelineId: timelineId
-    });
+        const { iun, timelineId } = request;
+        console.log('Document details:', { iun, timelineId });
 
 
-    // Get timeline entries and sort by timestamp
-    const timeline = await coreAwsClient._queryRequest('pn-Timelines', 'iun', iun);
-    const sortedTimeline = timeline.Items
-        .map(i => unmarshall(i))
-        .sort((a, b) => b.timestamp - a.timestamp);
+        // Get timeline entries and sort by timestamp
+        const sortedTimeline = timeline.Items
+            .map(i => unmarshall(i))
+            .sort((a, b) => b.timestamp - a.timestamp);
 
-    console.log('Timeline analysis:', {
-        latestTimestamp: new Date(sortedTimeline[0].timestamp).toISOString(),
-        checkingTimestamp: new Date(sortedTimeline.find(t => t.timelineId === timelineId)?.timestamp).toISOString()
-    });
+        // Safety check for timeline data
+        if (!sortedTimeline.length) {
+            console.log('No valid timeline entries after processing');
+            return false;
+        }
 
-    // Check if current timeline entry isn't the latest
-    return sortedTimeline[0].timelineId !== timelineId;
+        console.log('Timeline analysis:', {
+            latestTimestamp: new Date(sortedTimeline[0].timestamp).toISOString(),
+            checkingTimestamp: new Date(sortedTimeline.find(t => t.timelineId === timelineId)?.timestamp)?.toISOString()
+        });
+
+        // Check if current timeline entry isn't the latest
+        return sortedTimeline[0].timelineId !== timelineId;
+    } catch (error) {
+        console.error('Timeline check error:', error);
+        return false;
+    }
 }
 
 /**
