@@ -64,3 +64,6 @@ legal_conservation_error_extractor/result
 **/files
 **/result
 **/results
+
+### Script-specific ###
+check_ss_events_dlq/temp/sqs_dump.txt
