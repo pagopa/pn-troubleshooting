@@ -98,24 +98,30 @@ async function dumpSQSMessages(awsClient) {
     awsClient._initSQS();
     const queueUrl = await awsClient._getQueueUrl('pn-ss-main-bucket-events-queue-DLQ');
     console.log(`SQS Queue URL: ${queueUrl}`);
+
+    // Get queue attributes to count messages
+    const queueAttributes = await awsClient._getQueueAttributes(queueUrl);
+    console.log(`Total messages in queue: ${queueAttributes.Attributes.ApproximateNumberOfMessages}`);
+
+    const maxNumberOfMessages = 10;
+    const visibilityTimeout = 30;
     let messages = [];
+    let totalMessages = 0;
 
     // Keep polling until no more messages are available
     while (true) {
-        const response = await awsClient._receiveMessages({
-            QueueUrl: queueUrl,       // Queue URL
-            MaxNumberOfMessages: 10,  // Batch size for each request
-            WaitTimeSeconds: 1        // Long polling timeout
-        });
+        const response = await awsClient._receiveMessages(queueUrl, maxNumberOfMessages, visibilityTimeout);
 
         // Exit loop when no more messages
         if (!response.Messages || response.Messages.length === 0) break;
 
         // Parse message bodies from JSON string to objects
         messages = messages.concat(response.Messages.map(m => JSON.parse(m.Body)));
+        totalMessages += response.Messages.length;
         appendJsonToFile('temp/sqs_dump.txt', messages);
     }
 
+    console.log(`Total messages processed: ${totalMessages}`);
     return messages;
 }
 
