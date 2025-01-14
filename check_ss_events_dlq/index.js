@@ -97,12 +97,13 @@ async function dumpSQSMessages(awsClient) {
 
     awsClient._initSQS();
     const queueUrl = await awsClient._getQueueUrl('pn-ss-main-bucket-events-queue-DLQ');
+    console.log(`SQS Queue URL: ${queueUrl}`);
     let messages = [];
 
     // Keep polling until no more messages are available
     while (true) {
         const response = await awsClient._receiveMessages({
-            QueueUrl: queueUrl,
+            QueueUrl: queueUrl,       // Queue URL
             MaxNumberOfMessages: 10,  // Batch size for each request
             WaitTimeSeconds: 1        // Long polling timeout
         });
