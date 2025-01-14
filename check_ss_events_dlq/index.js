@@ -138,12 +138,16 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
     const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
     const stagingBucket = `pn-safestorage-staging-eu-south-1-${accountId}`;
 
+    console.log(`Searching for object with key: ${fileKey}`);
+
     try {
         // Check if object exists in main bucket
         await awsClient.s3.headObject({
             Bucket: mainBucket,
             Key: fileKey
         });
+
+        console.log(`Found object "${fileKey}" in main bucket ${mainBucket}`);
 
         try {
             // Check if object exists in staging bucket (shouldn't)
@@ -181,6 +185,19 @@ async function checkDocumentState(awsClient, fileKey) {
 
     const item = unmarshall(result.Items[0]);
     console.log('Unmarshalled Item:', JSON.stringify(item, null, 2));
+
+    // Extract prefix and log document details
+    const prefix = fileKey.split('_')[0] + '_' + fileKey.split('_')[1];
+    console.log('Document Analysis:', {
+        name: fileKey,
+        prefix: prefix,
+        expectedState: fileKey.startsWith('PN_AAR') || fileKey.startsWith('PN_LEGAL_FACTS')
+            ? 'SAVED'
+            : fileKey.startsWith('PN_NOTIFICATION_ATTACHMENT') || fileKey.startsWith('PN_PRINTED')
+                ? 'ATTACHED'
+                : 'UNKNOWN'
+    });
+
     // Determine expected state based on document type prefix
     const expectedState = fileKey.startsWith('PN_AAR') || fileKey.startsWith('PN_LEGAL_FACTS')
         ? 'SAVED'
