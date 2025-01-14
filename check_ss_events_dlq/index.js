@@ -79,7 +79,7 @@ function appendJsonToFile(fileName, data) {
  */
 async function getAccountId(awsClient) {
     const stsClient = awsClient._initSTS();
-    const identity = await stsClient.getCallerIdentity({});
+    const identity = (await awsClient._getCallerIdentity());
     return identity.Account;
 }
 
