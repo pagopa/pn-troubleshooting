@@ -321,7 +321,7 @@ async function main() {
     const args = validateArgs();
     const { envName } = args.values;
 
-    // Initialize AWS clients and get account ID
+    // Initialize AWS Client and switch to CONFINFO profile
     const confinfoAwsClient = new AwsClientsWrapper('confinfo', envName);
     const confinfoAccountId = await getAccountId(confinfoAwsClient);
     console.log(`Switching to CONFINFO Profile with AccountID: ${confinfoAccountId}`);
@@ -329,27 +329,43 @@ async function main() {
     // Dump and process DLQ messages
     const messages = await dumpSQSMessages(confinfoAwsClient);
 
-    // Process each message
+    // Process each message separately
     for (const message of messages) {
-        // Extract S3 object key from message
+        console.log('\n--- Processing new message ---');
+
+        // Extract S3 object key
         const fileKey = message.Records?.[0]?.s3?.object?.key;
-        if (!fileKey) continue;
-
-        // Perform validation checks
-        const s3Check = await checkS3Objects(confinfoAwsClient, fileKey, confinfoAccountId);
-        const docStateCheck = await checkDocumentState(confinfoAwsClient, fileKey);
-
-        const coreAwsClient = new AwsClientsWrapper('core', envName);
-        const coreAccountId = await getAccountId(coreAwsClient);
-        console.log(`Switching to CORE Profile with AccountID: ${coreAccountId}`);
-        const timelineCheck = await checkTimeline(coreAwsClient, fileKey);
-
-        // Log results to appropriate file
-        if (!s3Check || !docStateCheck || !timelineCheck) {
-            appendJsonToFile('results/errors.json', message);
-        } else {
-            appendJsonToFile('results/ok.json', message);
+        if (!fileKey) {
+            logResult(message, 'error', 'Missing fileKey in message');
+            continue;
         }
+
+        // Check S3 objects
+        const s3Check = await checkS3Objects(confinfoAwsClient, fileKey, confinfoAccountId);
+        if (!s3Check) {
+            logResult(message, 'error', 'S3 check failed');
+            continue;
+        }
+
+        // Check document state
+        const docStateCheck = await checkDocumentState(confinfoAwsClient, fileKey);
+        if (!docStateCheck) {
+            logResult(message, 'error', 'Document state check failed');
+            continue;
+        }
+
+        // Initialize AWS Client and switch to CORE profile
+        const coreAwsClient = new AwsClientsWrapper('core', envName);
+
+        // Check document timeline
+        const timelineCheck = await checkTimeline(coreAwsClient, fileKey);
+        if (!timelineCheck) {
+            logResult(message, 'error', 'Timeline check failed');
+            continue;
+        }
+
+        // All checks passed
+        logResult(message, 'ok');
     }
 }
 
