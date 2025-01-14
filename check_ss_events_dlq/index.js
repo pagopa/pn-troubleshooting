@@ -266,7 +266,7 @@ async function main() {
     console.log(`Switching to CONFINFO Profile with AccountID: ${confinfoAccountId}`);
 
     // Dump and process DLQ messages
-    const messages = dumpSQSMessages(confinfoAwsClient);
+    const messages = await dumpSQSMessages(confinfoAwsClient);
 
     // Process each message
     for (const message of messages) {
@@ -275,7 +275,7 @@ async function main() {
         if (!fileKey) continue;
 
         // Perform validation checks
-        const s3Check = await checkS3Objects(confinfoAwsClient, fileKey, accountId);
+        const s3Check = await checkS3Objects(confinfoAwsClient, fileKey, confinfoAccountId);
         const docStateCheck = await checkDocumentState(confinfoAwsClient, fileKey);
 
         const coreAwsClient = new AwsClientsWrapper('core', envName);
