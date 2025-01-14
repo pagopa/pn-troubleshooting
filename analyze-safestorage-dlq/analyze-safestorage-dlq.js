@@ -13,7 +13,7 @@ const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];    // Valid
  */
 function validateArgs() {
     const usage = `
-Usage: node index.js --envName|-e <environment>
+Usage: node analyze-safestorage-dlq.js --envName|-e <environment>
 
 Description:
     Analyzes DLQ messages from SafeStorage events queue and validates related resources.
@@ -23,8 +23,8 @@ Parameters:
     --help, -h       Display this help message
 
 Example:
-    node index.js --envName dev
-    node index.js -e prod`;
+    node analyze-safestorage-dlq.js --envName dev
+    node analyze-safestorage-dlq.js -e prod`;
 
     const args = parseArgs({
         options: {
