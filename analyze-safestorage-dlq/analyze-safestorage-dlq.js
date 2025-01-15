@@ -256,29 +256,40 @@ async function checkDocumentState(awsClient, fileKey) {
             return false;
         }
 
-        console.log('Raw DynamoDB Item:', JSON.stringify(result.Item, null, 2));
-
         const item = unmarshall(result.Item);
         console.log('Unmarshalled Item:', JSON.stringify(item, null, 2));
 
-        // Extract prefix and log document details
+        // Define prefix groups by expected state
+        const ATTACHED_PREFIXES = [
+            'PN_PRINTED',
+            'PN_NOTIFICATION_ATTACHMENTS',
+            'PN_F24_META'
+        ];
+
+        // Use partial matches for related document types
+        const SAVED_CONDITIONS = [
+            prefix => prefix === 'PN_AAR',
+            prefix => prefix === 'PN_F24' && !prefix.includes('META'),
+            prefix => prefix === 'PN_LOGS_ARCHIVE_AUDIT',
+            prefix => prefix.startsWith('PN_LEGAL_FACTS') || prefix === 'PN_EXTERNAL_LEGAL_FACTS',
+            prefix => prefix.startsWith('PN_ADDRESSES_')
+        ];
+
+        // Extract prefix and determine expected state
         const prefix = fileKey.split('_')[0] + '_' + fileKey.split('_')[1];
+
+        let expectedState = null;
+        if (ATTACHED_PREFIXES.includes(prefix)) {
+            expectedState = 'ATTACHED';
+        } else if (SAVED_CONDITIONS.some(condition => condition(prefix))) {
+            expectedState = 'SAVED';
+        }
+
         console.log('Document Analysis:', {
             name: fileKey,
-            prefix: prefix,
-            expectedState: fileKey.startsWith('PN_AAR') || fileKey.startsWith('PN_LEGAL_FACTS')
-                ? 'SAVED'
-                : fileKey.startsWith('PN_NOTIFICATION_ATTACHMENT') || fileKey.startsWith('PN_PRINTED')
-                    ? 'ATTACHED'
-                    : 'UNKNOWN'
+            prefix,
+            expectedState: expectedState
         });
-
-        // Determine expected state based on document type prefix
-        const expectedState = fileKey.startsWith('PN_AAR') || fileKey.startsWith('PN_LEGAL_FACTS')
-            ? 'SAVED'
-            : fileKey.startsWith('PN_NOTIFICATION_ATTACHMENT') || fileKey.startsWith('PN_PRINTED')
-                ? 'ATTACHED'
-                : null;
 
         return item.documentLogicalState === expectedState;
     } catch (error) {
