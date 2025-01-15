@@ -5,6 +5,7 @@ import { AwsClientsWrapper } from "pn-common";                          // AWS s
 import { unmarshall } from '@aws-sdk/util-dynamodb';                    // DynamoDB response parser
 import { GetItemCommand } from '@aws-sdk/client-dynamodb';              // DynamoDB GetItem command
 import { parseArgs } from 'util';                                       // Command line argument parser
+import { HeadObjectCommand } from '@aws-sdk/client-s3';                 // S3 HeadObject command
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];    // Valid environment names
 
 /**
@@ -186,12 +187,18 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
 
     try {
         // Check if object exists in main bucket
-        await awsClient._getObjectCommand(mainBucket, fileKey);
+        await awsClient.s3Client.send(new HeadObjectCommand({
+            Bucket: mainBucket,
+            Key: fileKey
+        }));
         console.log(`Found object "${fileKey}" in main bucket ${mainBucket}`);
 
         try {
             // Check if object exists in staging bucket (shouldn't)
-            await awsClient._getObjectCommand(stagingBucket, fileKey);
+            await awsClient.s3Client.send(new HeadObjectCommand({
+                Bucket: stagingBucket,
+                Key: fileKey
+            }));
             return false; // Failed: Object exists in staging bucket
         } catch (e) {
             return true;  // Success: Object doesn't exist in staging bucket
