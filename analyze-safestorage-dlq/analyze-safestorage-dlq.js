@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, appendFileSync } from 'fs';             // File 
 import { dirname } from 'path';                                         // Path manipulation utilities
 import { AwsClientsWrapper } from "pn-common";                          // AWS services wrapper
 import { unmarshall } from '@aws-sdk/util-dynamodb';                    // DynamoDB response parser
+import { GetItemCommand } from '@aws-sdk/client-dynamodb';              // DynamoDB GetItem command
 import { parseArgs } from 'util';                                       // Command line argument parser
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];    // Valid environment names
 
@@ -162,8 +163,6 @@ async function dumpSQSMessages(awsClient) {
         totalMessages += response.Messages.length;
         appendJsonToFile('temp/sqs_dump.txt', processedMessages);
 
-        // Break if we've reached the limit
-        if (totalMessages >= messageLimit) break;
     }
 
     console.log(`Total messages processed: ${totalMessages}`);
@@ -217,23 +216,27 @@ async function checkDocumentState(awsClient, fileKey) {
     }
 
     awsClient._initDynamoDB();
-    console.log('Searching match on pn-SsDocumenti with key:', fileKey);
+    console.log('Searching document in pn-SsDocumenti with documentKey:', fileKey);
 
     try {
-        // Search for document by key
-        const result = await awsClient._scanRequest('pn-SsDocumenti', {
-            FilterExpression: 'contains(documentKey, :key)',
-            ExpressionAttributeValues: { ':key': { S: fileKey } }  // Explicitly specify DynamoDB string type
+        // Search for document by documentKey (Partition key)
+        const command = new GetItemCommand({
+            TableName: 'pn-SsDocumenti',
+            Key: {
+                documentKey: { S: fileKey }
+            }
         });
 
-        if (!result?.Items?.length) {
-            console.log('No match on pn-SsDocumenti found for key:', fileKey);
+        const result = await awsClient.dynamoDBClient.send(command);
+
+        if (!result?.Item) {
+            console.log('No match found in pn-SsDocumenti for documentKey:', fileKey);
             return false;
         }
 
-        console.log('Raw DynamoDB Item:', JSON.stringify(result.Items[0], null, 2));
+        console.log('Raw DynamoDB Item:', JSON.stringify(result.Item, null, 2));
 
-        const item = unmarshall(result.Items[0]);
+        const item = unmarshall(result.Item);
         console.log('Unmarshalled Item:', JSON.stringify(item, null, 2));
 
         // Extract prefix and log document details
@@ -257,7 +260,7 @@ async function checkDocumentState(awsClient, fileKey) {
 
         return item.documentLogicalState === expectedState;
     } catch (error) {
-        console.error('DynamoDB scan error:', error);
+        console.error('DynamoDB GetItem error:', error);
         return false;
     }
 }
@@ -279,20 +282,23 @@ async function checkTimeline(coreAwsClient, fileKey) {
     console.log('Searching DocumentCreationRequest with key:', fileKey);
 
     try {
-        // Scan document creation request table for matching key
-        const docRequest = await coreAwsClient._scanRequest('pn-DocumentCreationRequestTable', {
-            FilterExpression: 'contains(#key, :key)',
-            ExpressionAttributeNames: { '#key': 'key' },
-            ExpressionAttributeValues: { ':key': { S: fileKey } }
+        // Get document creation request by key
+        const command = new GetItemCommand({
+            TableName: 'pn-DocumentCreationRequestTable',
+            Key: {
+                key: { S: fileKey }
+            }
         });
 
-        if (!docRequest?.Items?.length) {
+        const docRequest = await coreAwsClient.dynamoDBClient.send(command);
+
+        if (!docRequest?.Item) {
             console.log('No DocumentCreationRequest found for key:', fileKey);
             return false;
         }
 
         // Extract IUN and timeline ID with null checks
-        const request = unmarshall(docRequest.Items[0]);
+        const request = unmarshall(docRequest.Item);
         if (!request?.iun || !request?.timelineId) {
             console.log('Missing IUN or timelineId in request:', request);
             return false;
@@ -300,7 +306,6 @@ async function checkTimeline(coreAwsClient, fileKey) {
 
         const { iun, timelineId } = request;
         console.log('Document details:', { iun, timelineId });
-
 
         // Get timeline entries and sort by timestamp
         const sortedTimeline = timeline.Items
