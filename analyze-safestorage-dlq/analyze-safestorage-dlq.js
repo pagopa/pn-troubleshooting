@@ -123,11 +123,6 @@ function logResult(message, status, reason = '') {
  * Creates the directory structure if it doesn't exist
  */
 function appendJsonToFile(fileName, data) {
-    const dir = dirname(fileName);
-    // Ensure target directory exists
-    if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-    }
     // Append JSON string with newline
     appendFileSync(fileName, JSON.stringify(data) + "\n");
 }
@@ -148,11 +143,7 @@ async function getAccountId(awsClient) {
  * @returns {Array} Array of parsed message bodies
  */
 async function dumpSQSMessages(awsClient) {
-    // Ensure temp directory exists
-    if (!existsSync('temp')) {
-        mkdirSync('temp');
-    }
-
+    // Get SQS queue URL
     const queueUrl = await awsClient._getQueueUrl('pn-ss-main-bucket-events-queue-DLQ');
     console.log(`SQS Queue URL: ${queueUrl}`);
 
@@ -355,20 +346,29 @@ async function main() {
         timelineFailed: 0
     };
 
-    // Initialize CONFINFO clients once
+    // Initialize clients and create directories in parallel
     const confinfoClient = new AwsClientsWrapper('confinfo', envName);
-    await initializeAwsClients(confinfoClient);
-
-    // Initialize CORE clients once
     const coreClient = new AwsClientsWrapper('core', envName);
-    await initializeAwsClients(coreClient);
 
-    // CONFINFO profile
-    const confinfoAccountId = await getAccountId(confinfoClient);
+    await Promise.all([
+        // AWS Clients initialization
+        initializeAwsClients(confinfoClient),
+        initializeAwsClients(coreClient),
+        // Directory creation
+        new Promise(resolve => {
+            if (!existsSync('temp')) mkdirSync('temp');
+            if (!existsSync('results')) mkdirSync('results');
+            resolve();
+        })
+    ]);
+
+    // Get account IDs in parallel
+    const [confinfoAccountId, coreAccountId] = await Promise.all([
+        getAccountId(confinfoClient),
+        getAccountId(coreClient)
+    ]);
+
     console.log(`CONFINFO AccountID: ${confinfoAccountId}`);
-
-    // CORE profile
-    const coreAccountId = await getAccountId(coreClient);
     console.log(`CORE AccountID: ${coreAccountId}`);
 
     // Dump and process DLQ messages
@@ -381,7 +381,7 @@ async function main() {
         // Extract S3 object key
         const fileKey = message.Records?.[0]?.s3?.object?.key;
         if (!fileKey) {
-            logResult(message, 'error', 'Missing fileKey in message');
+            logResult(message, 'error', 'Missing or invalid fileKey in message');
             continue;
         }
 
@@ -409,9 +409,6 @@ async function main() {
             continue;
         }
 
-        // All checks passed
-        stats.passed++;
-        logResult(message, 'ok');
     }
 
     printSummary(stats);
