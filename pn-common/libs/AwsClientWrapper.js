@@ -92,16 +92,6 @@ class AwsClientsWrapper {
     return await this._dynamoClient.send(command);
   }
 
-  async _scanRequest(tableName, params = {}) {
-    const input = {
-      TableName: tableName,
-      ...params
-    };
-
-    const command = new ScanCommand(input);
-    return await this._dynamoClient.send(command);
-  }
-
   async _queryRequestByIndex(tableName, indexName, key, value, lastEvaluatedKey) {
     const input = { // QueryInput
       TableName: tableName, // required
