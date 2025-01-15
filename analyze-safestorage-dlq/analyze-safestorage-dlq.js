@@ -93,30 +93,7 @@ function logResult(message, status, reason = '') {
 
     const fileName = status === 'error' ? 'results/errors.json' : 'results/ok.json';
     appendJsonToFile(fileName, result);
-    console.log(`${status.toUpperCase()}: ${reason || 'All checks passed'}`);
 }
-
-/**
- * Prints a summary of the DLQ message processing statistics to the console.
- * @param {Object} stats - The statistics object containing the processing results
- * @param {number} stats.total - Total number of messages processed
- * @param {number} stats.passed - Number of messages that passed all checks
- * @param {number} stats.s3Failed - Number of messages that failed S3 bucket checks
- * @param {number} stats.stateCheckFailed - Number of messages that failed document state checks
- * @param {number} stats.timelineFailed - Number of messages that failed timeline checks
- * @returns {void}
- */
-function printSummary(stats) {
-    console.log('\n=== Execution Summary ===');
-    console.log(`Total messages processed: ${stats.total}`);
-    console.log(`Messages that passed all checks: ${stats.passed}`);
-    console.log(`Total messages that failed a check: ${stats.total - stats.passed}`);
-    console.log('\nFailures breakdown:');
-    console.log(`- S3 buckets checks failed: ${stats.s3Failed}`);
-    console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
-    console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
-}
-
 /**
  * Appends a JSON object as a new line to a file
  * @param {string} fileName - Target file path
@@ -183,7 +160,6 @@ async function dumpSQSMessages(awsClient) {
 
     }
 
-    console.log(`Total messages processed: ${totalMessages}`);
     return messages;
 }
 
@@ -199,15 +175,12 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
     const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
     const stagingBucket = `pn-safestorage-staging-eu-south-1-${accountId}`;
 
-    console.log(`Searching for S3 object with key: ${fileKey}`);
-
     try {
         // Check if object exists in main bucket
         await awsClient._s3Client.send(new HeadObjectCommand({
             Bucket: mainBucket,
             Key: fileKey
         }));
-        console.log(`Found object "${fileKey}" in main bucket ${mainBucket}`);
 
         try {
             // Check if object exists in staging bucket (shouldn't)
@@ -220,7 +193,6 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
             return true;  // Success: Object doesn't exist in staging bucket
         }
     } catch (e) {
-        console.log(`Object "${fileKey}" not found in main bucket ${mainBucket}`);
         return false; // Failed: Object doesn't exist in main bucket
     }
 }
@@ -238,8 +210,6 @@ async function checkDocumentState(awsClient, fileKey) {
         return false;
     }
 
-    console.log('Searching document in pn-SsDocumenti with documentKey:', fileKey);
-
     try {
         // Search for document by documentKey (Partition key)
         const command = new GetItemCommand({
@@ -252,12 +222,10 @@ async function checkDocumentState(awsClient, fileKey) {
         const result = await awsClient._dynamoClient.send(command);
 
         if (!result?.Item) {
-            console.log('No match found in pn-SsDocumenti for documentKey:', fileKey);
             return false;
         }
 
         const item = unmarshall(result.Item);
-        console.log('Unmarshalled Item:', JSON.stringify(item, null, 2));
 
         // Define prefix groups by expected state
         const ATTACHED_PREFIXES = [
@@ -285,12 +253,6 @@ async function checkDocumentState(awsClient, fileKey) {
             expectedState = 'SAVED';
         }
 
-        console.log('Document Analysis:', {
-            name: fileKey,
-            prefix,
-            expectedState: expectedState
-        });
-
         return item.documentLogicalState === expectedState;
     } catch (error) {
         console.error('DynamoDB GetItem error:', error);
@@ -311,8 +273,6 @@ async function checkTimeline(awsClient, fileKey) {
         return false;
     }
 
-    console.log('Searching DocumentCreationRequest with key:', fileKey);
-
     try {
         // Get document creation request by key
         const command = new GetItemCommand({
@@ -325,7 +285,6 @@ async function checkTimeline(awsClient, fileKey) {
         const docRequest = await awsClient._dynamoClient.send(command);
 
         if (!docRequest?.Item) {
-            console.log('No DocumentCreationRequest found for key:', fileKey);
             return false;
         }
 
@@ -349,11 +308,6 @@ async function checkTimeline(awsClient, fileKey) {
             console.log('No valid timeline entries after processing');
             return false;
         }
-
-        console.log('Timeline analysis:', {
-            latestTimestamp: new Date(sortedTimeline[0].timestamp).toISOString(),
-            checkingTimestamp: new Date(sortedTimeline.find(t => t.timelineId === timelineId)?.timestamp)?.toISOString()
-        });
 
         // Check if current timeline entry isn't the latest
         return sortedTimeline[0].timelineId !== timelineId;
@@ -382,8 +336,8 @@ async function main() {
     function printSummary(stats) {
         console.log('\n=== Execution Summary ===');
         console.log(`Total messages processed: ${stats.total}`);
-        console.log(`Messages passed all checks: ${stats.passed}`);
-        console.log(`Total messages failed: ${stats.total - stats.passed}`);
+        console.log(`Messages that passed: ${stats.passed}`);
+        console.log(`Messages that failed: ${stats.total - stats.passed}`);
         console.log('\nFailures breakdown:');
         console.log(`- S3 bucket checks failed: ${stats.s3Failed}`);
         console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
@@ -400,7 +354,11 @@ async function main() {
 
     // CONFINFO profile
     const confinfoAccountId = await getAccountId(confinfoAwsClient);
-    console.log(`Using CONFINFO Profile with AccountID: ${confinfoAccountId}`);
+    console.log(`CONFINFO AccountID: ${confinfoAccountId}`);
+
+    // CORE profile
+    const coreAccountId = await getAccountId(coreAwsClient);
+    console.log(`CORE AccountID: ${coreAccountId}`);
 
     // Dump and process DLQ messages
     const messages = await dumpSQSMessages(confinfoAwsClient);
@@ -408,7 +366,6 @@ async function main() {
 
     // Process each message separately
     for (const message of messages) {
-        console.log('\n--- Processing new message ---');
 
         // Extract S3 object key
         const fileKey = message.Records?.[0]?.s3?.object?.key;
@@ -432,11 +389,6 @@ async function main() {
             stats.stateCheckFailed++;
             continue;
         }
-
-        // CORE profile
-        const coreAccountId = await getAccountId(coreAwsClient);
-        console.log(`Using CORE Profile with AccountID: ${coreAccountId}`);
-
 
         // Check document timeline
         const timelineCheck = await checkTimeline(coreAwsClient, fileKey);
