@@ -59,6 +59,28 @@ Example:
 }
 
 /**
+     * Prints a summary of the message processing statistics to the console.
+     * 
+     * @param {Object} stats - The statistics object containing the processing results
+     * @param {number} stats.total - Total number of messages processed
+     * @param {number} stats.passed - Number of messages that passed all checks
+     * @param {number} stats.s3Failed - Number of messages that failed S3 bucket checks
+     * @param {number} stats.stateCheckFailed - Number of messages that failed document state checks
+     * @param {number} stats.timelineFailed - Number of messages that failed timeline checks
+     * @returns {void}
+     */
+function printSummary(stats) {
+    console.log('\n=== Execution Summary ===');
+    console.log(`Total messages processed: ${stats.total}`);
+    console.log(`Messages that passed: ${stats.passed}`);
+    console.log(`Messages that failed: ${stats.total - stats.passed}`);
+    console.log('\nFailures breakdown:');
+    console.log(`- S3 bucket checks failed: ${stats.s3Failed}`);
+    console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
+    console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
+}
+
+/**
  * Initialize all required AWS clients
  * @param {AwsClientsWrapper} awsClient - AWS client wrapper
  * @returns {Object} Initialized clients
@@ -333,35 +355,24 @@ async function main() {
         timelineFailed: 0
     };
 
-    function printSummary(stats) {
-        console.log('\n=== Execution Summary ===');
-        console.log(`Total messages processed: ${stats.total}`);
-        console.log(`Messages that passed: ${stats.passed}`);
-        console.log(`Messages that failed: ${stats.total - stats.passed}`);
-        console.log('\nFailures breakdown:');
-        console.log(`- S3 bucket checks failed: ${stats.s3Failed}`);
-        console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
-        console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
-    }
-
     // Initialize CONFINFO clients once
-    const confinfoAwsClient = new AwsClientsWrapper('confinfo', envName);
-    const confinfoClients = await initializeAwsClients(confinfoAwsClient);
+    const confinfoClient = new AwsClientsWrapper('confinfo', envName);
+    await initializeAwsClients(confinfoClient);
 
     // Initialize CORE clients once
-    const coreAwsClient = new AwsClientsWrapper('core', envName);
-    const coreClients = await initializeAwsClients(coreAwsClient);
+    const coreClient = new AwsClientsWrapper('core', envName);
+    await initializeAwsClients(coreClient);
 
     // CONFINFO profile
-    const confinfoAccountId = await getAccountId(confinfoAwsClient);
+    const confinfoAccountId = await getAccountId(confinfoClient);
     console.log(`CONFINFO AccountID: ${confinfoAccountId}`);
 
     // CORE profile
-    const coreAccountId = await getAccountId(coreAwsClient);
+    const coreAccountId = await getAccountId(coreClient);
     console.log(`CORE AccountID: ${coreAccountId}`);
 
     // Dump and process DLQ messages
-    const messages = await dumpSQSMessages(confinfoAwsClient);
+    const messages = await dumpSQSMessages(confinfoClient);
     stats.total = messages.length;
 
     // Process each message separately
@@ -375,7 +386,7 @@ async function main() {
         }
 
         // Check S3 objects
-        const s3Check = await checkS3Objects(confinfoAwsClient, fileKey, confinfoAccountId);
+        const s3Check = await checkS3Objects(confinfoClient, fileKey, confinfoAccountId);
         if (!s3Check) {
             logResult(message, 'error', 'S3 check failed');
             stats.s3Failed++;
@@ -383,7 +394,7 @@ async function main() {
         }
 
         // Check document state
-        const docStateCheck = await checkDocumentState(confinfoAwsClient, fileKey);
+        const docStateCheck = await checkDocumentState(confinfoClient, fileKey);
         if (!docStateCheck) {
             logResult(message, 'error', 'Document state check failed');
             stats.stateCheckFailed++;
@@ -391,7 +402,7 @@ async function main() {
         }
 
         // Check document timeline
-        const timelineCheck = await checkTimeline(coreAwsClient, fileKey);
+        const timelineCheck = await checkTimeline(coreClient, fileKey);
         if (!timelineCheck) {
             logResult(message, 'error', 'Timeline check failed');
             stats.timelineFailed++;
