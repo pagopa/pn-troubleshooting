@@ -59,6 +59,25 @@ Example:
 }
 
 /**
+ * Initialize all required AWS clients
+ * @param {AwsClientsWrapper} awsClient - AWS client wrapper
+ * @returns {Object} Initialized clients
+ */
+async function initializeAwsClients(awsClient) {
+    awsClient._initS3();
+    awsClient._initDynamoDB();
+    awsClient._initSTS();
+    awsClient._initSQS();
+
+    return {
+        s3Client: awsClient._s3Client,
+        dynamoDBClient: awsClient._dynamoClient,
+        stsClient: awsClient._stsClient,
+        sqsClient: awsClient._sqsClient
+    };
+}
+
+/**
  * Logs result to appropriate file and console
  * @param {Object} message - Message being processed
  * @param {string} status - Status of processing (error/ok)
@@ -120,7 +139,6 @@ function appendJsonToFile(fileName, data) {
  * @returns {Promise<string>} AWS Account ID
  */
 async function getAccountId(awsClient) {
-    const stsClient = awsClient._initSTS();
     const identity = (await awsClient._getCallerIdentity());
     return identity.Account;
 }
@@ -136,7 +154,6 @@ async function dumpSQSMessages(awsClient) {
         mkdirSync('temp');
     }
 
-    awsClient._initSQS();
     const queueUrl = await awsClient._getQueueUrl('pn-ss-main-bucket-events-queue-DLQ');
     console.log(`SQS Queue URL: ${queueUrl}`);
 
@@ -178,7 +195,6 @@ async function dumpSQSMessages(awsClient) {
  * @returns {Promise<boolean>} True if object exists in main bucket but not in staging
  */
 async function checkS3Objects(awsClient, fileKey, accountId) {
-    awsClient._initS3();
 
     const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
     const stagingBucket = `pn-safestorage-staging-eu-south-1-${accountId}`;
@@ -187,7 +203,7 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
 
     try {
         // Check if object exists in main bucket
-        await awsClient.s3Client.send(new HeadObjectCommand({
+        await awsClient._s3Client.send(new HeadObjectCommand({
             Bucket: mainBucket,
             Key: fileKey
         }));
@@ -195,7 +211,7 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
 
         try {
             // Check if object exists in staging bucket (shouldn't)
-            await awsClient.s3Client.send(new HeadObjectCommand({
+            await awsClient._s3Client.send(new HeadObjectCommand({
                 Bucket: stagingBucket,
                 Key: fileKey
             }));
@@ -222,7 +238,6 @@ async function checkDocumentState(awsClient, fileKey) {
         return false;
     }
 
-    awsClient._initDynamoDB();
     console.log('Searching document in pn-SsDocumenti with documentKey:', fileKey);
 
     try {
@@ -234,7 +249,7 @@ async function checkDocumentState(awsClient, fileKey) {
             }
         });
 
-        const result = await awsClient.dynamoDBClient.send(command);
+        const result = await awsClient._dynamoClient.send(command);
 
         if (!result?.Item) {
             console.log('No match found in pn-SsDocumenti for documentKey:', fileKey);
@@ -274,18 +289,17 @@ async function checkDocumentState(awsClient, fileKey) {
 
 /**
  * Validates document timeline status
- * @param {AwsClientsWrapper} coreAwsClient - Initialized AWS client for core services
+ * @param {AwsClientsWrapper} awsClient - Initialized AWS client
  * @param {string} fileKey - Document key to check
  * @returns {Promise<boolean>} True if timeline status is valid
  */
-async function checkTimeline(coreAwsClient, fileKey) {
+async function checkTimeline(awsClient, fileKey) {
     // Input validation
     if (!fileKey || typeof fileKey !== 'string') {
         console.error('Invalid fileKey:', fileKey);
         return false;
     }
 
-    coreAwsClient._initDynamoDB();
     console.log('Searching DocumentCreationRequest with key:', fileKey);
 
     try {
@@ -297,7 +311,7 @@ async function checkTimeline(coreAwsClient, fileKey) {
             }
         });
 
-        const docRequest = await coreAwsClient.dynamoDBClient.send(command);
+        const docRequest = await awsClient._dynamoClient.send(command);
 
         if (!docRequest?.Item) {
             console.log('No DocumentCreationRequest found for key:', fileKey);
@@ -315,7 +329,7 @@ async function checkTimeline(coreAwsClient, fileKey) {
         console.log('Document details:', { iun, timelineId });
 
         // Get timeline entries and sort by timestamp
-        const sortedTimeline = timeline.Items
+        const sortedTimeline = timelineId.Items
             .map(i => unmarshall(i))
             .sort((a, b) => b.timestamp - a.timestamp);
 
@@ -365,10 +379,17 @@ async function main() {
         console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
     }
 
-    // Initialize AWS Client and switch to CONFINFO profile
+    // Initialize CONFINFO clients once
     const confinfoAwsClient = new AwsClientsWrapper('confinfo', envName);
+    const confinfoClients = await initializeAwsClients(confinfoAwsClient);
+
+    // Initialize CORE clients once
+    const coreAwsClient = new AwsClientsWrapper('core', envName);
+    const coreClients = await initializeAwsClients(coreAwsClient);
+
+    // CONFINFO profile
     const confinfoAccountId = await getAccountId(confinfoAwsClient);
-    console.log(`Switching to CONFINFO Profile with AccountID: ${confinfoAccountId}`);
+    console.log(`Using CONFINFO Profile with AccountID: ${confinfoAccountId}`);
 
     // Dump and process DLQ messages
     const messages = await dumpSQSMessages(confinfoAwsClient);
@@ -401,8 +422,10 @@ async function main() {
             continue;
         }
 
-        // Initialize AWS Client and switch to CORE profile
-        const coreAwsClient = new AwsClientsWrapper('core', envName);
+        // CORE profile
+        const coreAccountId = await getAccountId(coreAwsClient);
+        console.log(`Using CORE Profile with AccountID: ${coreAccountId}`);
+
 
         // Check document timeline
         const timelineCheck = await checkTimeline(coreAwsClient, fileKey);
