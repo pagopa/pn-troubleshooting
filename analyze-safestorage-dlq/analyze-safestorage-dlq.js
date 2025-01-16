@@ -131,16 +131,23 @@ async function initializeAwsClients(awsClient) {
  * @param {string} reason - Reason for failure
  */
 function logResult(message, status, reason = '') {
-    const result = {
-        message,
-        timestamp: new Date().toISOString(),
-        status,
-        reason
-    };
+    // Clone message to avoid modifying the original
+    const enrichedMessage = JSON.parse(JSON.stringify(message));
+
+    // Add fields to the Records array if it exists
+    if (enrichedMessage.Records && enrichedMessage.Records.length > 0) {
+        enrichedMessage.Records[0] = {
+            ...enrichedMessage.Records[0],
+            dlqCheckTimestamp: new Date().toISOString(),
+            dlqCheckStatus: status,
+            dlqCheckResult: reason
+        };
+    }
 
     const fileName = status === 'error' ? 'results/errors.json' : 'results/ok.json';
-    appendJsonToFile(fileName, result);
+    appendJsonToFile(fileName, enrichedMessage);
 }
+
 /**
  * Appends a JSON object as a new line to a file
  * @param {string} fileName - Target file path
@@ -329,12 +336,10 @@ async function checkTimeline(awsClient, fileKey) {
         // Extract IUN and timeline ID with null checks
         const request = unmarshall(docRequest.Item);
         if (!request?.iun || !request?.timelineId) {
-            console.log('Missing IUN or timelineId in request:', request);
             return false;
         }
 
         const { iun, timelineId } = request;
-        console.log('Document details:', { iun, timelineId });
 
         // Get timeline entries and sort by timestamp
         const sortedTimeline = timelineId.Items
@@ -343,7 +348,6 @@ async function checkTimeline(awsClient, fileKey) {
 
         // Safety check for timeline data
         if (!sortedTimeline.length) {
-            console.log('No valid timeline entries after processing');
             return false;
         }
 
