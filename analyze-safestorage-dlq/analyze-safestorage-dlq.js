@@ -336,7 +336,7 @@ async function checkTimeline(awsClient, fileKey) {
         const command = new GetItemCommand({
             TableName: 'pn-DocumentCreationRequestTable',
             Key: {
-                key: { S: fileKey }
+                key: { S: `safestorage://${fileKey}` }
             }
         });
 
