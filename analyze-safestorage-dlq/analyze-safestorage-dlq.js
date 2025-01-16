@@ -269,38 +269,48 @@ async function checkDocumentState(awsClient, fileKey) {
 
         const result = await awsClient._dynamoClient.send(command);
 
+        // Check if document exists
         if (!result?.Item) {
             return false;
         }
 
+        // Extract document type and expected state
         const item = unmarshall(result.Item);
+        const documentType = item.documentType?.tipoDocumento;
 
-        // Define prefix groups by expected state
-        const ATTACHED_PREFIXES = [
+        if (!documentType) {
+            return false;
+        }
+
+        // Define document types and their expected states
+        const ATTACHED_TYPES = [
             'PN_PRINTED',
             'PN_NOTIFICATION_ATTACHMENTS',
             'PN_F24_META'
         ];
 
-        // Use partial matches for related document types
-        const SAVED_CONDITIONS = [
-            prefix => prefix === 'PN_AAR',
-            prefix => prefix === 'PN_F24' && !prefix.includes('META'),
-            prefix => prefix === 'PN_LOGS_ARCHIVE_AUDIT',
-            prefix => prefix.startsWith('PN_LEGAL_FACTS') || prefix === 'PN_EXTERNAL_LEGAL_FACTS',
-            prefix => prefix.startsWith('PN_ADDRESSES_')
+        const SAVED_TYPES = [
+            'PN_AAR',
+            'PN_F24',
+            'PN_F24_META',
+            'PN_LEGAL_FACTS',
+            'PN_EXTERNAL_LEGAL_FACTS',
+            'PN_ADDRESSES_RAW',
+            'PN_ADDRESSES_NORMALIZED',
+            'PN_LOGS_ARCHIVE_AUDIT2Y',
+            'PN_LOGS_ARCHIVE_AUDIT5Y',
+            'PN_LOGS_ARCHIVE_AUDIT10Y'
         ];
 
-        // Extract prefix and determine expected state
-        const prefix = fileKey.split('_')[0] + '_' + fileKey.split('_')[1];
-
+        // Check if document state matches expected value
         let expectedState = null;
-        if (ATTACHED_PREFIXES.includes(prefix)) {
+        if (ATTACHED_TYPES.includes(documentType)) {
             expectedState = 'ATTACHED';
-        } else if (SAVED_CONDITIONS.some(condition => condition(prefix))) {
+        } else if (SAVED_TYPES.includes(documentType)) {
             expectedState = 'SAVED';
         }
 
+        // Return true if state matches expected value
         return item.documentLogicalState === expectedState;
     } catch (error) {
         console.error('DynamoDB GetItem error:', error);
