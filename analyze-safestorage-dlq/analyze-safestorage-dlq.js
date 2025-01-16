@@ -71,13 +71,16 @@ Example:
      */
 function printSummary(stats) {
     console.log('\n=== Execution Summary ===');
-    console.log(`Total messages processed: ${stats.total}`);
+    console.log('\nTotal messages processed: ${stats.total}');
     console.log(`Messages that passed: ${stats.passed}`);
     console.log(`Messages that failed: ${stats.total - stats.passed}`);
     console.log('\nFailures breakdown:');
     console.log(`- S3 bucket checks failed: ${stats.s3Failed}`);
     console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
     console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
+    console.log('\nResults written to:');
+    console.log(`- Failed messages: results/errors.json`);
+    console.log(`- Passed messages: results/ok.json`);
 }
 
 /**
@@ -409,9 +412,14 @@ async function main() {
     stats.total = messages.length;
 
     console.log(`\nStarting validation checks for ${stats.total} fileKeys...`);
+    let progress = 0;
 
     // Process each message separately
     for (const message of messages) {
+
+        // Track progress and display status 
+        progress++;
+        process.stdout.write(`\rChecking fileKey ${progress} of ${stats.total}`);
 
         // Extract S3 object key
         const fileKey = message.Records?.[0]?.s3?.object?.key;
@@ -446,6 +454,7 @@ async function main() {
 
     }
 
+    process.stdout.write('\n'); // Add newline after progress tracking
     printSummary(stats);
 }
 
