@@ -181,7 +181,7 @@ async function dumpSQSMessages(awsClient) {
 
     // Get queue attributes to count messages
     const queueAttributes = await awsClient._getQueueAttributes(queueUrl);
-    console.log(`Total messages in queue: ${queueAttributes.Attributes.ApproximateNumberOfMessages}`);
+    console.log(`Approximate number of messages in queue: ${queueAttributes.Attributes.ApproximateNumberOfMessages}`);
 
     const maxNumberOfMessages = 10;
     const visibilityTimeout = 30;
@@ -195,16 +195,16 @@ async function dumpSQSMessages(awsClient) {
         // Exit loop when no more messages
         if (!response.Messages || response.Messages.length === 0) break;
 
-        // Only take enough messages to reach the limit
-        const processedMessages = response.Messages.map(m => JSON.parse(m.Body));
-
-        // Parse message bodies from JSON string to objects
-        messages = messages.concat(processedMessages);
-        totalMessages += response.Messages.length;
-        appendJsonToFile('temp/sqs_dump.txt', processedMessages);
-
+        // Process each message individually
+        for (const msg of response.Messages) {
+            const processedMessage = JSON.parse(msg.Body);
+            appendJsonToFile('temp/sqs_dump.txt', processedMessage);
+            messages.push(processedMessage);
+            totalMessages++;
+        }
     }
 
+    console.log(`Successfully dumped ${totalMessages} messages to temp/sqs_dump.txt`);
     return messages;
 }
 
@@ -407,6 +407,8 @@ async function main() {
     // Dump and process DLQ messages
     const messages = await dumpSQSMessages(confinfoClient);
     stats.total = messages.length;
+
+    console.log(`\nStarting validation checks for ${stats.total} fileKeys...`);
 
     // Process each message separately
     for (const message of messages) {
