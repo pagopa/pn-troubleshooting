@@ -1,6 +1,5 @@
 // --- Required Dependencies ---
 import { existsSync, mkdirSync, appendFileSync } from 'fs';             // File system operations
-import { dirname } from 'path';                                         // Path manipulation utilities
 import { AwsClientsWrapper } from "pn-common";                          // AWS services wrapper
 import { unmarshall } from '@aws-sdk/util-dynamodb';                    // DynamoDB response parser
 import { GetItemCommand } from '@aws-sdk/client-dynamodb';              // DynamoDB GetItem command
@@ -71,7 +70,7 @@ Example:
      */
 function printSummary(stats) {
     console.log('\n=== Execution Summary ===');
-    console.log('\nTotal messages processed: ${stats.total}');
+    console.log(`\nTotal messages processed: ${stats.total}`);
     console.log(`Messages that passed: ${stats.passed}`);
     console.log(`Messages that failed: ${stats.total - stats.passed}`);
     console.log('\nFailures breakdown:');
@@ -346,7 +345,7 @@ async function checkTimeline(awsClient, fileKey) {
             return false;
         }
 
-        // Extract IUN and timeline ID with null checks
+        // Extract IUN and timelineID with null checks
         const request = unmarshall(docRequest.Item);
         if (!request?.iun || !request?.timelineId) {
             return false;
