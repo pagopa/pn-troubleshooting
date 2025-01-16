@@ -81,6 +81,31 @@ function printSummary(stats) {
 }
 
 /**
+ * Tests SSO credentials for a single AWS client
+ * @param {AwsClientsWrapper} awsClient - AWS client wrapper
+ * @param {string} clientName - Name of the client for error reporting
+ * @returns {Promise<void>}
+ */
+async function testSsoCredentials(awsClient, clientName) {
+    try {
+        awsClient._initSTS();
+        await awsClient._getCallerIdentity();
+    } catch (error) {
+        if (error.name === 'CredentialsProviderError' ||
+            error.message?.includes('expired') ||
+            error.message?.includes('credentials')) {
+            console.error(`\n=== SSO Authentication Error for ${clientName} client ===`);
+            console.error('Your SSO session has expired or is invalid.');
+            console.error('Please run the following commands:');
+            console.error('1. aws sso logout');
+            console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
+            process.exit(1);
+        }
+        throw error;
+    }
+}
+
+/**
  * Initialize all required AWS clients
  * @param {AwsClientsWrapper} awsClient - AWS client wrapper
  * @returns {Object} Initialized clients
@@ -346,15 +371,19 @@ async function main() {
         timelineFailed: 0
     };
 
-    // Initialize clients and create directories in parallel
     const confinfoClient = new AwsClientsWrapper('confinfo', envName);
     const coreClient = new AwsClientsWrapper('core', envName);
 
+    // Test SSO credentials for both clients before proceeding
     await Promise.all([
-        // AWS Clients initialization
+        testSsoCredentials(confinfoClient, 'confinfo'),
+        testSsoCredentials(coreClient, 'core')
+    ]);
+
+    // Initialize AWS clients and create directories in parallel
+    await Promise.all([
         initializeAwsClients(confinfoClient),
         initializeAwsClients(coreClient),
-        // Directory creation
         new Promise(resolve => {
             if (!existsSync('temp')) mkdirSync('temp');
             if (!existsSync('results')) mkdirSync('results');
