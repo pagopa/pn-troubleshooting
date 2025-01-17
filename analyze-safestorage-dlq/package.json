@@ -1,0 +1,37 @@
+{
+    "name": "analyze-safestorage-dlq",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Script to analyze DLQ messages from SafeStorage events queue and validate related resources",
+    "main": "analyze-safestorage-dlq.js",
+    "scripts": {
+        "start": "node analyze-safestorage-dlq.js",
+        "check": "node analyze-safestorage-dlq.js --envName"
+    },
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.0.0",
+        "@aws-sdk/client-s3": "^3.0.0",
+        "@aws-sdk/client-sqs": "^3.0.0",
+        "@aws-sdk/client-sts": "^3.0.0",
+        "@aws-sdk/credential-provider-ini": "^3.0.0",
+        "@aws-sdk/util-dynamodb": "^3.0.0",
+        "pn-common": "file:../pn-common/"
+    },
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "pn-common": [
+                "./types/pn-common.d.ts"
+            ]
+        },
+        "typeRoots": [
+            "./types",
+            "./node_modules/@types"
+        ]
+    },
+    "author": "PagoPA S.p.A.",
+    "license": "ISC"
+}
