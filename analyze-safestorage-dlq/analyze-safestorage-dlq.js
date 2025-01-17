@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, appendFileSync } from 'fs';             // File system operations
 import { AwsClientsWrapper } from "pn-common";                          // AWS services wrapper
 import { unmarshall } from '@aws-sdk/util-dynamodb';                    // DynamoDB response parser
-import { GetItemCommand } from '@aws-sdk/client-dynamodb';              // DynamoDB GetItem command
+import { GetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';              // DynamoDB GetItem command
 import { parseArgs } from 'util';                                       // Command line argument parser
 import { HeadObjectCommand } from '@aws-sdk/client-s3';                 // S3 HeadObject command
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];    // Valid environment names
@@ -324,47 +324,52 @@ async function checkDocumentState(awsClient, fileKey) {
  * @returns {Promise<boolean>} True if timeline status is valid
  */
 async function checkTimeline(awsClient, fileKey) {
-    // Input validation
     if (!fileKey || typeof fileKey !== 'string') {
         console.error('Invalid fileKey:', fileKey);
         return false;
     }
 
     try {
-        // Get document creation request by key
-        const command = new GetItemCommand({
-            TableName: 'pn-DocumentCreationRequestTable',
-            Key: {
-                key: { S: `safestorage://${fileKey}` }
-            }
-        });
+        // Query document creation request
+        const docRequest = await awsClient._queryRequest(
+            'pn-DocumentCreationRequestTable',
+            'key',
+            `safestorage://${fileKey}`
+        );
 
-        const docRequest = await awsClient._dynamoClient.send(command);
-
-        if (!docRequest?.Item) {
+        if (!docRequest?.Items?.[0]) {
             return false;
         }
 
-        // Extract IUN and timelineID with null checks
-        const request = unmarshall(docRequest.Item);
+        // Extract IUN and timelineID
+        const request = unmarshall(docRequest.Items[0]);
         if (!request?.iun || !request?.timelineId) {
             return false;
         }
 
         const { iun, timelineId } = request;
 
-        // Get timeline entries and sort by timestamp
-        const sortedTimeline = timelineId.Items
-            .map(i => unmarshall(i))
-            .sort((a, b) => b.timestamp - a.timestamp);
+        // Get all timeline items for this IUN
+        const allTimelineItems = await awsClient._queryRequest(
+            'pn-Timelines',
+            'iun',
+            iun
+        );
 
-        // Safety check for timeline data
-        if (!sortedTimeline.length) {
+        // Sort by timestamp in ascending order (oldest first)
+        const sortedItems = allTimelineItems.Items
+            .map(item => unmarshall(item))
+            .sort((a, b) => a.timestamp - b.timestamp);
+
+        // Find our specific timeline item in the sorted list
+        const itemToCheck = sortedItems.find(item => item.timelineElementId === timelineId);
+        if (!itemToCheck) {
             return false;
         }
 
-        // Check if current timeline entry isn't the latest
-        return sortedTimeline[0].timelineId !== timelineId;
+        // Check if there are items with newer timestamps
+        return itemToCheck.timestamp < sortedItems[sortedItems.length - 1].timestamp;
+
     } catch (error) {
         console.error('Timeline check error:', error);
         return false;
