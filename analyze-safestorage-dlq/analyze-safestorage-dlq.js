@@ -462,7 +462,7 @@ async function main() {
         }
 
         // Only check timeline for PN_AAR and PN_LEGAL_FACTS
-        if (['PN_AAR', 'PN_LEGAL_FACTS'].includes(docStateResult.documentType)) {
+        if (['PN_AAR', 'PN_LEGAL_FACTS'].includes(docStateCheck.documentType)) {
             const timelineCheck = await checkTimeline(coreClient, fileKey);
             if (!timelineCheck) {
                 logResult(message, 'error', 'Timeline check failed');
@@ -470,6 +470,9 @@ async function main() {
                 continue;
             }
         }
+
+        stats.passed++;
+        logResult(message, 'ok');
 
     }
 
