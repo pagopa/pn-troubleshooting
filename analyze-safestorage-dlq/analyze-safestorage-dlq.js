@@ -309,8 +309,11 @@ async function checkDocumentState(awsClient, fileKey) {
             expectedState = 'SAVED';
         }
 
-        // Return true if state matches expected value
-        return item.documentLogicalState === expectedState;
+        // Return success status and document type 
+        return {
+            success: item.documentLogicalState === expectedState,
+            documentType
+        };
     } catch (error) {
         console.error('DynamoDB GetItem error:', error);
         return false;
@@ -458,12 +461,14 @@ async function main() {
             continue;
         }
 
-        // Check document timeline
-        const timelineCheck = await checkTimeline(coreClient, fileKey);
-        if (!timelineCheck) {
-            logResult(message, 'error', 'Timeline check failed');
-            stats.timelineFailed++;
-            continue;
+        // Only check timeline for PN_AAR and PN_LEGAL_FACTS
+        if (['PN_AAR', 'PN_LEGAL_FACTS'].includes(docStateResult.documentType)) {
+            const timelineCheck = await checkTimeline(coreClient, fileKey);
+            if (!timelineCheck) {
+                logResult(message, 'error', 'Timeline check failed');
+                stats.timelineFailed++;
+                continue;
+            }
         }
 
     }
