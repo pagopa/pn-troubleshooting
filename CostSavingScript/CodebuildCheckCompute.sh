@@ -78,11 +78,11 @@ echo "STARTING EXECUTION"
 projects=$(aws ${aws_command_base_args} codebuild list-projects --query "projects[]" --output text )
 
 if [ -z "$projects" ]; then
-  echo "Nessun progetto CodeBuild trovato."
+  echo "There are not Codebuild Project."
   exit 0
 fi
 
-echo "Dettagli dei progetti CodeBuild:"
+echo "Details of codebuild Project:"
 for project in $projects; do
     details=$(aws ${aws_command_base_args} codebuild batch-get-projects --names "$project" --query "projects[0]" --output json  )
     
@@ -90,8 +90,8 @@ for project in $projects; do
     compute_type=$(echo "$details" | jq -r '.environment.computeType')
     image=$(echo "$details" | jq -r '.environment.image')
 
-    echo "Nome Progetto: $project_name"
-    echo "Tipo di Calcolo: $compute_type"
-    echo "Immagine: $image"
+    echo "Project Name: $project_name"
+    echo "Compute Type: $compute_type"
+    echo "Image: $image"
     echo "------------------------------------"
 done
