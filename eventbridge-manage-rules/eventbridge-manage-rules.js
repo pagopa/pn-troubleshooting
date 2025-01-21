@@ -52,26 +52,28 @@ Examples:
         strict: true
     });
 
-    // Validate environment name
+    // Validate environment parameter
     if (!args.values.envName) {
         console.error("Error: Missing required parameter --envName");
         console.log(usage);
         process.exit(1);
     }
 
+    // Validate environment name
     if (!VALID_ENVIRONMENTS.includes(args.values.envName)) {
         console.error(`Error: Parameter --envName must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
         console.log(usage);
         process.exit(1);
     }
 
-    // Validate account
+    // Validate account parameter
     if (!args.values.account) {
         console.error("Error: Missing required parameter --account");
         console.log(usage);
         process.exit(1);
     }
 
+    // Validate account name
     if (!['core', 'confinfo'].includes(args.values.account)) {
         console.error("Error: Parameter --account must be either 'core' or 'confinfo'");
         console.log(usage);
@@ -85,13 +87,15 @@ Examples:
             console.log(usage);
             process.exit(1);
         }
-
+        
+        // Validate enable/disable parameters
         if (!args.values.enable && !args.values.disable) {
             console.error("Error: Either --enable or --disable must be specified");
             console.log(usage);
             process.exit(1);
         }
 
+        // Ensure enable/disable exclusivity
         if (args.values.enable && args.values.disable) {
             console.error("Error: Cannot specify both --enable and --disable");
             console.log(usage);
@@ -150,6 +154,14 @@ async function initializeAwsClients(awsClient) {
     };
 }
 
+/**
+ * Formats an EventBridge rule into a human-readable string representation
+ * @param {Object} rule - The EventBridge rule object to format
+ * @param {string} rule.Name - The name of the rule
+ * @param {string} rule.State - The state of the rule (ENABLED/DISABLED)
+ * @param {string} [rule.Description] - Optional description of the rule
+ * @returns {string} Formatted string containing rule details separated by dashes
+ */
 function formatRule(rule) {
     return `
 Name: ${rule.Name}
