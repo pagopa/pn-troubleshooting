@@ -465,27 +465,22 @@ class AwsClientsWrapper {
   async _searchRules(searchString) {
     const input = {
       EventBusName: 'default',
-      Limit: 100,
-      NamePrefix: searchString
+      Limit: 100
     };
-    
-    // Remove NamePrefix if no search string provided
-    if (!searchString) {
-      delete input.NamePrefix;
-    }
-
+  
     const command = new ListRulesCommand(input);
     const response = await this._eventBridgeClient.send(command);
     
-    // Filter by description if search string provided
-    if (searchString && response.Rules) {
-      return response.Rules.filter(rule => 
-        rule.Name.toLowerCase().includes(searchString.toLowerCase()) ||
-        (rule.Description && rule.Description.toLowerCase().includes(searchString.toLowerCase()))
-      );
+    // Return all rules if no search string
+    if (!searchString) {
+      return response.Rules || [];
     }
-    
-    return response.Rules || [];
+  
+    // Case insensitive search in name and description
+    return (response.Rules || []).filter(rule => 
+      rule.Name.toLowerCase().includes(searchString.toLowerCase()) ||
+      (rule.Description && rule.Description.toLowerCase().includes(searchString.toLowerCase()))
+    );
   }
 }
 
