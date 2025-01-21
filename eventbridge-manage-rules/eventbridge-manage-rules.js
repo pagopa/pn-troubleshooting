@@ -150,6 +150,13 @@ async function initializeAwsClients(awsClient) {
     };
 }
 
+function formatRule(rule) {
+    return `
+Name: ${rule.Name}
+State: ${rule.State}${rule.Description ? `\nDescription: ${rule.Description}` : ''}
+------------------`;
+}
+
 /**
  * Lists all EventBridge rules in the specified account and environment
  * @param {AwsClientsWrapper} awsClient - AWS client wrapper instance
@@ -158,21 +165,14 @@ async function initializeAwsClients(awsClient) {
 async function listRules(awsClient) {
     try {
         const rules = await awsClient._listRules();
-        if (!rules || rules.length === 0) {
+        if (!rules?.length) {
             console.log('No rules found in the default event bus');
             return;
         }
 
         console.log('\nEventBridge Rules:');
         console.log('==================');
-        rules.forEach(rule => {
-            console.log(`\nName: ${rule.Name}`);
-            console.log(`State: ${rule.State}`);
-            if (rule.Description) {
-                console.log(`Description: ${rule.Description}`);
-            }
-            console.log('------------------');
-        });
+        rules.forEach(rule => console.log(formatRule(rule)));
     } catch (error) {
         console.error('Error listing rules:', error);
         throw error;
