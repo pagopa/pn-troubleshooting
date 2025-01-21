@@ -1,0 +1,21 @@
+{
+    "name": "eventbridge-manage-rules",
+    "version": "1.0.0",
+    "description": "CLI tool to manage AWS EventBridge rules",
+    "type": "module",
+    "main": "eventbridge-manage-rules.js",
+    "scripts": {
+      "start": "node eventbridge-manage-rules.js"
+    },
+    "dependencies": {
+      "pn-common": "file:../pn-common",
+      "@aws-sdk/client-eventbridge": "^3.0.0",
+      "@aws-sdk/client-sts": "^3.0.0",
+      "@aws-sdk/credential-provider-ini": "^3.0.0"
+    },
+    "engines": {
+      "node": ">=18.0.0"
+    },
+    "author": "PagoPA S.p.A.",
+    "license": "ISC"
+  }

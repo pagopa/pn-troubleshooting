@@ -1,0 +1,163 @@
+// --- Required Dependencies ---
+import { AwsClientsWrapper } from "pn-common";                          // AWS services wrapper for authentication and operations
+import { parseArgs } from 'util';                                       // Node.js built-in argument parser
+const VALID_ENVIRONMENTS = ['dev', 'test'];                             // Allowed deployment environments
+
+/**
+ * Validates command line arguments and displays usage information
+ * @returns {Object} Parsed and validated arguments
+ * @throws {Error} If required arguments are missing or invalid
+ */
+function validateArgs() {
+    const usage = `
+Usage: node eventbridge-manage-rules.js --envName|-e <environment> --account|-a <account> --ruleName|-r <ruleName> --enable|-d <true|false>
+
+Description:
+    Enables/disables EventBridge rules on the default event bus.
+
+Parameters:
+    --envName, -e    Required. Environment where the rule is defined (dev|test)
+    --account, -a    Required. AWS account where the rule is defined (core|confinfo)
+    --ruleName, -r   Required. Name of the EventBridge rule to manage
+    --enable, -d     Required. true to enable the rule, false to disable it
+    --help, -h       Display this help message
+
+Example:
+    node eventbridge-manage-rules.js --envName dev --account core --ruleName myRule --enable true
+    node eventbridge-manage-rules.js -e test -a confinfo -r myRule -d false`;
+
+    const args = parseArgs({
+        options: {
+            envName: { type: "string", short: "e" },
+            account: { type: "string", short: "a" },
+            ruleName: { type: "string", short: "r" },
+            enable: { type: "boolean", short: "d" },
+            help: { type: "boolean", short: "h" }
+        },
+        strict: true
+    });
+
+    if (!args.values.envName) {
+        console.error("Error: Missing required parameter --envName");
+        console.log(usage);
+        process.exit(1);
+    }
+
+    if (!VALID_ENVIRONMENTS.includes(args.values.envName)) {
+        console.error(`Error: Parameter --envName must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
+        console.log(usage);
+        process.exit(1);
+    }
+
+    if (!args.values.ruleName) {
+        console.error("Error: Missing required parameter --ruleName");
+        console.log(usage);
+        process.exit(1);
+    }
+
+    const ruleNamePattern = /^[a-zA-Z0-9-_]+$/;
+    if (!ruleNamePattern.test(args.values.ruleName)) {
+        console.error("Error: Rule name can only contain letters, numbers, hyphens and underscores");
+        console.log(usage);
+        process.exit(1);
+    }
+
+    return args;
+}
+
+/**
+ * Tests AWS SSO credentials and provides clear error messages for authentication issues
+ * Exits with code 1 if credentials are invalid or expired
+ * @param {AwsClientsWrapper} awsClient - AWS client wrapper instance
+ * @param {string} clientName - Account name for error reporting
+ * @returns {Promise<void>}
+ * @throws {Error} For non-credential related errors
+ */
+async function testSsoCredentials(awsClient, clientName) {
+    try {
+        awsClient._initSTS();
+        await awsClient._getCallerIdentity();
+    } catch (error) {
+        if (error.name === 'CredentialsProviderError' ||
+            error.message?.includes('expired') ||
+            error.message?.includes('credentials')) {
+            console.error(`\n=== SSO Authentication Error for ${clientName} client ===`);
+            console.error('Your SSO session has expired or is invalid.');
+            console.error('Please run the following commands:');
+            console.error('1. aws sso logout');
+            console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
+            process.exit(1);
+        }
+        throw error;
+    }
+}
+
+/**
+ * Initializes required AWS service clients (EventBridge and STS)
+ * @param {AwsClientsWrapper} awsClient - AWS client wrapper instance
+ * @returns {Object} Object containing initialized AWS service clients
+ */
+async function initializeAwsClients(awsClient) {
+    awsClient._initEventBridge();
+    awsClient._initSTS();
+
+    return {
+        dynamoDBClient: awsClient._dynamoClient,
+        eventBridgeClient: awsClient._eventBridgeClient,
+    };
+}
+
+/**
+ * Changes the state (enabled/disabled) of an EventBridge rule
+ * Provides feedback on operation success or failure
+ * @param {AwsClientsWrapper} client - AWS client wrapper instance
+ * @param {string} ruleName - Target EventBridge rule name
+ * @param {boolean} enable - true to enable, false to disable
+ * @returns {Promise<void>}
+ * @throws {Error} If rule state change fails
+ */
+async function manageRuleState(awsClient, ruleName, enable) {
+    try {
+        await awsClient._setRuleState(ruleName, enable);
+        console.log(`Rule ${ruleName} ${enable ? 'enabled' : 'disabled'} successfully`);
+    } catch (error) {
+        console.error(`Error ${enable ? 'enabling' : 'disabling'} rule ${ruleName}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Main execution flow:
+ * 1. Validates command line arguments
+ * 2. Initializes AWS client for specified account
+ * 3. Verifies SSO credentials
+ * 4. Changes rule state
+ * Exits with code 1 on errors
+ */
+async function main() {
+    const args = validateArgs();
+    const { envName, account, ruleName, enable } = args.values;
+
+    // Only initialize the client for the specified account
+    const awsClient = new AwsClientsWrapper(account, envName);
+
+    // Test SSO credentials
+    await testSsoCredentials(awsClient, account);
+
+    // Initialize AWS client
+    await initializeAwsClients(awsClient);
+
+    // Manage target rule state
+    try {
+        await manageRuleState(awsClient, ruleName, enable);
+    } catch (error) {
+        if (!error.message?.includes('Rule not found')) {
+            throw error;
+        }
+        console.error(`Rule ${ruleName} not found in ${account} account`);
+        process.exit(1);
+    }
+}
+
+// Start execution with error handling
+main().catch(console.error);
