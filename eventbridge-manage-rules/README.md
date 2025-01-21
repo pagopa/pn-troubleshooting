@@ -20,7 +20,7 @@ Lo script permette di:
 ## Prerequisiti
 
 - Node.js >= 18.0.0
-- Accesso AWS SSO configurato per gli account target
+- Accesso AWS SSO configurato per gli account destinazione
 
 ## Installazione
 
@@ -41,7 +41,7 @@ aws sso login --profile sso_pn-confinfo-<env>
 
 - `--list, -l`: Opzionale. Elenca tutte le regole
 - `--search, -s`: Opzionale. Cerca regole per nome
-- `--envName, -e`: Obbligatorio. Ambiente target (dev|test)
+- `--envName, -e`: Obbligatorio. Ambiente destinazione (dev|test)
 - `--account, -a`: Obbligatorio. Account AWS (core|confinfo)
 - `--ruleName, -r`: Obbligatorio per enable/disable. Nome della regola
 - `--enable, -n`: Abilita la regola specificata
@@ -50,7 +50,7 @@ aws sso login --profile sso_pn-confinfo-<env>
 
 ## Esempi
 
-Lista tutte le regole:
+Elenca tutte le regole:
 ```bash
 node eventbridge-manage-rules.js --list --envName dev --account core
 ```
@@ -70,12 +70,24 @@ Disabilita una regola:
 node eventbridge-manage-rules.js --envName dev --account core --ruleName myRule --disable
 ```
 
-## Troubleshooting
+## Script ECS Auto-Stop
 
-In caso di errori di autenticazione SSO:
-1. Eseguire `aws sso logout`
-2. Eseguire `aws sso login --profile sso_pn-<account>-<env>`
+Lo script `ecs-manage-autostop.js` gestisce le regole EventBridge che controllano l'arresto automatico degli ambienti ECS.
 
-Dove:
-- `<account>` può essere `core` o `confinfo`
-- `<env>` può essere `dev` o `test`
+### Parametri
+
+- `--envName, -e`: Obbligatorio. Ambiente destinazione (dev|test)
+- `--enable, -n`: Abilita la regola di auto-stop
+- `--disable, -d`: Disabilita la regola di auto-stop
+- `--help, -h`: Mostra il messaggio di aiuto
+
+### Esempi
+
+Abilita l'arresto automatico:
+```bash
+node ecs-manage-autostop.js --envName dev --enable
+```
+Disabilita l'arresto automatico:
+```bash
+node ecs-manage-autostop.js --envName dev --able
+```
