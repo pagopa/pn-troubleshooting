@@ -41,7 +41,7 @@ aws sso login --profile sso_pn-confinfo-<env>
 
 - `--list, -l`: Opzionale. Elenca tutte le regole
 - `--search, -s`: Opzionale. Cerca regole per nome
-- `--envName, -e`: Obbligatorio. Ambiente destinazione (dev|test)
+- `--envName, -e`: Obbligatorio. Ambiente destinazione (dev|test|hotfix)
 - `--account, -a`: Obbligatorio. Account AWS (core|confinfo)
 - `--ruleName, -r`: Obbligatorio per enable/disable. Nome della regola
 - `--enable, -n`: Abilita la regola specificata
@@ -76,7 +76,7 @@ Lo script `ecs-manage-autostop.js` gestisce le regole EventBridge che controllan
 
 ### Parametri
 
-- `--envName, -e`: Obbligatorio. Ambiente destinazione (dev|test)
+- `--envName, -e`: Obbligatorio. Ambiente destinazione (dev|test|hotfix)
 - `--enable, -n`: Abilita la regola di auto-stop
 - `--disable, -d`: Disabilita la regola di auto-stop
 - `--help, -h`: Mostra il messaggio di aiuto
