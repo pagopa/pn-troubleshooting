@@ -10,13 +10,14 @@ const VALID_ENVIRONMENTS = ['dev', 'test'];                             // Allow
  */
 function validateArgs() {
     const usage = `
-Usage: node eventbridge-manage-rules.js [--list|-l] --envName|-e <environment> --account|-a <account> [--ruleName|-r <ruleName> --enable|-d <true|false>]
+Usage: node eventbridge-manage-rules.js [--list|-l] [--search|-s <searchString>] --envName|-e <environment> --account|-a <account> [--ruleName|-r <ruleName> --enable|-d <true|false>]
 
 Description:
-    Lists, enables, or disables EventBridge rules on the default event bus.
+    Lists, searches, enables, or disables EventBridge rules on the default event bus.
 
 Parameters:
     --list, -l      Optional. List all rules in the specified account/environment
+    --search, -s    Optional. Search for rules by name prefix
     --envName, -e   Required. Environment where the rule is defined (dev|test)
     --account, -a   Required. AWS account where the rule is defined (core|confinfo)
     --ruleName, -r  Required for enable/disable. Name of the EventBridge rule to manage
@@ -27,12 +28,16 @@ Examples:
     # List all rules
     node eventbridge-manage-rules.js --list --envName dev --account core
     
+    # Search for rules
+    node eventbridge-manage-rules.js --search "lambda" --envName dev --account core
+    
     # Enable/disable a specific rule
     node eventbridge-manage-rules.js --envName dev --account core --ruleName myRule --enable true`;
 
     const args = parseArgs({
         options: {
             list: { type: "boolean", short: "l" },
+            search: { type: "string", short: "s" },
             envName: { type: "string", short: "e" },
             account: { type: "string", short: "a" },
             ruleName: { type: "string", short: "r" },
@@ -68,16 +73,16 @@ Examples:
         process.exit(1);
     }
 
-    // Only validate ruleName and enable/disable boolean if not listing
-    if (!args.values.list) {
+    // Only validate ruleName and enable/disable boolean if not listing or searching
+    if (!args.values.list && !args.values.search) {
         if (!args.values.ruleName) {
-            console.error("Error: --ruleName is required when not using --list");
+            console.error("Error: --ruleName is required when not using --list or --search");
             console.log(usage);
             process.exit(1);
         }
 
         if (args.values.enable === undefined) {
-            console.error("Error: --enable is required when not using --list");
+            console.error("Error: --enable is required when not using --list or --search");
             console.log(usage);
             process.exit(1);
         }
@@ -166,6 +171,36 @@ async function listRules(awsClient) {
 }
 
 /**
+ * Searches for EventBridge rules matching the search string
+ * @param {AwsClientsWrapper} awsClient - AWS client wrapper instance
+ * @param {string} searchString - String to search in rule names and descriptions
+ * @returns {Promise<void>}
+ */
+async function searchRules(awsClient, searchString) {
+    try {
+        const rules = await awsClient._searchRules(searchString);
+        if (!rules || rules.length === 0) {
+            console.log(`No rules found matching "${searchString}"`);
+            return;
+        }
+
+        console.log(`\nEventBridge Rules matching "${searchString}":`);
+        console.log('==========================================');
+        rules.forEach(rule => {
+            console.log(`\nName: ${rule.Name}`);
+            console.log(`State: ${rule.State}`);
+            if (rule.Description) {
+                console.log(`Description: ${rule.Description}`);
+            }
+            console.log('------------------');
+        });
+    } catch (error) {
+        console.error('Error searching rules:', error);
+        throw error;
+    }
+}
+
+/**
  * Changes the state (enabled/disabled) of an EventBridge rule
  * Provides feedback on operation success or failure
  * @param {AwsClientsWrapper} client - AWS client wrapper instance
@@ -205,8 +240,14 @@ async function main() {
     // Initialize AWS client
     await initializeAwsClients(awsClient);
 
+    // Search rules based on name prefix
+    if (args.values.search) {
+        await searchRules(awsClient, args.values.search);
+        return;
+    }
+
     // List all rules
-    if (list) {
+    if (args.values.list) {
         await listRules(awsClient);
         return;
     }
