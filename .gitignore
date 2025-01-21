@@ -16,6 +16,7 @@ bi_or_not_bi/rstudio-server/.env
 pn-troubleshooting/shutdown_pn/output
 pn-troubleshooting/prepare_manifest_for_S3_batch_operations/output
 extract_log_from_s3/output
+export_for_va/output
 
 ### Rstudio ###
 .Rproj.user
