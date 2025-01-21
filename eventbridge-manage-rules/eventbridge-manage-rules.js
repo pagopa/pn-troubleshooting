@@ -10,24 +10,29 @@ const VALID_ENVIRONMENTS = ['dev', 'test'];                             // Allow
  */
 function validateArgs() {
     const usage = `
-Usage: node eventbridge-manage-rules.js --envName|-e <environment> --account|-a <account> --ruleName|-r <ruleName> --enable|-d <true|false>
+Usage: node eventbridge-manage-rules.js [--list|-l] --envName|-e <environment> --account|-a <account> [--ruleName|-r <ruleName> --enable|-d <true|false>]
 
 Description:
-    Enables/disables EventBridge rules on the default event bus.
+    Lists, enables, or disables EventBridge rules on the default event bus.
 
 Parameters:
-    --envName, -e    Required. Environment where the rule is defined (dev|test)
-    --account, -a    Required. AWS account where the rule is defined (core|confinfo)
-    --ruleName, -r   Required. Name of the EventBridge rule to manage
-    --enable, -d     Required. true to enable the rule, false to disable it
-    --help, -h       Display this help message
+    --list, -l      Optional. List all rules in the specified account/environment
+    --envName, -e   Required. Environment where the rule is defined (dev|test)
+    --account, -a   Required. AWS account where the rule is defined (core|confinfo)
+    --ruleName, -r  Required for enable/disable. Name of the EventBridge rule to manage
+    --enable, -d    Required for enable/disable. Set to true to enable the rule, false to disable it
+    --help, -h      Display this help message
 
-Example:
-    node eventbridge-manage-rules.js --envName dev --account core --ruleName myRule --enable true
-    node eventbridge-manage-rules.js -e test -a confinfo -r myRule -d false`;
+Examples:
+    # List all rules
+    node eventbridge-manage-rules.js --list --envName dev --account core
+    
+    # Enable/disable a specific rule
+    node eventbridge-manage-rules.js --envName dev --account core --ruleName myRule --enable true`;
 
     const args = parseArgs({
         options: {
+            list: { type: "boolean", short: "l" },
             envName: { type: "string", short: "e" },
             account: { type: "string", short: "a" },
             ruleName: { type: "string", short: "r" },
@@ -37,6 +42,7 @@ Example:
         strict: true
     });
 
+    // Validate environment name
     if (!args.values.envName) {
         console.error("Error: Missing required parameter --envName");
         console.log(usage);
@@ -49,17 +55,40 @@ Example:
         process.exit(1);
     }
 
-    if (!args.values.ruleName) {
-        console.error("Error: Missing required parameter --ruleName");
+    // Validate account
+    if (!args.values.account) {
+        console.error("Error: Missing required parameter --account");
         console.log(usage);
         process.exit(1);
     }
 
-    const ruleNamePattern = /^[a-zA-Z0-9-_]+$/;
-    if (!ruleNamePattern.test(args.values.ruleName)) {
-        console.error("Error: Rule name can only contain letters, numbers, hyphens and underscores");
+    if (!['core', 'confinfo'].includes(args.values.account)) {
+        console.error("Error: Parameter --account must be either 'core' or 'confinfo'");
         console.log(usage);
         process.exit(1);
+    }
+
+    // Only validate ruleName and enable/disable boolean if not listing
+    if (!args.values.list) {
+        if (!args.values.ruleName) {
+            console.error("Error: --ruleName is required when not using --list");
+            console.log(usage);
+            process.exit(1);
+        }
+
+        if (args.values.enable === undefined) {
+            console.error("Error: --enable is required when not using --list");
+            console.log(usage);
+            process.exit(1);
+        }
+
+        // Validate ruleName format only when provided
+        const ruleNamePattern = /^[a-zA-Z0-9-_]+$/;
+        if (!ruleNamePattern.test(args.values.ruleName)) {
+            console.error("Error: Rule name can only contain letters, numbers, hyphens and underscores");
+            console.log(usage);
+            process.exit(1);
+        }
     }
 
     return args;
@@ -108,6 +137,35 @@ async function initializeAwsClients(awsClient) {
 }
 
 /**
+ * Lists all EventBridge rules in the specified account and environment
+ * @param {AwsClientsWrapper} awsClient - AWS client wrapper instance
+ * @returns {Promise<void>}
+ */
+async function listRules(awsClient) {
+    try {
+        const rules = await awsClient._listRules();
+        if (!rules || rules.length === 0) {
+            console.log('No rules found in the default event bus');
+            return;
+        }
+
+        console.log('\nEventBridge Rules:');
+        console.log('==================');
+        rules.forEach(rule => {
+            console.log(`\nName: ${rule.Name}`);
+            console.log(`State: ${rule.State}`);
+            if (rule.Description) {
+                console.log(`Description: ${rule.Description}`);
+            }
+            console.log('------------------');
+        });
+    } catch (error) {
+        console.error('Error listing rules:', error);
+        throw error;
+    }
+}
+
+/**
  * Changes the state (enabled/disabled) of an EventBridge rule
  * Provides feedback on operation success or failure
  * @param {AwsClientsWrapper} client - AWS client wrapper instance
@@ -146,6 +204,12 @@ async function main() {
 
     // Initialize AWS client
     await initializeAwsClients(awsClient);
+
+    // List all rules
+    if (list) {
+        await listRules(awsClient);
+        return;
+    }
 
     // Manage target rule state
     try {
