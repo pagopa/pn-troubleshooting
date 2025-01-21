@@ -9,7 +9,7 @@ const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
 const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
-const { EventBridgeClient, EnableRuleCommand, DisableRuleCommand } = require("@aws-sdk/client-eventbridge");
+const { EventBridgeClient, EnableRuleCommand, DisableRuleCommand, ListRulesCommand } = require("@aws-sdk/client-eventbridge");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
@@ -450,6 +450,16 @@ class AwsClientsWrapper {
     };
     const command = new CommandClass(input);
     return await this._eventBridgeClient.send(command);
+  }
+
+  async _listRules() {
+    const input = {
+      EventBusName: 'default',
+      Limit: 100
+    };
+    const command = new ListRulesCommand(input);
+    const response = await this._eventBridgeClient.send(command);
+    return response.Rules;
   }
 }
 
