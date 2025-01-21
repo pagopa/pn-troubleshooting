@@ -10,7 +10,7 @@ const VALID_ENVIRONMENTS = ['dev', 'test'];                             // Allow
  */
 function validateArgs() {
     const usage = `
-Usage: node eventbridge-manage-rules.js [--list|-l] [--search|-s <searchString>] --envName|-e <environment> --account|-a <account> [--ruleName|-r <ruleName> --enable|-d <true|false>]
+Usage: node eventbridge-manage-rules.js [--list|-l] [--search|-s <searchString>] --envName|-e <environment> --account|-a <account> --ruleName|-r <ruleName> [--enable|-n | --disable|-d]
 
 Description:
     Lists, searches, enables, or disables EventBridge rules on the default event bus.
@@ -21,7 +21,8 @@ Parameters:
     --envName, -e   Required. Environment where the rule is defined (dev|test)
     --account, -a   Required. AWS account where the rule is defined (core|confinfo)
     --ruleName, -r  Required for enable/disable. Name of the EventBridge rule to manage
-    --enable, -d    Required for enable/disable. Set to true to enable the rule, false to disable it
+    --enable, -n    Enable the specified rule
+    --disable, -d   Disable the specified rule
     --help, -h      Display this help message
 
 Examples:
@@ -31,8 +32,11 @@ Examples:
     # Search for rules
     node eventbridge-manage-rules.js --search "lambda" --envName dev --account core
     
-    # Enable/disable a specific rule
-    node eventbridge-manage-rules.js --envName dev --account core --ruleName myRule --enable true`;
+    # Enable a rule
+    node eventbridge-manage-rules.js --envName dev --account core --ruleName myRule --enable
+    
+    # Disable a rule
+    node eventbridge-manage-rules.js --envName dev --account core --ruleName myRule --disable`;
 
     const args = parseArgs({
         options: {
@@ -41,7 +45,8 @@ Examples:
             envName: { type: "string", short: "e" },
             account: { type: "string", short: "a" },
             ruleName: { type: "string", short: "r" },
-            enable: { type: "boolean", short: "d" },
+            enable: { type: "boolean", short: "n" },
+            disable: { type: "boolean", short: "d" },
             help: { type: "boolean", short: "h" }
         },
         strict: true
@@ -73,7 +78,7 @@ Examples:
         process.exit(1);
     }
 
-    // Only validate ruleName and enable/disable boolean if not listing or searching
+    // Validate rule state management parameters
     if (!args.values.list && !args.values.search) {
         if (!args.values.ruleName) {
             console.error("Error: --ruleName is required when not using --list or --search");
@@ -81,8 +86,14 @@ Examples:
             process.exit(1);
         }
 
-        if (args.values.enable === undefined) {
-            console.error("Error: --enable is required when not using --list or --search");
+        if (!args.values.enable && !args.values.disable) {
+            console.error("Error: Either --enable or --disable must be specified");
+            console.log(usage);
+            process.exit(1);
+        }
+
+        if (args.values.enable && args.values.disable) {
+            console.error("Error: Cannot specify both --enable and --disable");
             console.log(usage);
             process.exit(1);
         }
@@ -134,9 +145,7 @@ async function testSsoCredentials(awsClient, clientName) {
 async function initializeAwsClients(awsClient) {
     awsClient._initEventBridge();
     awsClient._initSTS();
-
     return {
-        dynamoDBClient: awsClient._dynamoClient,
         eventBridgeClient: awsClient._eventBridgeClient,
     };
 }
@@ -229,7 +238,7 @@ async function manageRuleState(awsClient, ruleName, enable) {
  */
 async function main() {
     const args = validateArgs();
-    const { envName, account, ruleName, enable } = args.values;
+    const { envName, account, ruleName, enable, disable } = args.values;
 
     // Only initialize the client for the specified account
     const awsClient = new AwsClientsWrapper(account, envName);
@@ -242,25 +251,28 @@ async function main() {
 
     // Search rules based on name prefix
     if (args.values.search) {
-        await searchRules(awsClient, args.values.search);
-        return;
+        return await searchRules(awsClient, args.values.search);
     }
 
     // List all rules
     if (args.values.list) {
-        await listRules(awsClient);
+        return await listRules(awsClient);
+    }
+
+    // Skip rule state management if no rule name is provided
+    if (!ruleName) {
         return;
     }
 
     // Manage target rule state
     try {
-        await manageRuleState(awsClient, ruleName, enable);
+        await manageRuleState(awsClient, ruleName, Boolean(enable));
     } catch (error) {
-        if (!error.message?.includes('Rule not found')) {
-            throw error;
+        if (error.message?.includes('Rule not found')) {
+            console.error(`Rule ${ruleName} not found in ${account} account`);
+            process.exit(1);
         }
-        console.error(`Rule ${ruleName} not found in ${account} account`);
-        process.exit(1);
+        throw error;
     }
 }
 
