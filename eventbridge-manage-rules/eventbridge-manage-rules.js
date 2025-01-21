@@ -1,7 +1,7 @@
 // --- Required Dependencies ---
 import { AwsClientsWrapper } from "pn-common";                          // AWS services wrapper for authentication and operations
 import { parseArgs } from 'util';                                       // Node.js built-in argument parser
-const VALID_ENVIRONMENTS = ['dev', 'test'];                             // Allowed deployment environments
+const VALID_ENVIRONMENTS = ['dev', 'test', 'hotfix'];                   // Allowed deployment environments
 
 /**
  * Validates command line arguments and displays usage information
