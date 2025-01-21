@@ -2,7 +2,7 @@
 import { AwsClientsWrapper } from "pn-common";
 import { parseArgs } from 'util';
 
-const VALID_ENVIRONMENTS = ['dev', 'test'];
+const VALID_ENVIRONMENTS = ['dev', 'test', 'hotfix'];
 const RULE_NAME_PREFIX = 'pn-cost-saving-'; // Base prefix
 const RULE_NAME_SUFFIX = '-StopEcsFunctionSchedule-'; // Suffix after envName
 
@@ -75,8 +75,7 @@ Example:
  * @param {string} account Account name (core/confinfo)
  * @returns {Promise<string|null>} Rule name if found, null otherwise
  */
-async function findAutoStopRule(envName, account) {
-    const awsClient = new AwsClientsWrapper(account, envName);
+async function findAutoStopRule(envName, account, awsClient) {
     await awsClient._initEventBridge();
     
     // Construct the full rule name prefix with the environment name
@@ -107,16 +106,13 @@ async function main() {
     for (const account of accounts) {
         try {
             console.log(`\nSearching for auto-stop rule in ${account} account...`);
-            const ruleName = await findAutoStopRule(envName, account);
+            const awsClient = new AwsClientsWrapper(account, envName);
+            await awsClient._initEventBridge();
+            const ruleName = await findAutoStopRule(envName, account, awsClient);
             
             if (ruleName) {
                 console.log(`Found rule: ${ruleName}`);
-                
-                // Use eventbridge-manage-rules.js through AwsClientsWrapper
-                const awsClient = new AwsClientsWrapper(account, envName);
-                await awsClient._initEventBridge();
                 await awsClient._setRuleState(ruleName, enable);
-                
                 console.log(`Rule ${ruleName} ${enable ? 'enabled' : 'disabled'} successfully in ${account} account`);
             }
         } catch (error) {
