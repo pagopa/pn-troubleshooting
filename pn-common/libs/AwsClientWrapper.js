@@ -9,6 +9,7 @@ const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
 const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+const { EventBridgeClient, EnableRuleCommand, DisableRuleCommand, ListRulesCommand } = require("@aws-sdk/client-eventbridge");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
@@ -74,6 +75,10 @@ class AwsClientsWrapper {
 
   _initSTS() {
     this._stsClient = this.ssoProfile ? new STSClient(awsClientCfg(this.ssoProfile)) : new STSClient()
+  }
+
+  _initEventBridge() {
+    this._eventBridgeClient = this.ssoProfile ? new EventBridgeClient(awsClientCfg(this.ssoProfile)) : new EventBridgeClient();
   }
 
   // DynamoDB
@@ -260,7 +265,7 @@ class AwsClientsWrapper {
     return response;
   }
 
-  async _fetchQueryResult( queryId ) {
+  async _fetchQueryResult(queryId) {
     const queryPollCommand = new GetQueryResultsCommand({ queryId });
     var queryPollResponse;
     queryPollResponse = await this._cloudwatchLogClient.send(queryPollCommand);
@@ -433,7 +438,52 @@ class AwsClientsWrapper {
     const response = await this._stsClient.send(command);
 
     return response;
+
+  }
+
+  //EVENTBRIDGE
+  async _setRuleState(ruleName, enabled) {
+    const CommandClass = enabled ? EnableRuleCommand : DisableRuleCommand;
+    const input = {
+      Name: ruleName,
+      EventBusName: 'default'
+    };
+    const command = new CommandClass(input);
+    return await this._eventBridgeClient.send(command);
+  }
+
+  async _listRules() {
+    const input = {
+      EventBusName: 'default',
+      Limit: 10
+    };
+    const command = new ListRulesCommand(input);
+    const response = await this._eventBridgeClient.send(command);
+    return response.Rules;
+  }
+
+  async _searchRules(searchString) {
+    const input = {
+      EventBusName: 'default',
+      Limit: 100
+    };
+  
+    const command = new ListRulesCommand(input);
+    const response = await this._eventBridgeClient.send(command);
+    
+    // Return all rules if no search string
+    if (!searchString) {
+      return response.Rules || [];
+    }
+  
+    // Case insensitive search in name and description
+    return (response.Rules || []).filter(rule => 
+      rule.Name.toLowerCase().includes(searchString.toLowerCase()) ||
+      (rule.Description && rule.Description.toLowerCase().includes(searchString.toLowerCase()))
+    );
   }
 }
+
+
 
 module.exports = AwsClientsWrapper;
