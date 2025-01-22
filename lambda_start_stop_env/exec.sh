@@ -3,26 +3,26 @@
 # --- Parameters ----
 
 # AWS profiles = ["core","confinfo"];
-# actions = ["start","stop"];
+# actions = ["Start","Stop"];
 # envs = ["dev","test","hotfix","uat"];
 
 AWS_PROFILE="core"
 REGION="eu-south-1"
 ENV="hotfix"
-ACTION="stop"
+ACTION="Start"
 
 # --- Exec Node.js script ----
-echo -e " -> Executing command:
+echo -e "\n -> Executing command:
 
-node lambda_start_stop_env.js \ \n
+ node lambda_start_stop_env.js \ \n
 \t--awsProfile=${AWS_PROFILE} \ \n
-\t--region ${REGION} \ \n
-\t--env ${ENV} \ \n
-\t--action ${ACTION}
+\t--region=${REGION} \ \n
+\t--env=${ENV} \ \n
+\t--action=${ACTION}
 "
 
 node lambda_start_stop_env.js \
         --awsProfile=${AWS_PROFILE} \
-        --region ${REGION} \
-        --env ${ENV} \
-        --action ${ACTION}
+        --region=${REGION} \
+        --env=${ENV} \
+        --action=${ACTION}

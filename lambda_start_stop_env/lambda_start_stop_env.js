@@ -1,4 +1,4 @@
-//const { AwsClientsWrapper } = require("pn-common");
+const { AwsClientsWrapper } = require("pn-common");
 const { parseArgs } = require('util');
 
 async function lambda_start_stop_env() {
@@ -11,9 +11,9 @@ async function lambda_start_stop_env() {
   ]
  
    
-  const parsedArgs = { values: { profile, region, env, action }}
+  const parsedArgs = { values: { awsProfile, region, env, action }}
   = parseArgs({ options: {
-   	profile: {type: "string",short: "a"},
+   	awsProfile: {type: "string",short: "a"},
    	region: {type: "string", short: "r"},
    	env: {type: "string",short: "e"},
    	action: {type: "string",short: "d"}
@@ -64,7 +64,7 @@ async function lambda_start_stop_env() {
     const actions = ["Start","Stop"];
     const envs = ["dev","test","hotfix","uat"];
 
-    isOkValue("awsProfile",awsProfile,profiles);
+    isOkValue("awsProfile",awsProfile,awsProfiles);
     isOkValue("action",action,actions);
     isOkValue("env",env,envs);
 
@@ -76,6 +76,7 @@ async function lambda_start_stop_env() {
   console.log("Launching lambda \"" + lambdaName + "\"...")
   
   const awsClient = new AwsClientsWrapper(awsProfile, env);
+  awsClient._initLambda();
   const response = await awsClient._invokeCommand(lambdaName,"RequestResponse","{}")
   return response
 }
