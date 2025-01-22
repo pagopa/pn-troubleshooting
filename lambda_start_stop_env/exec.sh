@@ -1,7 +1,12 @@
 #!/bin/bash
 
 # --- Parameters ----
-AWS_PROFILE="sso_pn-core-hotfix"
+
+# AWS profiles = ["core","confinfo"];
+# actions = ["start","stop"];
+# envs = ["dev","test","hotfix","uat"];
+
+AWS_PROFILE="core"
 REGION="eu-south-1"
 ENV="hotfix"
 ACTION="stop"

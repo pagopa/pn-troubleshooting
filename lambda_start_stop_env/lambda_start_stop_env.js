@@ -1,7 +1,8 @@
-const { AwsClientsWrapper } = require("../libs/AwsClientWrapper");
+//const { AwsClientsWrapper } = require("pn-common");
 const { parseArgs } = require('util');
 
 async function lambda_start_stop_env() {
+
   const args = [
     { name: "awsProfile", mandatory: true, subcommand: [] },
     { name: "region", mandatory: false, subcommand: [] },
@@ -10,32 +11,22 @@ async function lambda_start_stop_env() {
   ]
  
    
-  const parsedArgs = { values: { awsProfile, region, env, action }}
-  = parseArgs({
-    options: {
-      awsProfile: {
-        type: "string",
-        short: "a"
-      },
-      region: {
-        type: "string", 
-        short: "r"
-      },
-      env: {
-        type: "string",
-        short: "e"
-      },
-      action: {
-        type: "string",
-        short: "d"
-      }
-    }
+  const parsedArgs = { values: { profile, region, env, action }}
+  = parseArgs({ options: {
+   	profile: {type: "string",short: "a"},
+   	region: {type: "string", short: "r"},
+   	env: {type: "string",short: "e"},
+   	action: {type: "string",short: "d"}
+    	}
   });
+  
 
   function _checkingParameters(args, parsedArgs){
     const usage = "Usage: node lambda_start_stop_env.js --awsProfile <aws-profile> " +
                   "[--region <region>] --env <env> --action <start|stop>";
+
     //CHECKING PARAMETER
+
     args.forEach(el => {
       if(el.mandatory && !parsedArgs.values[el.name]){
         console.log("Param " + el.name + " is not defined")
@@ -43,6 +34,7 @@ async function lambda_start_stop_env() {
         process.exit(1)
       }
     })
+
     args.filter(el=> {
       return el.subcommand.length > 0
     }).forEach(el => {
@@ -56,39 +48,36 @@ async function lambda_start_stop_env() {
         })
       }
     })
+
+
+    // Verifica dei valori degli argomenti passati allo script
+    function isOkValue(argName,value,ok_values){
+        if(!ok_values.includes(value)) {
+        console.log("Error: \"" + value + "\" value for \"--" + argName + 
+		"\" argument is not available, it must be in [" + ok_values + "]\n");
+        process.exit(2);
+        }
+    }
+
+    // Valori accettabili per le variabili:
+    const awsProfiles = ["core","confinfo"];
+    const actions = ["Start","Stop"];
+    const envs = ["dev","test","hotfix","uat"];
+
+    isOkValue("awsProfile",awsProfile,profiles);
+    isOkValue("action",action,actions);
+    isOkValue("env",env,envs);
+
   }  
+  
   _checkingParameters(args, parsedArgs)
 
-  // Logica sul tipo di action in input tramite arg "--action|-d" 
-  // verificare valori input tramite comando: "aws lambda invoke help"
-
-  let parsed_action = parsedArgs.values.action
-  const parsed_env = parsedArgs.values.env
-
-  // Controllo tipologia azione
-  switch(parsed_action) {
-    case "start":
-      parsed_action = "Start" 
-      break;
-    case "stop":
-      parsed_action = "Stop" 
-      break;
-    default:
-      no_action_error="\nError: Action \"" + parsed_action + "\" is not defined.\n"
-                      + "Avaliable values are \"start\" and \"stop\"\n"
-		      + "Exit with error 2.\n";
-      console.log(no_action_error);
-      process.exit(2) // posso assegnare il valore che voglio al codice errore?
-  }
-
-  const lambdaName = "Lambda-Ecs-" + parsed_action + "-" + parsed_env 
+  const lambdaName = "Lambda-Ecs-" + action + "-" + env 
   console.log("Launching lambda \"" + lambdaName + "\"...")
-  //console.log("Lauched!")
-
   
-  const awsClient = new AwsClientsWrapper( awsProfile, env );
-  //awsClient._invokeCommand(lambdaName,"RequestResponse","{}")
-
+  const awsClient = new AwsClientsWrapper(awsProfile, env);
+  const response = await awsClient._invokeCommand(lambdaName,"RequestResponse","{}")
+  return response
 }
 
 lambda_start_stop_env()
