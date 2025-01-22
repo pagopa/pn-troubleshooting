@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@aws-sdk/client-lambda": "^3.670.0",
+    "@aws-sdk/credential-provider-ini": "^3.598.0"
+  }
+}
