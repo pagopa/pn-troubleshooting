@@ -1,5 +1,5 @@
 // --- Required Dependencies ---
-import { existsSync, mkdirSync, appendFileSync } from 'fs';             // File system operations
+import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'fs';             // File system operations
 import { AwsClientsWrapper } from "pn-common";                          // AWS services wrapper
 import { unmarshall } from '@aws-sdk/util-dynamodb';                    // DynamoDB response parser
 import { GetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';              // DynamoDB GetItem command
@@ -14,22 +14,23 @@ const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];    // Valid
  */
 function validateArgs() {
     const usage = `
-Usage: node analyze-safestorage-dlq.js --envName|-e <environment>
+Usage: node analyze-safestorage-dlq.js --envName|-e <environment> --dumpFile|-f <path>
 
 Description:
     Analyzes DLQ messages from SafeStorage events queue and validates related documents.
 
 Parameters:
-    --envName, -e    Required. Environment to check (dev|uat|test|prod|hotfix)
-    --help, -h       Display this help message
+    --envName, -e     Required. Environment to check (dev|uat|test|prod|hotfix)
+    --dumpFile, -f    Required. Path to the SQS dump file
+    --help, -h        Display this help message
 
 Example:
-    node analyze-safestorage-dlq.js --envName dev
-    node analyze-safestorage-dlq.js -e prod`;
+    node analyze-safestorage-dlq.js --envName dev --dumpFile ./dump.json`;
 
     const args = parseArgs({
         options: {
             envName: { type: "string", short: "e" },
+            dumpFile: { type: "string", short: "f" },
             help: { type: "boolean", short: "h" }
         },
         strict: true
@@ -42,8 +43,8 @@ Example:
     }
 
     // Validate required parameters
-    if (!args.values.envName) {
-        console.error("Error: Missing required parameter --envName");
+    if (!args.values.envName || !args.values.dumpFile) {
+        console.error("Error: Missing required parameters --envName and/or --dumpFile");
         console.log(usage);
         process.exit(1);
     }
@@ -172,42 +173,43 @@ async function getAccountId(awsClient) {
 }
 
 /**
- * Retrieves all messages from the DLQ and saves them to a file
- * @param {AwsClientsWrapper} awsClient - Initialized AWS client
- * @returns {Array} Array of parsed message bodies
+ * Processes SQS dump file and extracts file keys for validation
+ * @param {string} dumpFilePath - Path to SQS dump JSON file
+ * @returns {Array} Array of messages with file keys
  */
-async function dumpSQSMessages(awsClient) {
-    // Get SQS queue URL
-    const queueUrl = await awsClient._getQueueUrl('pn-ss-main-bucket-events-queue-DLQ');
-    console.log(`SQS Queue URL: ${queueUrl}`);
+async function processSQSDump(dumpFilePath) {
+    try {
+        // Read and parse dump file
+        const dumpContent = readFileSync(dumpFilePath, 'utf-8');
+        const messages = JSON.parse(dumpContent);
 
-    // Get queue attributes to count messages
-    const queueAttributes = await awsClient._getQueueAttributes(queueUrl);
-    console.log(`Approximate number of messages in queue: ${queueAttributes.Attributes.ApproximateNumberOfMessages}`);
+        console.log(`Processing ${messages.length} messages from dump file`);
 
-    const maxNumberOfMessages = 10;
-    const visibilityTimeout = 30;
-    let messages = [];
-    let totalMessages = 0;
+        // Extract file keys and relevant message data
+        return messages.map(message => {
+            try {
+                const body = JSON.parse(message.Body);
+                const fileKey = body?.Records?.[0]?.s3?.object?.key;
+                
+                if (!fileKey) {
+                    console.warn('Missing or invalid fileKey in message:', message.MessageId);
+                    return null;
+                }
 
-    // Keep polling until no more messages are available
-    while (true) {
-        const response = await awsClient._receiveMessages(queueUrl, maxNumberOfMessages, visibilityTimeout);
+                return {
+                    ...message,
+                    parsedFileKey: fileKey
+                };
+            } catch (err) {
+                console.warn('Error parsing message:', err);
+                return null;
+            }
+        }).filter(Boolean); // Remove null entries
 
-        // Exit loop when no more messages
-        if (!response.Messages || response.Messages.length === 0) break;
-
-        // Process each message individually
-        for (const msg of response.Messages) {
-            const processedMessage = JSON.parse(msg.Body);
-            appendJsonToFile('temp/sqs_dump.txt', processedMessage);
-            messages.push(processedMessage);
-            totalMessages++;
-        }
+    } catch (error) {
+        console.error('Error reading/parsing dump file:', error);
+        process.exit(1);
     }
-
-    console.log(`Successfully dumped ${totalMessages} messages to temp/sqs_dump.txt`);
-    return messages;
 }
 
 /**
@@ -385,7 +387,7 @@ async function checkTimeline(awsClient, fileKey) {
  */
 async function main() {
     const args = validateArgs();
-    const { envName } = args.values;
+    const { envName, dumpFile } = args.values;
 
     const stats = {
         total: 0,
@@ -395,6 +397,7 @@ async function main() {
         timelineFailed: 0
     };
 
+    // Initialize AWS clients
     const confinfoClient = new AwsClientsWrapper('confinfo', envName);
     const coreClient = new AwsClientsWrapper('core', envName);
 
@@ -409,7 +412,6 @@ async function main() {
         initializeAwsClients(confinfoClient),
         initializeAwsClients(coreClient),
         new Promise(resolve => {
-            if (!existsSync('temp')) mkdirSync('temp');
             if (!existsSync('results')) mkdirSync('results');
             resolve();
         })
@@ -424,11 +426,11 @@ async function main() {
     console.log(`CONFINFO AccountID: ${confinfoAccountId}`);
     console.log(`CORE AccountID: ${coreAccountId}`);
 
-    // Dump and process DLQ messages
-    const messages = await dumpSQSMessages(confinfoClient);
+    // Process dump file
+    const messages = await processSQSDump(dumpFile);
     stats.total = messages.length;
 
-    console.log(`\nStarting validation checks for ${stats.total} fileKeys...`);
+    console.log(`\nStarting validation checks for ${stats.total} messages...`);
     let progress = 0;
 
     // Process each message separately
@@ -439,7 +441,7 @@ async function main() {
         process.stdout.write(`\rChecking fileKey ${progress} of ${stats.total}`);
 
         // Extract S3 object key
-        const fileKey = message.Records?.[0]?.s3?.object?.key;
+        const fileKey = message.parsedFileKey;
         if (!fileKey) {
             logResult(message, 'error', 'Missing or invalid fileKey in message');
             continue;

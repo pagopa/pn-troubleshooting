@@ -20,18 +20,6 @@
         "@aws-sdk/util-dynamodb": "^3.0.0",
         "pn-common": "file:../pn-common/"
     },
-    "compilerOptions": {
-        "baseUrl": ".",
-        "paths": {
-            "pn-common": [
-                "./types/pn-common.d.ts"
-            ]
-        },
-        "typeRoots": [
-            "./types",
-            "./node_modules/@types"
-        ]
-    },
     "author": "PagoPA S.p.A.",
     "license": "ISC"
 }
