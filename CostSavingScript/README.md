@@ -27,8 +27,8 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash
- ./CodebuildCheckCompute.sh  -p <aws-profile> -r region --queueName <queue-name> 
- ./ExtractDesireEcsCounts.sh  -p <aws-profile> -r region --queueName <queue-name> 
+ ./CodebuildCheckCompute.sh  -p <aws-profile> -r <region> 
+ ./ExtractDesireEcsCounts.sh  -p <aws-profile> -r <region> 
 ```
 Dove:
 - `<aws-profile>` è il profilo dell'account AWS;

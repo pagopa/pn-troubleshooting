@@ -101,7 +101,7 @@ process_clusters() {
   for CLUSTER in $CLUSTERS; do
     CLUSTER_NAME=$(basename "$CLUSTER")
 
-    # Skip clusters that do not stop"
+    # Skip clusters that do not stop
     if [[ "$CLUSTER_NAME" == *"spidhub"* || "$CLUSTER_NAME" == *"logsaver"* ]]; then
       echo "Cluster $CLUSTER_NAME shifted."
       continue
@@ -120,13 +120,23 @@ process_clusters() {
         SERVICE_DIR=$(echo "$SERVICE_NAME" | sed 's/-microsvc.*//')
         CONFIG_FILE="pn-configuration/$PN_ENV/$SERVICE_DIR/scripts/aws/cfn/microservice-$PN_ENV-cfg.json"
 
-        # Check if the config file exists
-        if [ -f "$CONFIG_FILE" ]; then
-          MIN_TASKS_NUMBER=$(jq -r '.[].MinTasksNumber // empty' "$CONFIG_FILE")
-          echo $MIN_TASKS_NUMBER
-          MIN_TASKS_NUMBER=${MIN_TASKS_NUMBER:-1}  # Default to 1 if not set
+        # Determine the number of tasks
+        if [[ "$PN_ENV" == "dev" ]]; then
+          # In dev environment, get desired tasks directly from AWS
+          DESIRED_TASKS=$(aws ${aws_command_base_args} ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" --query "services[0].desiredCount" --output text)
+          if [[ -z "$DESIRED_TASKS" || "$DESIRED_TASKS" == "None" ]]; then
+            MIN_TASKS_NUMBER=1
+          else
+            MIN_TASKS_NUMBER="$DESIRED_TASKS"
+          fi
         else
-          MIN_TASKS_NUMBER=1  # Default to 1 if config file doesn't exist
+          # Use configuration file for other environments
+          if [ -f "$CONFIG_FILE" ]; then
+            MIN_TASKS_NUMBER=$(jq -r '.[].MinTasksNumber // empty' "$CONFIG_FILE")
+            MIN_TASKS_NUMBER=${MIN_TASKS_NUMBER:-1}
+          else
+            MIN_TASKS_NUMBER=1
+          fi
         fi
 
         # Add service and desired count to the array
@@ -145,7 +155,7 @@ process_clusters() {
 
       # Check if bucket is found
       if [ -z "$BUCKET_NAME" ]; then
-        echo "Bucket not exists'."
+        echo "Bucket not exists."
         exit 1
       fi
 
