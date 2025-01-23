@@ -340,14 +340,19 @@ async function checkDocumentState(awsClient, fileKey) {
             expectedState = 'SAVED';
         }
 
-        // Return success status and document type 
+        // Return detailed status
         return {
             success: item.documentLogicalState === expectedState,
-            documentType
+            documentType,
+            actualState: item.documentLogicalState,
+            expectedState
         };
     } catch (error) {
         console.error('DynamoDB GetItem error:', error);
-        return false;
+        return {
+            success: false,
+            error: error.message
+        };
     }
 }
 
@@ -486,8 +491,10 @@ async function main() {
 
         // Check document state
         const docStateCheck = await checkDocumentState(confinfoClient, fileKey);
-        if (!docStateCheck) {
-            logResult(message, 'error', 'Document state check failed');
+        if (!docStateCheck.success) {
+            const reason = docStateCheck.error || 
+                          `Document state check failed: found '${docStateCheck.actualState}' but expected '${docStateCheck.expectedState}' for type '${docStateCheck.documentType}'`;
+            logResult(message, 'error', reason);
             stats.stateCheckFailed++;
             continue;
         }
