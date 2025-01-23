@@ -19,7 +19,7 @@ Lo script esegue le seguenti operazioni:
    - Estrae la chiave dell'oggetto S3 dal messaggio
    - Accerta la presenza nel bucket principale e l'assenza nel bucket di staging
    - Controlla il documentLogicalState nella tabella `pn-SsDocumenti` in base al suo prefisso
-   - Verifica che la richiesta creazione del documento non sia l'ultimo evento in timeline
+   - Verifica che la richiesta creazione del documento non sia l'ultimo evento in timeline [solo per documenti PN_AAR e PN_LEGAL_FACTS]
 
 I risultati delle verifiche vengono salvati in:
 - `results/need_further_analysis.json` per i messaggi che non superano i controlli
