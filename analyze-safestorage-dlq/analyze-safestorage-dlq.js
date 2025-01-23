@@ -79,8 +79,8 @@ function printSummary(stats) {
     console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
     console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
     console.log('\nResults written to:');
-    console.log(`- Failed messages: results/errors.json`);
-    console.log(`- Passed messages: results/ok.json`);
+    console.log(`- Failed messages: results/need_further_analysis.json`);
+    console.log(`- Passed messages: results/safe_to_delete.json`);
 }
 
 /**
@@ -128,27 +128,46 @@ async function initializeAwsClients(awsClient) {
 }
 
 /**
+ * Extracts MD5 fields from message
+ * @param {Object} message - SQS message
+ * @returns {Object} Object containing MD5 fields
+ */
+function extractMD5Fields(message) {
+    const result = {
+        MD5OfBody: message.MD5OfBody
+    };
+    
+    if (message.MD5OfMessageAttributes) {
+        result.MD5OfMessageAttributes = message.MD5OfMessageAttributes;
+    }
+    
+    return result;
+}
+
+/**
  * Logs result to appropriate file and console
  * @param {Object} message - Message being processed
  * @param {string} status - Status of processing (error/ok)
  * @param {string} reason - Reason for failure
  */
 function logResult(message, status, reason = '') {
-    // Clone message to avoid modifying the original
-    const enrichedMessage = JSON.parse(JSON.stringify(message));
-
-    // Add fields to the Records array if it exists
-    if (enrichedMessage.Records && enrichedMessage.Records.length > 0) {
-        enrichedMessage.Records[0] = {
-            ...enrichedMessage.Records[0],
-            dlqCheckTimestamp: new Date().toISOString(),
-            dlqCheckStatus: status,
-            dlqCheckResult: reason
-        };
+    if (status === 'error') {
+        // For failures, output full message with error details
+        const enrichedMessage = JSON.parse(JSON.stringify(message));
+        if (enrichedMessage.Records && enrichedMessage.Records.length > 0) {
+            enrichedMessage.Records[0] = {
+                ...enrichedMessage.Records[0],
+                dlqCheckTimestamp: new Date().toISOString(),
+                dlqCheckStatus: status,
+                dlqCheckResult: reason
+            };
+        }
+        appendJsonToFile('results/need_further_analysis.json', enrichedMessage);
+    } else {
+        // For successes, output only MD5 fields
+        const md5Data = extractMD5Fields(message);
+        appendJsonToFile('results/safe_to_delete.json', md5Data);
     }
-
-    const fileName = status === 'error' ? 'results/errors.json' : 'results/ok.json';
-    appendJsonToFile(fileName, enrichedMessage);
 }
 
 /**
@@ -190,7 +209,7 @@ async function processSQSDump(dumpFilePath) {
             try {
                 const body = JSON.parse(message.Body);
                 const fileKey = body?.Records?.[0]?.s3?.object?.key;
-                
+
                 if (!fileKey) {
                     console.warn('Missing or invalid fileKey in message:', message.MessageId);
                     return null;
