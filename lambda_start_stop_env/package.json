@@ -1,0 +1,14 @@
+{
+  "name": "lambda_start_stop_env",
+  "version": "1.0.0",
+  "description": "Start or stop all ECS instances into an AWS environment using Lambda.",
+  "main": "lambda_start_stop_env.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "pn-common": "file:../pn-common"
+  }
+}
