@@ -152,16 +152,27 @@ function extractMD5Fields(message) {
  */
 function logResult(message, status, reason = '') {
     if (status === 'error') {
-        // For failures, output full message with error details
+        // Deep clone message to avoid mutations
         const enrichedMessage = JSON.parse(JSON.stringify(message));
-        if (enrichedMessage.Records && enrichedMessage.Records.length > 0) {
-            enrichedMessage.Records[0] = {
-                ...enrichedMessage.Records[0],
+        
+        // Parse Body if it's a string
+        if (typeof enrichedMessage.Body === 'string') {
+            enrichedMessage.Body = JSON.parse(enrichedMessage.Body);
+        }
+        
+        // Add check results to Records array
+        if (enrichedMessage.Body?.Records?.[0]) {
+            enrichedMessage.Body.Records[0] = {
+                ...enrichedMessage.Body.Records[0],
                 dlqCheckTimestamp: new Date().toISOString(),
                 dlqCheckStatus: status,
                 dlqCheckResult: reason
             };
         }
+        
+        // Re-stringify Body before saving
+        enrichedMessage.Body = JSON.stringify(enrichedMessage.Body);
+        
         appendJsonToFile('results/need_further_analysis.json', enrichedMessage);
     } else {
         // For successes, output only MD5 fields
