@@ -250,7 +250,6 @@ async function processSQSDump(dumpFilePath) {
  * @returns {Promise<boolean>} True if object exists in main bucket but not in staging
  */
 async function checkS3Objects(awsClient, fileKey, accountId) {
-
     const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
     const stagingBucket = `pn-safestorage-staging-eu-south-1-${accountId}`;
 
@@ -267,12 +266,12 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
                 Bucket: stagingBucket,
                 Key: fileKey
             }));
-            return false; // Failed: Object exists in staging bucket
+            return { success: false, reason: 'Object still exists in staging bucket' };
         } catch (e) {
-            return true;  // Success: Object doesn't exist in staging bucket
+            return { success: true };  // Success: Object doesn't exist in staging bucket
         }
     } catch (e) {
-        return false; // Failed: Object doesn't exist in main bucket
+        return { success: false, reason: 'Object not found in main bucket' };
     }
 }
 
@@ -479,8 +478,8 @@ async function main() {
 
         // Check S3 objects
         const s3Check = await checkS3Objects(confinfoClient, fileKey, confinfoAccountId);
-        if (!s3Check) {
-            logResult(message, 'error', 'S3 check failed');
+        if (!s3Check.success) {
+            logResult(message, 'error', `S3 check failed: ${s3Check.reason}`);
             stats.s3Failed++;
             continue;
         }
