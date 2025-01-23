@@ -4,16 +4,16 @@ const { parseArgs } = require('util');
 async function lambda_start_stop_env() {
 
   const args = [
-    { name: "awsProfile", mandatory: true, subcommand: [] },
+    { name: "account_type", mandatory: true, subcommand: [] },
     { name: "region", mandatory: false, subcommand: [] },
     { name: "env", mandatory: true, subcommand: [] },
     { name: "action", mandatory: true, subcommand: [] }
   ]
  
    
-  const parsedArgs = { values: { awsProfile, region, env, action }}
+  const parsedArgs = { values: { account_type, region, env, action }}
   = parseArgs({ options: {
-   	awsProfile: {type: "string",short: "a"},
+   	account_type: {type: "string",short: "a"},
    	region: {type: "string", short: "r"},
    	env: {type: "string",short: "e"},
    	action: {type: "string",short: "d"}
@@ -22,7 +22,7 @@ async function lambda_start_stop_env() {
   
 
   function _checkingParameters(args, parsedArgs){
-    const usage = "Usage: node lambda_start_stop_env.js --awsProfile <aws-profile> " +
+    const usage = "Usage: node lambda_start_stop_env.js --account_type <aws-profile> " +
                   "[--region <region>] --env <env> --action <start|stop>";
 
     //CHECKING PARAMETER
@@ -60,11 +60,11 @@ async function lambda_start_stop_env() {
     }
 
     // Valori accettabili per le variabili:
-    const awsProfiles = ["core","confinfo"];
+    const account_types = ["core","confinfo"];
     const actions = ["Start","Stop"];
     const envs = ["dev","test","hotfix","uat"];
 
-    isOkValue("awsProfile",awsProfile,awsProfiles);
+    isOkValue("account_type",account_type,account_types);
     isOkValue("action",action,actions);
     isOkValue("env",env,envs);
 
@@ -75,7 +75,7 @@ async function lambda_start_stop_env() {
   const lambdaName = "Lambda-Ecs-" + action + "-" + env 
   console.log("Launching lambda \"" + lambdaName + "\"...")
   
-  const awsClient = new AwsClientsWrapper(awsProfile, env);
+  const awsClient = new AwsClientsWrapper(account_type, env);
   awsClient._initLambda();
   const response = await awsClient._invokeCommand(lambdaName,"RequestResponse","{}")
   return response
