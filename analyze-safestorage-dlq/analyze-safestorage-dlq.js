@@ -398,16 +398,18 @@ async function checkTimeline(awsClient, fileKey) {
         // Sort by timestamp in ascending order (oldest first)
         const sortedItems = allTimelineItems.Items
             .map(item => unmarshall(item))
-            .sort((a, b) => a.timestamp - b.timestamp);
+
+        sortedItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
         // Find our specific timeline item in the sorted list
         const itemToCheck = sortedItems.find(item => item.timelineElementId === timelineId);
+
         if (!itemToCheck) {
             return false;
         }
 
         // Check if there are items with newer timestamps
-        return itemToCheck.timestamp < sortedItems[sortedItems.length - 1].timestamp;
+        return itemToCheck.timestamp < sortedItems[0].timestamp;
 
     } catch (error) {
         console.error('Timeline check error:', error);
