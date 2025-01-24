@@ -207,7 +207,7 @@ async function getAccountId(awsClient) {
  * @param {string} dumpFilePath - Path to SQS dump JSON file
  * @returns {Array} Array of messages with file keys
  */
-async function processSQSDump(dumpFilePath) {
+function processSQSDump(dumpFilePath) {
     try {
         // Read and parse dump file
         const dumpContent = readFileSync(dumpFilePath, 'utf-8');
@@ -461,7 +461,7 @@ async function main() {
     console.log(`CORE AccountID: ${coreAccountId}`);
 
     // Process dump file
-    const messages = await processSQSDump(dumpFile);
+    const messages = processSQSDump(dumpFile);
     stats.total = messages.length;
 
     console.log(`\nStarting validation checks for ${stats.total} messages...`);
