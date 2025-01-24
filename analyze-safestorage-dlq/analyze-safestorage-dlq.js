@@ -395,7 +395,7 @@ async function checkTimeline(awsClient, fileKey) {
             iun
         );
 
-        // Sort by timestamp in ascending order (oldest first)
+        // Sort by timestamp in descending order (newest first)
         const sortedItems = allTimelineItems.Items
             .map(item => unmarshall(item))
 
