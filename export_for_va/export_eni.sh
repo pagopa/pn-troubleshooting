@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-    
+
 set -Eeuo pipefail
 trap cleanup SIGINT SIGTERM ERR EXIT
 
 cleanup() {
   trap - SIGINT SIGTERM ERR EXIT
-  # script cleanup here
+  echo "Cleaning up..."
 }
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
@@ -58,7 +58,7 @@ dump_params(){
   echo "######      PARAMETERS      ######"
   echo "##################################"
   echo "AWS Profile:        ${aws_profile}"
-  echo "Aws Regione:        ${aws_region}"
+  echo "AWS Region:         ${aws_region}"
 }
 
 # START SCRIPT
@@ -79,7 +79,7 @@ echo ${aws_command_base_args}
 
 echo "STARTING EXECUTION"
 
-echo "create output directory if not exist"
+echo "Create output directory if not exist"
 
 output_dir=./output/eni_$(date +%Y%m%d)_$aws_profile
 
@@ -91,11 +91,10 @@ cd $output_dir
 output_file="network_interfaces.csv"
 temp_file="temp_network_interfaces.csv"
 
-# Scrive l'intestazione del CSV
-echo "Description,Network Interface,IP Address,Availability Zone,Interface Type" > $output_file
+# Scrive l'intestazione del CSV, aggiungendo le colonne "Microservice" e "SecurityGroupName"
+echo "Description,Network Interface,IP Address,Availability Zone,Interface Type,Microservice,SecurityGroupName" > $output_file
 
 # Ottieni l'elenco delle subnet con il tag pn-eni-related=true nella regione specificata
-#subnets=$(aws ${aws_command_base_args} ec2 describe-subnets --filters "Name=tag:pn-eni-related,Values=true" --query 'Subnets[*].SubnetId' --output text)
 subnets=$(aws ${aws_command_base_args} ec2 describe-subnets --query 'Subnets[*].SubnetId' --output text)
 echo "Subnets trovate: $subnets"
 
@@ -117,14 +116,28 @@ for subnet in $subnets; do
         interface_type=$(echo "$interface" | jq -r '.InterfaceType // "None"')
         description=$(echo "$interface" | jq -r '.Description // "None"')
 
+        # Estrai il SecurityGroupName
+        security_group_name=$(echo "$interface" | jq -r '.Groups[0].GroupName // "None"')
+
+        # Determina il valore di Microservice
+        microservice=$(echo "$interface" | jq -r '.TagSet[] | select(.Key == "Microservice") | .Value // empty')
+        if [[ -z "$microservice" ]]; then
+            if [[ "$description" == *"arn:aws:ecs"* ]]; then
+                # Se è ECS, ricava le prime tre sezioni del SecurityGroupName
+                microservice=$(echo "$security_group_name" | awk -F'-' '{print $1"-"$2"-"$3}')
+            else
+                microservice="NoMicroservice"
+            fi
+        fi
+
         # Scrivi le informazioni nel file temporaneo
-        echo "$description,$network_interface_id,$private_ip_address,$availability_zone,$interface_type" >> $temp_file
+        echo "$description,$network_interface_id,$private_ip_address,$availability_zone,$interface_type,$microservice,$security_group_name" >> $temp_file
     done
 done
 
 # Raggruppa e scrivi le informazioni raggruppate nel file CSV finale
-sort $temp_file | uniq | while IFS=, read -r description network_interface_id private_ip_address availability_zone interface_type; do
-    echo "$description,$network_interface_id,$private_ip_address,$availability_zone,$interface_type" >> $output_file
+sort $temp_file | uniq | while IFS=, read -r description network_interface_id private_ip_address availability_zone interface_type microservice security_group_name; do
+    echo "$description,$network_interface_id,$private_ip_address,$availability_zone,$interface_type,$microservice,$security_group_name" >> $output_file
 done
 
 # Rimuovi il file temporaneo
