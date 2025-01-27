@@ -1,0 +1,14 @@
+{
+  "name": "ecs_tasks_status",
+  "version": "1.0.0",
+  "description": "Show the status associated to the Service tasks.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+      "@aws-sdk/client-ecs": "^3.731.1"
+  }
+}
