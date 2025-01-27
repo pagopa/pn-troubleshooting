@@ -18,6 +18,7 @@ pn-troubleshooting/prepare_manifest_for_S3_batch_operations/output
 extract_log_from_s3/output
 CostSavingScript/output
 Send_Interop_Daily_Automation/output
+export_for_va/output
 
 ### Rstudio ###
 .Rproj.user
