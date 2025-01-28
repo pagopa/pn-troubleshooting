@@ -49,7 +49,7 @@ node clear-paper-errors.js --envName <env> --dumpFile <path>
 ```
 oppure
 ```bash
-node analyze-safestorage-dlq.js -e <env> -f <path>
+node clear-paper-errors.js -e <env> -f <path>
 ```
 Dove:
 
@@ -64,9 +64,10 @@ Dove:
 
 ### File di Output
 
-Lo script genera un file nella cartella results/:
+Lo script genera due file nella cartella results/:
 
 - `safe_to_delete.json`: contiene i requestId che possono essere eliminati
+- `cannot_delete.json`: contiene i requestId che non possono essere eliminati
 
 ### Esempi
 

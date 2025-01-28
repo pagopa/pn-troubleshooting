@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync, existsSync } from 'fs';
+import { appendFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
 import { dirname } from 'path';
 import { AwsClientsWrapper } from "pn-common";
 import { unmarshall } from '@aws-sdk/util-dynamodb';
