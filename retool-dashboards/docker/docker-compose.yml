@@ -1,0 +1,73 @@
+version: '3'
+services:
+  api:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    env_file: ./docker.env
+    environment:
+      - SERVICE_TYPE=MAIN_BACKEND
+      - DB_CONNECTOR_HOST=http://db-connector
+      - DB_CONNECTOR_PORT=3002
+      - DB_SSH_CONNECTOR_HOST=http://db-ssh-connector
+      - DB_SSH_CONNECTOR_PORT=3002
+      - WORKFLOW_BACKEND_HOST=http://api:3000
+    networks:
+      - frontend-network
+      - backend-network
+      - db-connector-network
+    depends_on:
+      - postgres
+      - db-connector
+      - jobs-runner
+    command: bash -c "./docker_scripts/wait-for-it.sh postgres:5432; ./docker_scripts/start_api.sh"
+    ports:
+      - '3000:3000'
+    restart: on-failure
+    volumes:
+      - ssh:/retool_backend/autogen_ssh_keys
+
+  jobs-runner:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    env_file: ./docker.env
+    environment:
+      - SERVICE_TYPE=JOBS_RUNNER
+    networks:
+      - backend-network
+    depends_on:
+      - postgres
+    command: bash -c "chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh postgres:5432; ./docker_scripts/start_api.sh"
+      
+  db-connector:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    env_file: ./docker.env
+    environment:
+      - SERVICE_TYPE=DB_CONNECTOR_SERVICE
+      - DBCONNECTOR_POSTGRES_POOL_MAX_SIZE=100
+      - DBCONNECTOR_QUERY_TIMEOUT_MS=120000
+    networks:
+      - db-connector-network
+    restart: on-failure
+
+  postgres:
+    container_name: retool-onpremise-postgres
+    image: 'postgres:11.13'
+    env_file: docker.env
+    networks:
+      - backend-network
+      - db-connector-network
+    volumes:
+      - data:/var/lib/postgresql/data
+
+networks:
+  frontend-network:
+  backend-network:
+  db-connector-network:
+
+volumes:
+  ssh:
+  data:
