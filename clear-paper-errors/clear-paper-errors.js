@@ -228,7 +228,10 @@ async function main() {
 
         if (result.success && result.isCancelled) {
             stats.safeToDelete++;
-            appendJsonToFile('results/safe_to_delete.json', { requestId });
+            appendJsonToFile('results/safe_to_delete.json', { 
+                created: entry.created,
+                requestId: entry.requestId 
+            });
         } else {
             stats.cannotDelete++;
             appendJsonToFile('results/cannot_delete.json', { 
