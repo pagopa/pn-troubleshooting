@@ -1,4 +1,4 @@
-# Start e stop dei task ECS tramite Lambda AWS
+# Elenco dei service ECS e dello stato associato ai loro task
 
 ## Tabella dei Contenuti
 
