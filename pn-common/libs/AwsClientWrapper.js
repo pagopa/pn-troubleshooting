@@ -1,16 +1,17 @@
 
-const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, BatchWriteItemCommand } = require("@aws-sdk/client-dynamodb");
-const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
-const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, GetLogEventsCommand } = require("@aws-sdk/client-cloudwatch-logs");
-const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
-const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
-const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
-const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
-const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
+const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, GetLogEventsCommand } = require("@aws-sdk/client-cloudwatch-logs");
+const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, BatchWriteItemCommand } = require("@aws-sdk/client-dynamodb");
+const { ECSClient, DescribeServicesCommand, ListClustersCommand, ListServicesCommand } = require("@aws-sdk/client-ecs");
 const { EventBridgeClient, EnableRuleCommand, DisableRuleCommand, ListRulesCommand } = require("@aws-sdk/client-eventbridge");
+const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
+const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
+const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
+const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 
@@ -80,6 +81,74 @@ class AwsClientsWrapper {
   _initEventBridge() {
     this._eventBridgeClient = this.ssoProfile ? new EventBridgeClient(awsClientCfg(this.ssoProfile)) : new EventBridgeClient();
   }
+
+  // ECS
+  _initECS() {
+    this._ecsClient = this.ssoProfile ? new ECSClient(awsClientCfg(this.ssoProfile)) : new ECSClient();
+  }
+
+  // ECS
+
+  async _listClusterArns() {
+      const input = {};
+      const command = new ListClustersCommand(input);
+      const result = await this._ecsClient.send(command);
+      return result.clusterArns
+  };
+
+  async _listServiceArns(cluster,maxResults) {
+
+      // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/ListServicesCommand/
+      // min(maxResults) = 10 = default;
+      // max(maxResults) = 100. 
+
+      const input = {
+          cluster: cluster,
+          maxResults: maxResults
+      };
+
+      let command = new ListServicesCommand(input);
+      let result =  await this._ecsClient.send(command);
+
+      while(result.nextToken !== undefined){
+          input.nextToken = result.nextToken;
+          let command = new ListServicesCommand(input);
+          let partial =  await this._ecsClient.send(command);
+          result.serviceArns = result.serviceArns.concat(partial.serviceArns);
+          result.nextToken = partial.nextToken;
+      }
+      return result.serviceArns;
+  };
+
+  async _describeServices(cluster,servicesListArns) {
+
+      // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/DescribeServicesCommand/
+      // La describe avviene per blocchi di 10 elementi. Questa funzione automatizza il processo.
+
+      const input = {cluster: cluster};
+
+      // Stampo l'header dell'output
+      console.log("serviceName,desiredCount,runningCount");
+
+      while(servicesListArns.length > 0) {
+
+          // Recupero i primi 10 servizi dall'array
+          let first10 = servicesListArns.slice(0,10);
+          input.services = first10;
+
+          const command = new DescribeServicesCommand(input);
+
+          let describeServices = await this._ecsClient.send(command);
+          let descSer = describeServices.services;
+          descSer.forEach( item => {
+                  let serName = item.serviceName.match(/^.+(?=-microsvc)/)[0];
+                  console.log(serName + "," + item.desiredCount + "," + item.runningCount);
+          });
+
+          // Elimino i 10 service appena processati dall'array
+          servicesListArns.splice(0,10);
+    }
+  };
 
   // DynamoDB
   async _queryRequest(tableName, key, value) {
