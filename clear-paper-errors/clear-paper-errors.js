@@ -97,28 +97,35 @@ function processDynamoDBDump(dumpFilePath) {
 }
 
 /**
+ * Extracts IUN from requestId
+ * @param {string} requestId - Request ID containing IUN
+ * @returns {string|null} IUN if found, null otherwise
+ */
+function extractIunFromRequestId(requestId) {
+    try {
+        const parts = requestId.split('.');
+        if (parts.length < 2) return null;
+        
+        const iunPart = parts[1];
+        if (!iunPart.startsWith('IUN_')) return null;
+        
+        return iunPart.substring(4); // Remove 'IUN_' prefix
+    } catch (error) {
+        return null;
+    }
+}
+
+/**
  * Check if notification is cancelled
  * @param {AwsClientsWrapper} awsClient 
  * @param {string} requestId 
  */
 async function checkNotificationStatus(awsClient, requestId) {
     try {
-        // Query PaperRequestDelivery table
-        const paperRequest = await awsClient._queryRequest(
-            'pn-PaperRequestDelivery',
-            'requestId',
-            requestId
-        );
-
-        if (!paperRequest?.Items?.[0]) {
-            return { success: false, reason: 'Request not found in PaperRequestDelivery' };
-        }
-
-        const request = unmarshall(paperRequest.Items[0]);
-        const iun = request.iun;
-
+        const iun = extractIunFromRequestId(requestId);
+        
         if (!iun) {
-            return { success: false, reason: 'IUN not found in request' };
+            return { success: false, reason: 'Could not extract IUN from requestId' };
         }
 
         // Query Timelines table
