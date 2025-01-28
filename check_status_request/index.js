@@ -58,7 +58,6 @@ async function main() {
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   let counter = {}
   for(let i = 0; i < fileRows.length; i++){
-    console.log(i+1)
     const requestId =  fileRows[i]
     let result = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", 'pn-cons-000~' + requestId)
     if(result.Items.length === 0) {
@@ -68,7 +67,7 @@ async function main() {
     let metadata = unmarshall(result.Items[0])
     !counter[metadata.statusRequest] ? counter[metadata.statusRequest] = 0 : null
     counter[metadata.statusRequest] = counter[metadata.statusRequest] + 1
-    console.log(metadata.statusRequest)
+    console.log(`${i} ${metadata.statusRequest}`)
     if(metadata.statusRequest === "error") {
       appendJsonToFile("error.json", metadata)
     }
