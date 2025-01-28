@@ -41,8 +41,8 @@ async function _checkingParameters(args, parsedArgs){
 	 async function get_clusters_names() {
                
                 // Inizializzazione client AWS
-                const cluster_names = await ecsClient._listClusterArns();
-		const short_cluster_names = cluster_names.map(item => {
+                const cluster_names = await ecsClient._listClusters();
+		const short_cluster_names = cluster_names.clusterArns.map(item => {
 			return item = item.match(/[^/]+$/)[0];
 		});
                 return short_cluster_names;
@@ -81,6 +81,56 @@ async function _checkingParameters(args, parsedArgs){
         return ecsClient;
 }
 
+async function _listServiceArns(client,cluster,maxResults) {
+
+    // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/ListServicesCommand/
+    // min(maxResults) = 10 = default;
+    // max(maxResults) = 100.
+
+    const result = await client._listServices(cluster,maxResults);
+
+    while(result.nextToken !== undefined){
+        //input.nextToken = result.nextToken;
+        let partial = await client._listServices(cluster,maxResults,result.nextToken);
+        result.serviceArns = result.serviceArns.concat(partial.serviceArns);
+        result.nextToken = partial.nextToken;
+    }
+    return result.serviceArns;
+};
+
+async function _describeServices(client,cluster,svcListArns,csvReport) {
+
+    // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/DescribeServicesCommand/
+    // La describe avviene per blocchi di 10 elementi. Questa funzione automatizza il processo.
+
+    let svcArray = { services: []};
+
+    while(svcListArns.length > 0) {
+
+        // Recupero i primi 10 servizi dall'array
+        let first10 = svcListArns.slice(0,10);
+        let svcElement;
+
+        const describeServices = await client._describeServices(cluster,first10);
+   
+        describeServices.services.forEach( item => {
+            let shortServiceName = item.serviceName.match(/^.+(?=-microsvc)/)[0];
+            if(csvReport) {
+                console.log(shortServiceName + "," + item.desiredCount + "," + item.runningCount);
+            };
+            svcElement = {
+                shortServiceName: shortServiceName,
+                desiredCount: item.desiredCount,
+                runningCount: item.runningCount
+            };
+            svcArray.services.push(svcElement);
+        });
+
+        // Elimino i 10 service appena processati dall'array
+        svcListArns.splice(0,10);
+    }
+    return svcArray;
+};
 
 // --- Inizio script ---
 
@@ -91,10 +141,13 @@ async function ecs_tasks_status() {
         const ecsClient = await _checkingParameters(args, parsedArgs);
  
 	// Ottengo l'elenco dei service
-	const serviceListArns = await ecsClient._listServiceArns(cluster,35);
-	
+	//const listServices = await ecsClient._listServices(cluster);
+	const listServicesArns = await _listServiceArns(ecsClient,cluster,2);
+
 	// Stampo i dati associati a blocchi di servizi (max 10)
-	await ecsClient._describeServices(cluster,serviceListArns);
+	const describeServices = await _describeServices(
+           ecsClient,cluster,listServicesArns,false);
+        console.log(describeServices);
 };
 
 ecs_tasks_status();

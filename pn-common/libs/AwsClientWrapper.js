@@ -89,35 +89,27 @@ class AwsClientsWrapper {
 
   // ECS
 
-  async _listClusterArns() {
+  async _listClusters() {
       const input = {};
       const command = new ListClustersCommand(input);
       const result = await this._ecsClient.send(command);
-      return result.clusterArns
+      return result;
   };
 
-  async _listServiceArns(cluster,maxResults) {
+  async _listServices(cluster,maxResults,nextToken) {
 
       // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/ListServicesCommand/
       // min(maxResults) = 10 = default;
-      // max(maxResults) = 100. 
+      // max(maxResults) = 100.
 
       const input = {
           cluster: cluster,
-          maxResults: maxResults
+          maxResults: maxResults || 10,
+          nextToken: nextToken
       };
-
-      let command = new ListServicesCommand(input);
-      let result =  await this._ecsClient.send(command);
-
-      while(result.nextToken !== undefined){
-          input.nextToken = result.nextToken;
-          let command = new ListServicesCommand(input);
-          let partial =  await this._ecsClient.send(command);
-          result.serviceArns = result.serviceArns.concat(partial.serviceArns);
-          result.nextToken = partial.nextToken;
-      }
-      return result.serviceArns;
+      const command = new ListServicesCommand(input);
+      const result =  await this._ecsClient.send(command);
+      return result;
   };
 
   async _describeServices(cluster,servicesListArns) {
@@ -125,29 +117,14 @@ class AwsClientsWrapper {
       // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/DescribeServicesCommand/
       // La describe avviene per blocchi di 10 elementi. Questa funzione automatizza il processo.
 
-      const input = {cluster: cluster};
+      const input = {
+          cluster: cluster,
+          services: servicesListArns
+      };
 
-      // Stampo l'header dell'output
-      console.log("serviceName,desiredCount,runningCount");
-
-      while(servicesListArns.length > 0) {
-
-          // Recupero i primi 10 servizi dall'array
-          let first10 = servicesListArns.slice(0,10);
-          input.services = first10;
-
-          const command = new DescribeServicesCommand(input);
-
-          let describeServices = await this._ecsClient.send(command);
-          let descSer = describeServices.services;
-          descSer.forEach( item => {
-                  let serName = item.serviceName.match(/^.+(?=-microsvc)/)[0];
-                  console.log(serName + "," + item.desiredCount + "," + item.runningCount);
-          });
-
-          // Elimino i 10 service appena processati dall'array
-          servicesListArns.splice(0,10);
-    }
+      const command = new DescribeServicesCommand(input);
+      const  describeServices = await this._ecsClient.send(command);
+      return describeServices;
   };
 
   // DynamoDB
