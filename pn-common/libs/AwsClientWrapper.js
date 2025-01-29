@@ -13,6 +13,7 @@ const { EventBridgeClient, EnableRuleCommand, DisableRuleCommand, ListRulesComma
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
+const { spawn } = require('node:child_process');
 
 function awsClientCfg(profile) {
   const self = this;
@@ -22,6 +23,44 @@ function awsClientCfg(profile) {
       profile: profile,
     })
   }
+}
+
+async function checkSSOLogin() {
+  try {
+    clientSTS.initSTS();
+    await clientSTS._getCallerIdentity();
+    console.log('You are successfully logged into SSO with the following account:');
+    console.log('\nUserId: ' + response.UserId);
+    console.log('Account: ' + response.Account);
+    console.log('Arn: ' + response.Arn);
+    return response;
+  } 
+  catch (error) {
+    if (error.name === 'CredentialsProviderError' ||
+        error.message?.includes('expired') ||
+        error.message?.includes('credentials')) {
+        console.error(`\n=== SSO Authentication Error client ===`);
+        console.error('Your SSO session has expired or is invalid.');
+        console.error('\nPlease follow this step to perform a new SSO login to AWS Account ' + this.ssoProfile + ':');
+        SSOLogin();
+    }
+  }
+}
+
+function SSOlogin() {
+  const login = spawn('aws', ['sso', 'login', '--profile', this.ssoProfile]);
+
+  login.stdout.on('data', (data) => {
+    console.log(`${data}`);
+  });
+
+  login.stderr.on('data', (data) => {
+    console.error(`${data}`);
+  });
+
+  login.on('close', (code) => {
+    console.log(`Proces exited with code ${code}`);
+  });
 }
 
 class AwsClientsWrapper {
@@ -38,6 +77,7 @@ class AwsClientsWrapper {
       this.ssoProfile = `sso_interop-safe-storage-${envName}`
     }
     console.log("AWS Wrapper initialized for profile " + this.ssoProfile)
+    checkSSOLogin();
   }
 
   _initDynamoDB() {
