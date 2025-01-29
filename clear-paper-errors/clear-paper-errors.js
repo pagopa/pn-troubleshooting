@@ -128,7 +128,7 @@ async function checkNotificationStatus(awsClient, requestId) {
             return { success: false, reason: 'Could not extract IUN from requestId' };
         }
 
-        // Query Timelines table
+        // Query Timelines table by IUN only
         const timelineItems = await awsClient._queryRequest(
             'pn-Timelines',
             'iun',
@@ -139,12 +139,9 @@ async function checkNotificationStatus(awsClient, requestId) {
             return { success: false, reason: 'No timeline items found' };
         }
 
-        // Check for cancelled notification
+        // Check if any item has category NOTIFICATION_CANCELLED
         const items = timelineItems.Items.map(item => unmarshall(item));
-        const isCancelled = items.some(item => 
-            item.timelineElementId === requestId && 
-            item.category === 'NOTIFICATION_CANCELLED'
-        );
+        const isCancelled = items.some(item => item.category === 'NOTIFICATION_CANCELLED');
 
         return {
             success: true,
