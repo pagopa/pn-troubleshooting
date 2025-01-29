@@ -6,29 +6,27 @@ const { parseArgs } = require('util');
 const args = [
   { name: "account_type", mandatory: true},
   { name: "region", mandatory: false},
-  { name: "env", mandatory: true},
-  { name: "cluster", mandatory: true}
+  { name: "env", mandatory: true}
 ];
 
-const parsedArgs = { values: { account_type, region, env, cluster }} = parseArgs(
+const parsedArgs = { values: { account_type, region, env }} = parseArgs(
     { options: {
           account_type: {type: "string",short: "a"},
           region: {type: "string", short: "r", default: "eu-south-1"},
-          env: {type: "string",short: "e"},
-          cluster: {type: "string",short: "c"}
+          env: {type: "string",short: "e"}
       }
 })
 
 // --- Definizione Funzioni ---
 
-async function _checkingParameters(args, parsedArgs){
+async function ecs_tasks_status() {
 
-        // --- Definizione funzioni -------------------
+function _checkingParameters(args, parsedArgs){
 
-	 const usage = "Usage: node ecs_tasks_status.js --account_type <core|confinfo> " +
-               "[--region <region>] --env <env> --cluster <cluster>\n";
+    const usage = "Usage: node ecs_tasks_status.js --account_type <core|confinfo> " +
+        "[--region <region>] --env <env> --cluster <cluster>\n";
 
-	 // Verifica dei valori degli argomenti passati allo script
+	// Verifica dei valori degli argomenti passati allo script
 	 function isOkValue(argName,value,ok_values){
 	     if(!ok_values.includes(value)) {
 	     	console.log("Error: \"" + value + "\" value for \"--" + argName +
@@ -37,30 +35,13 @@ async function _checkingParameters(args, parsedArgs){
 	     }
 	 };
 
-	 // Elenco di cluster disponibili all'interno del profilo AWS
-	 async function get_clusters_names() {
-               
-                // Inizializzazione client AWS
-                const cluster_names = await ecsClient._listClusters();
-		const short_cluster_names = cluster_names.clusterArns.map(item => {
-			return item = item.match(/[^/]+$/)[0];
-		});
-                return short_cluster_names;
-        };
-
-        // ----------------------
-
-         // Inizializzazione client AWS
-	 const ecsClient = new AwsClientsWrapper(account_type,env);
-         ecsClient._initECS();
-
-         // Verifica se un argomento è stato inserito oppure inserito con valore vuoto
-	 args.forEach(el => {
-	   if(el.mandatory && !parsedArgs.values[el.name]){
-	     console.log("\nParam \"" + el.name + "\" is not defined or empty.")
-	     console.log(usage)
-	     process.exit(1)
-	   }
+    // Verifica se un argomento è stato inserito oppure inserito con valore vuoto
+	args.forEach(el => {
+	    if(el.mandatory && !parsedArgs.values[el.name]){
+	        console.log("\nParam \"" + el.name + "\" is not defined or empty.")
+	        console.log(usage)
+	        process.exit(1)
+	    }
 	 });
 	
 	const account_types = ["core","confinfo"];
@@ -68,17 +49,6 @@ async function _checkingParameters(args, parsedArgs){
 
 	const envs = ["dev","test","hotfix","uat"];
 	isOkValue("env",env,envs);
-
-	const clusters = await get_clusters_names();
-        if(cluster === "?" ) {
-            console.log("Available ECS clusters are: " + clusters);
-            process.exit(0);
-        }
-        else {
-	    isOkValue("cluster",cluster,clusters);
-        };
-
-        return ecsClient;
 }
 
 async function _listServiceArns(client,cluster,maxResults) {
@@ -98,7 +68,7 @@ async function _listServiceArns(client,cluster,maxResults) {
     return result.serviceArns;
 };
 
-async function _describeServices(client,cluster,svcListArns,csvReport) {
+async function _servicesObject(client,cluster,svcListArns,csvReport) {
 
     // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/DescribeServicesCommand/
     // La describe avviene per blocchi di 10 elementi. Questa funzione automatizza il processo.
@@ -112,9 +82,9 @@ async function _describeServices(client,cluster,svcListArns,csvReport) {
         let svcElement;
 
         const describeServices = await client._describeServices(cluster,first10);
-   
         describeServices.services.forEach( item => {
-            let shortServiceName = item.serviceName.match(/^.+(?=-microsvc)/)[0];
+            //let shortServiceName = item.serviceName.match(/^.+(?=-microsvc)/)[0];
+            let shortServiceName = item.serviceName.match(/[^/]+$/)[0];
             if(csvReport) {
                 console.log(shortServiceName + "," + item.desiredCount + "," + item.runningCount);
             };
@@ -132,22 +102,52 @@ async function _describeServices(client,cluster,svcListArns,csvReport) {
     return svcArray;
 };
 
-// --- Inizio script ---
+// --------------------------- Nuove
 
-async function ecs_tasks_status() {
-
-        // Client ECS inizializzato dentro _checkingParameters per effettuare
-        // controlli sul nome del cluster utilizzato (chiamata a ListClustersCommand)
-        const ecsClient = await _checkingParameters(args, parsedArgs);
- 
-	// Ottengo l'elenco dei service
-	//const listServices = await ecsClient._listServices(cluster);
-	const listServicesArns = await _listServiceArns(ecsClient,cluster,2);
-
-	// Stampo i dati associati a blocchi di servizi (max 10)
-	const describeServices = await _describeServices(
-           ecsClient,cluster,listServicesArns,false);
-        console.log(describeServices);
+async function _shortClusterNames(awsClient){
+    const clusterNames = await awsClient._listClusters();
+    const shortClusterNames = clusterNames.clusterArns.map(item => {
+	    return item.match(/[^/]+$/)[0];
+	});
+    return shortClusterNames; // Array
 };
+
+async function _clustersObject(awsClient) {
+    const clusterNames = await _shortClusterNames(awsClient);
+
+    let outputObject = { 
+        clusters: []
+    };
+
+    for(const cl of clusterNames) {
+
+        let listServicesArns = await _listServiceArns(awsClient,cl);
+        let servicesObject = await _servicesObject(awsClient,cl,listServicesArns,false);
+
+        let clusterElem = {
+            name: cl,
+            services: servicesObject.services // Array di service
+       };
+
+       // Il problema è qui, nel push!
+       outputObject.clusters.push(clusterElem); 
+    }
+    return outputObject;
+}
+
+// ----------------------------- Inizio script
+
+    _checkingParameters(args, parsedArgs);
+ 
+    // Inizializzazione ECS client
+    const ecsClient = new AwsClientsWrapper(account_type,env);
+    ecsClient._initECS();
+
+    const outputObject = await _clustersObject(ecsClient)
+
+    console.log(outputObject);
+    
+    return outputObject;
+}
 
 ecs_tasks_status();
