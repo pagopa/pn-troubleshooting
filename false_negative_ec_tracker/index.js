@@ -140,7 +140,7 @@ async function main() {
   for( let i = 0; i < fileRows.length; i++ ){
     const fileData = JSON.parse(JSON.stringify(fileRows[i]))
     const body = JSON.parse(fileData.Body)
-    if(body.paperProgressStatusDto.statusCode.startsWith("CON020")) {
+    if(body.paperProgressStatusDto && body.paperProgressStatusDto.statusCode.startsWith("CON020")) {
       console.log("CON020 found:", body.requestIdx)
       appendJsonToFile(`CON020_found.json`, JSON.stringify(fileRows[i]))
     }
