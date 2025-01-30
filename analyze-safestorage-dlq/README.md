@@ -56,8 +56,8 @@ node analyze-safestorage-dlq.js -e <env> -f <path>
 
 Dove:
 
-- <env> è l'ambiente di destinazione, deve essere uno tra: dev, uat, test, prod, hotfix
-- <path> è il percorso al file JSON contenente i messaggi DLQ da analizzare
+- `<env>` è l'ambiente di destinazione, deve essere uno tra: dev, uat, test, prod, hotfix
+- `<path>` è il percorso al file JSON contenente i messaggi DLQ da analizzare
 
 ### Formato Output
 
