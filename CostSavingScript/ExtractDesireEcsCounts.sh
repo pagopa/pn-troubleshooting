@@ -77,11 +77,13 @@ OUTPUT_DIR=./output
 mkdir -p "$OUTPUT_DIR"
 cd "$OUTPUT_DIR"
 
+# Condition for only No-Prod Accounts:
 if [[ "$PN_ENV" == *"uat"* || "$PN_ENV" == *"prod"* ]]; then
   echo "cost saving not applicable in this env."
   exit 0
 fi
 
+#Process count Ecs Task fuction:
 process_clusters() {
   CLUSTERS="$1"
   
@@ -108,6 +110,7 @@ process_clusters() {
         SERVICE_NAME=$(basename "$SERVICE")
         MIN_TASKS_NUMBER=1
 
+        # Only for Dev Account setting up actual Desired tasks in Clusters:
         if [[ "$PN_ENV" == *"dev"* ]]; then
           MIN_TASKS_NUMBER=$(aws ${aws_command_base_args} ecs describe-services --cluster "$CLUSTER" --services "$SERVICE_NAME" --query "services[0].desiredCount" --output text)
           MIN_TASKS_NUMBER=${MIN_TASKS_NUMBER:-1}
@@ -143,6 +146,7 @@ process_clusters() {
   done
 }
 
+# Download Repo Configuration, not for Dev Env:
 if [[ "$PN_ENV" == *"dev"* ]]; then
   CLUSTERS=$(aws ${aws_command_base_args} ecs list-clusters --query "clusterArns[]" --output text)
   process_clusters "$CLUSTERS"
