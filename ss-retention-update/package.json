@@ -1,0 +1,18 @@
+{
+  "name": "ss-retention-update",
+  "version": "1.0.0",
+  "description": "Updates retention dates for SafeStorage documents",
+  "type": "module",
+  "main": "ss-retention-update.js",
+  "scripts": {
+    "start": "node ss-retention-update.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "csv-parse": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true
+}
