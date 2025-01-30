@@ -1,5 +1,5 @@
 const { AwsClientsWrapper } = require("pn-common");
-const { parseArgs } = require('util');
+const { inspect,parseArgs } = require('util');
 
 // Necessario "aws sso login --profile sso_pn-core-hotfix" preliminare
 
@@ -24,7 +24,7 @@ async function ecs_tasks_status() {
 function _checkingParameters(args, parsedArgs){
 
     const usage = "Usage: node ecs_tasks_status.js --account_type <core|confinfo> " +
-        "[--region <region>] --env <env> --cluster <cluster>\n";
+        "[--region <region>] --env <env>\n";
 
 	// Verifica dei valori degli argomenti passati allo script
 	 function isOkValue(argName,value,ok_values){
@@ -83,13 +83,13 @@ async function _servicesObject(client,cluster,svcListArns,csvReport) {
 
         const describeServices = await client._describeServices(cluster,first10);
         describeServices.services.forEach( item => {
-            //let shortServiceName = item.serviceName.match(/^.+(?=-microsvc)/)[0];
-            let shortServiceName = item.serviceName.match(/[^/]+$/)[0];
+            //let serviceName = item.serviceName.match(/^.+(?=-microsvc)/)[0];
+            let serviceName = item.serviceName.match(/[^/]+$/)[0];
             if(csvReport) {
-                console.log(shortServiceName + "," + item.desiredCount + "," + item.runningCount);
+                console.log(serviceName + "," + item.desiredCount + "," + item.runningCount);
             };
             svcElement = {
-                shortServiceName: shortServiceName,
+                serviceName: serviceName,
                 desiredCount: item.desiredCount,
                 runningCount: item.runningCount
             };
@@ -145,8 +145,10 @@ async function _clustersObject(awsClient) {
 
     const outputObject = await _clustersObject(ecsClient)
 
-    console.log(outputObject);
-    
+    console.log(inspect(outputObject,{
+        depth: null,
+        colors: true
+    }));
     return outputObject;
 }
 
