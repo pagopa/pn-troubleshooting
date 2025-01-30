@@ -60,11 +60,18 @@ async function main() {
   for(let i = 0; i < fileRows.length; i++){
     const requestId =  fileRows[i]
     let result = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", 'pn-cons-000~' + requestId)
+    if(result.Items.length === 0) {
+      appendJsonToFile("notfound.json", requestId)
+      continue
+    }
     let metadata = unmarshall(result.Items[0])
     !counter[metadata.statusRequest] ? counter[metadata.statusRequest] = 0 : null
     counter[metadata.statusRequest] = counter[metadata.statusRequest] + 1
-    console.log(metadata.statusRequest)
-    if(metadata.statusRequest != "booked" && metadata.statusRequest != "sent" && metadata.statusRequest != "retry") {
+    console.log(`${i} ${metadata.statusRequest}`)
+    if(metadata.statusRequest === "error") {
+      appendJsonToFile("error.json", metadata)
+    }
+    else if(metadata.statusRequest != "booked" && metadata.statusRequest != "sent" && metadata.statusRequest != "retry") {
       appendJsonToFile("fromconsolidatore.json", metadata)
       console.log(requestId + " received response from consolidatore")
     }
