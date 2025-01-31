@@ -5,7 +5,7 @@
     "id": "340f3708-f0cb-405a-13bf-96d2849994bf",
     "detail-type": "SafeStorageOutcomeEvent",
     "source": "GESTORE DISPONIBILITA",
-    "account": "089813480515",
+    "account": "",
     "time": "2023-06-28T07:38:12Z",
     "region": "eu-south-1",
     "resources": [],
