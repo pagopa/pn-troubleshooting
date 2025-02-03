@@ -1,0 +1,23 @@
+{
+  "name": "clear-paper-errors",
+  "version": "1.0.0",
+  "description": "Tool to analyze and handle paper channel delivery errors",
+  "type": "module",
+  "main": "clear-paper-errors.js",
+  "scripts": {
+    "start": "node clear-paper-errors.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.496.0",
+    "@aws-sdk/client-sqs": "^3.496.0", 
+    "@aws-sdk/client-sts": "^3.496.0",
+    "@aws-sdk/credential-provider-ini": "^3.496.0",
+    "@aws-sdk/util-dynamodb": "^3.496.0",
+    "pn-common": "file:../pn-common"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "PagoPA S.p.A.",
+  "license": "ISC"
+}
