@@ -1,16 +1,17 @@
 
-const { fromIni } = require("@aws-sdk/credential-provider-ini");
-const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, BatchWriteItemCommand } = require("@aws-sdk/client-dynamodb");
-const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
-const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, GetLogEventsCommand } = require("@aws-sdk/client-cloudwatch-logs");
-const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
-const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
-const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
-const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
-const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
+const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, GetLogEventsCommand } = require("@aws-sdk/client-cloudwatch-logs");
+const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, BatchWriteItemCommand } = require("@aws-sdk/client-dynamodb");
+const { ECSClient, DescribeServicesCommand, ListClustersCommand, ListServicesCommand } = require("@aws-sdk/client-ecs");
 const { EventBridgeClient, EnableRuleCommand, DisableRuleCommand, ListRulesCommand } = require("@aws-sdk/client-eventbridge");
+const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
+const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
+const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
+const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 const { spawn } = require('node:child_process');
@@ -23,44 +24,6 @@ function awsClientCfg(profile) {
       profile: profile,
     })
   }
-}
-
-async function checkSSOLogin() {
-  try {
-    clientSTS.initSTS();
-    await clientSTS._getCallerIdentity();
-    console.log('You are successfully logged into SSO with the following account:');
-    console.log('\nUserId: ' + response.UserId);
-    console.log('Account: ' + response.Account);
-    console.log('Arn: ' + response.Arn);
-    return response;
-  } 
-  catch (error) {
-    if (error.name === 'CredentialsProviderError' ||
-        error.message?.includes('expired') ||
-        error.message?.includes('credentials')) {
-        console.error(`\n=== SSO Authentication Error client ===`);
-        console.error('Your SSO session has expired or is invalid.');
-        console.error('\nPlease follow this step to perform a new SSO login to AWS Account ' + this.ssoProfile + ':');
-        SSOLogin();
-    }
-  }
-}
-
-function SSOlogin() {
-  const login = spawn('aws', ['sso', 'login', '--profile', this.ssoProfile]);
-
-  login.stdout.on('data', (data) => {
-    console.log(`${data}`);
-  });
-
-  login.stderr.on('data', (data) => {
-    console.error(`${data}`);
-  });
-
-  login.on('close', (code) => {
-    console.log(`Proces exited with code ${code}`);
-  });
 }
 
 class AwsClientsWrapper {
@@ -76,8 +39,8 @@ class AwsClientsWrapper {
     else if (profile == 'interop') {
       this.ssoProfile = `sso_interop-safe-storage-${envName}`
     }
-    console.log("AWS Wrapper initialized for profile " + this.ssoProfile)
-    checkSSOLogin();
+    console.log("AWS Wrapper initialized for profile " + this.ssoProfile);
+    this.checkSSOLogin(this.ssoProfile);
   }
 
   _initDynamoDB() {
@@ -120,6 +83,90 @@ class AwsClientsWrapper {
   _initEventBridge() {
     this._eventBridgeClient = this.ssoProfile ? new EventBridgeClient(awsClientCfg(this.ssoProfile)) : new EventBridgeClient();
   }
+
+  // ECS
+  _initECS() {
+    this._ecsClient = this.ssoProfile ? new ECSClient(awsClientCfg(this.ssoProfile)) : new ECSClient();
+  }
+
+//Check AWS SSO Login
+
+  async checkSSOLogin(profile) {
+    const clientSTS = new STSClient({
+      region: "eu-south-1",
+      credentials: fromIni({ profile })
+    });
+    const command = new GetCallerIdentityCommand({});
+    try {
+      const resultSts = await clientSTS.send(command);
+      console.log('You have already successfully signed in via SSO with the following AWS account:');
+      console.log('\n\tUserId: ' + resultSts.UserId);
+      console.log('\tAccount: ' + resultSts.Account);
+      console.log('\tArn: ' + resultSts.Arn + "\n\n");
+      return resultSts;
+    }
+    catch (error) {
+      if (error.name === 'CredentialsProviderError' ||
+          error.message?.includes('expired') ||
+          error.message?.includes('credentials')) {
+            console.error(`\n=== SSO Authentication Error client ===`);
+            console.error('Your SSO session has expired or is invalid.');
+            console.error('\nPlease follow this step to perform a new SSO login to AWS Account ' + profile + ':');
+            this.ssoLogin(profile);
+      }
+    }
+  };
+
+  ssoLogin(profile) {
+    console.log(" --> ssoLogin(" + profile + ") function execution:\n\n");
+    const login = spawn('aws', ['sso', 'login', '--profile', profile]);
+    login.stdout.on('data', (data) => {
+      console.log(`${data}`);
+    });
+    login.stderr.on('data', (data) => {
+      console.error(`${data}`);
+    });
+  }; 
+
+  // ECS
+
+  async _listClusters() {
+      const input = {};
+      const command = new ListClustersCommand(input);
+      const result = await this._ecsClient.send(command);
+      return result;
+  };
+
+  async _listServices(cluster,maxResults,nextToken) {
+
+      // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/ListServicesCommand/
+      // min(maxResults) = 10 = default;
+      // max(maxResults) = 100.
+
+      const input = {
+          cluster: cluster,
+          maxResults: maxResults || 10,
+          nextToken: nextToken
+      };
+      const command = new ListServicesCommand(input);
+      const result =  await this._ecsClient.send(command);
+      return result;
+  };
+
+  async _describeServices(cluster,servicesListArns) {
+
+      // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/DescribeServicesCommand/
+      // La describe avviene per blocchi di 10 elementi. Questa funzione automatizza il processo.
+
+      const input = {
+          cluster: cluster,
+          services: servicesListArns
+      };
+
+      const command = new DescribeServicesCommand(input);
+      const  describeServices = await this._ecsClient.send(command);
+      return describeServices;
+  };
 
   // DynamoDB
   async _queryRequest(tableName, key, value) {
