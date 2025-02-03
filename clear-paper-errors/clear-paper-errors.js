@@ -86,12 +86,21 @@ function processDynamoDBDump(dumpFilePath) {
         const entries = readFileSync(dumpFilePath, 'utf-8')
             .split('\n')
             .filter(Boolean)
-            .map(line => JSON.parse(line));
+            .map(line => {
+                try {
+                    const parsedLine = JSON.parse(line);
+                    return unmarshall(parsedLine);
+                } catch (parseError) {
+                    console.error('Error parsing line:', parseError);
+                    return null;
+                }
+            })
+            .filter(entry => entry !== null);
 
         console.log(`Processing ${entries.length} entries from dump file`);
         return entries;
     } catch (error) {
-        console.error('Error reading/parsing dump file:', error);
+        console.error('Error reading dump file:', error);
         process.exit(1);
     }
 }
