@@ -15,7 +15,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
 usage() {
       cat <<EOF
-    Usage: $(basename "${BASH_SOURCE[0]}") [-h] --account-type <account-type> --env-type <env-type> --export-bucket-name <export-bucket-name> --logs-bucket-name <logs-bucket-name> --resource-root <resource-root>
+    Usage: $(basename "${BASH_SOURCE[0]}") [-h] --account-type <account-type> --env-type <env-type> --export-bucket-name <export-bucket-name> --logs-bucket-name <logs-bucket-name> --resource-root <resource-root> [--timestamp-utc <timestamp-utc>]
 
     [-h]                                       : this help message
     --account-type <account-type>              : "confinfo" or "core"
@@ -25,7 +25,7 @@ usage() {
     --resource-root                            : base path where resources are present
     --core-bucket-name                         : core bucket name
     --confinfo-bucket-name                     : confinfo bucket name
-
+    --timestamp-utc <timestamp-utc>            : Optional timestamp in UTC format (e.g., 2025-01-31T12:00:00Z)
 EOF
   exit 1
 }
@@ -39,6 +39,7 @@ parse_params() {
   resource_root=""
   core_bucket_name=""
   confinfo_bucket_name=""
+  timestamp_utc=""
   
   while :; do
     case "${1-}" in
@@ -71,6 +72,10 @@ parse_params() {
       confinfo_bucket_name="${2-}"
       shift
       ;;
+    --timestamp-utc)
+      timestamp_utc="${2-}"
+      shift
+      ;;
     -?*) die "Unknown option: $1" ;;
     *) break ;;
     esac
@@ -101,6 +106,7 @@ dump_params(){
   echo "Resource Root:               ${resource_root}"
   echo "Core Bucket Name:            ${core_bucket_name}"
   echo "Confinfo Bucket Name:        ${confinfo_bucket_name}"
+  echo "Timestamp UTC Now:           ${timestamp_utc}"
 }
 
 
@@ -264,7 +270,11 @@ elif ([ $account_type == "core" ]); then
 
   ARGUMENTS=$( echo $COMMANDLINE | sed -e 's/  */,/g' )
   ./mvnw compile
-  ./mvnw exec:java -Dexec.arguments=${ARGUMENTS} -DCORE_BUCKET=${core_bucket_name} -DCONFINFO_BUCKET=${confinfo_bucket_name}
+  ./mvnw exec:java \
+      -Dexec.arguments=${ARGUMENTS} \
+      -DCORE_BUCKET=${core_bucket_name} \
+      -DCONFINFO_BUCKET=${confinfo_bucket_name} \
+      $([ -n "${timestamp_utc}" ] && echo "-Dtimestamp.utc=${timestamp_utc}")
 
 fi
 
