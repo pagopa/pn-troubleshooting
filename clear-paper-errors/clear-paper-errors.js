@@ -219,7 +219,19 @@ async function main() {
     for (const entry of entries) {
         progress++;
         process.stdout.write(`\rProcessing entry ${progress} of ${stats.total}`);
-
+        
+        // Preliminary check in case of error with code CON996
+        const error = entry.error;
+        if (error === 'CON996') {
+            stats.safeToDelete++;
+            appendJsonToFile('results/safe_to_delete.json', { 
+                created: entry.created,
+                requestId: entry.requestId,
+                error: entry.error 
+            });
+            continue;
+        }
+        
         const requestId = entry.requestId;
         if (!requestId) {
             stats.cannotDelete++;
@@ -236,7 +248,7 @@ async function main() {
             stats.safeToDelete++;
             appendJsonToFile('results/safe_to_delete.json', { 
                 created: entry.created,
-                requestId: entry.requestId 
+                requestId: entry.requestId
             });
         } else {
             stats.cannotDelete++;
