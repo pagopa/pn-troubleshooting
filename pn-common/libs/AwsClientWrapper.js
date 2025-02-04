@@ -14,6 +14,7 @@ const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
+const { spawnSync, execSync } = require('node:child_process');
 
 function awsClientCfg(profile) {
   const self = this;
@@ -38,7 +39,9 @@ class AwsClientsWrapper {
     else if (profile == 'interop') {
       this.ssoProfile = `sso_interop-safe-storage-${envName}`
     }
-    console.log("AWS Wrapper initialized for profile " + this.ssoProfile)
+    console.log("AWS Wrapper initialized for profile " + this.ssoProfile);
+    this._checkAwsSsoLogin(this);
+
   }
 
   _initDynamoDB() {
@@ -86,6 +89,45 @@ class AwsClientsWrapper {
   _initECS() {
     this._ecsClient = this.ssoProfile ? new ECSClient(awsClientCfg(this.ssoProfile)) : new ECSClient();
   }
+
+  _checkAwsSsoLogin(self) {
+    // -----------------------
+    function _osSleep(sec){
+      const command = "sleep " + sec
+      // const { spawnSync, execSync } = require('node:child_process');
+      execSync(command);
+    };
+
+    function _awsSsoLoginSync(prof,s){
+      const command = 'aws';
+      const args = ['sso', 'login', `--profile=${prof}`];
+      spawnSync(command, args, { stdio: 'inherit' });
+      console.log("\n");
+      _osSleep(s);
+    };
+
+    function _getCallerIdentitySync(prof){
+      const command = 'aws';
+      const args = ['sts', 'get-caller-identity','--region=eu-south-1',`--profile=${profile}`];
+      return spawnSync(command, args, { stdio: 'ignore' });
+    };
+
+  // -----------------------
+
+    const profile = self.ssoProfile;
+
+    const resultSts = _getCallerIdentitySync(profile);
+    if(resultSts.status) {
+      console.log(`\nUser is not logged or token must be refreshed.\nStarting 'aws sso login --profile=${profile}' command.\n\n`
+        + "-------------------------------------------------\n"
+      ); 
+      _awsSsoLoginSync(profile,0);
+      console.log("-------------------------------------------------\n");
+    }
+    else {
+      console.log("\nUser is SSO logged with profile '" + profile + "'\n");
+    };
+  };
 
   // ECS
 
