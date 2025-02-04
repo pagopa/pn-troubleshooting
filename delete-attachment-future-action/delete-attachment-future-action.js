@@ -89,7 +89,7 @@ function printSummary(stats) {
  * @param {string} iun - IUN to query
  * @returns {Promise<Array>} - Timeline items
  */
-async function queryTimeline(iun) {
+async function queryTimeline(awsClient, iun) {
     const items = await awsClient._queryRequest(
         'pn-Timelines',
         'iun',
@@ -113,13 +113,13 @@ function hasRelevantCategory(timelineItems) {
  * Update future actions for an IUN
  * @param {string} iun - IUN to process
  */
-async function updateFutureActions(iun) {
-    // Query future actions with matching IUN
-    const futureActions = await awsClient._queryRequest(
+async function updateFutureActions(awsClient, iun) {
+    // Query future actions with matching IUN using index
+    const futureActions = await awsClient._queryRequestByIndex(
         'pn-FutureAction',
+        'iun-index',
         'iun',
-        iun,
-        'iun-index'
+        iun
     );
 
     // Filter and update matching actions
