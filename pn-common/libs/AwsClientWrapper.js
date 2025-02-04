@@ -14,7 +14,7 @@ const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
-const { spawn } = require('node:child_process');
+const { spawnSync, execSync } = require('node:child_process');
 
 function awsClientCfg(profile) {
   const self = this;
@@ -40,7 +40,8 @@ class AwsClientsWrapper {
       this.ssoProfile = `sso_interop-safe-storage-${envName}`
     }
     console.log("AWS Wrapper initialized for profile " + this.ssoProfile);
-    this.checkSSOLogin(this.ssoProfile);
+    this._checkAwsSsoLogin(this);
+
   }
 
   _initDynamoDB() {
@@ -89,44 +90,46 @@ class AwsClientsWrapper {
     this._ecsClient = this.ssoProfile ? new ECSClient(awsClientCfg(this.ssoProfile)) : new ECSClient();
   }
 
-//Check AWS SSO Login
+  //Check AWS SSO Login
 
-  async checkSSOLogin(profile) {
-    const clientSTS = new STSClient({
-      region: "eu-south-1",
-      credentials: fromIni({ profile })
-    });
-    const command = new GetCallerIdentityCommand({});
-    try {
-      const resultSts = await clientSTS.send(command);
-      console.log('You have already successfully signed in via SSO with the following AWS account:');
-      console.log('\n\tUserId: ' + resultSts.UserId);
-      console.log('\tAccount: ' + resultSts.Account);
-      console.log('\tArn: ' + resultSts.Arn + "\n\n");
-      return resultSts;
+  _checkAwsSsoLogin(self) {
+    // -----------------------
+    function _osSleep(sec){
+      const command = "sleep " + sec
+      // const { spawnSync, execSync } = require('node:child_process');
+      execSync(command);
+    };
+
+    function _awsSsoLoginSync(prof,s){
+      const command = 'aws';
+      const args = ['sso', 'login', `--profile=${prof}`];
+      const pippo = spawnSync(command, args, { stdio: 'inherit' });
+      console.log("\n");
+      _osSleep(s);
+    };
+
+    function _getCallerIdentitySync(prof){
+      const command = 'aws';
+      const args = ['sts', 'get-caller-identity','--region=eu-south-1',`--profile=${profile}`];
+      return spawnSync(command, args, { stdio: 'ignore' });
+    };
+
+  // -----------------------
+
+    const profile = self.ssoProfile;
+
+    const resultSts = _getCallerIdentitySync(profile);
+    if(resultSts.status) {
+      console.log(`\nUser is not logged or token must be refreshed.\nStarting 'aws sso login --profile=${profile}' command.\n\n`
+        + "-------------------------------------------------\n"
+      ); 
+      _awsSsoLoginSync(profile,0);
+      console.log("-------------------------------------------------\n");
     }
-    catch (error) {
-      if (error.name === 'CredentialsProviderError' ||
-          error.message?.includes('expired') ||
-          error.message?.includes('credentials')) {
-            console.error(`\n=== SSO Authentication Error client ===`);
-            console.error('Your SSO session has expired or is invalid.');
-            console.error('\nPlease follow this step to perform a new SSO login to AWS Account ' + profile + ':');
-            this.ssoLogin(profile);
-      }
-    }
+    else {
+      console.log("\nUser is SSO logged with profile '" + profile + "'\n");
+    };
   };
-
-  ssoLogin(profile) {
-    console.log(" --> ssoLogin(" + profile + ") function execution:\n\n");
-    const login = spawn('aws', ['sso', 'login', '--profile', profile]);
-    login.stdout.on('data', (data) => {
-      console.log(`${data}`);
-    });
-    login.stderr.on('data', (data) => {
-      console.error(`${data}`);
-    });
-  }; 
 
   // ECS
 
