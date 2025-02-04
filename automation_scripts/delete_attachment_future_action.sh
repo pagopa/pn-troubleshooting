@@ -2,13 +2,9 @@
 
 # Base paths
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-
-# Directory paths
-DELETE_ATTACHMENT_DIR="$PROJECT_ROOT/delete-attachment-future-action"
-REMOVE_FROM_SQS_DIR="$PROJECT_ROOT/remove_from_sqs"
-TEMP_DIR="$DELETE_ATTACHMENT_DIR/temp"
-RESULT_DIR="$DELETE_ATTACHMENT_DIR/result"
+WORK_DIR="$SCRIPT_DIR/delete_attachment_future_action"
+TEMP_DIR="$WORK_DIR/temp"
+RESULT_DIR="$WORK_DIR/result"
 
 # File paths
 FILTERED_MESSAGES_FILE="$TEMP_DIR/check_attachment_retention.json"
@@ -75,7 +71,7 @@ if [ ! -f "$DUMP_FILE" ]; then
     exit 1
 fi
 
-# Create directories
+# Create work directories
 mkdir -p "$TEMP_DIR"
 mkdir -p "$RESULT_DIR"
 
@@ -88,12 +84,13 @@ if [ ! -s "$FILTERED_MESSAGES_FILE" ]; then
     exit 0
 fi
 
-# Call NodeJS script with both parameters
-node "$DELETE_ATTACHMENT_DIR/delete-attachment-future-action.js" \
+# Call NodeJS script with parameters
+node "../delete-attachment-future-action/delete-attachment-future-action.js" \
     --envName "$ENV_NAME" \
-    --dumpFile "$FILTERED_MESSAGES_FILE"
+    --dumpFile "$FILTERED_MESSAGES_FILE" \
+    --resultPath "$RESULT_FILE"
 
-# Check if purge is requested and result file exists
+# Check if purge is requested
 if [ "$PURGE" = true ]; then
     if [ ! -f "$RESULT_FILE" ]; then
         echo "Error: Result file not found: $RESULT_FILE"
@@ -101,7 +98,7 @@ if [ "$PURGE" = true ]; then
     fi
 
     echo "Purging processed messages from DLQ..."
-    node "$REMOVE_FROM_SQS_DIR/index.js" \
+    node "../remove_from_sqs/index.js" \
         --account "core" \
         --envName "$ENV_NAME" \
         --queueName "$DLQ_NAME" \

@@ -1,29 +1,25 @@
 const { AwsClientsWrapper } = require('pn-common');
-const { readFileSync, writeFileSync, mkdirSync, existsSync } = require('fs');
+const { readFileSync, writeFileSync, existsSync } = require('fs');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { parseArgs } = require('util');
-const path = require('path');
-
-// Add script directory constant
-const SCRIPT_DIR = path.dirname(require.main.filename);
-const RESULT_DIR = path.join(SCRIPT_DIR, 'result');
-const RESULT_FILE = path.join(RESULT_DIR, 'to-remove.json');
 
 const VALID_ENVIRONMENTS = ['dev', 'test', 'uat', 'hotfix', 'prod'];
 
 function validateArgs() {
     const usage = `
-Usage: node delete_attachment_future_action.js --envName|-e <environment> --dumpFile|-f <path>
+Usage: node delete_attachment_future_action.js --envName|-e <environment> --dumpFile|-f <path> --resultPath|-r <path>
 
 Parameters:
     --envName, -e     Required. Environment to check (dev|test|uat|hotfix|prod)
     --dumpFile, -f    Required. Path to the SQS dump file containing filtered messages
+    --resultPath, -r  Required. Path where to write the result file
     --help, -h        Display this help message`;
 
     const args = parseArgs({
         options: {
             envName: { type: "string", short: "e" },
             dumpFile: { type: "string", short: "f" },
+            resultPath: { type: "string", short: "r" },
             help: { type: "boolean", short: "h" }
         },
         strict: true
@@ -47,6 +43,12 @@ Parameters:
 
     if (!existsSync(args.values.dumpFile)) {
         console.error(`Error: Dump file not found: ${args.values.dumpFile}`);
+        process.exit(1);
+    }
+
+    if (!args.values.resultPath) {
+        console.error("Error: Missing required parameter --resultPath");
+        console.log(usage);
         process.exit(1);
     }
 
@@ -80,14 +82,15 @@ async function testSsoCredentials(awsClient) {
 /**
  * Prints execution summary
  * @param {Object} stats - Processing statistics
+ * @param {string} resultPath - Path to the result file
  */
-function printSummary(stats) {
+function printSummary(stats, resultPath) {
     console.log('\n=== Execution Summary ===');
     console.log(`\nTotal messages processed: ${stats.total}`);
     console.log(`Messages that required updates: ${stats.updated}`);
     console.log(`Messages skipped: ${stats.total - stats.updated}`);
     console.log('\nResults written to:');
-    console.log(`- Processed messages: ${RESULT_FILE}`);
+    console.log(`- Processed messages: ${resultPath}`);
 }
 
 /**
@@ -165,52 +168,41 @@ function extractMD5Fields(message) {
  */
 async function main() {
     try {
+        // Validate and parse arguments
         const args = validateArgs();
-        const stats = {
-            total: 0,
-            updated: 0
-        };
-
-        // Initialize and test AWS client
+        const stats = { total: 0, updated: 0 };
+        // Initialize AWS client
         const awsClient = new AwsClientsWrapper('core', args.values.envName);
         await testSsoCredentials(awsClient);
         awsClient._initDynamoDB();
-
-        // Ensure output directory exists
-        if (!existsSync(RESULT_DIR)) {
-            mkdirSync(RESULT_DIR, { recursive: true });
-        }
-
-        // Read and parse messages
+        // Read messages from dump file
         const messages = readFileSync(args.values.dumpFile, 'utf8')
             .split('\n')
             .filter(Boolean)
             .map(line => JSON.parse(line));
-
+        // Process messages
         stats.total = messages.length;
         console.log(`\nStarting processing of ${stats.total} messages...`);
         let progress = 0;
-
-        // Process messages
+        // Process each message
         for (const message of messages) {
             progress++;
             process.stdout.write(`\rProcessing message ${progress} of ${stats.total}`);
-
+            // Query timeline items for IUN
             const iun = message.MessageAttributes.iun.StringValue;
             const timelineItems = await queryTimeline(awsClient, iun);
-            
+            // Check if timeline contains relevant categories
             if (hasRelevantCategory(timelineItems)) {
                 await updateFutureActions(awsClient, iun);
-                writeFileSync(RESULT_FILE, 
+                writeFileSync(args.values.resultPath, 
                     JSON.stringify(extractMD5Fields(message)) + '\n', 
                     { flag: 'a' });
                 stats.updated++;
             }
         }
-
+        // Print summary
         process.stdout.write('\n');
-        printSummary(stats);
-
+        printSummary(stats, args.values.resultPath);
     } catch (error) {
         console.error('Error during execution:', error);
         process.exit(1);
