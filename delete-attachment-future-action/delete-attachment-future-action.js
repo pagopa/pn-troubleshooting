@@ -2,6 +2,12 @@ const { AwsClientsWrapper } = require('pn-common');
 const { readFileSync, writeFileSync, mkdirSync, existsSync } = require('fs');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { parseArgs } = require('util');
+const path = require('path');
+
+// Add script directory constant
+const SCRIPT_DIR = path.dirname(require.main.filename);
+const RESULT_DIR = path.join(SCRIPT_DIR, 'result');
+const RESULT_FILE = path.join(RESULT_DIR, 'to-remove.json');
 
 const VALID_ENVIRONMENTS = ['dev', 'test', 'uat', 'hotfix', 'prod'];
 
@@ -81,7 +87,7 @@ function printSummary(stats) {
     console.log(`Messages that required updates: ${stats.updated}`);
     console.log(`Messages skipped: ${stats.total - stats.updated}`);
     console.log('\nResults written to:');
-    console.log('- Processed messages: result/to-remove.json');
+    console.log(`- Processed messages: ${RESULT_FILE}`);
 }
 
 /**
@@ -171,8 +177,8 @@ async function main() {
         awsClient._initDynamoDB();
 
         // Ensure output directory exists
-        if (!existsSync('result')) {
-            mkdirSync('result');
+        if (!existsSync(RESULT_DIR)) {
+            mkdirSync(RESULT_DIR, { recursive: true });
         }
 
         // Read and parse messages
@@ -195,14 +201,14 @@ async function main() {
             
             if (hasRelevantCategory(timelineItems)) {
                 await updateFutureActions(awsClient, iun);
-                writeFileSync('result/to-remove.json', 
+                writeFileSync(RESULT_FILE, 
                     JSON.stringify(extractMD5Fields(message)) + '\n', 
                     { flag: 'a' });
                 stats.updated++;
             }
         }
 
-        process.stdout.write('\n'); // New line after progress
+        process.stdout.write('\n');
         printSummary(stats);
 
     } catch (error) {
