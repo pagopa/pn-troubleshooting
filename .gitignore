@@ -66,13 +66,7 @@ legal_conservation_error_extractor/result
 **/files
 **/result
 **/results
-
-### Script-specific ###
-analyze-safestorage-dlq/temp/*
-analyze-safestorage-dlq/results/*
-
-delete-attachment-future-action/temp/*
-delete-attachment-future-action/result/*
+**/temp
 
 ### Miscellaneous ###
 *.csv
