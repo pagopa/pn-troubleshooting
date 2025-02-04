@@ -1,6 +1,0 @@
-{
-  "type": "commonjs",
-  "dependencies": {
-    "pn-common": "file:../pn-common"
-  }
-}
