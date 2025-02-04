@@ -101,7 +101,7 @@ class AwsClientsWrapper {
     function _awsSsoLoginSync(prof,s){
       const command = 'aws';
       const args = ['sso', 'login', `--profile=${prof}`];
-      const pippo = spawnSync(command, args, { stdio: 'inherit' });
+      spawnSync(command, args, { stdio: 'inherit' });
       console.log("\n");
       _osSleep(s);
     };
