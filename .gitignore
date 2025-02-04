@@ -70,7 +70,6 @@ legal_conservation_error_extractor/result
 ### Script-specific ###
 analyze-safestorage-dlq/temp/*
 analyze-safestorage-dlq/results/*
-analyze-safestorage-dlq/types/*
 
 ### Miscellaneous ###
 *.csv
