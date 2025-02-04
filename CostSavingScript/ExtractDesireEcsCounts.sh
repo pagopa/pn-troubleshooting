@@ -41,7 +41,6 @@ parse_params() {
     shift
   done
 
-  # Check required params and arguments
   [[ -z "${aws_profile-}" ]] && usage
   [[ -z "${aws_region-}" ]] && usage
 
@@ -55,8 +54,6 @@ dump_params() {
   echo "AWS Profile:        ${aws_profile}"
   echo "AWS Region:         ${aws_region}"
 }
-
-# START SCRIPT
 
 parse_params "$@"
 dump_params
@@ -74,25 +71,22 @@ echo ${aws_command_base_args}
 
 echo "STARTING EXECUTION"
 
-# Initialize variables
 PN_ENV=$(echo "$aws_profile" | sed 's/.*-//')
-REPO_URL="https://github.com/pagopa/pn-configuration.git"
 AWS_ACCOUNT=$(aws ${aws_command_base_args} sts get-caller-identity --query "Account" --output text)
 OUTPUT_DIR=./output
 mkdir -p "$OUTPUT_DIR"
 cd "$OUTPUT_DIR"
 
-# Exit if the environment is uat or prod
+# Condition for only No-Prod Accounts:
 if [[ "$PN_ENV" == *"uat"* || "$PN_ENV" == *"prod"* ]]; then
   echo "cost saving not applicable in this env."
   exit 0
 fi
 
-# Function to process clusters and services
+#Process count Ecs Task fuction:
 process_clusters() {
   CLUSTERS="$1"
   
-  # Verify if there are clusters
   if [ -z "$CLUSTERS" ]; then
     echo "Clusters not exists."
     exit 1
@@ -101,7 +95,6 @@ process_clusters() {
   for CLUSTER in $CLUSTERS; do
     CLUSTER_NAME=$(basename "$CLUSTER")
 
-    # Skip clusters that do not stop"
     if [[ "$CLUSTER_NAME" == *"spidhub"* || "$CLUSTER_NAME" == *"logsaver"* ]]; then
       echo "Cluster $CLUSTER_NAME shifted."
       continue
@@ -110,46 +103,41 @@ process_clusters() {
     OUTPUT_FILE="desire_count_ecs_${CLUSTER_NAME}_${AWS_ACCOUNT}.json"
     services_count=()
 
-    # Get the services for each cluster
     SERVICES=$(aws ${aws_command_base_args} ecs list-services --cluster "$CLUSTER" --query "serviceArns[]" --output text)
 
-    # Check if there are services in the cluster
     if [ -n "$SERVICES" ]; then
       for SERVICE in $SERVICES; do
         SERVICE_NAME=$(basename "$SERVICE")
-        SERVICE_DIR=$(echo "$SERVICE_NAME" | sed 's/-microsvc.*//')
-        CONFIG_FILE="pn-configuration/$PN_ENV/$SERVICE_DIR/scripts/aws/cfn/microservice-$PN_ENV-cfg.json"
+        MIN_TASKS_NUMBER=1
 
-        # Check if the config file exists
-        if [ -f "$CONFIG_FILE" ]; then
-          MIN_TASKS_NUMBER=$(jq -r '.[].MinTasksNumber // empty' "$CONFIG_FILE")
-          echo $MIN_TASKS_NUMBER
-          MIN_TASKS_NUMBER=${MIN_TASKS_NUMBER:-1}  # Default to 1 if not set
+        # Only for Dev Account setting up actual Desired tasks in Clusters:
+        if [[ "$PN_ENV" == *"dev"* ]]; then
+          MIN_TASKS_NUMBER=$(aws ${aws_command_base_args} ecs describe-services --cluster "$CLUSTER" --services "$SERVICE_NAME" --query "services[0].desiredCount" --output text)
+          MIN_TASKS_NUMBER=${MIN_TASKS_NUMBER:-1}
         else
-          MIN_TASKS_NUMBER=1  # Default to 1 if config file doesn't exist
+          SERVICE_DIR=$(echo "$SERVICE_NAME" | sed 's/-microsvc.*//')
+          CONFIG_FILE="pn-configuration/$PN_ENV/$SERVICE_DIR/scripts/aws/cfn/microservice-$PN_ENV-cfg.json"
+          if [ -f "$CONFIG_FILE" ]; then
+            MIN_TASKS_NUMBER=$(jq -r '.[].MinTasksNumber // empty' "$CONFIG_FILE")
+            MIN_TASKS_NUMBER=${MIN_TASKS_NUMBER:-1}
+          fi
         fi
 
-        # Add service and desired count to the array
         services_count+=("\"$SERVICE_NAME\": $MIN_TASKS_NUMBER")
       done
     fi
 
-    # Create JSON output if services_count is not empty
     if [ ${#services_count[@]} -gt 0 ]; then
       JSON_OUTPUT="{ $(IFS=', '; echo "${services_count[*]}") }"
       echo "$JSON_OUTPUT" > "$OUTPUT_FILE"
       echo "File generated: $OUTPUT_FILE."
 
-      # Upload to S3
       BUCKET_NAME=$(aws ${aws_command_base_args} s3 ls | awk '{print $3}' | grep cdartifactbucket | head -n 1)
-
-      # Check if bucket is found
       if [ -z "$BUCKET_NAME" ]; then
-        echo "Bucket not exists'."
+        echo "Bucket not exists."
         exit 1
       fi
 
-      # Upload file to S3
       aws ${aws_command_base_args} s3 cp "$OUTPUT_FILE" "s3://$BUCKET_NAME/$OUTPUT_FILE"
       echo "File Uploaded to $BUCKET_NAME"
     else
@@ -158,20 +146,16 @@ process_clusters() {
   done
 }
 
-# Main execution based on environment
+# Download Repo Configuration, not for Dev Env:
 if [[ "$PN_ENV" == *"dev"* ]]; then
-  # Get the list of clusters
   CLUSTERS=$(aws ${aws_command_base_args} ecs list-clusters --query "clusterArns[]" --output text)
-  process_clusters "$CLUSTERS"  # Process clusters for dev environment
+  process_clusters "$CLUSTERS"
 else
-  # Clone or update the repository
   if [ ! -d "pn-configuration" ]; then
     git clone "$REPO_URL"
   else
     cd pn-configuration && git pull && cd ..
   fi
-
-  # Get the list of clusters
   CLUSTERS=$(aws ${aws_command_base_args} ecs list-clusters --query "clusterArns[]" --output text)
-  process_clusters "$CLUSTERS"  # Process clusters for other environments
+  process_clusters "$CLUSTERS"
 fi

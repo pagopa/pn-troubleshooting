@@ -30,6 +30,8 @@ import picocli.CommandLine.ParentCommand;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.concurrent.Callable;
@@ -60,11 +62,19 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
     @ParentCommand
     CommandsMain parent;
 
+    private Instant currentDateTime;
+
     @Override
     public Integer call() throws IOException {
 
         log.info("Starting command " + APPLICATION_NAME);
         Instant start = Instant.now();
+
+        // Set execution timestamp
+        String propertyTimestamp = System.getProperty("timestamp.utc");
+        currentDateTime = propertyTimestamp == null ?
+                Instant.now():
+                Instant.parse(propertyTimestamp);
 
         // Initialize spark session and get wrapper
         SparkSqlWrapper spark = this.sparkInit();
@@ -115,10 +125,14 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
             sparkConf = sparkConf
                     .set("spark.hadoop.fs.s3a.aws.credentials.provider",
                                         "com.amazonaws.auth.ContainerCredentialsProvider");
+
         }
 
+        // Format UTC with "yyyy-MM-dd'T'HH:mm:ssX"
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
+                .withZone(ZoneOffset.UTC);
 
-                ;
+        sparkConf.set("timestamp.utc", formatter.format(currentDateTime));
 
         SparkSqlWrapper spark = SparkSqlWrapper.local(APPLICATION_NAME, sparkConf, true);
         spark.addListener(logger);
@@ -180,7 +194,7 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
             SchemaEnum.S3A.getSchema(),
             this.exportBucket,
             REPORT_FOLDER,
-            PathsUtils.datePathFromNow(),
+            PathsUtils.datePathFromInstant(currentDateTime),
             PathsUtils.filenameWithExtensions(report.getName(), report.getOutputFormat().getExtension())
         );
 

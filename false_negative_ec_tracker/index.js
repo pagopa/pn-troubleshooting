@@ -140,12 +140,17 @@ async function main() {
   for( let i = 0; i < fileRows.length; i++ ){
     const fileData = JSON.parse(JSON.stringify(fileRows[i]))
     const body = JSON.parse(fileData.Body)
-    
-    const requestId = `${body.xpagopaExtchCxId}~${body.requestIdx}`
-    if (!requestIdsMap[requestId]) {
-      requestIdsMap[requestId] = []
-    } 
-    requestIdsMap[requestId].push(JSON.stringify(fileData))
+    if(body.paperProgressStatusDto && body.paperProgressStatusDto.statusCode.startsWith("CON020")) {
+      console.log("CON020 found:", body.requestIdx)
+      appendJsonToFile(`CON020_found.json`, JSON.stringify(fileRows[i]))
+    }
+    else {
+      const requestId = `${body.xpagopaExtchCxId}~${body.requestIdx}`
+      if (!requestIdsMap[requestId]) {
+        requestIdsMap[requestId] = []
+      } 
+      requestIdsMap[requestId].push(JSON.stringify(fileData))
+    }
   }
   for ( const requestId in requestIdsMap ) {
     const res = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", requestId)

@@ -90,8 +90,6 @@ class AwsClientsWrapper {
     this._ecsClient = this.ssoProfile ? new ECSClient(awsClientCfg(this.ssoProfile)) : new ECSClient();
   }
 
-  //Check AWS SSO Login
-
   _checkAwsSsoLogin(self) {
     // -----------------------
     function _osSleep(sec){
