@@ -1,0 +1,17 @@
+{
+  "name": "delete-attachment-future-action",
+  "version": "1.0.0",
+  "description": "Script to logically delete future actions for DLQ messages of concluded notifications",
+  "private": true,
+  "main": "delete-attachment-future-action.js",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "start": "node delete-attachment-future-action.js"
+  },
+  "dependencies": {
+    "@aws-sdk/util-dynamodb": "^3.0.0",
+    "pn-common": "file:../../pn-commons"
+  }
+}
