@@ -92,9 +92,10 @@ node "../delete-attachment-future-action/delete-attachment-future-action.js" \
 
 # Check if purge is requested
 if [ "$PURGE" = true ]; then
-    if [ ! -f "$RESULT_FILE" ]; then
-        echo "Error: Result file not found: $RESULT_FILE"
-        exit 1
+    # Check if result file exists and has content
+    if [ ! -f "$RESULT_FILE" ] || [ ! -s "$RESULT_FILE" ]; then
+        echo "No messages need to be purged from DLQ"
+        exit 0
     fi
 
     echo "Purging processed messages from DLQ..."
