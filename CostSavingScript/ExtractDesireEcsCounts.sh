@@ -76,6 +76,7 @@ AWS_ACCOUNT=$(aws ${aws_command_base_args} sts get-caller-identity --query "Acco
 OUTPUT_DIR=./output
 mkdir -p "$OUTPUT_DIR"
 cd "$OUTPUT_DIR"
+REPO_URL=https://github.com/pagopa/pn-configuration.git
 
 # Condition for only No-Prod Accounts:
 if [[ "$PN_ENV" == *"uat"* || "$PN_ENV" == *"prod"* ]]; then
