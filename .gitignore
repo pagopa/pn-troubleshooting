@@ -74,3 +74,4 @@ legal_conservation_error_extractor/result
 ### Automation Scripts ###
 automation_scripts/*
 !automation_scripts/*.sh
+!automation_scripts/*.md
