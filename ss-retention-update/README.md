@@ -8,7 +8,9 @@ Script per aggiornamento delle date di retention dei documenti in SafeStorage
 * [Prerequisiti](#prerequisiti)
 * [Installazione](#installazione)
 * [Utilizzo](#utilizzo)
-* [Esempi](#esempi)
+  * [Configurazione AWS SSO](#configurazione-aws-sso)
+  * [File di Output](#file-di-output)
+  * [Esempi](#esempi)
 
 ## Descrizione
 

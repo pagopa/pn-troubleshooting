@@ -8,7 +8,13 @@ Script per la gestione delle regole EventBridge in AWS.
 * [Prerequisiti](#prerequisiti)
 * [Installazione](#installazione)
 * [Utilizzo](#utilizzo)
+  * [Preparazione](#preparazione)
+  * [Parametri](#parametri)
 * [Esempi](#esempi)
+* [Script ECS Auto-Stop](#script-ecs-auto-stop)
+  * [Parametri Auto-Stop](#parametri-auto-stop)
+  * [Esempi Auto-Stop](#esempi-auto-stop)
+
 
 ## Descrizione
 
@@ -74,14 +80,14 @@ node eventbridge-manage-rules.js --envName dev --account core --ruleName myRule 
 
 Lo script `ecs-manage-autostop.js` gestisce le regole EventBridge che controllano l'arresto automatico degli ambienti ECS.
 
-### Parametri
+### Parametri Auto-Stop
 
 - `--envName, -e`: Obbligatorio. Ambiente destinazione (dev|test|hotfix)
 - `--enable, -n`: Abilita la regola di auto-stop
 - `--disable, -d`: Disabilita la regola di auto-stop
 - `--help, -h`: Mostra il messaggio di aiuto
 
-### Esempi
+### Esempi Auto-Stop
 
 Abilita l'arresto automatico:
 ```bash
