@@ -1,6 +1,6 @@
 # Delete Attachment Future Action
 
-Script per la gestione logica delle future action di ritenzione allegati.
+Script per la gestione logica delle azioni future relative ad allegati di notifiche perfezionate.
 
 ## Tabella dei Contenuti
 
