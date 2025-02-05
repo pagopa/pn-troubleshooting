@@ -9,6 +9,8 @@ RESULT_DIR="$WORK_DIR/result"
 # File paths
 FILTERED_MESSAGES_FILE="$TEMP_DIR/check_attachment_retention.json"
 RESULT_FILE="$RESULT_DIR/to-remove.json"
+PURGE_RESULT_FILE="${RESULT_FILE}_result.json"
+FINAL_PURGE_RESULT_FILE="$RESULT_DIR/to-remove-purge-result.json"
 
 # Queue configuration
 DLQ_NAME="pn-delivery_push_actions-DLQ"
@@ -97,7 +99,7 @@ if [ "$PURGE" = true ]; then
         echo "No messages need to be purged from DLQ"
         exit 0
     fi
-
+    # Purge processed messages from DLQ
     echo "Purging processed messages from DLQ..."
     node "../remove_from_sqs/index.js" \
         --account "core" \
@@ -105,4 +107,9 @@ if [ "$PURGE" = true ]; then
         --queueName "$DLQ_NAME" \
         --visibilityTimeout "$VISIBILITY_TIMEOUT" \
         --fileName "$RESULT_FILE"
+
+    # Rename purge result file
+    if [ -f "$PURGE_RESULT_FILE" ]; then
+        mv "$PURGE_RESULT_FILE" "$FINAL_PURGE_RESULT_FILE"
+    fi
 fi
