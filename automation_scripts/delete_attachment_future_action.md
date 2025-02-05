@@ -56,7 +56,7 @@ Dove:
 
 ## Struttura Output
 
-Lo script crea la seguente struttura:
+La struttura predefinita è la seguente:
 
 ```
 automation_scripts/
@@ -77,6 +77,7 @@ automation_scripts/
 
 Se attivato con `--purge`, lo script:
 
-- Elabora i messaggi filtrati
-- Verifica la presenza del file risultato
-- Rimuove dalla DLQ i messaggi corrispondenti usando remove_from_sqs
+- Elabora i messaggi filtrati come in una esecuzione standard
+- Verifica la presenza del file risultato, ovvero se ci sono messaggi da cancellare dalla DLQ
+- Rimuove dalla DLQ i messaggi corrispondenti usando lo script [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs)
+- Il risultato finale è scritto sul file `to-remove-purge-result.json` nella stessa cartella del file `to-remove.json`
