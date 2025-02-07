@@ -8,6 +8,7 @@
   },
   "author": "",
   "dependencies": {
-    "pn-common": "file:../pn-common"
+    "pn-common": "file:../pn-common",
+    "utils":"file:../pn-common/libs/utils.js"
   }
 }

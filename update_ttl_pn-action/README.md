@@ -12,7 +12,7 @@ Lo script:
 - effettua una chiamata [UpdateItemCommand](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/dynamodb/command/UpdateItemCommand/) verso la tabella 'pn-Action' per aggiornare il TTL. Il nuovo valore sarà pari al TTL attuale + N giorni, con N parametro in input allo script;
 - fornisce in output un file che riporta l'elenco degli actionId che sono stati aggiornati. 
 
-NB: Lo script interrompe l'esecuzine in caso di errore.
+NB: Lo script interrompe l'esecuzione in caso di errore.
 
 ## Installazione
 
