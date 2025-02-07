@@ -113,12 +113,12 @@ function parseCsvFile(filePath) {
 }
 
 /**
- * Prepares DynamoDB update items from CSV records
+ * Prepares DynamoDB insert items from CSV records
  * @param {Array<Object>} records - Parsed CSV records
  * @param {number} ttlDays - Number of days to add to TTL
  * @returns {Array<Object>} Formatted items for DynamoDB batch write
  */
-function prepareUpdateItems(records, ttlDays) {
+function prepareItemsForInsert(records, ttlDays) {
     return records.map(record => ({
         PutRequest: {
             Item: {
@@ -141,15 +141,15 @@ function logResult(type, data) {
 }
 
 /**
- * Verifies DynamoDB updates by querying updated items
+ * Verifies DynamoDB inserts by querying inserted items
  * @param {AwsClientsWrapper} awsClient - AWS client wrapper instance
- * @param {Array<Object>} items - Items that were attempted to be updated
+ * @param {Array<Object>} items - Items that were attempted to be inserted
  * @returns {Promise<{success: Array, failure: Array}>} Results of verification
  */
-async function verifyUpdates(awsClient, items) {
+async function verifyInserts(awsClient, items) {
     const results = { success: [], failure: [] };
     
-    console.log('Verifying updates...');
+    console.log('Verifying inserts...');
     for (const item of items) {
         const actionId = item.PutRequest.Item.actionId.S;
         const expectedTtl = item.PutRequest.Item.ttl.N;
@@ -240,25 +240,25 @@ async function main() {
     coreClient._initDynamoDB();
 
     const records = parseCsvFile(csvFile);
-    const updateItems = prepareUpdateItems(records, ttlDays);
+    const itemsToInsert = prepareItemsForInsert(records, ttlDays);
 
-    console.log(`Processing ${updateItems.length} items...`);
+    console.log(`Processing ${itemsToInsert.length} items to insert...`);
     
     // Perform batch writes
     const unprocessedItems = [];
-    for (let i = 0; i < updateItems.length; i += 25) {
-        const batch = updateItems.slice(i, i + 25);
+    for (let i = 0; i < itemsToInsert.length; i += 25) {
+        const batch = itemsToInsert.slice(i, i + 25);
         const result = await coreClient._batchWriteItem('pn-Action', batch);
         if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
             unprocessedItems.push(...result.UnprocessedItems['pn-Action']);
         }
-        console.log(`Processed items ${i + 1} to ${Math.min(i + 25, updateItems.length)}`);
+        console.log(`Inserted items ${i + 1} to ${Math.min(i + 25, itemsToInsert.length)}`);
     }
 
-    // Verify updates
-    console.log('Verifying updates...');
-    const verificationResults = await verifyUpdates(coreClient, 
-        updateItems.filter(item => !unprocessedItems.includes(item))
+    // Verify inserts
+    console.log('Verifying inserts...');
+    const verificationResults = await verifyInserts(coreClient, 
+        itemsToInsert.filter(item => !unprocessedItems.includes(item))
     );
 
     // Log results
@@ -267,7 +267,7 @@ async function main() {
 
     // Print summary
     printSummary({
-        totalProcessed: updateItems.length,
+        totalProcessed: itemsToInsert.length,
         successCount: verificationResults.success.length,
         failureCount: verificationResults.failure.length,
         unprocessedCount: unprocessedItems.length
