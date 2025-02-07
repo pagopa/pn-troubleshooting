@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "aws-sdk": "^2.1665.0"
+  },
+  "devDependencies": {
+    "csv-writer": "^1.6.0",
+    "date-fns": "^4.1.0"
+  }
+}
