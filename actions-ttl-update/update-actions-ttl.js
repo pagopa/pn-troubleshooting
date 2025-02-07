@@ -168,6 +168,51 @@ async function verifyUpdates(awsClient, items) {
 }
 
 /**
+ * Tests SSO credentials for AWS client
+ * @param {AwsClientsWrapper} awsClient - AWS client wrapper
+ * @returns {Promise<void>}
+ */
+async function testSsoCredentials(awsClient) {
+    try {
+        awsClient._initSTS();
+        await awsClient._getCallerIdentity();
+    } catch (error) {
+        if (error.name === 'CredentialsProviderError' ||
+            error.message?.includes('expired') ||
+            error.message?.includes('credentials')) {
+            console.error('\n=== SSO Authentication Error ===');
+            console.error('Your SSO session has expired or is invalid.');
+            console.error('Please run the following commands:');
+            console.error('1. aws sso logout');
+            console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
+            process.exit(1);
+        }
+        throw error;
+    }
+}
+
+/**
+ * Prints a summary of the execution results
+ * @param {Object} stats - Statistics object containing results
+ * @param {number} stats.totalProcessed - Total number of items processed
+ * @param {number} stats.successCount - Number of successful updates
+ * @param {number} stats.failureCount - Number of failed updates
+ * @param {number} stats.unprocessedCount - Number of unprocessed items
+ */
+function printSummary(stats) {
+    console.log('\n=== Execution Summary ===');
+    console.log(`\nTotal items processed: ${stats.totalProcessed}`);
+    console.log(`Successfully updated: ${stats.successCount}`);
+    console.log(`Failed updates: ${stats.failureCount}`);
+    if (stats.unprocessedCount > 0) {
+        console.log(`Unprocessed items: ${stats.unprocessedCount}`);
+    }
+    console.log('\nResults written to:');
+    console.log('- results/success.json');
+    console.log('- results/failure.json');
+}
+
+/**
  * Main execution function
  * Processes CSV file and updates DynamoDB items with new TTL values
  * and sets notToHandle flag to true
@@ -179,6 +224,10 @@ async function main() {
 
     // Initialize AWS client
     const coreClient = new AwsClientsWrapper('core', envName);
+    
+    // Test SSO credentials before proceeding
+    await testSsoCredentials(coreClient);
+    
     coreClient._initDynamoDB();
 
     // Create results directory if it doesn't exist
@@ -224,12 +273,13 @@ async function main() {
     verificationResults.success.forEach(item => logResult('success', item));
     verificationResults.failure.forEach(item => logResult('failure', item));
 
-    console.log('\nExecution completed:');
-    console.log(`Successfully updated: ${verificationResults.success.length} items`);
-    console.log(`Failed to update: ${verificationResults.failure.length} items`);
-    console.log('\nResults have been written to:');
-    console.log('- results/success.json');
-    console.log('- results/failure.json');
+    // Print summary
+    printSummary({
+        totalProcessed: updateItems.length,
+        successCount: verificationResults.success.length,
+        failureCount: verificationResults.failure.length,
+        unprocessedCount: unprocessedItems.length
+    });
 }
 
 main().catch(console.error);
