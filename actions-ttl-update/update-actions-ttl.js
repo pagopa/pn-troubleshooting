@@ -141,35 +141,6 @@ function logResult(type, data) {
 }
 
 /**
- * Simple progress counter for tracking operations
- */
-class ProgressCounter {
-    constructor(total, updateInterval = 10) {
-        this.total = total;
-        this.current = 0;
-        this.updateInterval = updateInterval;
-        this.lastUpdateTime = Date.now();
-    }
-
-    increment() {
-        this.current++;
-        const now = Date.now();
-        if (this.current === this.total || now - this.lastUpdateTime >= 1000) {
-            this.printProgress();
-            this.lastUpdateTime = now;
-        }
-    }
-
-    printProgress() {
-        const percentage = ((this.current / this.total) * 100).toFixed(1);
-        process.stdout.write(`\rProgress: ${this.current}/${this.total} (${percentage}%)`);
-        if (this.current === this.total) {
-            process.stdout.write('\n');
-        }
-    }
-}
-
-/**
  * Verifies DynamoDB updates by querying updated items
  * @param {AwsClientsWrapper} awsClient - AWS client wrapper instance
  * @param {Array<Object>} items - Items that were attempted to be updated
@@ -177,7 +148,6 @@ class ProgressCounter {
  */
 async function verifyUpdates(awsClient, items) {
     const results = { success: [], failure: [] };
-    const progress = new ProgressCounter(items.length);
     
     console.log('Verifying updates...');
     for (const item of items) {
@@ -201,7 +171,6 @@ async function verifyUpdates(awsClient, items) {
             console.error(`Error verifying item ${actionId}:`, error);
             results.failure.push({ actionId, ttl: expectedTtl });
         }
-        progress.increment();
     }
 
     return results;
@@ -262,25 +231,20 @@ async function main() {
     const args = validateArgs();
     const { envName, csvFile, ttlDays } = args;
 
-    // Initialize results directory and files first
     initializeResultsFiles();
 
-    // Initialize AWS client
     const coreClient = new AwsClientsWrapper('core', envName);
     
-    // Test SSO credentials before proceeding
     await testSsoCredentials(coreClient);
     
     coreClient._initDynamoDB();
 
-    // Parse CSV and prepare items for update
     const records = parseCsvFile(csvFile);
     const updateItems = prepareUpdateItems(records, ttlDays);
 
     console.log(`Processing ${updateItems.length} items...`);
-    const writeProgress = new ProgressCounter(updateItems.length);
     
-    // Perform batch writes with progress tracking
+    // Perform batch writes
     const unprocessedItems = [];
     for (let i = 0; i < updateItems.length; i += 25) {
         const batch = updateItems.slice(i, i + 25);
@@ -288,17 +252,7 @@ async function main() {
         if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
             unprocessedItems.push(...result.UnprocessedItems['pn-Action']);
         }
-        batch.forEach(() => writeProgress.increment());
-    }
-
-    if (unprocessedItems.length > 0) {
-        console.warn(`Warning: ${unprocessedItems.length} items were not processed`);
-        unprocessedItems.forEach(item => {
-            logResult('failure', {
-                actionId: item.PutRequest.Item.actionId.S,
-                ttl: item.PutRequest.Item.ttl.N
-            });
-        });
+        console.log(`Processed items ${i + 1} to ${Math.min(i + 25, updateItems.length)}`);
     }
 
     // Verify updates
