@@ -8,7 +8,10 @@ Script per pulizia tabella pn-PaperRequestError.
 * [Prerequisiti](#prerequisiti)
 * [Installazione](#installazione)
 * [Utilizzo](#utilizzo)
-* [Esempi](#esempi)
+  * [Configurazione AWS SSO](#configurazione-aws-sso)
+  * [Parametri](#parametri)
+  * [File di Output](#file-di-output)
+  * [Esempi](#esempi)
 
 ## Descrizione
 

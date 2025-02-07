@@ -6,9 +6,12 @@ Script di analisi dei messaggi in DLQ dalla coda eventi di SafeStorage.
 
 * [Descrizione](#descrizione)
 * [Installazione](#installazione)
+  * [Prerequisiti](#prerequisiti)
 * [Utilizzo](#utilizzo)
   * [Preparazione](#preparazione)
   * [Esecuzione](#esecuzione)
+  * [Formato Output](#formato-output)
+
 
 ## Descrizione
 
