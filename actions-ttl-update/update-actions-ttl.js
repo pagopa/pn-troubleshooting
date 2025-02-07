@@ -54,6 +54,24 @@ Parameters:
 }
 
 /**
+ * Initializes the results directory and files
+ * @throws {Error} If directory creation fails
+ */
+function initializeResultsFiles() {
+    try {
+        if (!existsSync('results')) {
+            mkdirSync('results');
+        }
+        // Create/empty result files
+        appendFileSync('results/success.json', '', { flag: 'w' });
+        appendFileSync('results/failure.json', '', { flag: 'w' });
+    } catch (error) {
+        console.error('Error initializing results files:', error);
+        process.exit(1);
+    }
+}
+
+/**
  * Parses a CSV file containing action records
  * @param {string} filePath - Path to the CSV file
  * @returns {Array<Object>} Parsed CSV records
@@ -62,10 +80,32 @@ Parameters:
 function parseCsvFile(filePath) {
     try {
         const fileContent = readFileSync(filePath, 'utf-8');
-        return parse(fileContent, {
+        const records = parse(fileContent, {
             columns: true,
             skip_empty_lines: true
         });
+
+        // Validate required columns
+        const requiredColumns = ['actionId', 'ttl'];
+        const missingColumns = requiredColumns.filter(col => 
+            !records[0] || typeof records[0][col] === 'undefined'
+        );
+
+        if (missingColumns.length > 0) {
+            throw new Error(`Missing required columns: ${missingColumns.join(', ')}`);
+        }
+
+        // Validate data types
+        const invalidRecords = records.filter(record => 
+            !record.actionId || 
+            isNaN(parseInt(record.ttl))
+        );
+
+        if (invalidRecords.length > 0) {
+            throw new Error(`Found ${invalidRecords.length} records with invalid data`);
+        }
+
+        return records;
     } catch (error) {
         console.error('Error reading/parsing CSV file:', error);
         process.exit(1);
@@ -222,6 +262,9 @@ async function main() {
     const args = validateArgs();
     const { envName, csvFile, ttlDays } = args;
 
+    // Initialize results directory and files first
+    initializeResultsFiles();
+
     // Initialize AWS client
     const coreClient = new AwsClientsWrapper('core', envName);
     
@@ -229,11 +272,6 @@ async function main() {
     await testSsoCredentials(coreClient);
     
     coreClient._initDynamoDB();
-
-    // Create results directory if it doesn't exist
-    if (!existsSync('results')) {
-        mkdirSync('results');
-    }
 
     // Parse CSV and prepare items for update
     const records = parseCsvFile(csvFile);
