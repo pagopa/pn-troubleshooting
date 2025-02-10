@@ -35,6 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -99,6 +100,7 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
         long completionTime = Instant.now().toEpochMilli() - start.toEpochMilli();
         log.log(Level.INFO, () -> APPLICATION_NAME + " completed in " + completionTime + "ms");
 
+        spark.shutdown( 4, TimeUnit.HOURS );
         return 0;
     }
 
