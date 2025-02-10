@@ -100,7 +100,6 @@ async function main() {
     // _parseCSV Scarta automaticamente gli header ed elimina gli ""
     const parsedCsv = await _parseCSV(fileName,","); // array di oggetti
     
-    // Qui potrei creare aggiungere un altro blocco try/catch
     passedFileHandler = await fs.open(createOutputFile("passed"),'a'); // Se il file non esiste verrà creato
     failedFileHandler = await fs.open(createOutputFile("failed"),'a'); // Se il file non esiste verrà creato
     
