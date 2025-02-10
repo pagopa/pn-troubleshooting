@@ -1,6 +1,6 @@
-# Utility di Aggiornamento TTL per pn-Action
+# Utility di inserimento record per pn-Action
 
-Questo script permette di aggiornare il Time-To-Live (TTL) e il flag `notToHandle` per gli elementi nella tabella DynamoDB pn-Action.
+Questo script permette di inserire elementi nella tabella DynamoDB pn-Action previo aggiornamento del Time-To-Live (TTL) e del flag `notToHandle`.
 
 ## Prerequisiti
 
@@ -17,7 +17,7 @@ Il file CSV deve contenere le seguenti colonne:
 ## Utilizzo
 
 ```bash
-node update-actions-ttl.js --envName|-e <ambiente> --csvFile|-f <percorso> --ttlDays|-d <giorni>
+node dynamo-insert-actions.js --envName|-e <ambiente> --csvFile|-f <percorso> --ttlDays|-d <giorni>
 ```
 
 ### Parametri
@@ -29,7 +29,7 @@ node update-actions-ttl.js --envName|-e <ambiente> --csvFile|-f <percorso> --ttl
 ### Esempio
 
 ```bash
-node update-actions-ttl.js -e dev -f ./actions.csv -d 30
+node dynamo-insert-actions.js -e dev -f ./actions.csv -d 30
 ```
 
 ## Output
