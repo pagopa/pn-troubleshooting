@@ -115,16 +115,18 @@ async function main() {
             passedFileHandler.appendFile(returnedActionId + '\n');
             console.log("OK: " + returnedActionId);
         } catch(e) {
-            if (e.__type.includes("ConditionalCheckFailedException")){
-                console.log("WARN: Item with actionId '" + row.actionId + "' is empty");
-                failedFileHandler.appendFile(row.actionId + '\n');
-            } 
-            else {
-                console.log(e);
-                passedFileHandler?.close();
-                failedFileHandler?.close();
-                process.exit(1);
-            }
+            switch(e.name) {
+                case "ConditionalCheckFailedException":
+                    console.log("WARN: Item with actionId '" + row.actionId + "' is empty or does not exists");
+                    failedFileHandler.appendFile(row.actionId + '\n');
+                    break;
+                default:
+                    console.log("Error name: " + e.name);
+                    console.log("Error message: " + e.message);
+                    passedFileHandler?.close();
+                    failedFileHandler?.close();
+                    process.exit(1);
+            };
         };
     };
     passedFileHandler?.close();  
