@@ -1,5 +1,5 @@
 const { AwsClientsWrapper } = require("pn-common");
-const { _parseCSV } = require("../pn-common/libs/utils.js")
+const { _parseCSV } = require("../pn-common/libs/utils.js");
 const { parseArgs } = require('util');
 const { mkdirSync } = require('node:fs');
 const fs = require('node:fs/promises');
@@ -9,7 +9,7 @@ const path = require('path');
 // ------------ Parametri input ---------------------
 
 // --- Fissi ---
-const accountType = "core"; // 207905393513 account id pn-core-hotfix
+const accountType = "core";
 const tableName = "pn-Action";
 
 // --- Variabili ---
