@@ -121,8 +121,7 @@ async function main() {
                     failedFileHandler.appendFile(row.actionId + '\n');
                     break;
                 default:
-                    console.log("Error name: " + e.name);
-                    console.log("Error message: " + e.message);
+                    console.log(e);
                     passedFileHandler?.close();
                     failedFileHandler?.close();
                     process.exit(1);
