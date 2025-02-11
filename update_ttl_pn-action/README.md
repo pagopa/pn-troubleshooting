@@ -10,9 +10,12 @@
 Lo script:
 - prende in input un file CSV con due colonne, actionId e TTL (valori attuali);
 - effettua una chiamata [UpdateItemCommand](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/dynamodb/command/UpdateItemCommand/) verso la tabella 'pn-Action' per aggiornare il TTL. Il nuovo valore sarà pari al TTL attuale + N giorni, con N parametro in input allo script (--days);
-- fornisce in output un file che riporta l'elenco degli actionId che sono stati incrementat di "days" giorni. 
+- fornisce in output i file:
+  1. ./results/passed/updateItems_from_csv_\<date>.json: contiene l'elenco degli actionId che sono stati incrementati di "--days=\<num>" giorni;
+  2. ./results/failed/updateItems_from_csv_\<date>.json: contiene l'elenco degli actionId scartati in quanto non presenti nella tabella pn-Action (vedi [ConditionalCheckFailedException](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-client-dynamodb/Class/ConditionalCheckFailedException/)). Questo tipo di eccezione è gestito e lo script non verrà interrotto.
+	
+NB: Gli actionId che generano un'eccezione diversa dalla "ConditionalCheckFaildedException" interromperanno l'esecuzione dello script.
 
-NB: Lo script interrompe l'esecuzione in caso di errore.
 
 ## Installazione
 
