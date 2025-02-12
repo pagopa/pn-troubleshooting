@@ -2,12 +2,13 @@
   "name": "delete_item_from_DynamoDB_table",
   "version": "1.0.0",
   "description": "Delete items from DynamoDB table specifing PartitionKey and SortKey",
-  "main": "index.js",
+  "main": "delete_item_from_DynamoDB.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "dependencies": {
+    "@aws-sdk/util-dynamodb": "^3.744.0",
     "pn-common": "file:../pn-common"
   }
 }

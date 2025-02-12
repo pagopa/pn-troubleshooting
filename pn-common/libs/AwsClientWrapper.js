@@ -246,7 +246,9 @@ class AwsClientsWrapper {
     const input = {
       RequestItems: {
         [tableName]: values
-      }
+      },
+      ReturnConsumedCapacity: "TOTAL",
+      ReturnItemCollectionMetrics: "SIZE"
     }
     const command = new BatchWriteItemCommand(input)
     return await this._dynamoClient.send(command)
