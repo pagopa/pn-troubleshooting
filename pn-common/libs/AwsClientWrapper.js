@@ -228,7 +228,7 @@ class AwsClientsWrapper {
   }
   */
 
-  async _updateItem(tableName, keys, values, operator) {
+  async _updateItem(tableName, keys, values, operator,expr) {
     const input = {
       TableName: tableName,
       Key: prepareKeys(keys),
@@ -236,21 +236,8 @@ class AwsClientsWrapper {
       ExpressionAttributeValues: prepareExpressionAttributeValues(values),
       UpdateExpression: prepareUpdateExpression(operator, values),
       ReturnValues: 'ALL_NEW'
-    }
-    const command = new UpdateItemCommand(input)
-    return await this._dynamoClient.send(command)
-  }
-
-  async _conditionalUpdateItem(tableName, keys, values, operator, expr) {
-    const input = {
-      TableName: tableName,
-      Key: prepareKeys(keys),
-      ExpressionAttributeNames: prepareExpressionAttributeNames(values),
-      ExpressionAttributeValues: prepareExpressionAttributeValues(values),
-      UpdateExpression: prepareUpdateExpression(operator, values),
-      ReturnValues: 'ALL_NEW',
-      ConditionExpression: expr
-    }
+    };
+    if(expr) input.ConditionExpression = expr; 
     const command = new UpdateItemCommand(input)
     return await this._dynamoClient.send(command)
   }

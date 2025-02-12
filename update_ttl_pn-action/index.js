@@ -3,7 +3,6 @@ const { _parseCSV } = require("../pn-common/libs/utils.js");
 const { parseArgs } = require('util');
 const { mkdirSync } = require('node:fs');
 const fs = require('node:fs/promises');
-const { unmarshall } = require("@aws-sdk/util-dynamodb");
 const path = require('path');
 
 // ------------ Parametri input ---------------------
@@ -18,16 +17,18 @@ const args = [
     { name: "region", mandatory: false},
     { name: "env", mandatory: true},
     { name: "days", mandatory: true},
-    { name: "fileName", mandatory: true}
+    { name: "fileName", mandatory: true},
+    { name: "startActionId", mandatory: false}
   ];
 
-  const parsedArgs = { values: { region, env, days, fileName }} = parseArgs(
+  const parsedArgs = { values: { region, env, days, fileName, startActionId }} = parseArgs(
       { options: {
             // account_type: {type: "string",short: "a"},
             region: {type: "string", short: "r", default: "eu-south-1"},
             env: {type: "string",short: "e"},
-            days: {type: "string",short: "d"}, //
-            fileName: {type: "string",short: "f"}
+            days: {type: "string",short: "d"},
+            fileName: {type: "string",short: "f"},
+            startActionId: {type: "string",short: "a"}
         }
   });  
 
@@ -36,7 +37,7 @@ const args = [
 function _checkingParameters(args, parsedArgs){
 
     const usage = "Usage: node index.js [--region <region>]" +
-        " --env <env> --days <number> --fileName <csv file>\n";
+        " --env <env> --days <number> --fileName <csv file> [--startActionId <actionId value>]\n";
 
 	// Verifica dei valori degli argomenti passati allo script
 	 function isOkValue(argName,value,ok_values){
@@ -99,38 +100,53 @@ async function main() {
 
     // _parseCSV Scarta automaticamente gli header ed elimina gli ""
     const parsedCsv = await _parseCSV(fileName,","); // array di oggetti
-    
-    passedFileHandler = await fs.open(createOutputFile("passed"),'a'); // Se il file non esiste verrà creato
+        
     failedFileHandler = await fs.open(createOutputFile("failed"),'a'); // Se il file non esiste verrà creato
-    
+
+    let keepSkip = 0;
     for(const row of parsedCsv) {
+
+        // Skippa le righe del csv fino a quando non incontra quella con row.actionId === actionId
+        if(startActionId !== undefined & row.actionId !== startActionId & keepSkip == 0){
+            continue;
+        } 
+        else{
+            keepSkip = 1;
+        };
+
         // ftu = fieldToUpdate
         // Attributo da incrementare -----------------|
         // PK --------------------------------|       |
         // gg da aggiungere ---------|        |       |     
         let input = increaseFtuInput(days,"actionId","ttl",row);
         try {
-            const { Attributes } = await dynDbClient._conditionalUpdateItem(tableName, input.keys, input.values,'SET',`attribute_exists(#ttl)`);
-            let returnedActionId = unmarshall(Attributes).actionId;
-            passedFileHandler.appendFile(returnedActionId + '\n');
-            console.log("OK: " + returnedActionId);
+            await dynDbClient._updateItem(tableName, input.keys, input.values,'SET',`attribute_exists(#ttl)`);
+            let objectPassed = JSON.stringify({
+                actionId: row.actionId
+           });
+           console.log(objectPassed);
         } catch(e) {
-            switch(e.name) {
+            let objectFailed = JSON.stringify({
+                actionId: row.actionId,
+                error: {
+                    name: e.name,
+                    message: e.message
+                }
+            });
+            console.log(objectFailed);
+            failedFileHandler.appendFile(objectFailed);
+            switch(e.name) {   
                 case "ConditionalCheckFailedException":
-                    console.log("WARN: Item with actionId '" + row.actionId + "' is empty or does not exists");
-                    failedFileHandler.appendFile(row.actionId + '\n');
                     break;
                 default:
-                    console.log(e);
-                    passedFileHandler?.close();
                     failedFileHandler?.close();
                     process.exit(1);
             };
         };
     };
-    passedFileHandler?.close();  
     failedFileHandler?.close();
 };
+
 
 // Check dei parametri di input
 _checkingParameters(args,parsedArgs);
