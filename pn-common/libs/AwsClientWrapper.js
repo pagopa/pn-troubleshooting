@@ -212,8 +212,23 @@ class AwsClientsWrapper {
     const command = new QueryCommand(input);
     return await this._dynamoClient.send(command)
   }
+  
+  /* --- _updateItem Info ---
 
-  async _updateItem(tableName, keys, values, operator) {
+  - Per le funzioni 'prepareExpression*' vedi DinaymoUtils.js.
+  - Script di esempio: https://github.com/pagopa/pn-troubleshooting/tree/main/extend_ttl_expiration
+   
+  Struttura variabile values:
+  let values = {
+    <nome attributo>: {
+      codeAttr: '#<alias attribute>',
+      codeValue: ':<alias value>',
+      value: <expression>
+    }
+  }
+  */
+
+  async _updateItem(tableName, keys, values, operator,expr) {
     const input = {
       TableName: tableName,
       Key: prepareKeys(keys),
@@ -221,7 +236,8 @@ class AwsClientsWrapper {
       ExpressionAttributeValues: prepareExpressionAttributeValues(values),
       UpdateExpression: prepareUpdateExpression(operator, values),
       ReturnValues: 'ALL_NEW'
-    }
+    };
+    if(expr) input.ConditionExpression = expr; 
     const command = new UpdateItemCommand(input)
     return await this._dynamoClient.send(command)
   }
