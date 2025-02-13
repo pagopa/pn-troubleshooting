@@ -8,7 +8,10 @@
 
 ## Descrizione
 Lo script:
-- 
+- prende in input un file CSV avente colonne: "iun","timelineelementid","timestamp","category";
+- fornisce in output il file ./results/create_action_from_feedback_\<date>.csv, avente colonne: "actionId","ttl","notToHandle" (notToHandle=false).
+	
+NB: I timelineElementId nel file CSV che non contengono le sottostringe "SEND_ANALOG_FEEDBACK" oppure "SEND_DIGITAL_FEEDBACK" genereranno l'eccezione "timelineElementIdError" che interromperà l'esecuzione dello script.
 
 ## Installazione
 
@@ -21,16 +24,13 @@ npm install
 ```bash
 
 node index.js \
-	[--region region] \
-	--env <dev|test|uat|hotfix> \
 	--fileName <csv file> \
-	--ttl <time in ms>
+	--ttl <time in ms> \
+	[--start <timelineElementId>]
 
 ```
 
 Dove:
-- region: è la regione AWS. Il valore di default è "eu-south-1";
-- env: è l'ambiente target;
-- fileName: è il file CSV contentente le colonne actionId e TTL;
-- ttl: è il TimeToLive espresso in millisecondi.
-
+- fileName: è il file CSV contentente le colonne "iun","timelineelementid","timestamp","category";
+- ttl: è il TimeToLive espresso in millisecondi;
+- start: è il timelineElementId di partenza.
