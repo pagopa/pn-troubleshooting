@@ -114,7 +114,9 @@ function readJson(inputFile) {
 function itemGrouper(itemsToDelete, keys) {
     let allBlocksOfItems = [];
     let rows = 0;
-    for (item of itemsToDelete) {
+
+    // group itemsToDelete into blocks of 25 items
+    while (itemsToDelete.length > 0) {
         let singleBlockOfItems = [];
         itemsToDelete.slice(0, 25).forEach(row => {
             let key = {
@@ -128,10 +130,11 @@ function itemGrouper(itemsToDelete, keys) {
             });
             rows++;
         });
-        //console.log(inspect(singleBlockOfItems, { showHidden: false, depth: null, colors: true }));
+        
         allBlocksOfItems.push(singleBlockOfItems);
         itemsToDelete.splice(0, 25);
     };
+    
     return (allBlocksOfItems);
 };
 
@@ -171,6 +174,7 @@ async function main() {
 
     // Group elements into blocks of 25 elements and store these blocks in an overall object
     const allBlocksOfItems = itemGrouper(itemsToDelete, keys);
+    
     let run = 0;
     let linesDeleted = 0;
     let result = [];
