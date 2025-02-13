@@ -56,12 +56,6 @@ function _checkingParameters(args, parsedArgs){
 	        process.exit(1)
 	    }
 	 });
-	
-	// const account_types = ["core","confinfo"];
-	// isOkValue("account_type",account_type,account_types);
-
-	const envs = ["dev","test","hotfix","uat"];
-	isOkValue("env",env,envs);
 };
 
 function increaseFtuInput(val,pk,ftu,csvRow){ //ftu = fieldToUpdate
@@ -97,6 +91,13 @@ function createOutputFile(folder) {
 };
 
 async function main() {
+
+    // Check dei parametri di input
+    _checkingParameters(args,parsedArgs);
+
+    // Inizializzazione client DynamoDB
+    const dynDbClient = new AwsClientsWrapper(accountType,env);
+    dynDbClient._initDynamoDB();
 
     // _parseCSV Scarta automaticamente gli header ed elimina gli ""
     const parsedCsv = await _parseCSV(fileName,","); // array di oggetti
@@ -146,13 +147,5 @@ async function main() {
     };
     failedFileHandler?.close();
 };
-
-
-// Check dei parametri di input
-_checkingParameters(args,parsedArgs);
-
-// Inizializzazione client DynamoDB
-const dynDbClient = new AwsClientsWrapper(accountType,env);
-dynDbClient._initDynamoDB();
 
 main();
