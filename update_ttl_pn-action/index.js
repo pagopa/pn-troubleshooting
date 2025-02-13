@@ -134,7 +134,7 @@ async function main() {
                 }
             });
             console.log(objectFailed);
-            appendFileSync(outputFile,objectFailed);
+            appendFileSync(failedFileHandler,objectFailed);
             switch(e.name) {   
                 case "ConditionalCheckFailedException":
                     break;
