@@ -90,6 +90,7 @@ async function retrievePkAndSk(clientDB, tableName) {
  * Process input file
  * @param {string} inputFile - Path to input file
  * @returns {Array} Array of parsed entries
+ * @returns {string} lines to delete
  */
 function readJson(inputFile) {
     let fileRows = readFileSync(inputFile, 'utf-8');
@@ -101,7 +102,7 @@ function readJson(inputFile) {
         process.stdout.write(`\rRead item ${progress} of ${row}`);
         fileRows[i] = (JSON.parse(fileRows[i]));
     };
-    return (fileRows);
+    return [fileRows,progress];
 };
 
 /**
@@ -113,7 +114,7 @@ function readJson(inputFile) {
 function itemGrouper(itemsToDelete, keys) {
     let allBlocksOfItems = [];
     let rows = 0;
-    for (const item of itemsToDelete) {
+    for (item of itemsToDelete) {
         let singleBlockOfItems = [];
         itemsToDelete.slice(0, 25).forEach(row => {
             let key = {
@@ -166,16 +167,16 @@ async function main() {
     console.log('\n');
 
     // Process input file
-    const itemsToDelete = readJson(inputFile);
+    const [itemsToDelete, progress] = readJson(inputFile);
 
     // Group elements into blocks of 25 elements and store these blocks in an overall object
     const allBlocksOfItems = itemGrouper(itemsToDelete, keys);
     let run = 0;
+    let linesDeleted = 0;
     let result = [];
     for (block of allBlocksOfItems) {
         try {
             result = await clientDB._batchWriteItem(tableName, allBlocksOfItems[run]);
-            run++
             if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
                 try {
                     appendJsonToFile('results/item_not_deleted.json', result.UnprocessedItems);
@@ -187,16 +188,19 @@ async function main() {
                 }
             } else {
                 console.log('\n');
-                console.log('\nAll elements of block ' + run + ' have been successfully deleted');
+                console.log('\nAll ' + allBlocksOfItems[run].length + ' elements of block ' + run + ' have been successfully deleted');
+                linesDeleted = linesDeleted + allBlocksOfItems[run].length;
             }
         } catch (err) {
             console.log('\n');
-            console.error('\nError while deleting block ' + run, JSON.stringify(err, null, 2));
+            console.error('\nError while deleting ' + allBlocksOfItems[run].length + ' elements in the block ' + run, JSON.stringify(err, null, 2));
         }
+        run++
     };
     //console.log(inspect(allBlocksOfItems, { showHidden: false, depth: null, colors: true }));
     console.log('\n');
-    console.log('Number of runs performed ' + allBlocksOfItems.length + ' of ' + run);
+    console.log('Number of runs performed --> ' + allBlocksOfItems.length + ' of ' + run);
+    console.log('Number of lines deleted --> ' + linesDeleted + ' of ' + progress);
 };
 
 main();
