@@ -55,12 +55,10 @@ async function main() {
 
     const parsedCsv = await _parseCSV(fileName, ",");
 
-    const outputFile = createOutputFile();
-
-    const outputCsvFileHandler = openSync(outputFile,'a');
+    const outputCsvFileHandler = openSync(createOutputFile(),'a');
 
     const outputHeader = "actionId,ttl,notToHandle\n"; //append file
-    appendFileSync(outputFile,outputHeader);
+    appendFileSync(outputCsvFileHandler,outputHeader);
 
     let keepSkip = 1;
     for(const row of parsedCsv){ 
@@ -94,7 +92,7 @@ async function main() {
         };
 
         let outputRow = actionId + "," + ttl + "," + notToHandle + "\n";
-        appendFileSync(outputFile,outputRow);
+        appendFileSync(outputCsvFileHandler,outputRow);
     }
 
     closeSync(outputCsvFileHandler);
