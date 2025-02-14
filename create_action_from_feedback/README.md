@@ -3,7 +3,6 @@
 ## Tabella dei Contenuti
 
 - [Descrizione](#Descrizione)
-- [Installazione](#installazione)
 - [Utilizzo](#utilizzo)
 
 ## Descrizione
@@ -13,11 +12,6 @@ Lo script:
 	
 NB: I timelineElementId nel file CSV che non contengono le sottostringe "SEND_ANALOG_FEEDBACK" oppure "SEND_DIGITAL_FEEDBACK" genereranno l'eccezione "timelineElementIdError" che interromperà l'esecuzione dello script.
 
-## Installazione
-
-```bash
-npm install
-```
 
 ## Utilizzo
 
