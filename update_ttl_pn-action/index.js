@@ -1,9 +1,8 @@
 const { AwsClientsWrapper } = require("pn-common");
 const { _parseCSV } = require("../pn-common/libs/utils.js");
-const { parseArgs } = require('util');
-const { mkdirSync } = require('node:fs');
-const fs = require('node:fs/promises');
-const path = require('path');
+const { parseArgs } = require('node:util');
+const { openSync, closeSync, mkdirSync, appendFileSync } = require('node:fs');
+const { join } = require('node:path');
 
 // ------------ Parametri input ---------------------
 
@@ -70,7 +69,7 @@ function increaseFtuInput(val,pk,ftu,csvRow){ //ftu = fieldToUpdate
           codeValue: ':new' + [ftu], // Nome del nuovo valore da associare ad ftu
           // Devo parsare csvRow[ftu] in quanto valore numerico ottenuto dal file csv --> nasce come stringa 
             // e ottengo errori di calcolo
-          value: parseInt(csvRow[ftu]) + ( val * 86400000 ) // Nuovo valore da associare al campo ftu
+          value: parseInt(csvRow[ftu]) + ( val * 86400 ) // Nuovo valore da associare al campo ftu
           /*
           keys                  --> { actionId: { S: 'valore actionId' } }
           Alias per ttl         --> { '#ttl': 'newttl' }
@@ -83,11 +82,10 @@ function increaseFtuInput(val,pk,ftu,csvRow){ //ftu = fieldToUpdate
 };
 
 function createOutputFile(folder) {
-    mkdirSync(path.join(__dirname, "results", folder), { recursive: true });
+    mkdirSync(join(__dirname, "results", folder), { recursive: true });
     const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
-    const resultPath = path.join(__dirname, "results", folder, 'updateItems_from_csv_' + dateIsoString + '.json');
+    const resultPath = join(__dirname, "results", folder, 'updateItems_from_csv_' + dateIsoString + '.json');
     return resultPath;
-    //fs.writeFileSync(resultPath, JSON.stringify(result, null, 4), 'utf-8')
 };
 
 async function main() {
@@ -101,8 +99,9 @@ async function main() {
 
     // _parseCSV Scarta automaticamente gli header ed elimina gli ""
     const parsedCsv = await _parseCSV(fileName,","); // array di oggetti
-        
-    failedFileHandler = await fs.open(createOutputFile("failed"),'a'); // Se il file non esiste verrà creato
+       
+    const outputFile = createOutputFile("failed");
+    failedFileHandler = openSync(outputFile,'a'); // Se il file non esiste verrà creato
 
     let keepSkip = 0;
     for(const row of parsedCsv) {
@@ -135,17 +134,17 @@ async function main() {
                 }
             });
             console.log(objectFailed);
-            failedFileHandler.appendFile(objectFailed);
+            appendFileSync(failedFileHandler,objectFailed);
             switch(e.name) {   
                 case "ConditionalCheckFailedException":
                     break;
                 default:
-                    failedFileHandler?.close();
+                    closeSync(failedFileHandler);
                     process.exit(1);
             };
         };
     };
-    failedFileHandler?.close();
+    closeSync(failedFileHandler);
 };
 
 main();
