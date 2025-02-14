@@ -69,7 +69,7 @@ function increaseFtuInput(val,pk,ftu,csvRow){ //ftu = fieldToUpdate
           codeValue: ':new' + [ftu], // Nome del nuovo valore da associare ad ftu
           // Devo parsare csvRow[ftu] in quanto valore numerico ottenuto dal file csv --> nasce come stringa 
             // e ottengo errori di calcolo
-          value: parseInt(csvRow[ftu]) + ( val * 86400000 ) // Nuovo valore da associare al campo ftu
+          value: parseInt(csvRow[ftu]) + ( val * 86400 ) // Nuovo valore da associare al campo ftu
           /*
           keys                  --> { actionId: { S: 'valore actionId' } }
           Alias per ttl         --> { '#ttl': 'newttl' }
