@@ -1,6 +1,6 @@
 #!/bin/sh
 
-_BASEURI="http://localhost:8889"
+_BASEURI="http://localhost:8080"
 TESTCASE=$1
 IUN=IUN_CONS-`date +"%Y%m%d-%H%M"`-F-1
 
@@ -23,30 +23,30 @@ AAR_SHA256=(
 
 # array per Notification attachment URI and SHA256
 NA_URI=(
-"1U"
-"2U"
-"3U"
-"4U"
-"5U"
-"6U"
-"7U"
-"8U"
-"9U"
-"10U"
-#"safestorage://PN_NOTIFICATION_ATTACHMENTS-3825bc5e9f5a41689c0e03819e97209d.pdf"
+# "1U"
+# "2U"
+# "3U"
+# "4U"
+# "5U"
+# "6U"
+# "7U"
+# "8U"
+# "9U"
+# "10U"
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-3825bc5e9f5a41689c0e03819e97209d.pdf"
 )
 NA_SHA256=(
-"1S"
-"2S"
-"3S"
-"4S"
-"5S"
-"6S"
-"7S"
-"8S"
-"9S"
-"10S"
-#"C5g4VkbBZtdUGmTTGZwaBO0rUUwb2QUNigXzD22E5LE="
+# "1S"
+# "2S"
+# "3S"
+# "4S"
+# "5S"
+# "6S"
+# "7S"
+# "8S"
+# "9S"
+# "10S"
+"C5g4VkbBZtdUGmTTGZwaBO0rUUwb2QUNigXzD22E5LE="
 )
 
 # array for addresses
@@ -117,7 +117,7 @@ function execute_call {
             \"printType\": \"BN_FRONTE_RETRO\",
             \"receiverName\": \"Leonardo Martini\",
             \"receiverNameRow2\": null,
-            \"receiverAddress\": \"VIA_PN_2_CONS ${ADDRESS[$INDEX_ADDRESS]}\",
+            \"receiverAddress\": \"${ADDRESS[$INDEX_ADDRESS]} VIA_PN_2_CONS\",
             \"receiverAddressRow2\": null,
             \"receiverCap\": \"$2\",
             \"receiverCity\": \"$3\",
