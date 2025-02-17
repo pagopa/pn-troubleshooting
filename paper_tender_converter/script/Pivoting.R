@@ -12,8 +12,7 @@ conf$spark.dynamicAllocation.enabled <- "false"
 
 sc <- spark_connect(master = "local", version = "3.5.0", hadoop_version = "3", config = conf)
 
-
-spark_read_csv(sc, 'matrice_costi_def', "data/20240911_DEF Costi SEND - correzione problema formula.xlsx - Matrice fatturazione.csv", delimiter = ',')
+spark_read_csv(sc, 'matrice_costi_def', "data/20250131_Matrice Fatturazione _Aggiornamento Iva indetraibile e stampa a colori.csv", delimiter = ';')
 
 spark_read_csv(sc, 'zone', "data/20240625_zones.csv", delimiter = ';')
 
@@ -195,7 +194,7 @@ sdf_collect(
       SELECT
         CAP,
         product,
-        recapitista,
+        TRIM(recapitista) as recapitista,
         lotto,
         costo_plico,
         costo_foglio,
@@ -222,9 +221,7 @@ sdf_collect(
         max,
         CAST(CAST(REPLACE(costo, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo,
         CAST(CAST(REPLACE(costo_base_20gr, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo_base_20gr,
-        if( 
-         c.CAP in ('14027', '21009'), '2024-09-30T22:00:00.000Z', '2024-07-31T22:00:00.000Z' 
-        ) as startDate, 
+        '2025-01-31T23:00:00.000Z' as startDate, 
         '2999-01-01T23:59:59.999Z' as endDate
       FROM
         completePivot c 
@@ -237,17 +234,7 @@ sdf_collect(
   ")
 )
 
-write.csv(matrice_costi_pivot, "data/out/matrice_costi_202408_pivot_v202410.csv", row.names=FALSE, na = "")
-
-spark_read_csv(sc, 'matrice_costi_def_final_2023', "data/out/matrice_costi_2023_pivot.csv.gz")
-spark_read_csv(sc, 'matrice_costi_def_final_202408', "data/out/matrice_costi_202408_pivot.csv.gz")
+write.csv2(matrice_costi_pivot, "data/out/matrice_costi_20250201_pivot.csv", row.names=FALSE, na = "")
 
 
-matrice_costi_pivot_test = 
-  sdf_collect( 
-    sdf_sql(sc, "
-  SELECT *
-  FROM matrice_costi_def_final_202408
-  WHERE product = 'RIR'
-  ") 
-  )
+
