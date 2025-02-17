@@ -23,44 +23,44 @@ AAR_SHA256=(
 
 # array per Notification attachment URI and SHA256
 NA_URI=(
-# "1U"
-# "2U"
-# "3U"
-# "4U"
-# "5U"
-# "6U"
-# "7U"
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-610f5131a31a4877a4548aff9742bd18.pdf"
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-ea8c81c579a743c8aa32212b3b53a186.pdf"
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-1a403af24d8e4fb78010bf714d7ed323.pdf"
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-10f0dcc2885048f7843b61deacb83f91.pdf"
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-5b0175d8400d443c946a2c38b885bbaa.pdf"
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-35d0da7b87bd413089cc3b17c5b3a98c.pdf"
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-84a616741eec45f58e1ce65276360f60.pdf"
 # "8U"
 # "9U"
 # "10U"
-"safestorage://PN_NOTIFICATION_ATTACHMENTS-3825bc5e9f5a41689c0e03819e97209d.pdf"
+#"safestorage://PN_NOTIFICATION_ATTACHMENTS-3825bc5e9f5a41689c0e03819e97209d.pdf"
 )
 NA_SHA256=(
-# "1S"
-# "2S"
-# "3S"
-# "4S"
-# "5S"
-# "6S"
-# "7S"
-# "8S"
+"Eco2JIh/PcJGUqxpQl5qQ53y/7m9bBGUOjDeOAmKK9w="
+"2wuoWmKxEb1gatQVUBWC2GJqIK56Xj9A2wPHYSYhKR4="
+"fcgCEKjXn+6BpA5t0QhypGgkL+mOyVNUP6y2mUOKACY="
+"+vlYXCMsWBdg7uTOhDoa28FMcYeG6qEBwbPoif7s8Ug="
+"Zsk+7Mqu0JJCKh7EPN5PVQ8yzPRhVmJhkVOEQZUZAu4="
+"fu4mNbwqLXIcZX6RPtOtXkQlecUCEkuv6tYSkmFcGR0="
+"l+lopNCL4Qpl3Os/0TuTC3Xmyh38bhZT3Uiv1+jvppk="
 # "9S"
 # "10S"
-"C5g4VkbBZtdUGmTTGZwaBO0rUUwb2QUNigXzD22E5LE="
+#"C5g4VkbBZtdUGmTTGZwaBO0rUUwb2QUNigXzD22E5LE="
 )
 
 # array for addresses
 ADDRESS=(
-"1A"
-"2A"
-"3A"
-"4A"
-"5A"
-"6A"
-"7A"
-"8A"
-"9A"
-"10A"
+"ADDRESS"
+# "1A"
+# "2A"
+# "3A"
+# "4A"
+# "5A"
+# "6A"
+# "7A"
+# "8A"
+# "9A"
+# "10A"
 )
 
 
@@ -117,7 +117,7 @@ function execute_call {
             \"printType\": \"BN_FRONTE_RETRO\",
             \"receiverName\": \"Leonardo Martini\",
             \"receiverNameRow2\": null,
-            \"receiverAddress\": \"${ADDRESS[$INDEX_ADDRESS]} VIA_PN_2_CONS\",
+            \"receiverAddress\": \"VIA_PN_2_CONS ${ADDRESS[$INDEX_ADDRESS]}\",
             \"receiverAddressRow2\": null,
             \"receiverCap\": \"$2\",
             \"receiverCity\": \"$3\",
@@ -149,5 +149,7 @@ FILENAME="test_$IUN.txt"
 echo "CONSOLIDATORE $IUN" > $FILENAME
 
 
-execute_call "AR" "64010" "ANCARANO" "TE" "ITALIA" 3
-execute_call "AR" "64010" "ANCARANO" "TE" "ITALIA" 1
+#execute_call "AR" "64010" "ANCARANO" "TE" "ITALIA" 3
+#execute_call "AR" "64010" "ANCARANO" "TE" "ITALIA" 1
+
+execute_call "AR" "00122" "ROMA" "RM" "ITALIA" 7
