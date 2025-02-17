@@ -13,7 +13,7 @@ const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
  */
 function validateArgs() {
     const usage = `
-Usage: node update-actions-ttl.js --envName|-e <environment> --csvFile|-f <path> --ttlDays|-d <number>
+Usage: node update-actions-ttl.js --envName|-e <environment> --csvFile|-f <path> --ttlDays|-d <number> [--actionId|-a <id>]
 
 Description:
     Updates TTL and notToHandle values for items in pn-Action DynamoDB table.
@@ -22,6 +22,7 @@ Parameters:
     --envName, -e     Required. Environment to update (dev|uat|test|prod|hotfix)
     --csvFile, -f     Required. Path to the CSV file containing actions data
     --ttlDays, -d     Required. Number of days to add to current TTL
+    --actionId, -a    Optional. Start processing from this actionId
     --help, -h        Display this help message`;
 
     const args = parseArgs({
@@ -29,6 +30,7 @@ Parameters:
             envName: { type: "string", short: "e" },
             csvFile: { type: "string", short: "f" },
             ttlDays: { type: "number", short: "d" },
+            actionId: { type: "string", short: "a" },
             help: { type: "boolean", short: "h" }
         },
         strict: true
@@ -62,8 +64,6 @@ function initializeResultsFiles() {
         if (!existsSync('results')) {
             mkdirSync('results');
         }
-        // Create/empty result files
-        appendFileSync('results/success.json', '', { flag: 'w' });
         appendFileSync('results/failure.json', '', { flag: 'w' });
     } catch (error) {
         console.error('Error initializing results files:', error);
@@ -74,13 +74,14 @@ function initializeResultsFiles() {
 /**
  * Parses a CSV file containing action records
  * @param {string} filePath - Path to the CSV file
+ * @param {string} [startFromActionId=null] - Optional actionId to start processing from
  * @returns {Array<Object>} Parsed CSV records
  * @throws {Error} If file reading or parsing fails
  */
-function parseCsvFile(filePath) {
+function parseCsvFile(filePath, startFromActionId = null) {
     try {
         const fileContent = readFileSync(filePath, 'utf-8');
-        const records = parse(fileContent, {
+        let records = parse(fileContent, {
             columns: true,
             skip_empty_lines: true
         });
@@ -103,6 +104,15 @@ function parseCsvFile(filePath) {
 
         if (invalidRecords.length > 0) {
             throw new Error(`Found ${invalidRecords.length} records with invalid data`);
+        }
+
+        if (startFromActionId) {
+            const startIndex = records.findIndex(record => record.actionId === startFromActionId);
+            if (startIndex === -1) {
+                throw new Error(`ActionId ${startFromActionId} not found in CSV file`);
+            }
+            records = records.slice(startIndex);
+            console.log(`Starting from actionId: ${startFromActionId} (${records.length} records)`);
         }
 
         return records;
@@ -135,9 +145,8 @@ function prepareItemsForInsert(records, ttlDays) {
  * @param {'success'|'failure'} type - Type of result to log
  * @param {Object} data - Data to be logged
  */
-function logResult(type, data) {
-    const fileName = `results/${type}.json`;
-    appendFileSync(fileName, JSON.stringify(data) + "\n");
+function logResult(data) {
+    appendFileSync('results/failure.json', JSON.stringify(data) + "\n");
 }
 
 /**
@@ -147,7 +156,7 @@ function logResult(type, data) {
  * @returns {Promise<{success: Array, failure: Array}>} Results of verification
  */
 async function verifyInserts(awsClient, items) {
-    const results = { success: [], failure: [] };
+    const failures = [];
     
     console.log('Verifying inserts...');
     for (const item of items) {
@@ -160,20 +169,22 @@ async function verifyInserts(awsClient, items) {
             if (response.Items && response.Items.length > 0) {
                 const dbItem = response.Items[0];
                 if (dbItem.ttl.N === expectedTtl && dbItem.notToHandle.BOOL === true) {
-                    results.success.push({ actionId });
+                    console.log(JSON.stringify({ actionId, status: 'success' }));
                 } else {
-                    results.failure.push({ actionId, ttl: expectedTtl });
+                    throw new Error(`Verification failed for ${actionId}`);
                 }
             } else {
-                results.failure.push({ actionId, ttl: expectedTtl });
+                throw new Error(`Item ${actionId} not found after insert`);
             }
         } catch (error) {
             console.error(`Error verifying item ${actionId}:`, error);
-            results.failure.push({ actionId, ttl: expectedTtl });
+            failures.push({ actionId, ttl: expectedTtl });
+            logResult({ actionId, ttl: expectedTtl, error: error.message });
+            process.exit(1);
         }
     }
 
-    return results;
+    return failures;
 }
 
 /**
@@ -217,7 +228,6 @@ function printSummary(stats) {
         console.log(`Unprocessed items: ${stats.unprocessedCount}`);
     }
     console.log('\nResults written to:');
-    console.log('- results/success.json');
     console.log('- results/failure.json');
 }
 
@@ -229,7 +239,7 @@ function printSummary(stats) {
  */
 async function main() {
     const args = validateArgs();
-    const { envName, csvFile, ttlDays } = args;
+    const { envName, csvFile, ttlDays, actionId } = args;
 
     initializeResultsFiles();
 
@@ -239,39 +249,35 @@ async function main() {
     
     coreClient._initDynamoDB();
 
-    const records = parseCsvFile(csvFile);
+    const records = parseCsvFile(csvFile, actionId);
     const itemsToInsert = prepareItemsForInsert(records, ttlDays);
 
     console.log(`Processing ${itemsToInsert.length} items to insert...`);
     
-    // Perform batch writes
-    const unprocessedItems = [];
+    // Perform batch writes with strict error handling
     for (let i = 0; i < itemsToInsert.length; i += 25) {
         const batch = itemsToInsert.slice(i, i + 25);
         const result = await coreClient._batchWriteItem('pn-Action', batch);
         if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
-            unprocessedItems.push(...result.UnprocessedItems['pn-Action']);
+            console.error('Failed to process all items in batch');
+            process.exit(1);
         }
         console.log(`Inserted items ${i + 1} to ${Math.min(i + 25, itemsToInsert.length)}`);
     }
 
-    // Verify inserts
-    console.log('Verifying inserts...');
-    const verificationResults = await verifyInserts(coreClient, 
-        itemsToInsert.filter(item => !unprocessedItems.includes(item))
-    );
-
-    // Log results
-    verificationResults.success.forEach(item => logResult('success', item));
-    verificationResults.failure.forEach(item => logResult('failure', item));
+    // Verify inserts (will exit on first failure)
+    const failures = await verifyInserts(coreClient, itemsToInsert);
 
     // Print summary
     printSummary({
         totalProcessed: itemsToInsert.length,
-        successCount: verificationResults.success.length,
-        failureCount: verificationResults.failure.length,
-        unprocessedCount: unprocessedItems.length
+        successCount: itemsToInsert.length - failures.length,
+        failureCount: failures.length,
+        unprocessedCount: 0
     });
 }
 
-main().catch(console.error);
+main().catch(err => {
+    console.error('Script failed:', err);
+    process.exit(1);
+});
