@@ -11,4 +11,4 @@
         agendo sul codice, si può far si che i documenti vengano ciclati e resettati a ogni chiamata della funzione, oppure che il ciclo continui a incrementare anche tra chiamate (in ogni caso viene usato l'operatore modulo per ripartire dall'inizio dell'array una volta che si arriva alla fine)
 
 
-Sono pensati per essere configurati modificando gli script e lanciandoli senza parametri.
+Sono pensati per essere configurati modificando gli script e lanciandoli senza parametri o opzionalmente il parametro che verrà usato per settare il testcase la via, nel caso dello script originale.

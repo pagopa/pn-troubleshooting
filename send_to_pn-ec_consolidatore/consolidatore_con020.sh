@@ -1,6 +1,6 @@
 #!/bin/sh
 
-_BASEURI="http://localhost:8889"
+_BASEURI="http://localhost:8080"
 TESTCASE=$1
 IUN=IUN_CONS-`date +"%Y%m%d-%H%M"`-F-1
 I=0
