@@ -17,7 +17,7 @@ Il file CSV deve contenere le seguenti colonne:
 ## Utilizzo
 
 ```bash
-node dynamo-insert-actions.js --envName|-e <ambiente> --csvFile|-f <percorso> --ttlDays|-d <giorni>
+node dynamo-insert-actions.js --envName|-e <ambiente> --csvFile|-f <percorso> --ttlDays|-d <giorni> [--actionId|-a <id>]
 ```
 
 ### Parametri
@@ -25,21 +25,27 @@ node dynamo-insert-actions.js --envName|-e <ambiente> --csvFile|-f <percorso> --
 - `--envName`, `-e`: Ambiente di destinazione (dev|uat|test|prod|hotfix)
 - `--csvFile`, `-f`: Percorso del file CSV contenente i dati delle azioni
 - `--ttlDays`, `-d`: Numero di giorni da aggiungere al TTL attuale
+- `--actionId`, `-a`: (Opzionale) ID dell'azione da cui iniziare l'elaborazione
 
-### Esempio
+### Esempi
 
 ```bash
+# Elaborazione completa del file
 node dynamo-insert-actions.js -e dev -f ./actions.csv -d 30
+
+# Elaborazione a partire da uno specifico actionId
+node dynamo-insert-actions.js -e dev -f ./actions.csv -d 30 -a "action_123"
 ```
 
 ## Output
 
-Lo script genera due file JSON nella cartella `results`:
-- `success.json`: Contiene gli ID delle azioni aggiornate con successo
-- `failure.json`: Contiene gli ID delle azioni che non è stato possibile aggiornare
+Lo script produce due tipi di output:
+- **Console**: Mostra in tempo reale gli actionId elaborati con successo
+- **File**: Genera `results/failure.json` contenente gli eventuali errori riscontrati
 
 ## Note
 
 - Lo script aggiorna gli elementi in batch di 25 alla volta
 - Per ogni elemento, viene impostato il flag `notToHandle` a `true`
+- Lo script si interrompe al primo errore riscontrato durante l'elaborazione
 - Viene effettuata una verifica per confermare che gli aggiornamenti siano stati applicati correttamente
