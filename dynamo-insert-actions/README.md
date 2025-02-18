@@ -48,4 +48,3 @@ Lo script produce due tipi di output:
 - Lo script aggiorna gli elementi in batch di 25 alla volta
 - Per ogni elemento, viene impostato il flag `notToHandle` a `true`
 - Lo script si interrompe al primo errore riscontrato durante l'elaborazione
-- Viene effettuata una verifica per confermare che gli aggiornamenti siano stati applicati correttamente

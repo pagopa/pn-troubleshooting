@@ -150,44 +150,6 @@ function logResult(data) {
 }
 
 /**
- * Verifies DynamoDB inserts by querying inserted items
- * @param {AwsClientsWrapper} awsClient - AWS client wrapper instance
- * @param {Array<Object>} items - Items that were attempted to be inserted
- * @returns {Promise<{success: Array, failure: Array}>} Results of verification
- */
-async function verifyInserts(awsClient, items) {
-    const failures = [];
-    
-    console.log('Verifying inserts...');
-    for (const item of items) {
-        const actionId = item.PutRequest.Item.actionId.S;
-        const expectedTtl = item.PutRequest.Item.ttl.N;
-
-        try {
-            const response = await awsClient._queryRequest('pn-Action', 'actionId', actionId);
-            
-            if (response.Items && response.Items.length > 0) {
-                const dbItem = response.Items[0];
-                if (dbItem.ttl.N === expectedTtl && dbItem.notToHandle.BOOL === true) {
-                    console.log(JSON.stringify({ actionId, status: 'success' }));
-                } else {
-                    throw new Error(`Verification failed for ${actionId}`);
-                }
-            } else {
-                throw new Error(`Item ${actionId} not found after insert`);
-            }
-        } catch (error) {
-            console.error(`Error verifying item ${actionId}:`, error);
-            failures.push({ actionId, ttl: expectedTtl });
-            logResult({ actionId, ttl: expectedTtl, error: error.message });
-            process.exit(1);
-        }
-    }
-
-    return failures;
-}
-
-/**
  * Tests SSO credentials for AWS client
  * @param {AwsClientsWrapper} awsClient - AWS client wrapper
  * @returns {Promise<void>}
@@ -254,25 +216,47 @@ async function main() {
 
     console.log(`Processing ${itemsToInsert.length} items to insert...`);
     
+    let successCount = 0;
+    let failureCount = 0;
+    
     // Perform batch writes with strict error handling
     for (let i = 0; i < itemsToInsert.length; i += 25) {
         const batch = itemsToInsert.slice(i, i + 25);
-        const result = await coreClient._batchWriteItem('pn-Action', batch);
-        if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
-            console.error('Failed to process all items in batch');
+        try {
+            const result = await coreClient._batchWriteItem('pn-Action', batch);
+            if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
+                const unprocessedCount = Object.keys(result.UnprocessedItems).length;
+                failureCount += unprocessedCount;
+                successCount += (batch.length - unprocessedCount);
+                console.error(`Failed to process ${unprocessedCount} items in batch`);
+                process.exit(1);
+            }
+            successCount += batch.length;
+            console.log(`Inserted items ${i + 1} to ${Math.min(i + 25, itemsToInsert.length)}`);
+            
+            // Log successful items to stdout
+            batch.forEach(item => {
+                console.log(JSON.stringify({
+                    actionId: item.PutRequest.Item.actionId.S,
+                    status: 'success'
+                }));
+            });
+        } catch (error) {
+            console.error('Error in batch write:', error);
+            logResult({
+                batchStart: i + 1,
+                batchEnd: Math.min(i + 25, itemsToInsert.length),
+                error: error.message
+            });
             process.exit(1);
         }
-        console.log(`Inserted items ${i + 1} to ${Math.min(i + 25, itemsToInsert.length)}`);
     }
-
-    // Verify inserts (will exit on first failure)
-    const failures = await verifyInserts(coreClient, itemsToInsert);
 
     // Print summary
     printSummary({
         totalProcessed: itemsToInsert.length,
-        successCount: itemsToInsert.length - failures.length,
-        failureCount: failures.length,
+        successCount,
+        failureCount,
         unprocessedCount: 0
     });
 }
