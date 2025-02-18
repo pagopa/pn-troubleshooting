@@ -180,6 +180,7 @@ async function testSsoCredentials(awsClient) {
  * @param {number} stats.successCount - Number of successful updates
  * @param {number} stats.failureCount - Number of failed updates
  * @param {number} stats.unprocessedCount - Number of unprocessed items
+ * @param {string} stats.lastFailedActionId - Last actionId that failed to process
  */
 function printSummary(stats) {
     console.log('\n=== Execution Summary ===');
@@ -188,6 +189,10 @@ function printSummary(stats) {
     console.log(`Failed updates: ${stats.failureCount}`);
     if (stats.unprocessedCount > 0) {
         console.log(`Unprocessed items: ${stats.unprocessedCount}`);
+    }
+    if (stats.lastFailedActionId) {
+        console.log(`\nTo resume from the last failed item, use:`);
+        console.log(`--actionId "${stats.lastFailedActionId}"`);
     }
     console.log('\nResults written to:');
     console.log('- results/failure.json');
@@ -218,6 +223,7 @@ async function main() {
     
     let successCount = 0;
     let failureCount = 0;
+    let lastFailedActionId = null;
     
     // Perform batch writes with strict error handling
     for (let i = 0; i < itemsToInsert.length; i += 25) {
@@ -228,7 +234,14 @@ async function main() {
                 const unprocessedCount = Object.keys(result.UnprocessedItems).length;
                 failureCount += unprocessedCount;
                 successCount += (batch.length - unprocessedCount);
+                lastFailedActionId = batch[0].PutRequest.Item.actionId.S;
                 console.error(`Failed to process ${unprocessedCount} items in batch`);
+                logResult({
+                    batchStart: i + 1,
+                    batchEnd: Math.min(i + 25, itemsToInsert.length),
+                    lastFailedActionId,
+                    error: 'Unprocessed items in batch'
+                });
                 process.exit(1);
             }
             successCount += batch.length;
@@ -242,10 +255,12 @@ async function main() {
                 }));
             });
         } catch (error) {
+            lastFailedActionId = batch[0].PutRequest.Item.actionId.S;
             console.error('Error in batch write:', error);
             logResult({
                 batchStart: i + 1,
                 batchEnd: Math.min(i + 25, itemsToInsert.length),
+                lastFailedActionId,
                 error: error.message
             });
             process.exit(1);
@@ -257,7 +272,8 @@ async function main() {
         totalProcessed: itemsToInsert.length,
         successCount,
         failureCount,
-        unprocessedCount: 0
+        unprocessedCount: 0,
+        lastFailedActionId
     });
 }
 
