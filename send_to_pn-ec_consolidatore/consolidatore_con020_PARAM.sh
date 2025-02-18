@@ -89,7 +89,7 @@ function execute_call {
         INDEX_ADDRESS=$(( MIXED_INDEX % ${#ADDRESS[@]} )) # used for address (so we can have 5 uris and 1 address, and so on)
 
 
-        echo curl --location --request PUT "$_BASEURI/external-channels/v1/paper-deliveries-engagements/$RQID" \
+        curl --location --request PUT "$_BASEURI/external-channels/v1/paper-deliveries-engagements/$RQID" \
         --header "x-pagopa-extch-cx-id: pn-cons-000" \
         --header 'Content-Type: application/json' \
         --data "{
@@ -152,15 +152,15 @@ echo "CONSOLIDATORE $IUN" > $FILENAME
 
 #execute_call "AR" "00122" "ROMA" "RM" "ITALIA" 7
 
-    # ANCONA
-execute_call "AR" "60122" "ANCONA" "AN" "ITALIA" 2
-execute_call "AR" "60022" "CASTELFIDARDO" "AN" "ITALIA" 1
-execute_call "AR" "60122" "ANCONA" "AN" "ITALIA" 1
-execute_call "AR" "60123" "ANCONA" "AN" "ITALIA" 3
-execute_call "AR" "60022" "CASTELFIDARDO" "AN" "ITALIA" 1
-execute_call "AR" "60122" "ANCONA" "AN" "ITALIA" 2
+#     # ANCONA
+# execute_call "AR" "60122" "ANCONA" "AN" "ITALIA" 2
+# execute_call "AR" "60022" "CASTELFIDARDO" "AN" "ITALIA" 1
+# execute_call "AR" "60122" "ANCONA" "AN" "ITALIA" 1
+# execute_call "AR" "60123" "ANCONA" "AN" "ITALIA" 3
+# execute_call "AR" "60022" "CASTELFIDARDO" "AN" "ITALIA" 1
+# execute_call "AR" "60122" "ANCONA" "AN" "ITALIA" 2
 
-    # TORINO
+#     # TORINO
 # execute_call "AR" "10122" "TORINO" "TO" "ITALIA" 2
 # execute_call "AR" "10022" "CARMAGNOLA" "TO" "ITALIA" 1
 # execute_call "AR" "10122" "TORINO" "TO" "ITALIA" 1
@@ -184,10 +184,10 @@ execute_call "AR" "60122" "ANCONA" "AN" "ITALIA" 2
 # execute_call "AR" "00022" "ANTICOLI CORRADO" "RM" "ITALIA" 1
 # execute_call "AR" "00122" "ROMA" "RM" "ITALIA" 2
 
-#     # VENEZIA
-# execute_call "AR" "30122" "VENEZIA" "VE" "ITALIA" 2
-# execute_call "AR" "30022" "CEGGIA" "VE" "ITALIA" 1
-# execute_call "AR" "30122" "VENEZIA" "VE" "ITALIA" 1
-# execute_call "AR" "30123" "VENEZIA" "VE" "ITALIA" 3
-# execute_call "AR" "30022" "CEGGIA" "VE" "ITALIA" 1
-# execute_call "AR" "30122" "VENEZIA" "VE" "ITALIA" 2
+    # VENEZIA
+execute_call "AR" "30122" "VENEZIA" "VE" "ITALIA" 2
+execute_call "AR" "30022" "CEGGIA" "VE" "ITALIA" 1
+execute_call "AR" "30122" "VENEZIA" "VE" "ITALIA" 1
+execute_call "AR" "30123" "VENEZIA" "VE" "ITALIA" 3
+execute_call "AR" "30022" "CEGGIA" "VE" "ITALIA" 1
+execute_call "AR" "30122" "VENEZIA" "VE" "ITALIA" 2
