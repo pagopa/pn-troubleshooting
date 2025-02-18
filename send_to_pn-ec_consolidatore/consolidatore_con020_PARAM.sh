@@ -23,44 +23,42 @@ AAR_SHA256=(
 
 # array per Notification attachment URI and SHA256
 NA_URI=(
-"safestorage://PN_NOTIFICATION_ATTACHMENTS-610f5131a31a4877a4548aff9742bd18.pdf"
-"safestorage://PN_NOTIFICATION_ATTACHMENTS-ea8c81c579a743c8aa32212b3b53a186.pdf"
-"safestorage://PN_NOTIFICATION_ATTACHMENTS-1a403af24d8e4fb78010bf714d7ed323.pdf"
-"safestorage://PN_NOTIFICATION_ATTACHMENTS-10f0dcc2885048f7843b61deacb83f91.pdf"
-"safestorage://PN_NOTIFICATION_ATTACHMENTS-5b0175d8400d443c946a2c38b885bbaa.pdf"
-"safestorage://PN_NOTIFICATION_ATTACHMENTS-35d0da7b87bd413089cc3b17c5b3a98c.pdf"
-"safestorage://PN_NOTIFICATION_ATTACHMENTS-84a616741eec45f58e1ce65276360f60.pdf"
-# "8U"
-# "9U"
-# "10U"
-#"safestorage://PN_NOTIFICATION_ATTACHMENTS-3825bc5e9f5a41689c0e03819e97209d.pdf"
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-9e41619235e248b89d9928a2daf1d641.pdf" #1
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-1bcd534b33d14a27bf2736c85621be93.pdf" #2
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-f3961c7ba3954314805967909eab3231.pdf" #3
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-f84346e8de4c44078376ec1ab348b010.pdf" #4
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-6b06c3a6d5ac4b03a9631f904fd33bf3.pdf" #5
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-d1d836c5d18147319a7f2677a2071be1.pdf" #6
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-23ae5ee15fc4962833d46c6abf28093.pdf"  #7 
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-a4e54dafbe854ab8afdeb916d008a8f9.pdf" #8
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-df8df7a7b8134530a9110f243eda69b5.pdf" #9
+"safestorage://PN_NOTIFICATION_ATTACHMENTS-ee62b47dee4c90ae5c84455cb08c6a.pdf"   #10
 )
 NA_SHA256=(
-"Eco2JIh/PcJGUqxpQl5qQ53y/7m9bBGUOjDeOAmKK9w="
-"2wuoWmKxEb1gatQVUBWC2GJqIK56Xj9A2wPHYSYhKR4="
-"fcgCEKjXn+6BpA5t0QhypGgkL+mOyVNUP6y2mUOKACY="
-"+vlYXCMsWBdg7uTOhDoa28FMcYeG6qEBwbPoif7s8Ug="
-"Zsk+7Mqu0JJCKh7EPN5PVQ8yzPRhVmJhkVOEQZUZAu4="
-"fu4mNbwqLXIcZX6RPtOtXkQlecUCEkuv6tYSkmFcGR0="
-"l+lopNCL4Qpl3Os/0TuTC3Xmyh38bhZT3Uiv1+jvppk="
-# "9S"
-# "10S"
-#"C5g4VkbBZtdUGmTTGZwaBO0rUUwb2QUNigXzD22E5LE="
+"b50BuvomQv/KsKEVSbX7207zf66vj0Xyz8EAddc2o4s=" #1
+"TeRjy5OB1lQi5nh3qOZ2UbRpra5CVjL16hN4yvqIbu4=" #2
+"2JrXhZTxuO2rYC6rvlEaZWuFNMmRGSKpr9zFPk8g7hY=" #3
+"BJ/K+MxOsxXtfnx/0Rw4jYnULCryHtPIJ92Y9rUOWEM=" #4
+"eQfCJM0eWDVuBNG82TgrNNg+TlbBt1yTkdeaD4FPl0Q=" #5
+"64jgM98dlOQIvGIfXw6VYa6y3PQNnhQCUMv3T0JPVN4=" #6
+"C5g4VkbBZtdUGmTTGZwaBO0rUUwb2QUNigXzD22E5LE=" #7
+"hQj64hXVHBz90OEqIk8XMs6YmaTGgziyUFJWT2Dv6dw=" #8
+"NAQfSE5f1EPK7clJ8oz4qOVBS38P3EjCi1sWrIGBuH8=" #9
+"Zu2TwRIRTDoiO+jQuODAF/KsDy2pJ9oNLdlrFkHvsd4=" #10
 )
 
 # array for addresses
 ADDRESS=(
-"ADDRESS"
-# "1A"
-# "2A"
-# "3A"
-# "4A"
-# "5A"
-# "6A"
-# "7A"
-# "8A"
-# "9A"
-# "10A"
+"VIA P"
+"PIAZZA A"
+"VICOLO N"
+"VIA CONS"
+"LARGO T"
+"VICOLO N"
+"VIA CONS"
+"LARGO T"
+"PIAZZA A"
+"VIA P"
 )
 
 
@@ -80,18 +78,18 @@ function execute_call {
         echo "$RQID"
 
 
-        # se usiamo R per ciclare, riparte da 0 ad ogni chiamata
+        # se usiamo R per ciclare, l'indice riparte da 0 ad ogni chiamata
         #INDEX_AAR=$(( R % ${#AAR_URI[@]} )) # aar: used for uri and sha256
         #INDEX_NA=$(( R % ${#NA_URI[@]} )) # notification attachment: used for uri and sha256
         #INDEX_ADDRESS=$(( R % ${#ADDRESS[@]} )) # used for address (so we can have 5 uris and 1 address, and so on)
 
-        # voglio che l'indice R continui a incrementare anche tra chiamate, usando MIXED_INDEX
+        # se usiamo MIXED_INDEX, l'indice continua a incrementare anche tra chiamate, non venendo azzerato
         INDEX_AAR=$(( MIXED_INDEX % ${#AAR_URI[@]} )) # aar: used for uri and sha256
         INDEX_NA=$(( MIXED_INDEX % ${#NA_URI[@]} )) # notification attachment: used for uri and sha256
         INDEX_ADDRESS=$(( MIXED_INDEX % ${#ADDRESS[@]} )) # used for address (so we can have 5 uris and 1 address, and so on)
 
 
-        curl --location --request PUT "$_BASEURI/external-channels/v1/paper-deliveries-engagements/$RQID" \
+        echo curl --location --request PUT "$_BASEURI/external-channels/v1/paper-deliveries-engagements/$RQID" \
         --header "x-pagopa-extch-cx-id: pn-cons-000" \
         --header 'Content-Type: application/json' \
         --data "{
@@ -152,4 +150,44 @@ echo "CONSOLIDATORE $IUN" > $FILENAME
 #execute_call "AR" "64010" "ANCARANO" "TE" "ITALIA" 3
 #execute_call "AR" "64010" "ANCARANO" "TE" "ITALIA" 1
 
-execute_call "AR" "00122" "ROMA" "RM" "ITALIA" 7
+#execute_call "AR" "00122" "ROMA" "RM" "ITALIA" 7
+
+    # ANCONA
+execute_call "AR" "60122" "ANCONA" "AN" "ITALIA" 2
+execute_call "AR" "60022" "CASTELFIDARDO" "AN" "ITALIA" 1
+execute_call "AR" "60122" "ANCONA" "AN" "ITALIA" 1
+execute_call "AR" "60123" "ANCONA" "AN" "ITALIA" 3
+execute_call "AR" "60022" "CASTELFIDARDO" "AN" "ITALIA" 1
+execute_call "AR" "60122" "ANCONA" "AN" "ITALIA" 2
+
+    # TORINO
+# execute_call "AR" "10122" "TORINO" "TO" "ITALIA" 2
+# execute_call "AR" "10022" "CARMAGNOLA" "TO" "ITALIA" 1
+# execute_call "AR" "10122" "TORINO" "TO" "ITALIA" 1
+# execute_call "AR" "10123" "TORINO" "TO" "ITALIA" 3
+# execute_call "AR" "10022" "CARMAGNOLA" "TO" "ITALIA" 1
+# execute_call "AR" "10122" "TORINO" "TO" "ITALIA" 2
+
+#     # NAPOLI
+# execute_call "AR" "80122" "NAPOLI" "NA" "ITALIA" 2
+# execute_call "AR" "80022" "ARZANO" "NA" "ITALIA" 1
+# execute_call "AR" "80122" "NAPOLI" "NA" "ITALIA" 1
+# execute_call "AR" "80123" "NAPOLI" "NA" "ITALIA" 3
+# execute_call "AR" "80022" "ARZANO" "NA" "ITALIA" 1
+# execute_call "AR" "80122" "NAPOLI" "NA" "ITALIA" 2
+
+#     # ROMA
+# execute_call "AR" "00122" "ROMA" "RM" "ITALIA" 2
+# execute_call "AR" "00022" "ANTICOLI CORRADO" "RM" "ITALIA" 1
+# execute_call "AR" "00122" "ROMA" "RM" "ITALIA" 1
+# execute_call "AR" "00123" "ROMA" "RM" "ITALIA" 3
+# execute_call "AR" "00022" "ANTICOLI CORRADO" "RM" "ITALIA" 1
+# execute_call "AR" "00122" "ROMA" "RM" "ITALIA" 2
+
+#     # VENEZIA
+# execute_call "AR" "30122" "VENEZIA" "VE" "ITALIA" 2
+# execute_call "AR" "30022" "CEGGIA" "VE" "ITALIA" 1
+# execute_call "AR" "30122" "VENEZIA" "VE" "ITALIA" 1
+# execute_call "AR" "30123" "VENEZIA" "VE" "ITALIA" 3
+# execute_call "AR" "30022" "CEGGIA" "VE" "ITALIA" 1
+# execute_call "AR" "30122" "VENEZIA" "VE" "ITALIA" 2
