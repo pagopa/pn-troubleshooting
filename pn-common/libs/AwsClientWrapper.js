@@ -30,18 +30,19 @@ class AwsClientsWrapper {
 
   constructor(profile, envName) {
     this.ssoProfile;
-    if (profile == 'core') {
-      this.ssoProfile = `sso_pn-core-${envName}`
+    if (profile) {
+      if (profile == 'core') {
+        this.ssoProfile = `sso_pn-core-${envName}`
+      }
+      else if (profile == 'confinfo') {
+        this.ssoProfile = `sso_pn-confinfo-${envName}`
+      }
+      else if (profile == 'interop') {
+        this.ssoProfile = `sso_interop-safe-storage-${envName}`
+      }
+      this._checkAwsSsoLogin(this);
     }
-    else if (profile == 'confinfo') {
-      this.ssoProfile = `sso_pn-confinfo-${envName}`
-    }
-    else if (profile == 'interop') {
-      this.ssoProfile = `sso_interop-safe-storage-${envName}`
-    }
-    console.log("AWS Wrapper initialized for profile " + this.ssoProfile);
-    this._checkAwsSsoLogin(this);
-
+    this.ssoProfile ? console.log(`AWS Wrapper initialized with ${this.ssoProfile} profile`) : console.log("AWS Wrapper initialized with LOCAL profile")
   }
 
   _initDynamoDB() {
