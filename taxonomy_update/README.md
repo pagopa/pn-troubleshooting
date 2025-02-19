@@ -17,6 +17,10 @@ per gli script successivi.
 
 Lo script `sortTaxonomyCsv.py` ha il compito di ordinare i codici tassonomici
 
+```bash
+python getTaxonomyFromSheet.py
+python sortTaxonomyCsv.py
+```
 
 ## 1. Aggiornamento documentazione
 
@@ -32,7 +36,7 @@ Esempio:
 La tabella `pn-TaxonomyCode` è al momento utilizzata per la validazione dei codici
 tassonomici delle notifiche inserite.
 
-`python createJsonTable.py | tee $PN-CONF_REPO/prod/_conf/core/dynamodb/pn-TaxonomyCode.json`
+`python createJsonTable.py | tee $PN_CONF_REPO/prod/_conf/core/dynamodb/pn-TaxonomyCode.json`
 
 ## Inizializzazione Virtual Environment Python
 
