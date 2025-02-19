@@ -14,7 +14,7 @@ const tableName = "pn-Action";
 const args = [
     // { name: "account_type", mandatory: true}, // core
     { name: "region", mandatory: false},
-    { name: "env", mandatory: true},
+    { name: "env", mandatory: false},
     { name: "days", mandatory: true},
     { name: "fileName", mandatory: true},
     { name: "startActionId", mandatory: false}
@@ -94,7 +94,12 @@ async function main() {
     _checkingParameters(args,parsedArgs);
 
     // Inizializzazione client DynamoDB
-    const dynDbClient = new AwsClientsWrapper(accountType,env);
+    let dynDbClient;
+    if(envName) {
+        dynDbClient = new AwsClientsWrapper(accountType, env );
+    } else {
+        dynDbClient = new AwsClientsWrapper();
+    }
     dynDbClient._initDynamoDB();
 
     // _parseCSV Scarta automaticamente gli header ed elimina gli ""
