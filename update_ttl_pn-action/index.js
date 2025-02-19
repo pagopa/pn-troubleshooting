@@ -95,7 +95,7 @@ async function main() {
 
     // Inizializzazione client DynamoDB
     let dynDbClient;
-    if(envName) {
+    if(env) {
         dynDbClient = new AwsClientsWrapper(accountType, env );
     } else {
         dynDbClient = new AwsClientsWrapper();
