@@ -33,3 +33,11 @@ La tabella `pn-TaxonomyCode` è al momento utilizzata per la validazione dei cod
 tassonomici delle notifiche inserite.
 
 `python createJsonTable.py | tee $PN-CONF_REPO/prod/_conf/core/dynamodb/pn-TaxonomyCode.json`
+
+## Inizializzazione Virtual Environment Python
+
+```bash
+python3 -m venv .venv
+.venv/bin/activate
+pip install -r requirements.txt
+```
