@@ -1,6 +1,8 @@
 
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { SQSClient, ListQueuesCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
+const { CloudWatchClient, GetMetricStatisticsCommand } = require("@aws-sdk/client-cloudwatch");
+
 
 function awsClientCfg( profile ) {
   const self = this;
@@ -23,6 +25,10 @@ class AwsClientsWrapper {
       core: new SQSClient( awsClientCfg( ssoCoreProfile, profileName, roleArn )),
       confinfo: new SQSClient( awsClientCfg( ssoConfinfoProfile, profileName, roleArn ))
     } ;
+    this._cloudwatchClient = {
+      core: new CloudWatchClient( awsClientCfg( ssoCoreProfile, profileName, roleArn )),
+      confinfo: new CloudWatchClient( awsClientCfg( ssoConfinfoProfile, profileName, roleArn ))
+    } ;
   }
 
   async init() {
@@ -31,6 +37,38 @@ class AwsClientsWrapper {
 
   _getProfileBySQS(sqsName) {
     return sqsName in this._sqsNames.core ? "core" : "confinfo"
+  }
+
+  _prepareParameterInput(sqsName) {
+    const params = {
+      Namespace: "AWS/SQS",
+      MetricName: "ApproximateAgeOfOldestMessage",
+      Dimensions: [
+        {
+          Name: "QueueName",
+          Value: sqsName
+        }
+      ],
+      StartTime: new Date(Date.now() - 5 * 60 * 1000), // 5 minuti fa
+      EndTime: new Date(), // Ora attuale
+      Period: 60, // Intervallo di raccolta dei dati (in secondi)
+      Statistics: ["Maximum"], // Recupera il valore massimo nel periodo
+      Unit: "Seconds"
+    };
+    return params;
+  }
+
+  secondsToDays(seconds) {
+    return Math.floor(seconds / (24 * 60 * 60));
+  }
+  
+  async _getApproximateAgeFromCloudWatch(profile, sqsName) {
+    const params = this._prepareParameterInput(sqsName)
+    const response = await this._cloudwatchClient[profile].send(new GetMetricStatisticsCommand(params));
+    if(response.Datapoints && response.Datapoints.length > 0) {
+      return this.secondsToDays(response.Datapoints[0].Maximum)
+    }
+  
   }
 
   async _elabSqsNameUrl(profile){
@@ -46,10 +84,14 @@ class AwsClientsWrapper {
         QueueUrl: dlq,
         AttributeNames: ["ApproximateNumberOfMessages"] 
       } 
+      let sqsName = dlq.substring(dlq.lastIndexOf("/") + 1)
       const numberOfMessages = await this._sqsClient[profile].send(new GetQueueAttributesCommand(attributes))
       if(numberOfMessages.Attributes["ApproximateNumberOfMessages"] && numberOfMessages.Attributes["ApproximateNumberOfMessages"] > 0) {
-        let key = dlq.substring(dlq.lastIndexOf("/") + 1)
-        sqs[key] = numberOfMessages.Attributes["ApproximateNumberOfMessages"];
+        let days = await this._getApproximateAgeFromCloudWatch(profile, sqsName)
+        sqs[sqsName] = {
+          'numberOfMessages': parseInt(numberOfMessages.Attributes["ApproximateNumberOfMessages"]),
+          'ageOldestMessage': days
+        }
       }
     }
     return sqs
