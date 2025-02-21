@@ -2,17 +2,17 @@
 
 # <--- Variables ----
 
-ENV="hotfix"
+ENV=""
 
-SRC_ACCOUNT_TYPE="confinfo"
-SRC_BUCKET_NAME="pn-safestorage-eu-south-1-839620963891"
+SRC_ACCOUNT_TYPE=""
+SRC_BUCKET_NAME=""
 START_FILE_KEY="" # Optional. See '_copyng_mailing_receipts' function, last parameter.
 
-DST_ACCOUNT_TYPE="confinfo"
-DST_BUCKET_NAME="test-script-copy-mailing-recepits-eu-south-1-839620963891"
+DST_ACCOUNT_TYPE=""
+DST_BUCKET_NAME=""
 
-GLACIER_FILE_NAME="glacier_files.txt"
-NOT_GLACIER_FILE_NAME="not_glacier_files.txt"
+GLACIER_FILE_NAME=""
+NOT_GLACIER_FILE_NAME=""
 
 # Default values
 
