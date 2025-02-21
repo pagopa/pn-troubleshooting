@@ -89,8 +89,8 @@ class AwsClientsWrapper {
       if(numberOfMessages.Attributes["ApproximateNumberOfMessages"] && numberOfMessages.Attributes["ApproximateNumberOfMessages"] > 0) {
         let days = await this._getApproximateAgeFromCloudWatch(profile, sqsName)
         sqs[sqsName] = {
-          'messages': parseInt(numberOfMessages.Attributes["ApproximateNumberOfMessages"]),
-          'age': days
+          'numberOfMessages': parseInt(numberOfMessages.Attributes["ApproximateNumberOfMessages"]),
+          'ageOldestMessage': days
         }
       }
     }
