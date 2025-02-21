@@ -8,13 +8,14 @@ const { EventBridgeClient, EnableRuleCommand, DisableRuleCommand, ListRulesComma
 const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
 const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
-const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 const { spawnSync, execSync } = require('node:child_process');
+const { createHash } = require('node:crypto');
 
 function awsClientCfg(profile) {
   const self = this;
@@ -431,6 +432,26 @@ class AwsClientsWrapper {
     };
 
     const command = new GetObjectCommand(input);
+    const response = await this._s3Client.send(command);
+    return response;
+  }
+
+  async _PutObject(bucket, fileName, fileBody) {
+    
+    function createMd5SumHash(data) {
+      // Hash necessario a causa dell'Object Lock settato sul bucket
+      const hash = createHash('md5').update(data).digest('base64');
+      return hash;
+    };
+
+    const input = {
+      Bucket: bucket,
+      Key: fileName,
+      Body: fileBody,
+      ContentMD5: createMd5SumHash(fileBody)
+    };
+
+    const command = new PutObjectCommand(input);
     const response = await this._s3Client.send(command);
     return response;
   }
