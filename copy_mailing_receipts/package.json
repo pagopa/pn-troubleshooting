@@ -1,0 +1,13 @@
+{
+  "name": "copy_mailing_receipts",
+  "version": "1.0.0",
+  "description": "Copy mailing receipts across S3 buckets in different AWS accounts",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "dependencies": {
+    "pn-common": "file:../pn-common"
+  }
+}
