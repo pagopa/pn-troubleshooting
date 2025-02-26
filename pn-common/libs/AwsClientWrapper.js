@@ -9,7 +9,7 @@ const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotati
 const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
-const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
+const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, SendMessageBatchCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
@@ -328,6 +328,16 @@ class AwsClientsWrapper {
     return response;
   }
 
+  async _sendSQSMessageBatch(queueUrl, entries) {
+    const input = {// SendMessageBatchRequest
+      QueueUrl: queueUrl, // required
+      Entries: entries
+    }
+    const command = new SendMessageBatchCommand(input);
+    const response = await this._sqsClient.send(command);
+    return response;
+
+  }
   //Cloudwatch
   async _executeCloudwatchQuery(logGroupNames, startTime, endTime, queryString, limit) {
     const input = { // StartQueryRequest

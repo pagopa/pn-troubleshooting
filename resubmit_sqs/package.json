@@ -1,0 +1,14 @@
+{
+  "name": "resubmit_sqs",
+  "version": "1.0.0",
+  "description": "The script must allow to submit events in SQS by formatting the request based on the input provided",
+  "main": "resubmit_sqs_messages.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.750.0",
+    "pn-common": "file:../pn-common"
+  }
+}
