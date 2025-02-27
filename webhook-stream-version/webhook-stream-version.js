@@ -140,62 +140,33 @@ async function main() {
     // Process each record
     for (const record of records) {
         try {
-            // Query the item
-            const result = await coreClient._dynamicQueryRequest(
+            await coreClient._updateItem(
                 'pn-WebhookStreams',
                 {
-                    hashKey: {
-                        codeAttr: '#h',
-                        codeValue: ':h',
-                        value: record.hashKey,
-                        operator: '='
-                    },
-                    sortKey: {
-                        codeAttr: '#s',
-                        codeValue: ':s',
-                        value: record.sortKey,
-                        operator: '='
+                    hashKey: record.hashKey,
+                    sortKey: record.sortKey
+                },
+                {
+                    version: {
+                        codeAttr: '#v',
+                        codeValue: ':v',
+                        value: record.version
                     }
                 },
-                'and'
+                'SET',
+                'attribute_not_exists(version)'
             );
 
-            if (result.Items && result.Items.length > 0) {
-                const item = result.Items[0];
-                
-                // Check if version exists
-                if (item.version) {
-                    console.log(`Skipping ${record.hashKey}/${record.sortKey} - version already exists`);
-                    stats.skipped++;
-                    continue;
-                }
-
-                // Update item with version
-                await coreClient._updateItem(
-                    'pn-WebhookStreams',
-                    {
-                        hashKey: record.hashKey,
-                        sortKey: record.sortKey
-                    },
-                    {
-                        version: {
-                            codeAttr: '#v',
-                            codeValue: ':v',
-                            value: record.version
-                        }
-                    },
-                    'SET'
-                );
-
-                console.log(`Updated ${record.hashKey}/${record.sortKey} with version ${record.version}`);
-                stats.updated++;
+            console.log(`Updated ${record.hashKey}/${record.sortKey} with version ${record.version}`);
+            stats.updated++;
+        } catch (error) {
+            if (error.name === 'ConditionalCheckFailedException') {
+                console.log(`Skipping ${record.hashKey}/${record.sortKey} - version already exists`);
+                stats.skipped++;
             } else {
-                console.error(`Item not found: ${record.hashKey}/${record.sortKey}`);
+                console.error(`Error processing ${record.hashKey}/${record.sortKey}:`, error);
                 stats.failed++;
             }
-        } catch (error) {
-            console.error(`Error processing ${record.hashKey}/${record.sortKey}:`, error);
-            stats.failed++;
         }
     }
 
