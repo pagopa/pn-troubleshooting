@@ -1,7 +1,9 @@
 import { parseArgs } from 'util';
-import { parse } from 'csv-parse/sync';
-import { readFileSync, existsSync, mkdirSync, appendFileSync } from 'fs';
+import { parse } from 'csv-parse';
+import { createReadStream, existsSync, mkdirSync, appendFileSync } from 'fs';
 import { AwsClientsWrapper } from "pn-common";
+import { pipeline } from 'stream/promises';
+import { Transform } from 'stream';
 
 /** Valid environment names for AWS operations */
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
@@ -72,72 +74,101 @@ function initializeResultsFiles() {
 }
 
 /**
- * Parses a CSV file containing action records
+ * Processes a CSV file using streams
  * @param {string} filePath - Path to the CSV file
- * @param {string} [startFromActionId=null] - Optional actionId to start processing from
- * @returns {Array<Object>} Parsed CSV records
- * @throws {Error} If file reading or parsing fails
- */
-function parseCsvFile(filePath, startFromActionId = null) {
-    try {
-        const fileContent = readFileSync(filePath, 'utf-8');
-        let records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true
-        });
-
-        // Validate required columns
-        const requiredColumns = ['actionId', 'ttl'];
-        const missingColumns = requiredColumns.filter(col => 
-            !records[0] || typeof records[0][col] === 'undefined'
-        );
-
-        if (missingColumns.length > 0) {
-            throw new Error(`Missing required columns: ${missingColumns.join(', ')}`);
-        }
-
-        // Validate data types
-        const invalidRecords = records.filter(record => 
-            !record.actionId || 
-            isNaN(parseInt(record.ttl))
-        );
-
-        if (invalidRecords.length > 0) {
-            throw new Error(`Found ${invalidRecords.length} records with invalid data`);
-        }
-
-        if (startFromActionId) {
-            const startIndex = records.findIndex(record => record.actionId === startFromActionId);
-            if (startIndex === -1) {
-                throw new Error(`ActionId ${startFromActionId} not found in CSV file`);
-            }
-            records = records.slice(startIndex);
-            console.log(`Starting from actionId: ${startFromActionId} (${records.length} records)`);
-        }
-
-        return records;
-    } catch (error) {
-        console.error('Error reading/parsing CSV file:', error);
-        process.exit(1);
-    }
-}
-
-/**
- * Prepares DynamoDB insert items from CSV records
- * @param {Array<Object>} records - Parsed CSV records
+ * @param {string} startFromActionId - Optional actionId to start processing from
  * @param {number} ttlDays - Number of days to add to TTL
- * @returns {Array<Object>} Formatted items for DynamoDB batch write
+ * @param {AwsClientsWrapper} coreClient - AWS client wrapper
+ * @returns {Promise<Object>} Processing statistics
  */
-function prepareItemsForInsert(records, ttlDays) {
-    return records.map(record => ({
-        PutRequest: {
-            Item: {
-                actionId: { S: record.actionId },
-                ttl: { N: (parseInt(record.ttl) + (ttlDays * 86400)).toString() },
-                notToHandle: { BOOL: true }
+async function processStreamedCsv(filePath, startFromActionId, ttlDays, coreClient) {
+    let batch = [];
+    let successCount = 0;
+    let failureCount = 0;
+    let lastFailedActionId = null;
+    let foundStartId = !startFromActionId;
+    
+    const processor = new Transform({
+        objectMode: true,
+        transform: async function(record, encoding, callback) {
+            if (!foundStartId) {
+                foundStartId = record.actionId === startFromActionId;
+                if (!foundStartId) {
+                    return callback();
+                }
             }
+
+            if (!record.actionId || isNaN(parseInt(record.ttl))) {
+                console.error('Invalid record:', record);
+                return callback();
+            }
+
+            batch.push({
+                PutRequest: {
+                    Item: {
+                        actionId: { S: record.actionId },
+                        ttl: { N: (parseInt(record.ttl) + (ttlDays * 86400)).toString() },
+                        notToHandle: { BOOL: true }
+                    }
+                }
+            });
+
+            if (batch.length >= 25) {
+                try {
+                    const result = await coreClient._batchWriteItem('pn-Action', batch);
+                    if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
+                        const unprocessedCount = Object.keys(result.UnprocessedItems).length;
+                        failureCount += unprocessedCount;
+                        successCount += (batch.length - unprocessedCount);
+                        lastFailedActionId = batch[0].PutRequest.Item.actionId.S;
+                        console.error(`Failed to process ${unprocessedCount} items in batch`);
+                        logResult({
+                            lastFailedActionId,
+                            error: 'Unprocessed items in batch'
+                        });
+                        process.exit(1);
+                    }
+                    successCount += batch.length;
+                    console.log(`Processed ${successCount} records so far...`);
+                    batch = [];
+                } catch (error) {
+                    lastFailedActionId = batch[0].PutRequest.Item.actionId.S;
+                    console.error('Error in batch write:', error);
+                    logResult({
+                        lastFailedActionId,
+                        error: error.message
+                    });
+                    process.exit(1);
+                }
+            }
+            callback();
+        },
+        flush: async function(callback) {
+            if (batch.length > 0) {
+                try {
+                    await coreClient._batchWriteItem('pn-Action', batch);
+                    successCount += batch.length;
+                } catch (error) {
+                    failureCount += batch.length;
+                    console.error('Error in final batch:', error);
+                }
+            }
+            callback();
         }
-    }));
+    });
+
+    try {
+        await pipeline(
+            createReadStream(filePath),
+            parse({ columns: true, skip_empty_lines: true }),
+            processor
+        );
+    } catch (error) {
+        console.error('Pipeline failed:', error);
+        throw error;
+    }
+
+    return { successCount, failureCount, lastFailedActionId };
 }
 
 /**
@@ -209,72 +240,21 @@ async function main() {
     const { envName, csvFile, ttlDays, actionId } = args;
 
     initializeResultsFiles();
-
     const coreClient = new AwsClientsWrapper('core', envName);
-    
     await testSsoCredentials(coreClient);
-    
     coreClient._initDynamoDB();
 
-    const records = parseCsvFile(csvFile, actionId);
-    const itemsToInsert = prepareItemsForInsert(records, ttlDays);
-
-    console.log(`Processing ${itemsToInsert.length} items to insert...`);
-    
-    let successCount = 0;
-    let failureCount = 0;
-    let lastFailedActionId = null;
-    
-    // Perform batch writes with strict error handling
-    for (let i = 0; i < itemsToInsert.length; i += 25) {
-        const batch = itemsToInsert.slice(i, i + 25);
-        try {
-            const result = await coreClient._batchWriteItem('pn-Action', batch);
-            if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
-                const unprocessedCount = Object.keys(result.UnprocessedItems).length;
-                failureCount += unprocessedCount;
-                successCount += (batch.length - unprocessedCount);
-                lastFailedActionId = batch[0].PutRequest.Item.actionId.S;
-                console.error(`Failed to process ${unprocessedCount} items in batch`);
-                logResult({
-                    batchStart: i + 1,
-                    batchEnd: Math.min(i + 25, itemsToInsert.length),
-                    lastFailedActionId,
-                    error: 'Unprocessed items in batch'
-                });
-                process.exit(1);
-            }
-            successCount += batch.length;
-            console.log(`Inserted items ${i + 1} to ${Math.min(i + 25, itemsToInsert.length)}`);
-            
-            // Log successful items to stdout
-            batch.forEach(item => {
-                console.log(JSON.stringify({
-                    actionId: item.PutRequest.Item.actionId.S,
-                    status: 'success'
-                }));
-            });
-        } catch (error) {
-            lastFailedActionId = batch[0].PutRequest.Item.actionId.S;
-            console.error('Error in batch write:', error);
-            logResult({
-                batchStart: i + 1,
-                batchEnd: Math.min(i + 25, itemsToInsert.length),
-                lastFailedActionId,
-                error: error.message
-            });
-            process.exit(1);
-        }
+    try {
+        const stats = await processStreamedCsv(csvFile, actionId, ttlDays, coreClient);
+        printSummary({
+            totalProcessed: stats.successCount + stats.failureCount,
+            ...stats,
+            unprocessedCount: 0
+        });
+    } catch (error) {
+        console.error('Fatal error:', error);
+        process.exit(1);
     }
-
-    // Print summary
-    printSummary({
-        totalProcessed: itemsToInsert.length,
-        successCount,
-        failureCount,
-        unprocessedCount: 0,
-        lastFailedActionId
-    });
 }
 
 main().catch(err => {
