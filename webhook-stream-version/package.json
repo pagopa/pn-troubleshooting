@@ -1,0 +1,19 @@
+{
+  "name": "webhook-stream-version",
+  "version": "1.0.0",
+  "description": "Script to update version attribute for items in pn-WebhookStreams DynamoDB table",
+  "type": "module",
+  "main": "webhook-stream-version.js",
+  "scripts": {
+    "start": "node webhook-stream-version.js"
+  },
+  "author": "PagoPA",
+  "license": "ISC",
+  "dependencies": {
+    "csv-parse": "^5.5.0",
+    "pn-common": "file:../pn-common/"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
