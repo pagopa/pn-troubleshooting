@@ -168,7 +168,7 @@ async function main() {
                     break;
                 default:
                     closeSync(failedFileHandler);
-                    process.exit(1);
+                    process.exit(2);
             };
         };
     };
@@ -194,13 +194,23 @@ async function main() {
                     default:
                         console.log(e);
                         closeSync(failedFileHandler);
-                        process.exit(1);
+                        process.exit(3);
                 };
             };
         }
     };
 
     async function retrieveLogResult(reqId, startReqId) {
+
+        function msgAttrParser(str) {
+            return JSON.parse(str.replace(/={/g, ': {').
+                replace(/\w+: \[\]/g, '').
+                replace(/,+/g, ',').
+                replace(/([a-zA-z-]+)/g, '"$1"').
+                replace(/,+}/g,'}').
+                replace(/,+]/g,']')
+            );
+        };
 
         try {
             let queryResult = await athenaClient._getQueryResults(reqId,);
@@ -210,7 +220,9 @@ async function main() {
             if (log_message) {
                 sqsObj = JSON.stringify({
                     Body: log_message.match(/(?<=Body: )\{.+\}(?=,Attributes)/)[0],
-                    MessageAttributes: log_message.match(/(?<=MessageAttributes: )\{.+\}(?=, lookupDestination)/)[0]
+                    MessageAttributes: msgAttrParser(
+                        log_message.match(/(?<=MessageAttributes: )\{.+\}(?=}, lookupDestination)/)[0]
+                    )
                 });
             }
             else {
@@ -233,7 +245,7 @@ async function main() {
                     break;
                 default:
                     closeSync(failedFileHandler);
-                    process.exit(1);
+                    process.exit(4);
             };
         };
     };
@@ -273,11 +285,17 @@ async function main() {
 
         case "exec":
 
+            if (!okIunFile) {
+                console.log("---> Error: parameter '--action=exec' require the '--okIunFile=<fileName> parameter. Exit.'");
+                _closeAllFiles();
+                process.exit(5)
+            };
+
             let keepSkip = 1;
             for await (const row of okIunFileHandler.readLines()) {
 
                 let el = JSON.parse(row);
-        
+
                 // Skippa le righe del csv fino a quando non incontra quella con row.actionId === actionId
                 if (startIun !== undefined & el.iun !== startIun & keepSkip == 1) {
                     continue;
@@ -299,7 +317,7 @@ async function main() {
             if (!reqIdFile) {
                 console.log("---> Error: parameter '--action=retrieve' require the '--reqIdFile=<fileName> parameter. Exit.'");
                 _closeAllFiles();
-                process.exit(2)
+                process.exit(6)
             } else {
 
                 const reqIdFileHandler = await open(reqIdFile, 'r');
