@@ -4,7 +4,7 @@ import { createReadStream, existsSync, mkdirSync, appendFileSync } from 'fs';
 import { AwsClientsWrapper } from "pn-common";
 import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
-import { performance, PerformanceObserver } from 'perf_hooks';
+import { performance } from 'perf_hooks';
 
 /** Valid environment names for AWS operations */
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
@@ -95,11 +95,11 @@ function initializeResultsFiles(dryRun) {
  * @param {string} filePath - Path to the CSV file
  * @param {string} startFromActionId - Optional actionId to start processing from
  * @param {number} ttlDays - Number of days to add to TTL
- * @param {AwsClientsWrapper} coreClient - AWS client wrapper
+ * @param {AwsClientsWrapper} AwsClient - AWS client wrapper
  * @param {boolean} dryRun - Flag to indicate dry run mode
  * @returns {Promise<Object>} Processing statistics
  */
-async function processStreamedCsv(filePath, startFromActionId, ttlDays, coreClient, dryRun = false) {
+async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClient, dryRun = false) {
     let batch = [];
     let successCount = 0;
     let failureCount = 0;
@@ -108,7 +108,7 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, coreClie
     
     const processor = new Transform({
         objectMode: true,
-        transform: async function(record, encoding, callback) {
+        transform: async function(record, callback) {
             if (!foundStartId) {
                 foundStartId = record.actionId === startFromActionId;
                 if (!foundStartId) {
@@ -134,7 +134,7 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, coreClie
             if (batch.length >= 25) {
                 try {
                     if (!dryRun) {
-                        const result = await coreClient._batchWriteItem('pn-Action', batch);
+                        const result = await AwsClient._batchWriteItem('pn-Action', batch);
                         if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
                             const unprocessedCount = Object.keys(result.UnprocessedItems).length;
                             failureCount += unprocessedCount;
@@ -167,7 +167,7 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, coreClie
             if (batch.length > 0) {
                 try {
                     if (!dryRun) {
-                        await coreClient._batchWriteItem('pn-Action', batch);
+                        await AwsClient._batchWriteItem('pn-Action', batch);
                     }
                     successCount += batch.length;
                 } catch (error) {
@@ -277,15 +277,22 @@ function printSummary(stats) {
 async function main() {
     const startTime = performance.now();
     const args = validateArgs();
-    const { envName = 'dev', csvFile, ttlDays, actionId, dryRun } = args;  // Set default envName to 'dev'
+    const { envName, csvFile, ttlDays, actionId, dryRun } = args;
 
     initializeResultsFiles(dryRun);
-    const coreClient = new AwsClientsWrapper('core', envName);
-    await testSsoCredentials(coreClient);
-    coreClient._initDynamoDB();
+    
+    let AwsClient;
+    if (envName) {
+        AwsClient = new AwsClientsWrapper('core', envName);
+    } else {
+        AwsClient = new AwsClientsWrapper();
+    }
+
+    await testSsoCredentials(AwsClient);
+    AwsClient._initDynamoDB();
 
     try {
-        const stats = await processStreamedCsv(csvFile, actionId, ttlDays, coreClient, dryRun);
+        const stats = await processStreamedCsv(csvFile, actionId, ttlDays, AwsClient, dryRun);
         const executionTime = performance.now() - startTime;
         printSummary({
             totalProcessed: stats.successCount + stats.failureCount,
