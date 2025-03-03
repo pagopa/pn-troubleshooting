@@ -435,3 +435,9 @@ Vuoi disabilitare delle future actions?
 ```bash
 node index.js --envName <envName> --fileName <fileName> [--dryrun]
 ```
+
+### retrieve_notification_metadata
+Vuoi verificare lo status della notifica in pn-notificationMetadata?
+```bash
+node index.js --envName <envName> --fileName <fileName>
+```
