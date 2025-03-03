@@ -32,7 +32,7 @@ Parameters:
         options: {
             envName: { type: "string", short: "e" },
             csvFile: { type: "string", short: "f" },
-            ttlDays: { type: "number", short: "d" },
+            ttlDays: { type: "string", short: "d" },  // Changed from "number" to "string"
             actionId: { type: "string", short: "a" },
             dryRun: { type: "boolean", short: "r" },
             help: { type: "boolean", short: "h" }
@@ -50,6 +50,15 @@ Parameters:
         console.log(usage);
         process.exit(1);
     }
+
+    // Add ttlDays validation
+    const ttlDays = parseInt(args.values.ttlDays);
+    if (isNaN(ttlDays)) {
+        console.error("Error: ttlDays must be a valid number");
+        console.log(usage);
+        process.exit(1);
+    }
+    args.values.ttlDays = ttlDays;
 
     if (!VALID_ENVIRONMENTS.includes(args.values.envName)) {
         console.error(`Error: Invalid environment. Must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
