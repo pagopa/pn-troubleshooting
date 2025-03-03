@@ -15,7 +15,7 @@ const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
  */
 function validateArgs() {
     const usage = `
-Usage: node update-actions-ttl.js --envName|-e <environment> --csvFile|-f <path> --ttlDays|-d <number> [--actionId|-a <id>] [--dryRun|-r]
+Usage: node dynamo-insert-actions.js --envName|-e <environment> --csvFile|-f <path> --ttlDays|-d <number> [--actionId|-a <id>] [--dryRun|-r]
 
 Description:
     Updates TTL and notToHandle values for items in pn-Action DynamoDB table.
