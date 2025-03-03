@@ -24,7 +24,7 @@ node dynamo-insert-actions.js --envName|-e <ambiente> --csvFile|-f <percorso> --
 
 ### Parametri
 
-- `--envName`, `-e`: Ambiente di destinazione (dev|uat|test|prod|hotfix)
+- `--envName`, `-e`: (Opzionale) Ambiente di destinazione, se non specificato usa 'dev' (dev|uat|test|prod|hotfix)
 - `--csvFile`, `-f`: Percorso del file CSV contenente i dati delle azioni
 - `--ttlDays`, `-d`: Numero di giorni da aggiungere al TTL attuale
 - `--actionId`, `-a`: (Opzionale) ID dell'azione da cui iniziare l'elaborazione

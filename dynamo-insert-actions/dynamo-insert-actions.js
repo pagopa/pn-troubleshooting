@@ -16,15 +16,15 @@ const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
  */
 function validateArgs() {
     const usage = `
-Usage: node dynamo-insert-actions.js --envName|-e <environment> --csvFile|-f <path> --ttlDays|-d <number> [--actionId|-a <id>] [--dryRun|-r]
+Usage: node dynamo-insert-actions.js --csvFile|-f <path> --ttlDays|-d <number> [--envName|-e <environment>] [--actionId|-a <id>] [--dryRun|-r]
 
 Description:
     Updates TTL and notToHandle values for items in pn-Action DynamoDB table.
 
 Parameters:
-    --envName, -e     Required. Environment to update (dev|uat|test|prod|hotfix)
     --csvFile, -f     Required. Path to the CSV file containing actions data
     --ttlDays, -d     Required. Number of days to add to current TTL
+    --envName, -e     Optional. Environment to update (dev|uat|test|prod|hotfix)
     --actionId, -a    Optional. Start processing from this actionId
     --dryRun, -r      Optional. Simulate execution without writing to DynamoDB
     --help, -h        Display this help message`;
@@ -33,7 +33,7 @@ Parameters:
         options: {
             envName: { type: "string", short: "e" },
             csvFile: { type: "string", short: "f" },
-            ttlDays: { type: "string", short: "d" },  // Changed from "number" to "string"
+            ttlDays: { type: "string", short: "d" },
             actionId: { type: "string", short: "a" },
             dryRun: { type: "boolean", short: "r" },
             help: { type: "boolean", short: "h" }
@@ -46,7 +46,7 @@ Parameters:
         process.exit(0);
     }
 
-    if (!args.values.envName || !args.values.csvFile || !args.values.ttlDays) {
+    if (!args.values.csvFile || !args.values.ttlDays) {
         console.error("Error: Missing required parameters");
         console.log(usage);
         process.exit(1);
@@ -61,7 +61,7 @@ Parameters:
     }
     args.values.ttlDays = ttlDays;
 
-    if (!VALID_ENVIRONMENTS.includes(args.values.envName)) {
+    if (args.values.envName && !VALID_ENVIRONMENTS.includes(args.values.envName)) {
         console.error(`Error: Invalid environment. Must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
         process.exit(1);
     }
@@ -277,7 +277,7 @@ function printSummary(stats) {
 async function main() {
     const startTime = performance.now();
     const args = validateArgs();
-    const { envName, csvFile, ttlDays, actionId, dryRun } = args;
+    const { envName = 'dev', csvFile, ttlDays, actionId, dryRun } = args;  // Set default envName to 'dev'
 
     initializeResultsFiles(dryRun);
     const coreClient = new AwsClientsWrapper('core', envName);
