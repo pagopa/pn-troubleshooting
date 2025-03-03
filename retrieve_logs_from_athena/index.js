@@ -8,14 +8,14 @@ const { join } = require('node:path');
 
 // --- Fissi ---
 
-const env = "prod";
-const accountType = "core";
-const action = "retrieve"
+const env = "";
+const accountType = "";
+const action = "" // exec | retrieve
 
-const okIunFile = "public_registry_call.json";
+const okIunFile = "";
 const startIun = undefined;
 
-const reqIdFile = "./results/exec_2025-02-28T14-49-20-937Z/reqId.json"
+const reqIdFile = ""
 const startReqId = undefined;
 
 // --- Variabili ---
@@ -182,22 +182,22 @@ async function main() {
                 status = requestStatus.QueryExecution.Status.State;
                 if (status === 'RUNNING') {
                     console.log(reqId + " status is 'RUNNING'. Waiting...")
-                    await new Promise(resolve => setTimeout(resolve, 5000)); // Attendi 5 secondi 
+                    await new Promise(resolve => setTimeout(() => {resolve()}, 5000)); // Attendi 5 secondi 
                 }
             }
             catch (e) {
-                switch (e.name) {
-                    case e.message.includes("QUEUED"):
-                        console.log(reqId + " status is 'QUEUED'. Waiting...")
-                        await new Promise(resolve => setTimeout(resolve, 5000)); // Attendi 5 secondi
-                        break;
-                    default:
-                        console.log(e);
-                        closeSync(failedFileHandler);
-                        process.exit(3);
+                if (e.message.includes("QUEUED")) {
+                    console.log(reqId + " status is 'QUEUED'. Waiting...")
+                    await new Promise(resolve => setTimeout(() => {resolve()}, 5000)); // Attendi 5 secondi
+                    status = 'RUNNING';
+                    console.log("Catched status: " + status)
+                } else {
+                    console.log(e);
+                    closeSync(failedFileHandler);
+                    process.exit(3);
                 };
             };
-        }
+        };
     };
 
     async function retrieveLogResult(reqId, startReqId) {
@@ -207,8 +207,8 @@ async function main() {
                 replace(/\w+: \[\]/g, '').
                 replace(/,+/g, ',').
                 replace(/([a-zA-z-]+)/g, '"$1"').
-                replace(/,+}/g,'}').
-                replace(/,+]/g,']')
+                replace(/,+}/g, '}').
+                replace(/,+]/g, ']')
             );
         };
 
@@ -239,7 +239,7 @@ async function main() {
                 }
             });
             console.log(objectFailed);
-            appendFileSync(failedFileHandler, objectFailed);
+            appendFileSync(failedFileHandler, objectFailed + '\n');
             switch (e.name) {
                 case "InvalidRequestException":
                     break;
@@ -305,11 +305,10 @@ async function main() {
                 };
 
                 let queryExecId = await startQueryExec(el, "log_analytics_database");
+                await new Promise(resolve => setTimeout(() => {resolve()}, 5000));
                 await isOkStatus(queryExecId);
                 await retrieveLogResult(queryExecId, startReqId);
             };
-
-
             break;
 
         case "retrieve":

@@ -3,9 +3,9 @@
 # --------- Variables ---------
 
 # - Miscellaneous
-WORKDIR="/path/to/github/pn-troubleshooting"
-ENV=""
-ACCOUNT_TYPE=""
+WORKDIR="/path/to/pn-troubleshooting"
+ENV="prod"
+ACCOUNT_TYPE="core"
 
 PROFILE="sso_pn-${ACCOUNT_TYPE}-${ENV}"
 
