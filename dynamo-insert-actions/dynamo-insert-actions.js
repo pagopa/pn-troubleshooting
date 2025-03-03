@@ -4,6 +4,7 @@ import { createReadStream, existsSync, mkdirSync, appendFileSync } from 'fs';
 import { AwsClientsWrapper } from "pn-common";
 import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
+import { performance, PerformanceObserver } from 'perf_hooks';
 
 /** Valid environment names for AWS operations */
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
@@ -70,9 +71,14 @@ Parameters:
 
 /**
  * Initializes the results directory and files
+ * @param {boolean} dryRun - If true, skip file creation
  * @throws {Error} If directory creation fails
  */
-function initializeResultsFiles() {
+function initializeResultsFiles(dryRun) {
+    if (dryRun) {
+        return; // Skip file creation in dry run mode
+    }
+    
     try {
         if (!existsSync('results')) {
             mkdirSync('results');
@@ -138,7 +144,7 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, coreClie
                             logResult({
                                 lastFailedActionId,
                                 error: 'Unprocessed items in batch'
-                            });
+                            }, dryRun);
                             process.exit(1);
                         }
                     }
@@ -151,7 +157,7 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, coreClie
                     logResult({
                         lastFailedActionId,
                         error: error.message
-                    });
+                    }, dryRun);
                     process.exit(1);
                 }
             }
@@ -189,11 +195,13 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, coreClie
 
 /**
  * Logs operation results to JSON files
- * @param {'success'|'failure'} type - Type of result to log
  * @param {Object} data - Data to be logged
+ * @param {boolean} dryRun - If true, skip logging
  */
-function logResult(data) {
-    appendFileSync('results/failure.json', JSON.stringify(data) + "\n");
+function logResult(data, dryRun) {
+    if (!dryRun) {
+        appendFileSync('results/failure.json', JSON.stringify(data) + "\n");
+    }
 }
 
 /**
@@ -221,15 +229,19 @@ async function testSsoCredentials(awsClient) {
 }
 
 /**
- * Prints a summary of the execution results
+ * Prints a summary of the execution results including performance metrics
  * @param {Object} stats - Statistics object containing results
  * @param {number} stats.totalProcessed - Total number of items processed
  * @param {number} stats.successCount - Number of successful updates
  * @param {number} stats.failureCount - Number of failed updates
  * @param {number} stats.unprocessedCount - Number of unprocessed items
  * @param {string} stats.lastFailedActionId - Last actionId that failed to process
+ * @param {number} stats.executionTime - Total execution time in milliseconds
  */
 function printSummary(stats) {
+    const usedMemory = process.memoryUsage();
+    const cpuUsage = process.cpuUsage();
+
     console.log('\n=== Execution Summary ===');
     if (stats.dryRun) {
         console.log('\n[DRY RUN MODE] No actual changes were made to DynamoDB');
@@ -244,8 +256,16 @@ function printSummary(stats) {
         console.log(`\nTo resume from the last failed item, use:`);
         console.log(`--actionId "${stats.lastFailedActionId}"`);
     }
-    console.log('\nResults written to:');
-    console.log('- results/failure.json');
+
+    console.log('\n=== Performance Metrics ===');
+    console.log(`Execution time: ${(stats.executionTime / 1000).toFixed(2)} seconds`);
+    console.log('\nMemory Usage:');
+    console.log(`  - Heap Used: ${(usedMemory.heapUsed / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`  - Heap Total: ${(usedMemory.heapTotal / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`  - RSS: ${(usedMemory.rss / 1024 / 1024).toFixed(2)} MB`);
+    console.log('\nCPU Usage:');
+    console.log(`  - User CPU time: ${(cpuUsage.user / 1000000).toFixed(2)} seconds`);
+    console.log(`  - System CPU time: ${(cpuUsage.system / 1000000).toFixed(2)} seconds`);
 }
 
 /**
@@ -255,21 +275,24 @@ function printSummary(stats) {
  * @throws {Error} If AWS operations fail or file operations fail
  */
 async function main() {
+    const startTime = performance.now();
     const args = validateArgs();
     const { envName, csvFile, ttlDays, actionId, dryRun } = args;
 
-    initializeResultsFiles();
+    initializeResultsFiles(dryRun);
     const coreClient = new AwsClientsWrapper('core', envName);
     await testSsoCredentials(coreClient);
     coreClient._initDynamoDB();
 
     try {
         const stats = await processStreamedCsv(csvFile, actionId, ttlDays, coreClient, dryRun);
+        const executionTime = performance.now() - startTime;
         printSummary({
             totalProcessed: stats.successCount + stats.failureCount,
             ...stats,
             unprocessedCount: 0,
-            dryRun
+            dryRun,
+            executionTime
         });
     } catch (error) {
         console.error('Fatal error:', error);
