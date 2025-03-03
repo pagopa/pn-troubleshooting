@@ -116,16 +116,20 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
                 }
             }
 
-            if (!record.actionId || isNaN(parseInt(record.ttl))) {
-                console.error('Invalid record:', record);
+            if (!record.actionId) {
+                console.error('Invalid record (missing actionId):', record);
                 return callback();
             }
+
+            const ttlValue = record.ttl && !isNaN(parseInt(record.ttl))
+                ? parseInt(record.ttl)
+                : Math.floor(Date.now() / 1000); // current timestamp in seconds
 
             batch.push({
                 PutRequest: {
                     Item: {
                         actionId: { S: record.actionId },
-                        ttl: { N: (parseInt(record.ttl) + (ttlDays * 86400)).toString() },
+                        ttl: { N: (ttlValue + (ttlDays * 86400)).toString() },
                         notToHandle: { BOOL: true }
                     }
                 }
