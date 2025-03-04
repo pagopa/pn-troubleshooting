@@ -62,23 +62,49 @@ Example:
 /**
  * Process input file
  * @param {string} inputFile - Path to input file
- * @returns {Array} Array of messages to republish
+ * @returns {Array} Array of parsed entries
  */
 function formatFile(inputFile) {
-    const data = readFileSync(inputFile, { encoding: 'utf8', flag: 'r' });
-    const msgsToRepublish = JSON.parse(data);
-    let msgsList = [];
-    for (i = 0, j = 1; i < msgsToRepublish.length; i++, j++) {
-        let json = msgsToRepublish[i]
-        msgsList.push(
-            {
-                Id: 'msg' + j,
-                MessageBody: json.Body,
-                MessageAttributes: json.MessageAttributes
-            }
-        );
+    let fileRows = readFileSync(inputFile, 'utf8');
+    const regexFirst = /^\[/;
+    const regexLast = /\]$/;
+    // Check first and last character
+    if (regexFirst.test(fileRows.charAt(0)) && regexLast.test(fileRows.charAt(fileRows.length - 1))) {
+        const jsonArray = JSON.parse(fileRows);
+        return (jsonArray);
+    } else {
+        // Add commas between JSON objects and enclose everything in square brackets
+        const jsonInLine = '[' + fileRows.replace(/}\n{"Body"/g, '},\n{"Body"') + ']';
+        // Convert the JSON string to an array of JSON objects
+        const jsonArray = JSON.parse(jsonInLine);
+        return (jsonArray);
     }
-    return (msgsList);
+};
+
+/**
+ * Process input file
+ * @param {string} msgsToRepublish - Json list of msgs
+ * @returns {Array} Array of blocks of 10 msgs
+ */
+function formatInput(msgsToRepublish) {
+    let allBlocksOfMsgs = [];
+    let indx = 1;
+    while (msgsToRepublish.length > 0) {
+        let singleBlockOfMsgs = [];
+        msgsToRepublish.slice(0, 10).forEach(json => {
+            singleBlockOfMsgs.push(
+                {
+                    Id: 'msg' + indx,
+                    MessageBody: json.Body,
+                    MessageAttributes: json.MessageAttributes
+                }
+            )
+            indx++;
+        });
+        allBlocksOfMsgs.push(singleBlockOfMsgs);
+        msgsToRepublish.splice(0, 10);
+    };
+    return (allBlocksOfMsgs);
 };
 
 /**
@@ -94,28 +120,52 @@ function writeInFile(outputFile, data) {
     }
     // Writing error messages to file
     writeFileSync(outputFile, JSON.stringify(data, null, 2), 'utf-8');
-}
+};
 
 async function main() {
     // Parse and validate arguments
     const args = validateArgs();
     const { accountType, envName, queueUrl, inputFile } = args.values;
-
     // Initialize AWS client
     const clientDB = new AwsClientsWrapper(accountType, envName);
     clientDB._initSQS();
-
     // Process input file
-    const inputMsgs = formatFile(inputFile);
-    const result = await clientDB._sendSQSMessageBatch(queueUrl, inputMsgs);
-    if (result.Failed) {
-        const queueName = queueUrl.match(/pn-[\w-]+/);
-        writeInFile('results/msg_not_resubmitted_' + queueName[0] + '.json', result.Failed);
-        console.log('\nFailed resubmission of ' + result.Failed.length + ' messages\n');
-    }
-    else {
-        console.log('\nNo messages Failed. All ' + result.Successful.length + ' messages submitted\n');
-    }
+    const msgsList = formatFile(inputFile);
+    const totMsgs = msgsList.length;
+    // Group msgs into blocks of 10 elements and store these blocks in an overall object
+    const allBlocksOfMsgs = formatInput(msgsList);
+    let run = 0;
+    let msgsResubmit = 0;
+    let result = [];
+    for (block of allBlocksOfMsgs) {
+        try {
+            result = await clientDB._sendSQSMessageBatch(queueUrl, allBlocksOfMsgs[run]);
+            if (result.Failed) {
+                const queueName = queueUrl.match(/pn-[\w-]+/);
+                try {
+                    writeInFile('results/msg_not_resubmitted_' + queueName[0] + '.json', result.Failed);
+                    console.log('\nFailed resubmission of ' + result.Failed.length + ' messages\n');
+                } catch (err) {
+                    console.log('\n');
+                    console.error('\nError creating JSON file:', err);
+                }
+            }
+            else {
+                console.log('\nAll ' + allBlocksOfMsgs[run].length + ' msgs of block ' + run + ' have been successfully resubmit');
+                msgsResubmit = msgsResubmit + allBlocksOfMsgs[run].length;
+            }
+        }
+        catch (err) {
+            console.log('\n');
+            console.error('\nError while deleting ' + allBlocksOfMsgs[run].length + ' msgs in the block ' + run, JSON.stringify(err, null, 2));
+        }
+        run++
+    };
+    console.log('\n');
+    console.log('Number of runs performed --> ' + allBlocksOfMsgs.length + ' of ' + run);
+    console.log('\n');
+    console.log('Number of msgs resubmit --> ' + msgsResubmit + ' of ' + totMsgs);
+    console.log('\n');
 };
 
 main();
