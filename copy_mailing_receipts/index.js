@@ -64,11 +64,11 @@ async function main() {
 
     function putFileChunksIntoBuffer(stream) {
         return new Promise((resolve, reject) => {
-            let data = '';
+            let data = [];
             stream.on("data", (chunk) => {
-                data += chunk;
+                data.push(chunk);
             });
-            stream.on("end", () => resolve(data));
+            stream.on("end", () => resolve(Buffer.concat(data)));
             stream.on("error", reject);
         });
     };
