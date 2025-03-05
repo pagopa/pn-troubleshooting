@@ -1,6 +1,6 @@
-# Delete Item From DynamoDB
+# Inserimento messaggi su una coda SQS a partire da un Json di diverso tipo
 
-Script per l'eliminazione massiva di elementi dalle tabelle su DynamoDB
+Inserimento messaggi su una coda SQS a partire da un Json di diverso tipo
 
 ## Indice
 
@@ -21,7 +21,7 @@ In caso di problemi di elaborazione, i messaggi non caricati vengono salvate in 
 - Node.js >= 18.0.0
 - Accesso AWS SSO configurato
 - File di input contenente i messaggi da caricare
-- Url della coda
+- Nome della coda
 
 ## Installazione
 
@@ -36,23 +36,23 @@ npm install
 Eseguire lo script
 ```bash
 
-node resubmit_sqs_messages.js --accountType <AWSAccount> --envName <environment> --queueUrl <queueUrl> --inputFile <path>
+node resubmit_sqs_messages.js --accountType <AWSAccount> --envName <environment> --queueName <queueName> --inputFile <path>
 ```
 oppure
 ```bash
-node resubmit_sqs_messages.js -a <AWSAccount> -e <environment> -q <queueUrl> -f <path>
+node resubmit_sqs_messages.js -a <AWSAccount> -e <environment> -q <queueName> -f <path>
 ```
 Dove:
 - `<AWSAccount>` è l'account AWS dove si trova la tabella, deve essere uno tra: core, confinfo
 - `<env>` è l'ambiente di destinazione, deve essere uno tra: dev, uat, test, prod, hotfix
-- `<queueUrl>` è il nome della coda SQS dove caricare i messaggi
+- `<queueName>` è il nome della coda SQS dove caricare i messaggi
 - `<path>` è il percorso al file contenente i messaggi 
 
 ### Parametri
 
 - --accountType, -a:Obbligatorio. Account dove si trova la tabella (core|confinfo)
 - --envName, -e:    Obbligatorio. Ambiente di destinazione (dev|uat|test|prod|hotfix)
-- --queueUrl, -q:   Obbligatorio. Coda SQS dove caricare i messaggi
+- --queueName, -q:   Obbligatorio. Coda SQS dove caricare i messaggi
 - --inputFile, -f:  Obbligatorio. Percorso al file contenente i messaggi 
 - --help, -h:       Visualizza il messaggio di aiuto
 
@@ -65,5 +65,5 @@ Lo script genera un file in caso di impossibilità di caricamento messaggio cart
 ### Esempio
 
 ```bash
-node resubmit_sqs_messages.js --accountType core --envName hotfix --queueUrl https://sqs.eu-south-1.amazonaws.com/207905393513/pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json
+node resubmit_sqs_messages.js --accountType core --envName hotfix --queueName pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json
 ```

@@ -14,7 +14,7 @@ const VALID_ACCOUNT = ['core', 'confinfo'];
  */
 function validateArgs() {
     const usage = `
-Usage: node resubmit_sqs_messages.js --accountType|-a <AWSAccount> --envName|-e <environment> --queueUrl|-q <queueUrl> --inputFile|-f <path>
+Usage: node resubmit_sqs_messages.js --accountType|-a <AWSAccount> --envName|-e <environment> --queueName|-q <queueName> --inputFile|-f <path>
 
 Description:
     The script allows you to submit events to SQS from an input file
@@ -22,18 +22,18 @@ Description:
 Parameters:
     --accountType, -a Required. Account were is located the SQS (core|confinfo)
     --envName, -e     Required. Environment to check (dev|uat|test|prod|hotfix)
-    --queueUrl, -q    Required. SQS where put the messages
+    --queueName, -q    Required. SQS where put the messages
     --inputFile, -f   Required. Path and name of the input file with the messages to put in SQS
     --help, -h        Display this help message
 
 Example:
-    node resubmit_sqs_messages.js --accountType core --envName hotfix --queueUrl https://sqs.eu-south-1.amazonaws.com/207905393513/pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json`;
+    node resubmit_sqs_messages.js --accountType core --envName hotfix --queueName pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json`;
 
     const args = parseArgs({
         options: {
             accountType: { type: 'string', short: 'a' },
             envName: { type: 'string', short: 'e' },
-            queueUrl: { type: 'string', short: 'q' },
+            queueName: { type: 'string', short: 'q' },
             inputFile: { type: 'string', short: 'f' },
             help: { type: 'boolean', short: 'h' }
         },
@@ -125,10 +125,12 @@ function writeInFile(outputFile, data) {
 async function main() {
     // Parse and validate arguments
     const args = validateArgs();
-    const { accountType, envName, queueUrl, inputFile } = args.values;
+    const { accountType, envName, queueName, inputFile } = args.values;
     // Initialize AWS client
-    const clientDB = new AwsClientsWrapper(accountType, envName);
-    clientDB._initSQS();
+    const clientSQS = new AwsClientsWrapper(accountType, envName);
+    clientSQS._initSQS();
+    // GetQueueUrlRequest
+    const queueUrl = await clientSQS._getQueueUrl(queueName);
     // Process input file
     const msgsList = formatFile(inputFile);
     const totMsgs = msgsList.length;
@@ -139,11 +141,10 @@ async function main() {
     let result = [];
     for (block of allBlocksOfMsgs) {
         try {
-            result = await clientDB._sendSQSMessageBatch(queueUrl, allBlocksOfMsgs[run]);
+            result = await clientSQS._sendSQSMessageBatch(queueUrl, allBlocksOfMsgs[run]);
             if (result.Failed) {
-                const queueName = queueUrl.match(/pn-[\w-]+/);
                 try {
-                    writeInFile('results/msg_not_resubmitted_' + queueName[0] + '.json', result.Failed);
+                    writeInFile('results/msg_not_resubmitted_' + queueName + '.json', result.Failed);
                     console.log('\nFailed resubmission of ' + result.Failed.length + ' messages\n');
                 } catch (err) {
                     console.log('\n');
@@ -151,13 +152,14 @@ async function main() {
                 }
             }
             else {
-                console.log('\nAll ' + allBlocksOfMsgs[run].length + ' msgs of block ' + run + ' have been successfully resubmit');
+                let block = run + 1;
+                console.log('\nAll ' + allBlocksOfMsgs[run].length + ' msgs of block ' + block + ' have been successfully resubmit');
                 msgsResubmit = msgsResubmit + allBlocksOfMsgs[run].length;
             }
         }
         catch (err) {
             console.log('\n');
-            console.error('\nError while deleting ' + allBlocksOfMsgs[run].length + ' msgs in the block ' + run, JSON.stringify(err, null, 2));
+            console.error('\nError while deleting ' + allBlocksOfMsgs[run].length + ' msgs in the block ' + block, JSON.stringify(err, null, 2));
         }
         run++
     };
