@@ -3,24 +3,11 @@ const { parseArgs } = require('node:util');
 const { openSync, closeSync, mkdirSync, appendFileSync } = require('node:fs');
 const { open } = require('node:fs/promises');
 const { join } = require('node:path');
+const { sleep } = require("pn-common/libs/utils");
 
 // ------------ Parametri input ---------------------
 
-// --- Fissi ---
-
-const env = "";
-const accountType = "";
-const action = "" // exec | retrieve
-
-const okIunFile = "";
-const startIun = undefined;
-
-const reqIdFile = ""
-const startReqId = undefined;
-
 // --- Variabili ---
-
-/*
 
 const args = [
     { name: "region", mandatory: false },
@@ -46,8 +33,6 @@ parseArgs({
         startReqId: { type: "string", short: "I" }
     }
 });
-
-*/
 
 // --------------------------------------------------
 
@@ -175,29 +160,34 @@ async function main() {
 
     async function isOkStatus(reqId) {
 
-        let status = "RUNNING";
-        while (status === 'RUNNING') {
+        let status;
+        do {
             try {
                 let requestStatus = await athenaClient._getQueryExecution(reqId);
                 status = requestStatus.QueryExecution.Status.State;
-                if (status === 'RUNNING') {
-                    console.log(reqId + " status is 'RUNNING'. Waiting...")
-                    await new Promise(resolve => setTimeout(() => {resolve()}, 5000)); // Attendi 5 secondi 
-                }
+                console.log(JSON.stringify({
+                    QueryExecutionId: reqId, 
+                    Status: status
+                }))
+                switch (status) {
+                    case 'QUEUED':
+                    case 'RUNNING':
+                        await sleep(5000);
+                        break;
+                    case 'SUCCEEDED':
+                    case 'FAILED':
+                        break;
+                };
             }
             catch (e) {
-                if (e.message.includes("QUEUED")) {
-                    console.log(reqId + " status is 'QUEUED'. Waiting...")
-                    await new Promise(resolve => setTimeout(() => {resolve()}, 5000)); // Attendi 5 secondi
-                    status = 'RUNNING';
-                    console.log("Catched status: " + status)
-                } else {
-                    console.log(e);
-                    closeSync(failedFileHandler);
-                    process.exit(3);
-                };
+                console.log(e);
+                appendFileSync(failedFileHandler, e + '\n');
+                closeSync(failedFileHandler);
+                process.exit(3);
             };
-        };
+        }
+        while (status !== 'SUCCEEDED' && status !== 'FAILED');
+        return status;
     };
 
     async function retrieveLogResult(reqId, startReqId) {
@@ -242,7 +232,9 @@ async function main() {
             appendFileSync(failedFileHandler, objectFailed + '\n');
             switch (e.name) {
                 case "InvalidRequestException":
-                    break;
+                    if(e.message.includes("FAILED")){
+                        break;
+                    };
                 default:
                     closeSync(failedFileHandler);
                     process.exit(4);
@@ -253,7 +245,7 @@ async function main() {
     // ---------- Script ----------------
 
     // Check dei parametri di input
-    //_checkingParameters(args, parsedArgs);
+    _checkingParameters(args, parsedArgs);
 
     // Inizializzazione client Athena
     let athenaClient;
@@ -305,7 +297,6 @@ async function main() {
                 };
 
                 let queryExecId = await startQueryExec(el, "log_analytics_database");
-                await new Promise(resolve => setTimeout(() => {resolve()}, 5000));
                 await isOkStatus(queryExecId);
                 await retrieveLogResult(queryExecId, startReqId);
             };
