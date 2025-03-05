@@ -108,7 +108,7 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
     
     const processor = new Transform({
         objectMode: true,
-        transform: async function(record, callback) {
+        transform: async function(record, encoding, callback) {
             if (!foundStartId) {
                 foundStartId = record.actionId === startFromActionId;
                 if (!foundStartId) {
