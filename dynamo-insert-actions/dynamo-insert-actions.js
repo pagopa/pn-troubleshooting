@@ -1,10 +1,11 @@
 import { parseArgs } from 'util';
 import { parse } from 'csv-parse';
-import { createReadStream, existsSync, mkdirSync, appendFileSync } from 'fs';
+import { createReadStream, existsSync, mkdirSync, appendFileSync, createWriteStream } from 'fs';
 import { AwsClientsWrapper } from "pn-common";
 import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
 import { performance } from 'perf_hooks';
+import { stringify } from 'csv-stringify';
 
 /** Valid environment names for AWS operations */
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
@@ -84,6 +85,8 @@ function initializeResultsFiles(dryRun) {
             mkdirSync('results');
         }
         appendFileSync('results/failure.json', '', { flag: 'w' });
+        // Initialize CSV file with headers
+        appendFileSync('results/failure.csv', 'actionId,ttl\n', { flag: 'w' });
     } catch (error) {
         console.error('Error initializing results files:', error);
         process.exit(1);
@@ -140,30 +143,40 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
                     if (!dryRun) {
                         const result = await AwsClient._batchWriteItem('pn-Action', batch);
                         if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
-                            const unprocessedCount = Object.keys(result.UnprocessedItems).length;
-                            failureCount += unprocessedCount;
-                            successCount += (batch.length - unprocessedCount);
-                            lastFailedActionId = batch[0].PutRequest.Item.actionId.S;
-                            console.error(`Failed to process ${unprocessedCount} items in batch`);
+                            const unprocessedItems = result.UnprocessedItems['pn-Action'] || [];
+                            const failedItems = unprocessedItems.map(item => ({
+                                actionId: item.PutRequest.Item.actionId.S,
+                                ttl: item.PutRequest.Item.ttl.N
+                            }));
+                            failureCount += failedItems.length;
+                            successCount += (batch.length - failedItems.length);
+                            console.error(`Failed to process ${failedItems.length} items in batch`);
                             logResult({
-                                lastFailedActionId,
-                                error: 'Unprocessed items in batch'
+                                lastFailedActionId: failedItems[0].actionId,
+                                error: 'Unprocessed items in batch',
+                                failedItems
                             }, dryRun);
-                            process.exit(1);
+                        } else {
+                            successCount += batch.length;
                         }
+                    } else {
+                        successCount += batch.length;
                     }
-                    successCount += batch.length;
                     console.log(`${dryRun ? '[DRY RUN] ' : ''}Processed ${successCount} records so far...`);
-                    batch = [];
                 } catch (error) {
-                    lastFailedActionId = batch[0].PutRequest.Item.actionId.S;
+                    const failedItems = batch.map(item => ({
+                        actionId: item.PutRequest.Item.actionId.S,
+                        ttl: item.PutRequest.Item.ttl.N
+                    }));
+                    failureCount += batch.length;
                     console.error('Error in batch write:', error);
                     logResult({
-                        lastFailedActionId,
-                        error: error.message
+                        lastFailedActionId: failedItems[0].actionId,
+                        error: error.message,
+                        failedItems
                     }, dryRun);
-                    process.exit(1);
                 }
+                batch = [];
             }
             callback();
         },
@@ -205,6 +218,15 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
 function logResult(data, dryRun) {
     if (!dryRun) {
         appendFileSync('results/failure.json', JSON.stringify(data) + "\n");
+        // Write to CSV file
+        if (data.failedItems) {
+            const csvWriter = createWriteStream('results/failure.csv', { flags: 'a' });
+            const stringifier = stringify({ header: false });
+            data.failedItems.forEach(item => {
+                stringifier.write([item.actionId, item.ttl]);
+            });
+            stringifier.pipe(csvWriter);
+        }
     }
 }
 
