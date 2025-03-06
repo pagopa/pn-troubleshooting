@@ -196,7 +196,7 @@ async function main() {
             return JSON.parse(str.replace(/={/g, ': {').
                 replace(/\w+: \[\]/g, '').
                 replace(/,+/g, ',').
-                replace(/([a-zA-z-]+)/g, '"$1"').
+                replace(/([a-zA-Z-]+)/g, '"$1"').
                 replace(/,+}/g, '}').
                 replace(/,+]/g, ']')
             );
