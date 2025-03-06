@@ -2,7 +2,7 @@ import { parseArgs } from 'util';
 import { parse } from 'csv-parse';
 import { createReadStream, existsSync, mkdirSync, appendFileSync, createWriteStream } from 'fs';
 import { AwsClientsWrapper } from "pn-common";
-import { sleep } from "../pn-common/libs/utils.js";
+import { sleep } from "pn-common/libs/utils.js";
 import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
 import { performance } from 'perf_hooks';
