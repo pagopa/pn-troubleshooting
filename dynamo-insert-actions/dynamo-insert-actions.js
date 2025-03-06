@@ -2,6 +2,7 @@ import { parseArgs } from 'util';
 import { parse } from 'csv-parse';
 import { createReadStream, existsSync, mkdirSync, appendFileSync, createWriteStream } from 'fs';
 import { AwsClientsWrapper } from "pn-common";
+import { sleep } from "../pn-common/libs/utils.js";
 import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
 import { performance } from 'perf_hooks';
@@ -94,6 +95,51 @@ function initializeResultsFiles(dryRun) {
 }
 
 /**
+ * Processes a batch of items with retries for unprocessed items
+ * @param {Array} batch - Batch of items to process
+ * @param {AwsClientsWrapper} AwsClient - AWS client wrapper
+ * @param {boolean} dryRun - Flag to indicate dry run mode
+ * @returns {Object} Processing results
+ */
+async function processBatchWithRetries(batch, AwsClient, dryRun) {
+    if (dryRun) {
+        return { success: batch.length, failed: 0, failedItems: [] };
+    }
+
+    let unprocessedItems = batch;
+    let successCount = 0;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (unprocessedItems.length > 0 && retryCount < maxRetries) {
+        if (retryCount > 0) {
+            await sleep(30); // Wait 30ms before retrying unprocessed items
+        }
+
+        const result = await AwsClient._batchWriteItem('pn-Action', unprocessedItems);
+        await sleep(5); // Wait 5ms between batch writes
+
+        if (!result.UnprocessedItems || Object.keys(result.UnprocessedItems).length === 0) {
+            successCount += unprocessedItems.length;
+            break;
+        }
+
+        unprocessedItems = result.UnprocessedItems['pn-Action'] || [];
+        successCount += (batch.length - unprocessedItems.length);
+        retryCount++;
+    }
+
+    return {
+        success: successCount,
+        failed: unprocessedItems.length,
+        failedItems: unprocessedItems.map(item => ({
+            actionId: item.PutRequest.Item.actionId.S,
+            ttl: item.PutRequest.Item.ttl.N
+        }))
+    };
+}
+
+/**
  * Processes a CSV file using streams
  * @param {string} filePath - Path to the CSV file
  * @param {string} startFromActionId - Optional actionId to start processing from
@@ -140,53 +186,41 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
 
             if (batch.length >= 25) {
                 try {
-                    if (!dryRun) {
-                        const result = await AwsClient._batchWriteItem('pn-Action', batch);
-                        if (result.UnprocessedItems && Object.keys(result.UnprocessedItems).length > 0) {
-                            const unprocessedItems = result.UnprocessedItems['pn-Action'] || [];
-                            const failedItems = unprocessedItems.map(item => ({
-                                actionId: item.PutRequest.Item.actionId.S,
-                                ttl: item.PutRequest.Item.ttl.N
-                            }));
-                            failureCount += failedItems.length;
-                            successCount += (batch.length - failedItems.length);
-                            console.error(`Failed to process ${failedItems.length} items in batch`);
-                            logResult({
-                                lastFailedActionId: failedItems[0].actionId,
-                                error: 'Unprocessed items in batch',
-                                failedItems
-                            }, dryRun);
-                        } else {
-                            successCount += batch.length;
-                        }
-                    } else {
-                        successCount += batch.length;
+                    const result = await processBatchWithRetries(batch, AwsClient, dryRun);
+                    successCount += result.success;
+                    failureCount += result.failed;
+
+                    if (result.failed > 0) {
+                        console.error(`Failed to process ${result.failed} items in batch after retries`);
+                        logResult({
+                            lastFailedActionId: result.failedItems[0].actionId,
+                            error: 'Unprocessed items after retries',
+                            failedItems: result.failedItems
+                        }, dryRun);
                     }
-                    console.log(`${dryRun ? '[DRY RUN] ' : ''}Processed ${successCount} records so far...`);
                 } catch (error) {
-                    const failedItems = batch.map(item => ({
-                        actionId: item.PutRequest.Item.actionId.S,
-                        ttl: item.PutRequest.Item.ttl.N
-                    }));
                     failureCount += batch.length;
                     console.error('Error in batch write:', error);
                     logResult({
-                        lastFailedActionId: failedItems[0].actionId,
+                        lastFailedActionId: batch[0].PutRequest.Item.actionId.S,
                         error: error.message,
-                        failedItems
+                        failedItems: batch.map(item => ({
+                            actionId: item.PutRequest.Item.actionId.S,
+                            ttl: item.PutRequest.Item.ttl.N
+                        }))
                     }, dryRun);
                 }
                 batch = [];
+                console.log(`${dryRun ? '[DRY RUN] ' : ''}Processed ${successCount} records so far...`);
             }
             callback();
         },
         flush: async function(callback) {
             if (batch.length > 0) {
                 try {
-                    if (!dryRun) {
-                        await AwsClient._batchWriteItem('pn-Action', batch);
-                    }
-                    successCount += batch.length;
+                    const result = await processBatchWithRetries(batch, AwsClient, dryRun);
+                    successCount += result.success;
+                    failureCount += result.failed;
                 } catch (error) {
                     failureCount += batch.length;
                     console.error('Error in final batch:', error);
