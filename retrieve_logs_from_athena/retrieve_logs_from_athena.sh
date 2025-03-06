@@ -4,14 +4,14 @@
 
 # - Miscellaneous
 WORKDIR="/path/to/pn-troubleshooting"
-ENV="prod"
-ACCOUNT_TYPE="core"
+ENV=""
+ACCOUNT_TYPE=""
 
 PROFILE="sso_pn-${ACCOUNT_TYPE}-${ENV}"
 
 # - Input/Ouptut files 
 
-IUN_LIST_FILE=iuns.txt # IUN List
+IUN_LIST_FILE="" # IUN List
 TIMEL4IUN="timelines_from_iun.json" # Timelines
 OK_IUN="public_registry_call.json" # Iun, timestamp and last timelineElementId if category == "PUBLIC_REGISTRY_CALL"
 NOT_OK_IUN="not_public_registry_call.json" # complete timeline if category != "PUBLIC_REGISTRY_CALL"
@@ -66,10 +66,18 @@ function _obtain_timestamp_and_timelineElementId {
 
     IN_FILE=$1
 
-    jq -c '.[] | select( .timeline[-1].category | contains("PUBLIC_REGISTRY_CALL")) | {iun:.iun,timestamp: .timeline[-1].timestamp,timelineElementId: .timeline[-1].timelineElementId}' $IN_FILE >> $OK_IUN
+    jq -c '.[] | 
+    {
+	    iun:.iun,
+	    timeline: [ .timeline[] | select(.category | contains("PUBLIC_REGISTRY_CALL"))]
+    } |
 
-    jq -c '.[] | select( .timeline[-1].category | contains("PUBLIC_REGISTRY_CALL") | not)' \
-        $IN_FILE >> $NOT_OK_IUN
+    {iun: .iun, timestamp: .timeline[-1].timestamp, timelineElementId: .timeline[-1].timelineElementId}
+
+    ' $IN_FILE >> $OK_IUN
+    
+    # jq -c '.[] | select( .timeline[-1].category | contains("PUBLIC_REGISTRY_CALL") | not)' \
+    #    $IN_FILE >> $NOT_OK_IUN
 }
 
 # --------- Script ---------
