@@ -21,7 +21,7 @@ Note:
 ## Utilizzo
 
 ```bash
-node dynamo-insert-actions.js --envName|-e <ambiente> --csvFile|-f <percorso> --ttlDays|-d <giorni> [--actionId|-a <id>] [--dryRun|-r]
+node index.js --envName|-e <ambiente> --csvFile|-f <percorso> --ttlDays|-d <giorni> [--actionId|-a <id>] [--dryRun|-r]
 ```
 
 ### Parametri
@@ -37,13 +37,13 @@ node dynamo-insert-actions.js --envName|-e <ambiente> --csvFile|-f <percorso> --
 
 ```bash
 # Elaborazione completa del file
-node dynamo-insert-actions.js -e dev -f ./actions.csv -d 30
+node index.js -e dev -f ./actions.csv -d 30
 
 # Elaborazione a partire da uno specifico actionId
-node dynamo-insert-actions.js -e dev -f ./actions.csv -d 30 -a "action_123"
+node index.js -e dev -f ./actions.csv -d 30 -a "action_123"
 
 # Simulazione senza modifiche effettive
-node dynamo-insert-actions.js -e dev -f ./actions.csv -d 30 --dryRun
+node index.js -e dev -f ./actions.csv -d 30 --dryRun
 ```
 
 ## Processo di Elaborazione
