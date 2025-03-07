@@ -11,6 +11,8 @@ import { stringify } from 'csv-stringify';
 /** Valid environment names for AWS operations */
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
 
+let outputPath;
+
 /**
  * Validates command line arguments and provides usage information
  * @returns {Object} Parsed and validated command line arguments
@@ -72,22 +74,51 @@ Parameters:
 }
 
 /**
+ * Creates a timestamp-based folder name
+ * @returns {string} Folder name in format YYYY-MM-DD_HH-mm-ss
+ */
+function getTimestampFolderName() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
+}
+
+/**
  * Initializes the results directory and files
  * @param {boolean} dryRun - If true, skip file creation
+ * @param {string} envName - Optional environment name
  * @throws {Error} If directory creation fails
  */
-function initializeResultsFiles(dryRun) {
+function initializeResultsFiles(dryRun, envName) {
     if (dryRun) {
         return; // Skip file creation in dry run mode
     }
     
     try {
+        // Create base results directory if it doesn't exist
         if (!existsSync('results')) {
             mkdirSync('results');
         }
-        appendFileSync('results/failure.json', '', { flag: 'w' });
-        // Initialize CSV file with headers
-        appendFileSync('results/failure.csv', 'actionId,ttl\n', { flag: 'w' });
+
+        // Create timestamp directory
+        const timestampDir = getTimestampFolderName();
+        const timestampPath = `results/${timestampDir}`;
+        if (!existsSync(timestampPath)) {
+            mkdirSync(timestampPath);
+        }
+
+        // Set output path based on whether envName was provided
+        outputPath = envName 
+            ? `${timestampPath}/${envName}`
+            : timestampPath;
+
+        // Create environment directory if needed
+        if (envName && !existsSync(outputPath)) {
+            mkdirSync(outputPath);
+        }
+
+        // Initialize output files in the appropriate directory
+        appendFileSync(`${outputPath}/failure.json`, '', { flag: 'w' });
+        appendFileSync(`${outputPath}/failure.csv`, 'actionId,ttl\n', { flag: 'w' });
     } catch (error) {
         console.error('Error initializing results files:', error);
         process.exit(1);
@@ -246,10 +277,10 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
  */
 function logResult(data, dryRun) {
     if (!dryRun) {
-        appendFileSync('results/failure.json', JSON.stringify(data) + "\n");
+        appendFileSync(`${outputPath}/failure.json`, JSON.stringify(data) + "\n");
         // Write to CSV file
         if (data.failedItems) {
-            const csvWriter = createWriteStream('results/failure.csv', { flags: 'a' });
+            const csvWriter = createWriteStream(`${outputPath}/failure.csv`, { flags: 'a' });
             const stringifier = stringify({ header: false });
             data.failedItems.forEach(item => {
                 stringifier.write([item.actionId, item.ttl]);
@@ -334,7 +365,7 @@ async function main() {
     const args = validateArgs();
     const { envName, csvFile, ttlDays, actionId, dryRun } = args;
 
-    initializeResultsFiles(dryRun);
+    initializeResultsFiles(dryRun, envName);
     
     let AwsClient;
     if (envName) {
