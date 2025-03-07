@@ -72,9 +72,16 @@ Lo script:
   - Metriche di performance (tempo, memoria, CPU)
   - In caso di errore: actionId da cui riprendere
 
-### File (cartella `results/`)
+### Output
 - `failure.json`: Log dettagliato degli errori
 - `failure.csv`: Elenco degli actionId falliti con relativi TTL
+
+I file vengono scritti sotto:
+
+- `/results/YYYY-MM-DD_HH-mm-ss/envName/`
+- `/results/YYYY-MM-DD_HH-mm-ss/`
+
+a seconda che l'ambiente destinazione (envName) sia stato passato o meno in input.
 
 ## Gestione Errori
 
