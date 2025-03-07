@@ -119,13 +119,8 @@ async function processBatchWithRetries(batch, AwsClient, dryRun) {
         const result = await AwsClient._batchWriteItem('pn-Action', unprocessedItems);
         await sleep(5); // Wait 5ms between batch writes
 
-        if (!result.UnprocessedItems || Object.keys(result.UnprocessedItems).length === 0) {
-            successCount += unprocessedItems.length;
-            break;
-        }
-
-        unprocessedItems = result.UnprocessedItems['pn-Action'] || [];
-        successCount += (batch.length - unprocessedItems.length);
+        unprocessedItems = result.UnprocessedItems?.['pn-Action'] || [];
+        successCount += (unprocessedItems === batch ? 0 : batch.length - unprocessedItems.length);
         retryCount++;
     }
 
