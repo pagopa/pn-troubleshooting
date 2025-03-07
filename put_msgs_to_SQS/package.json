@@ -1,8 +1,8 @@
 {
-  "name": "resubmit_sqs",
+  "name": "put_msgs_to_SQS",
   "version": "1.0.0",
   "description": "The script must allow to submit events in SQS by formatting the request based on the input provided",
-  "main": "resubmit_sqs_messages.js",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -36,11 +36,11 @@ npm install
 Eseguire lo script
 ```bash
 
-node resubmit_sqs_messages.js --accountType <AWSAccount> --envName <environment> --queueName <queueName> --inputFile <path>
+node index.js --accountType <AWSAccount> --envName <environment> --queueName <queueName> --inputFile <path>
 ```
 oppure
 ```bash
-node resubmit_sqs_messages.js -a <AWSAccount> -e <environment> -q <queueName> -f <path>
+node index.js -a <AWSAccount> -e <environment> -q <queueName> -f <path>
 ```
 Dove:
 - `<AWSAccount>` è l'account AWS dove si trova la tabella, deve essere uno tra: core, confinfo
@@ -65,5 +65,5 @@ Lo script genera un file in caso di impossibilità di caricamento messaggio cart
 ### Esempio
 
 ```bash
-node resubmit_sqs_messages.js --accountType core --envName hotfix --queueName pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json
+node index.js --accountType core --envName hotfix --queueName pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json
 ```
