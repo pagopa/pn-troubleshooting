@@ -76,6 +76,7 @@ AWS_ACCOUNT=$(aws ${aws_command_base_args} sts get-caller-identity --query "Acco
 OUTPUT_DIR=./output
 mkdir -p "$OUTPUT_DIR"
 cd "$OUTPUT_DIR"
+REPO_URL=https://github.com/pagopa/pn-configuration.git
 
 # Condition for only No-Prod Accounts:
 if [[ "$PN_ENV" == *"uat"* || "$PN_ENV" == *"prod"* ]]; then
@@ -83,7 +84,7 @@ if [[ "$PN_ENV" == *"uat"* || "$PN_ENV" == *"prod"* ]]; then
   exit 0
 fi
 
-#Process count Ecs Task fuction:
+#Process count Ecs Task function:
 process_clusters() {
   CLUSTERS="$1"
   
@@ -110,8 +111,10 @@ process_clusters() {
         SERVICE_NAME=$(basename "$SERVICE")
         MIN_TASKS_NUMBER=1
 
-        # Only for Dev Account setting up actual Desired tasks in Clusters:
-        if [[ "$PN_ENV" == *"dev"* ]]; then
+        # Set desire count to 7 for specific services
+        if [[ "$SERVICE_NAME" == "pn-external-channels-microsvc-test-ExternalChannelsMicroservice"* || "$SERVICE_NAME" == "mockconsolidatore-ExternalChannelsMicroservice"* ]]; then
+          MIN_TASKS_NUMBER=7
+        elif [[ "$PN_ENV" == *"dev"* ]]; then
           MIN_TASKS_NUMBER=$(aws ${aws_command_base_args} ecs describe-services --cluster "$CLUSTER" --services "$SERVICE_NAME" --query "services[0].desiredCount" --output text)
           MIN_TASKS_NUMBER=${MIN_TASKS_NUMBER:-1}
         else
