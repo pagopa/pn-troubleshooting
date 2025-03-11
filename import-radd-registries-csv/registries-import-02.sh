@@ -9,14 +9,16 @@ API_BASE_URL="$2"                                   # Base URL per l'API (passat
 CX_UID="$3"                                         
 OK_OUTPUT_FILE="ok_result"
 
-FOLDER_SUFFIX=$(date +%Y%m%d_%H%M%S)
+RESULTS_FOLDER=./results_$(date +%Y%m%d_%H%M%S)
+mkdir -p $RESULTS_FOLDER
 
 function extract_cx_id() {
     local =$(basenane "$1")
     CF=$(echo $filename | grep -oE '[0-9]{11}') 
     if [ -z "$CF" ]; then
-        echo "Errore: il codice fiscale presente nel nome del file $filename non esiste oppure non é della lunghezza corretta."
-        exit 1
+        echo "Errore: il codice fiscale presente nel nome del file $filename
+        non esiste oppure non é della lunghezza corretta." | tee ${RESULTS_FOLDER}/failed.txt 
+        continue       
     fi 
     echo $CF
 }
@@ -48,8 +50,8 @@ SECRET=$(echo "$RESPONSE" | jq -r '.secret')
 REQUEST_ID=$(echo "$RESPONSE" | jq -r '.requestId')
 
 if [ -z "$URL" ] || [ -z "$SECRET" ]; then
-    echo "Errore: Risposta incompleta, URL o secret mancanti."
-    exit 1
+    echo "Errore: Risposta incompleta, URL o secret mancanti per il file $CSV_PATH" |  tee ${RESULTS_FOLDER}/failed.txt
+    continue
 fi
 
 curl -X PUT "$URL" \
@@ -58,13 +60,10 @@ curl -X PUT "$URL" \
     -H "x-amz-checksum-sha256: $CHECKSUM" \
     --data-binary "@$CSV_PATH"
 
-# echo "Richiesta di import massivo completata."
-# echo "REQUEST_ID:   $REQUEST_ID"
+if [ $? -ne 0 ]; then
+    echo "Errore: import fallito." | tee ${RESULTS_FOLDER}/failed.txt
+    continue
+else 
+    echo ${CX_ID},${CSV_PATH},${REQUEST_ID} | tee ${OK_OUTPUT_FILE}_${FILE_SUFFIX}  tee ${RESULTS_FOLDER}/succeeded.csv
+fi
 
-echo ${CX_ID},${CSV_PATH},${REQUEST_ID} | tee ${OK_OUTPUT_FILE}_${FILE_SUFFIX}
-
-# % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-#                                  Dload  Upload   Total   Spent    Left  Speed
-# 100  2338  100  2278  100    60  21380    563 --:--:-- --:--:-- --:--:-- 22266
-# Richiesta di import massivo completata.
-# REQUEST_ID: a18a952f-a016-4824-a889-20c4ce62e0fb
