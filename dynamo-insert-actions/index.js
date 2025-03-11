@@ -178,12 +178,15 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
     let batch = [];
     let successCount = 0;
     let failureCount = 0;
+    let totalRecords = 0;
     let lastFailedActionId = null;
     let foundStartId = !startFromActionId;
     
     const processor = new Transform({
         objectMode: true,
         transform: async function(record, encoding, callback) {
+            totalRecords++;
+            
             if (!foundStartId) {
                 foundStartId = record.actionId === startFromActionId;
                 if (!foundStartId) {
@@ -193,6 +196,7 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
 
             if (!record.actionId) {
                 console.error('Invalid record (missing actionId):', record);
+                failureCount++;
                 return callback();
             }
 
@@ -213,6 +217,7 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
             if (batch.length >= 25) {
                 try {
                     const result = await processBatchWithRetries(batch, AwsClient, dryRun);
+                    // Update counts based on the actual batch result
                     successCount += result.success;
                     failureCount += result.failed;
 
@@ -236,8 +241,9 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
                         }))
                     }, dryRun);
                 }
+                const processedCount = successCount + failureCount;
+                console.log(`${dryRun ? '[DRY RUN] ' : ''}Processed ${processedCount}/${totalRecords} records (${successCount} successful, ${failureCount} failed)...`);
                 batch = [];
-                console.log(`${dryRun ? '[DRY RUN] ' : ''}Processed ${successCount} records so far...`);
             }
             callback();
         },
@@ -267,7 +273,7 @@ async function processStreamedCsv(filePath, startFromActionId, ttlDays, AwsClien
         throw error;
     }
 
-    return { successCount, failureCount, lastFailedActionId };
+    return { successCount, failureCount, lastFailedActionId, totalRecords };
 }
 
 /**
@@ -332,12 +338,11 @@ function printSummary(stats) {
     if (stats.dryRun) {
         console.log('\n[DRY RUN MODE] No actual changes were made to DynamoDB');
     }
-    console.log(`\nTotal items processed: ${stats.totalProcessed}`);
+    console.log(`\nTotal records in CSV: ${stats.totalRecords}`);
     console.log(`Successfully updated: ${stats.successCount}`);
     console.log(`Failed updates: ${stats.failureCount}`);
-    if (stats.unprocessedCount > 0) {
-        console.log(`Unprocessed items: ${stats.unprocessedCount}`);
-    }
+    console.log(`Total processed: ${stats.successCount + stats.failureCount}`);
+    
     if (stats.lastFailedActionId) {
         console.log(`\nTo resume from the last failed item, use:`);
         console.log(`--actionId "${stats.lastFailedActionId}"`);
@@ -381,9 +386,7 @@ async function main() {
         const stats = await processStreamedCsv(csvFile, actionId, ttlDays, AwsClient, dryRun);
         const executionTime = performance.now() - startTime;
         printSummary({
-            totalProcessed: stats.successCount + stats.failureCount,
             ...stats,
-            unprocessedCount: 0,
             dryRun,
             executionTime
         });
