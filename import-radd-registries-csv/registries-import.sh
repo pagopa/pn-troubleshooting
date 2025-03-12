@@ -1,41 +1,62 @@
 #!/bin/bash
 
-if [ "$#" -ne 3 ]; then
-    exit 1
-fi
+# --- Variabili ---
 
 CSV_PATH="$1"                                       # Path del file CSV (passato come primo argomento)
 API_BASE_URL="$2"                                   # Base URL per l'API (passato come secondo argomento)
-CX_UID="$3"                                         
-OK_OUTPUT_FILE="ok_result"
+CX_UID="$3"					    # # UID (passato come quinto argomento)                           
 
-FOLDER_SUFFIX=$(date +%Y%m%d_%H%M%S)
+# --- Funzioni ---
 
-function extract_cx_id() {
-    local =$(basenane "$1")
-    CF=$(echo $filename | grep -oE '[0-9]{11}') 
+extract_cx_id() {
+
+    local FILE=$(basenane "$1")
+    CF=$(echo $FILE | grep -oE '[0-9]{11}') 
+
     if [ -z "$CF" ]; then
-        echo "Errore: il codice fiscale presente nel nome del file $filename non esiste oppure non é della lunghezza corretta."
+        echo "Errore: il codice fiscale presente nel nome del file \"$filename\"
+              non esiste oppure non è della lunghezza corretta."
         exit 1
     fi 
     echo $CF
 }
 
 calculate_sha256() {
-    local file=$1
-    sha256sum "$file" | awk '{print $1}' | xxd -r -p | base64
+    local FILE=$1
+    sha256sum "$FILE" | awk '{print $1}' | xxd -r -p | base64
 }
 
-if [ ! -f "$CSV_PATH" ]; then
-    echo "Errore: il file $CSV_PATH non esiste."
+# --- Script --- 
+
+if [ "$1" == "" ] || [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
+    echo -e "\nUtilizzo: $0 \"{CSV_PATH}\" \"{API_BASE_URL}\" \"{CX_UID}\"\n"
+    exit 0
+fi
+
+if [ "$#" -ne 3 ]; then
+    cat << EOM
+
+Errore: Il numero di argomenti deve essere 3. Usa:
+	
+	$0 --help
+	
+per ottenere informazioni sull'utilizzo del comando.
+
+EOM
     exit 1
 fi
 
+if [ ! -f "$CSV_PATH" ]; then
+    echo -e "\nErrore: Il file $CSV_PATH non esiste.\n"
+    exit 2
+fi
 
 CHECKSUM=$(calculate_sha256 "$CSV_PATH")
+
+# Estrazione CX_ID dal nome del file CSV
 CX_ID=$(extract_cx_id "$CSV_PATH")
 
-RESPONSE=$(curl POST "$API_BASE_URL/radd-net/api/v1/registry/import/upload" \
+RESPONSE=$(curl -X POST "$API_BASE_URL/radd-net/api/v1/registry/import/upload" \
            -H "uid: $CX_UID" \
            -H "x-pagopa-pn-cx-id: $CX_ID" \
            -H "x-pagopa-pn-cx-type: RADD" \
@@ -47,9 +68,9 @@ URL=$(echo "$RESPONSE" | jq -r '.url')
 SECRET=$(echo "$RESPONSE" | jq -r '.secret')
 REQUEST_ID=$(echo "$RESPONSE" | jq -r '.requestId')
 
-if [ -z "$URL" ] || [ -z "$SECRET" ]; then
-    echo "Errore: Risposta incompleta, URL o secret mancanti."
-    exit 1
+if [ -z "$URL" ] || [ -z "$SECRET" ] || [ -z "$REQUEST_ID" ] ; then
+    echo "Errore: Risposta incompleta, URL, Secret o RequestID mancanti."
+    exit 3
 fi
 
 curl -X PUT "$URL" \
@@ -58,13 +79,13 @@ curl -X PUT "$URL" \
     -H "x-amz-checksum-sha256: $CHECKSUM" \
     --data-binary "@$CSV_PATH"
 
-# echo "Richiesta di import massivo completata."
-# echo "REQUEST_ID:   $REQUEST_ID"
+RESULT_FILE_NAME=${CX_UID}_$(date +%Y%m%d_%H%M%S)
+cat << EOF >> $RESULT_FILE_NAME 
+CX_UID,CSV_PATH,CX_ID,REQUEST_ID
+${CX_UID},${CSV_PATH},${CX_ID},${REQUEST_ID} 
+EOF
 
-echo ${CX_ID},${CSV_PATH},${REQUEST_ID} | tee ${OK_OUTPUT_FILE}_${FILE_SUFFIX}
+echo "Richiesta di import massivo completata."
+echo "REQUEST_ID:   $REQUEST_ID"
+echo "Risultati delle operazioni memorizzati sul file: $RESULT_FILE_NAME"
 
-# % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-#                                  Dload  Upload   Total   Spent    Left  Speed
-# 100  2338  100  2278  100    60  21380    563 --:--:-- --:--:-- --:--:-- 22266
-# Richiesta di import massivo completata.
-# REQUEST_ID: a18a952f-a016-4824-a889-20c4ce62e0fb
