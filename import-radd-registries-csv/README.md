@@ -10,7 +10,7 @@
     aws ssm start-session \
 	--target "<Target>"
 	--document-name AWS-StartPortForwardingSessionToRemoteHost \
-	--profile "<profilo AWS>"
+	--profile "<profilo AWS>" \
 	--parameters "{
 		\"portNumber\":[\"8080\"],
 		\"localPortNumber\":[\"8888\"],
