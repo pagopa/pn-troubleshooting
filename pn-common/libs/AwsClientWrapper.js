@@ -8,13 +8,15 @@ const { EventBridgeClient, EnableRuleCommand, DisableRuleCommand, ListRulesComma
 const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
 const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
-const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, SendMessageBatchCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
+const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQueryResultsCommand: AthenaGetQueryResultsCommand } = require("@aws-sdk/client-athena");
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
 const { spawnSync, execSync } = require('node:child_process');
+const { createHash } = require('node:crypto');
 
 function awsClientCfg(profile) {
   const self = this;
@@ -91,6 +93,10 @@ class AwsClientsWrapper {
     this._ecsClient = this.ssoProfile ? new ECSClient(awsClientCfg(this.ssoProfile)) : new ECSClient();
   }
 
+  _initAthena() {
+    this._athenaClient = this.ssoProfile ? new AthenaClient(awsClientCfg(this.ssoProfile)) : new AthenaClient();
+  }
+
   _checkAwsSsoLogin(self) {
     // -----------------------
     function _osSleep(sec){
@@ -128,6 +134,39 @@ class AwsClientsWrapper {
     else {
       console.log("\nUser is SSO logged with profile '" + profile + "'\n");
     };
+  };
+
+  // Athena
+
+  async _startQueryExecution(workGroup,db,catalog,sqlQuery) {
+      const input = {
+        QueryExecutionContext: { 
+          Database: db,
+          Catalog: catalog
+        },
+        QueryString: sqlQuery,
+        WorkGroup: workGroup
+      };
+      const command = new StartQueryExecutionCommand(input);
+      const result = await this._athenaClient.send(command);
+      return result;
+  };
+
+  async _getQueryExecution(execId) {
+      const input = { QueryExecutionId: execId };
+      const command = new GetQueryExecutionCommand(input);
+      const result = await this._athenaClient.send(command);
+      return result;
+  };
+
+  async _getQueryResults(execId,nextToken) {
+      const input = { 
+        QueryExecutionId: execId,
+        NextToken: nextToken 
+      };
+      const command = new AthenaGetQueryResultsCommand(input);
+      const result = await this._athenaClient.send(command);
+      return result;
   };
 
   // ECS
@@ -441,6 +480,26 @@ class AwsClientsWrapper {
     };
 
     const command = new GetObjectCommand(input);
+    const response = await this._s3Client.send(command);
+    return response;
+  }
+
+  async _PutObject(bucket, fileName, fileBody) {
+    
+    function createMd5SumHash(data) {
+      // Hash necessario a causa dell'Object Lock settato sul bucket
+      const hash = createHash('md5').update(data).digest('base64');
+      return hash;
+    };
+
+    const input = {
+      Bucket: bucket,
+      Key: fileName,
+      Body: fileBody,
+      ContentMD5: createMd5SumHash(fileBody)
+    };
+
+    const command = new PutObjectCommand(input);
     const response = await this._s3Client.send(command);
     return response;
   }

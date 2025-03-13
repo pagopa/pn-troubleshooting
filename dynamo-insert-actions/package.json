@@ -2,10 +2,10 @@
   "name": "actions-ttl-update",
   "version": "1.0.0",
   "description": "Tool to update TTL values for pn-Action DynamoDB items",
-  "main": "update-actions-ttl.js",
+  "main": "dynamo-insert-actions.js",
   "type": "module",
   "scripts": {
-    "start": "node update-actions-ttl.js",
+    "start": "node dynamo-insert-actions.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -17,8 +17,9 @@
   "license": "ISC",
   "dependencies": {
     "csv-parse": "^5.5.0",
+    "csv-stringify": "^6.4.4",
     "pn-common": "file:../pn-common/"
-},
+  },
   "engines": {
     "node": ">=18.0.0"
   }
