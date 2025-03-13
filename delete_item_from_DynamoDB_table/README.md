@@ -12,7 +12,7 @@ Script per l'eliminazione massiva di elementi dalle tabelle su DynamoDB
 
 ## Descrizione
 
-Lo script analizza un file in ingresso contenente le righe da cancellare, come ad esempio un dump prelevato dallo script [clear-paper-errors](https://github.com/pagopa/pn-troubleshooting/tree/main/clear-paper-errors) oppure da [dump_dynamodb](https://github.com/pagopa/pn-troubleshooting/tree/main/dump_dynamodb) e, dopo aver ricavato sort key e partition key della tabella dove eseguire l'eliminazione, inizia a costruirsi delgi array conteneti ognuno 25 coppie esclusivamente di sort key e partition key, ignorando tutte le altri valori eventualmente presenti.
+Lo script analizza un file in ingresso contenente le righe da cancellare, come ad esempio un dump con l'unmrshal prelevato dallo script [clear-paper-errors](https://github.com/pagopa/pn-troubleshooting/tree/main/clear-paper-errors) oppure da [dump_dynamodb](https://github.com/pagopa/pn-troubleshooting/tree/main/dump_dynamodb) e, dopo aver ricavato sort key e partition key della tabella dove eseguire l'eliminazione, inizia a costruirsi delgi array conteneti ognuno 25 coppie esclusivamente di sort key e partition key, ignorando tutte le altri valori eventualmente presenti.
 
 Una volta creati tutti i blocchi di righe, viene eseguita l'eliminazione a batch.
 
@@ -22,7 +22,7 @@ In caso di problemi di elaborazione, le righe non eliminate vengono salvate in u
 
 - Node.js >= 18.0.0
 - Accesso AWS SSO configurato
-- File di input contenente le righe da rimuovere
+- File di input contenente le righe da rimuovere eseguito con l'unmrshal
 - Nome della tabella
 
 ## Installazione
@@ -48,7 +48,7 @@ Dove:
 - `<AWSAccount>` è l'account AWS dove si trova la tabella, deve essere uno tra: core, confinfo
 - `<env>` è l'ambiente di destinazione, deve essere uno tra: dev, uat, test, prod, hotfix
 - `<tableName>` è il nome della tabella dove verranno eliminate le righe
-- `<path>` è il percorso al file contenente le righe da rimuovere 
+- `<path>` è il percorso al file contenente le righe da rimuovere eseguito con l'unmrshal
 
 ### Parametri
 
