@@ -10,7 +10,7 @@ CX_UID="$3"					    # # UID (passato come quinto argomento)
 
 extract_cx_id() {
 
-    local FILE=$(basenane "$1")
+    local FILE=$(basename "$1")
     CF=$(echo $FILE | grep -oE '[0-9]{11}') 
 
     if [ -z "$CF" ]; then
