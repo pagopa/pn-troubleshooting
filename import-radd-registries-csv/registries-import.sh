@@ -24,14 +24,16 @@ extract_cx_id() {
 test_ssh_tunnel() {
 
         NETWORK_TEST=$(curl -s $1)
+        ERROR_CODE=$?
 
-        if [ $? -eq 7 ]; then
-                if [ -z "$(echo $NETWORK_TEST | grep -ioP 'Connection refused$')" ]; then
-                        echo -e "\nErrore: Impossibile completare l'operazione. Verifica che il tunnel SSH sia attivo e riprova.\n"
-                else
-                        echo -e "\nErrore: Errore di rete generico\n"
-                fi
-                exit 7
+        if [ $ERROR_CODE -eq 7 ] && [ -z "$(echo $NETWORK_TEST | grep -ioP 'Connection refused$')" ]; then
+            echo -e "\nErrore: Impossibile completare l'operazione. Verifica che il tunnel SSH sia attivo e riprova.\n"
+            exit 7
+        fi
+
+        if [ $ERROR_CODE -ne 0 ]; then
+            echo -e "\nErrore: \n\n$NETWORK_TEST"
+            exit 8
         fi
 }
 
