@@ -73,6 +73,11 @@ if [ -z "$URL" ] || [ -z "$SECRET" ] || [ -z "$REQUEST_ID" ] ; then
     exit 3
 fi
 
+if [ "$REQUEST_ID" == "null" ] ; then
+    echo "Errore: Il valore del Request Id è 'null'."
+    exit 4
+fi
+
 curl -X PUT "$URL" \
     -H "Content-Type: text/csv" \
     -H "x-amz-meta-secret: $SECRET" \
