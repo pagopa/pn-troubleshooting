@@ -21,6 +21,20 @@ extract_cx_id() {
     echo $CF
 }
 
+test_ssh_tunnel() {
+
+        NETWORK_TEST=$(curl -s $1)
+
+        if [ $? -eq 7 ]; then
+                if [ -z "$(echo $NETWORK_TEST | grep -ioP 'Connection refused$')" ]; then
+                        echo -e "\nErrore: Impossibile completare l'operazione. Verifica che il tunnel SSH sia attivo e riprova.\n"
+                else
+                        echo -e "\nErrore: Errore di rete generico\n"
+                fi
+                exit 7
+        fi
+}
+
 calculate_sha256() {
     local FILE=$1
     sha256sum "$FILE" | awk '{print $1}' | xxd -r -p | base64
@@ -50,6 +64,8 @@ if [ ! -f "$CSV_PATH" ]; then
     echo -e "\nErrore: Il file $CSV_PATH non esiste.\n"
     exit 2
 fi
+
+test_ssh_tunnel $API_BASE_URL
 
 CHECKSUM=$(calculate_sha256 "$CSV_PATH")
 
