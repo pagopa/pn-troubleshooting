@@ -144,7 +144,6 @@ async function main() {
         try {
             let result = await clientSQS._sendSQSMessageBatch(queueUrl, block);
             if (result.Failed) {
-                try {
                     // Create the output format
                     result.Failed.forEach(json => {
                         let failure = {
@@ -159,11 +158,6 @@ async function main() {
                     console.log('\nFailed resubmission of ' + result.Failed.length + ' messages\n');
                     msgsKO = msgsKO + result.Failed.length;
                     msgsOK = result.Successful ? msgsOK + result.Successful.length : msgsOK + 0;
-                } catch (err) {
-                    console.error('\nError creating JSON file:', err);
-                    msgsKO = msgsKO + result.Failed.length;
-                    msgsOK = result.Successful ? msgsOK + result.Successful.length : msgsOK + 0;
-                }
             }
             else {
                 console.log('\nAll ' + block.length + ' msgs of block ' + run + ' have been successfully resubmit');
