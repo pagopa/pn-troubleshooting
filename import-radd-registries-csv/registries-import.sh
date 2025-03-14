@@ -51,8 +51,6 @@ if [ ! -f "$CSV_PATH" ]; then
     exit 2
 fi
 
-test_ssh_tunnel $API_BASE_URL
-
 CHECKSUM=$(calculate_sha256 "$CSV_PATH")
 
 # Estrazione CX_ID dal nome del file CSV
