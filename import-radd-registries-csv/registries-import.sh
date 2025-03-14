@@ -21,22 +21,6 @@ extract_cx_id() {
     echo $CF
 }
 
-test_ssh_tunnel() {
-
-        NETWORK_TEST=$(curl -s $1)
-        ERROR_CODE=$?
-
-        if [ $ERROR_CODE -eq 7 ] && [ -z "$(echo $NETWORK_TEST | grep -ioP 'Connection refused$')" ]; then
-            echo -e "\nErrore: Impossibile completare l'operazione. Verifica che il tunnel SSH sia attivo e riprova.\n"
-            exit 7
-        fi
-
-        if [ $ERROR_CODE -ne 0 ]; then
-            echo -e "\nErrore: \n\n$NETWORK_TEST"
-            exit 8
-        fi
-}
-
 calculate_sha256() {
     local FILE=$1
     sha256sum "$FILE" | awk '{print $1}' | xxd -r -p | base64
@@ -81,6 +65,18 @@ RESPONSE=$(curl -X POST "$API_BASE_URL/radd-net/api/v1/registry/import/upload" \
            -H "Content-Type: application/json" \
            -d '{"checksum": "'"$CHECKSUM"'"}'
            )
+
+RESPONSE_ERROR_CODE=$?
+
+if [ $RESPONSE_ERROR_CODE -eq 7 ] && [ -z "$(echo $RESPONSE | grep -ioP 'Connection refused$')" ]; then
+    echo -e "\nErrore: Impossibile completare l'operazione. Verifica che il tunnel SSH sia attivo e riprova.\n"
+    exit 7
+fi
+
+if [ $RESPONSE_ERROR_CODE -ne 0 ]; then
+    echo -e "\nErrore: \n\n$RESPONSE"
+    exit 8
+fi
 
 URL=$(echo "$RESPONSE" | jq -r '.url')
 SECRET=$(echo "$RESPONSE" | jq -r '.secret')
