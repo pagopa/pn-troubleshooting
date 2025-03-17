@@ -1,0 +1,19 @@
+{
+  "name": "manage-request-status",
+  "version": "1.0.0",
+  "description": "Tool to manage request status in DynamoDB",
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "PagoPA",
+  "license": "ISC",
+  "dependencies": {
+    "csv-stringify": "^6.0.0",
+    "pn-common": "file:../../pn-common"
+  }
+}
