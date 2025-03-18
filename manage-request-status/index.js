@@ -293,10 +293,16 @@ async function processInputFile(inputFile, awsClient, command, newStatus) {
  * Generates a CSV file with requestId and statusRequest columns
  * 
  * @param {Array<{requestId: string, statusRequest: string}>} results - Array of processed requests
+ * @param {string} command - The command being executed
  * @returns {Promise<void>}
  * @throws {Error} If directory creation or file writing fails
  */
-async function saveResults(results) {
+async function saveResults(results, command) {
+    // Only save results to CSV for save_request_status command
+    if (command !== 'save_request_status') {
+        return;
+    }
+
     /** Create results directory if it doesn't exist */
     if (!existsSync('results')) {
         mkdirSync('results');
@@ -358,8 +364,8 @@ async function main() {
     try {
         /** Process all requests from input file */
         const results = await processInputFile(inputFile, awsClient, command, status);
-        /** Save results to CSV file */
-        await saveResults(results);
+        /** Save results to CSV only for save_request_status command */
+        await saveResults(results, command);
     } catch (error) {
         console.error('Error during execution:', error);
         process.exit(1);  // Exit with error
