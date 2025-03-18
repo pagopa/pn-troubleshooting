@@ -56,6 +56,7 @@ const VALID_COMMANDS = ['save_request_status', 'set_request_status', 'restore_re
  * @throws {Error} Exits process with status 1 if validation fails
  */
 function validateArgs() {
+    // Define the help text shown to users when they use --help or when validation fails
     const usage = `
 Usage: node index.js --inputFile|-i <path> --command|-c <command> [--envName|-e <environment>] [--status|-s <status>]
 
@@ -74,6 +75,14 @@ Parameters:
     --status, -s       Required for set_request_status. New status value
     --help, -h        Display this help message`;
 
+    /** 
+     * Parse command line arguments using Node.js util.parseArgs
+     * - inputFile: the file containing request IDs to process
+     * - command: the operation to perform (save/set/restore)
+     * - envName: which AWS environment to use
+     * - status: new status value for updates
+     * - help: show usage instructions
+     */
     const args = parseArgs({
         options: {
             inputFile: { type: "string", short: "i" },
@@ -85,15 +94,17 @@ Parameters:
         strict: true
     });
 
+    // Show usage instructions if --help flag is present
     if (args.values.help) {
         console.log(usage);
-        process.exit(0);
+        process.exit(0);  // Exit successfully
     }
 
+    // Verify required parameters are provided
     if (!args.values.inputFile || !args.values.command) {
         console.error("Error: Missing required parameters");
         console.log(usage);
-        process.exit(1);
+        process.exit(1);  // Exit with error
     }
 
     if (!VALID_COMMANDS.includes(args.values.command)) {
@@ -116,7 +127,7 @@ Parameters:
         process.exit(1);
     }
 
-    return args.values;
+    return args.values;  // Return validated arguments
 }
 
 /**
@@ -131,16 +142,23 @@ Parameters:
  * @throws {Error} If file cannot be read or has invalid format
  */
 async function readInputFile(inputFile, command) {
+    /** Create a readable stream from the input file for efficient memory usage */
     const fileStream = createReadStream(inputFile);
+    /** Array to store all records read from the file */
     const records = [];
     
     if (command === 'restore_request_status') {
-        // Read CSV file with requestId and statusRequest columns
+        /** 
+         * For restore operations, read CSV file with two columns:
+         * - requestId: identifier of the request
+         * - statusRequest: status to restore
+         */
         const parser = parse({ 
-            columns: true,
-            skip_empty_lines: true
+            columns: true,  // Use first row as column names
+            skip_empty_lines: true  // Skip empty lines in CSV
         });
         
+        // Process each row in the CSV file
         for await (const record of fileStream.pipe(parser)) {
             if (record.requestId && record.statusRequest) {
                 records.push({
@@ -150,20 +168,24 @@ async function readInputFile(inputFile, command) {
             }
         }
     } else {
-        // Read TXT file with requestIds only
+        /** 
+         * For save/set operations, read simple text file with one requestId per line
+         * Using readline interface for line-by-line processing
+         */
         const rl = createInterface({
             input: fileStream,
-            crlfDelay: Infinity
+            crlfDelay: Infinity  // Handle both \n and \r\n line endings
         });
 
+        // Process each line in the text file
         for await (const line of rl) {
-            if (line.trim()) {
+            if (line.trim()) {  // Skip empty lines
                 records.push({ requestId: line.trim() });
             }
         }
     }
 
-    return records;
+    return records;  // Return all processed records
 }
 
 /**
@@ -181,32 +203,40 @@ async function readInputFile(inputFile, command) {
  */
 async function processRequestId(requestId, awsClient, command, newStatus, existingStatus) {
     try {
+        /** Query DynamoDB to get current request details */
         const result = await awsClient._queryRequest('pn-EcRichiesteMetadati', 'requestId', requestId);
         
+        /** Check if request exists in database */
         if (!result.Items || result.Items.length === 0) {
             console.warn(`No items found for requestId: ${requestId}`);
             return null;
         }
 
+        /** Get the first (and should be only) item from results */
         const item = result.Items[0];
 
         if (command === 'save_request_status') {
+            /** For save operation, just return current status */
             return {
                 requestId: requestId,
-                statusRequest: item.statusRequest?.S || ''
+                statusRequest: item.statusRequest?.S || ''  // Get status or empty string if null
             };
         } else {
+            /** For set/restore operations, update the status in DynamoDB */
             const statusToSet = command === 'restore_request_status' ? existingStatus : newStatus;
-            const now = new Date().toISOString();
+            const now = new Date().toISOString();  // Current timestamp for update
+
+            /** Update item in DynamoDB with new status */
             await awsClient._updateItem(
                 'pn-EcRichiesteMetadati',
-                { requestId: { value: requestId } },
+                { requestId: { value: requestId } },  // Key to identify item
                 {
                     statusRequest: { value: statusToSet },
                     lastUpdateTimestamp: { value: now }
                 },
-                'set'
+                'set'  // Operation type
             );
+
             console.log(`Updated status for ${requestId} to ${statusToSet}`);
             return {
                 requestId: requestId,
@@ -215,7 +245,7 @@ async function processRequestId(requestId, awsClient, command, newStatus, existi
         }
     } catch (error) {
         console.error(`Error processing ${requestId}:`, error);
-        return null;
+        return null;  // Return null on error
     }
 }
 
@@ -231,23 +261,30 @@ async function processRequestId(requestId, awsClient, command, newStatus, existi
  * @throws {Error} If file reading or request processing fails
  */
 async function processInputFile(inputFile, awsClient, command, newStatus) {
+    /** Array to store results of all processed requests */
     const results = [];
+
+    /** Read and parse the input file */
     const records = await readInputFile(inputFile, command);
 
+    /** Process each record from the input file */
     for (const record of records) {
+        /** Process single request and get result */
         const result = await processRequestId(
             record.requestId, 
             awsClient, 
             command, 
-            newStatus, 
-            record.statusRequest
+            newStatus,           // New status for set operations
+            record.statusRequest // Existing status for restore operations
         );
+
+        /** Add successful results to output array */
         if (result) {
             results.push(result);
         }
     }
 
-    return results;
+    return results;  // Return all processed results
 }
 
 /**
@@ -260,16 +297,26 @@ async function processInputFile(inputFile, awsClient, command, newStatus) {
  * @throws {Error} If directory creation or file writing fails
  */
 async function saveResults(results) {
+    /** Create results directory if it doesn't exist */
     if (!existsSync('results')) {
         mkdirSync('results');
     }
 
+    /** Create a write stream for the output CSV file */
     const writeable = createWriteStream('results/saved.csv');
+
+    /** Configure CSV stringifier with headers */
     const stringifier = stringify({ 
-        header: true, 
-        columns: ['requestId', 'statusRequest']
+        header: true,  // Include header row
+        columns: ['requestId', 'statusRequest']  // Column names
     });
     
+    /** 
+     * Pipeline to write results:
+     * 1. Transform results array to stream
+     * 2. Convert to CSV format
+     * 3. Write to file
+     */
     await pipeline(
         Transform.from(results),
         stringifier,
@@ -292,24 +339,30 @@ async function saveResults(results) {
  * @throws {Error} If any operation in the process fails
  */
 async function main() {
-    // Parse and validate command line arguments
+    /** Get and validate command line arguments */
     const args = validateArgs();
     const { inputFile, command, envName, status } = args;
 
-    // Initialize AWS client with optional environment
+    /** 
+     * Initialize AWS client
+     * If envName is provided, configure for specific environment
+     * Otherwise use default configuration
+     */
     const awsClient = envName 
         ? new AwsClientsWrapper('confinfo', envName)
         : new AwsClientsWrapper();
     
+    /** Initialize DynamoDB client */
     awsClient._initDynamoDB();
 
     try {
-        // Process requests and save results
+        /** Process all requests from input file */
         const results = await processInputFile(inputFile, awsClient, command, status);
+        /** Save results to CSV file */
         await saveResults(results);
     } catch (error) {
         console.error('Error during execution:', error);
-        process.exit(1);
+        process.exit(1);  // Exit with error
     }
 }
 
