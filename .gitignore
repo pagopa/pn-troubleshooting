@@ -71,6 +71,7 @@ legal_conservation_error_extractor/result
 
 ### Miscellaneous ###
 *.csv
+*.txt
 
 ### Automation Scripts ###
 automation_scripts/*
