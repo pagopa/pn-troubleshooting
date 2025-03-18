@@ -5,26 +5,29 @@ import { stringify } from 'csv-stringify/sync';
 import { writeFile } from 'fs/promises';
 import { AwsClientsWrapper } from 'pn-common';
 
-const VALID_COMMANDS = ['save_request_status'];
+const VALID_COMMANDS = ['save_request_status', 'set_request_status', 'restore_request_status'];
 const RESULTS_DIR = './results';
 
 function validateArgs() {
     const usage = `
-Usage: node index.js <command> --inputFile|-i <path> [--envName|-e <environment>]
+Usage: node index.js <command> --inputFile|-i <path> [--envName|-e <environment>] [--status|-s <status>]
 
 Commands:
-    save_request_status    Query DynamoDB and save request status to CSV
+    save_request_status     Query DynamoDB and save request status to CSV
+    set_request_status      Update request status and timestamp in DynamoDB
+    restore_request_status  Restore request status from CSV backup
 
 Parameters:
-    --inputFile, -i     Required. Path to the input TXT file
+    --inputFile, -i     Required. Path to the input file (TXT for save/set, CSV for restore)
     --envName, -e       Optional. Target AWS environment
-    --help, -h         Display this help message
-    `;
+    --status, -s        Required for set_request_status. New status to set
+    --help, -h         Display this help message`;
 
     const args = parseArgs({
         options: {
             inputFile: { type: "string", short: "i" },
             envName: { type: "string", short: "e" },
+            status: { type: "string", short: "s" },
             help: { type: "boolean", short: "h" }
         },
         allowPositionals: true,
@@ -48,10 +51,17 @@ Parameters:
         process.exit(1);
     }
 
+    if (command === 'set_request_status' && !args.values.status) {
+        console.error("Error: --status parameter is required for set_request_status command");
+        console.log(usage);
+        process.exit(1);
+    }
+
     return {
         command,
         inputFile: args.values.inputFile,
-        envName: args.values.envName
+        envName: args.values.envName,
+        status: args.values.status
     };
 }
 
@@ -90,6 +100,112 @@ async function saveRequestStatus(inputFile, awsClient) {
     console.log(`\nResults saved to ${RESULTS_DIR}/saved.csv`);
 }
 
+async function setRequestStatus(inputFile, awsClient, newStatus) {
+    console.log('Reading request IDs from file...');
+    const requestIds = readFileSync(inputFile, 'utf-8')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+    console.log(`Processing ${requestIds.length} request IDs...`);
+    
+    const stats = {
+        total: requestIds.length,
+        updated: 0,
+        failed: 0
+    };
+
+    for (const requestId of requestIds) {
+        try {
+            const timestamp = new Date().toISOString();
+            await awsClient._updateItem(
+                'pn-EcRichiesteMetadati',
+                { requestId },
+                {
+                    lastUpdateTimestamp: {
+                        codeAttr: '#lut',
+                        codeValue: ':lut',
+                        value: timestamp
+                    },
+                    statusRequest: {
+                        codeAttr: '#sr',
+                        codeValue: ':sr',
+                        value: newStatus
+                    }
+                },
+                'SET'
+            );
+
+            console.log(`Updated ${requestId} with status ${newStatus}`);
+            stats.updated++;
+        } catch (error) {
+            console.error(`Error updating ${requestId}:`, error);
+            stats.failed++;
+        }
+    }
+
+    console.log('\n=== Update Summary ===');
+    console.log(`Total items processed: ${stats.total}`);
+    console.log(`Items updated: ${stats.updated}`);
+    console.log(`Failed updates: ${stats.failed}`);
+}
+
+async function restoreRequestStatus(inputFile, awsClient) {
+    console.log('Reading backup data from CSV...');
+    const fileContent = readFileSync(inputFile, 'utf-8');
+    const records = parse(fileContent, {
+        columns: true,
+        skip_empty_lines: true
+    });
+
+    if (!records[0]?.requestId || !records[0]?.statusRequest) {
+        console.error('Error: CSV must have "requestId" and "statusRequest" columns');
+        process.exit(1);
+    }
+
+    console.log(`Processing ${records.length} records...`);
+    
+    const stats = {
+        total: records.length,
+        updated: 0,
+        failed: 0
+    };
+
+    for (const record of records) {
+        try {
+            const timestamp = new Date().toISOString();
+            await awsClient._updateItem(
+                'pn-EcRichiesteMetadati',
+                { requestId: record.requestId },
+                {
+                    lastUpdateTimestamp: {
+                        codeAttr: '#lut',
+                        codeValue: ':lut',
+                        value: timestamp
+                    },
+                    statusRequest: {
+                        codeAttr: '#sr',
+                        codeValue: ':sr',
+                        value: record.statusRequest
+                    }
+                },
+                'SET'
+            );
+
+            console.log(`Updated ${record.requestId} with status ${record.statusRequest}`);
+            stats.updated++;
+        } catch (error) {
+            console.error(`Error updating ${record.requestId}:`, error);
+            stats.failed++;
+        }
+    }
+
+    console.log('\n=== Update Summary ===');
+    console.log(`Total items processed: ${stats.total}`);
+    console.log(`Items updated: ${stats.updated}`);
+    console.log(`Failed updates: ${stats.failed}`);
+}
+
 async function main() {
     const args = validateArgs();
     
@@ -104,6 +220,12 @@ async function main() {
     switch (args.command) {
         case 'save_request_status':
             await saveRequestStatus(args.inputFile, awsClient);
+            break;
+        case 'set_request_status':
+            await setRequestStatus(args.inputFile, awsClient, args.status);
+            break;
+        case 'restore_request_status':
+            await restoreRequestStatus(args.inputFile, awsClient);
             break;
         default:
             console.error('Invalid command');
