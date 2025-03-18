@@ -4,6 +4,7 @@ import { dirname } from 'path';
 import { stringify } from 'csv-stringify/sync';
 import { writeFile } from 'fs/promises';
 import { AwsClientsWrapper } from 'pn-common';
+import { parse } from 'csv-parse/sync';
 
 const VALID_COMMANDS = ['save_request_status', 'set_request_status', 'restore_request_status'];
 const RESULTS_DIR = './results';
@@ -158,7 +159,7 @@ async function restoreRequestStatus(inputFile, awsClient) {
         skip_empty_lines: true
     });
 
-    if (!records[0]?.requestId || !records[0]?.statusRequest) {
+    if (!records.length || !('requestId' in records[0]) || !('statusRequest' in records[0])) {
         console.error('Error: CSV must have "requestId" and "statusRequest" columns');
         process.exit(1);
     }
