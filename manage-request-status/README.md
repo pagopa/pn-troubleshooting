@@ -62,13 +62,13 @@ node index.js -i input.csv -c restore_request_status [-e environment]
 
 ```bash
 # Salva lo stato corrente
-node index.js -i richieste.txt -c save_request_status -e dev
+node index.js -i requestIds.txt -c save_request_status -e dev
 
 # Imposta lo stato su ACCEPTED
-node index.js -i richieste.txt -c set_request_status -s ACCEPTED -e dev
+node index.js -i requestIds.txt -c set_request_status -s ACCEPTED -e dev
 
 # Ripristina lo stato dal CSV
-node index.js -i salvato.csv -c restore_request_status -e dev
+node index.js -i saved.csv -c restore_request_status -e dev
 ```
 
 ## Output

@@ -1,3 +1,18 @@
+/**
+ * @fileoverview A Node.js tool for managing request statuses in Amazon DynamoDB database
+ * This script can:
+ * 1. Save current request statuses to a CSV file
+ * 2. Update request statuses in the database
+ * 3. Restore request statuses from a previously saved CSV file
+ * 
+ * @requires util.parseArgs - Node.js utility for parsing command line arguments
+ * @requires fs - Node.js file system module for reading/writing files
+ * @requires readline - Node.js module for reading files line by line
+ * @requires pn-common.AwsClientsWrapper - Custom AWS SDK wrapper
+ * @requires stream/promises - Node.js streams with Promise support
+ * @requires csv-stringify - NPM package for creating CSV files
+ */
+
 import { parseArgs } from 'util';
 import { createReadStream, createWriteStream, mkdirSync, existsSync } from 'fs';
 import { createInterface } from 'readline';
@@ -6,9 +21,40 @@ import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
 import { stringify } from 'csv-stringify';
 
+/**
+ * List of valid environment names where this script can run
+ * These environments represent different deployment stages of the application
+ * @constant {string[]}
+ */
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
+
+/**
+ * List of available commands that this script can execute
+ * - save_request_status: Reads current status and saves to CSV
+ * - set_request_status: Updates status in database
+ * - restore_request_status: Restores status from CSV file
+ * @constant {string[]}
+ */
 const VALID_COMMANDS = ['save_request_status', 'set_request_status', 'restore_request_status'];
 
+/**
+ * Validates and processes command line arguments passed to the script
+ * This function ensures all required parameters are present and valid
+ * 
+ * @example
+ * // Save current status to CSV
+ * node index.js -i requests.txt -c save_request_status -e dev
+ * 
+ * // Update status to ACCEPTED
+ * node index.js -i requests.txt -c set_request_status -s ACCEPTED -e dev
+ * 
+ * @returns {Object} An object containing validated arguments
+ * @property {string} inputFile - Path to the input file (TXT or CSV)
+ * @property {string} command - The command to execute
+ * @property {string} [envName] - Target environment (optional)
+ * @property {string} [status] - New status value (required for set_request_status)
+ * @throws {Error} Exits process with status 1 if validation fails
+ */
 function validateArgs() {
     const usage = `
 Usage: node index.js --inputFile|-i <path> --command|-c <command> [--envName|-e <environment>] [--status|-s <status>]
@@ -74,10 +120,15 @@ Parameters:
 }
 
 /**
- * Reads and processes records from input file based on command type
- * @param {string} inputFile - Path to the input file
- * @param {string} command - Command to execute
- * @returns {Promise<Array<{requestId: string, statusRequest?: string}>>}
+ * Reads input file and processes its contents based on the command type
+ * For TXT files (save/set commands): reads requestIds line by line
+ * For CSV files (restore command): reads requestId and statusRequest columns
+ * 
+ * @param {string} inputFile - Path to the input file to read
+ * @param {string} command - Command that determines how to process the file
+ * @returns {Promise<Array<{requestId: string, statusRequest?: string}>>} 
+ *          Array of objects containing request IDs and optionally their status
+ * @throws {Error} If file cannot be read or has invalid format
  */
 async function readInputFile(inputFile, command) {
     const fileStream = createReadStream(inputFile);
@@ -116,13 +167,17 @@ async function readInputFile(inputFile, command) {
 }
 
 /**
- * Processes a single request ID in DynamoDB
- * @param {string} requestId - Request ID to process
- * @param {AwsClientsWrapper} awsClient - AWS client instance
- * @param {string} command - Command to execute
- * @param {string} newStatus - New status to set (for set_request_status)
- * @param {string} existingStatus - Existing status (for restore_request_status)
- * @returns {Promise<{requestId: string, statusRequest: string} | null>}
+ * Processes a single request in the DynamoDB database
+ * Can either read the current status or update it based on the command
+ * 
+ * @param {string} requestId - Unique identifier of the request to process
+ * @param {AwsClientsWrapper} awsClient - AWS SDK wrapper instance for DynamoDB operations
+ * @param {string} command - Command determining the operation to perform
+ * @param {string} [newStatus] - New status to set (for set_request_status)
+ * @param {string} [existingStatus] - Status from CSV file (for restore_request_status)
+ * @returns {Promise<{requestId: string, statusRequest: string} | null>} 
+ *          Object with request details or null if processing failed
+ * @throws {Error} If DynamoDB operations fail
  */
 async function processRequestId(requestId, awsClient, command, newStatus, existingStatus) {
     try {
@@ -165,12 +220,15 @@ async function processRequestId(requestId, awsClient, command, newStatus, existi
 }
 
 /**
- * Process all request IDs from the input file
- * @param {string} inputFile - Path to the input file
- * @param {AwsClientsWrapper} awsClient - AWS client instance
- * @param {string} command - Command to execute
- * @param {string} newStatus - New status to set (for set_request_status)
- * @returns {Promise<Array<{requestId: string, statusRequest: string}>>}
+ * Processes multiple requests from the input file
+ * Reads the input file and processes each request in sequence
+ * 
+ * @param {string} inputFile - Path to file containing request IDs
+ * @param {AwsClientsWrapper} awsClient - AWS SDK wrapper instance
+ * @param {string} command - Command to execute for each request
+ * @param {string} [newStatus] - New status value for set_request_status
+ * @returns {Promise<Array>} Array of processed request results
+ * @throws {Error} If file reading or request processing fails
  */
 async function processInputFile(inputFile, awsClient, command, newStatus) {
     const results = [];
@@ -193,9 +251,13 @@ async function processInputFile(inputFile, awsClient, command, newStatus) {
 }
 
 /**
- * Saves results to a CSV file in the results directory
- * @param {Array<{requestId: string, statusRequest: string}>} results - Results to save
+ * Saves processing results to a CSV file
+ * Creates a 'results' directory if it doesn't exist
+ * Generates a CSV file with requestId and statusRequest columns
+ * 
+ * @param {Array<{requestId: string, statusRequest: string}>} results - Array of processed requests
  * @returns {Promise<void>}
+ * @throws {Error} If directory creation or file writing fails
  */
 async function saveResults(results) {
     if (!existsSync('results')) {
@@ -218,8 +280,16 @@ async function saveResults(results) {
 }
 
 /**
- * Main function that orchestrates the request status management process
+ * Main function that coordinates the entire process
+ * 1. Validates command line arguments
+ * 2. Initializes AWS client
+ * 3. Processes requests
+ * 4. Saves results
+ * 
+ * This is the entry point of the script that ties all operations together
+ * 
  * @returns {Promise<void>}
+ * @throws {Error} If any operation in the process fails
  */
 async function main() {
     // Parse and validate command line arguments
@@ -243,7 +313,7 @@ async function main() {
     }
 }
 
-// Start execution
+// Start execution with error handling
 main().catch(error => {
     console.error('Fatal error during execution:', error);
     process.exit(1);
