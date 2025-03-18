@@ -4,10 +4,11 @@ const { QueryCommand, DynamoDBDocumentClient } = require("@aws-sdk/lib-dynamodb"
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const { parseArgs } = require('util');
 const fs = require('fs');
+const { utils } = require('pn-common');
 
-const args = ["awsCoreProfile", "awsConfinfoProfile", "file"]
+const args = ["awsCoreProfile", "awsConfinfoProfile", "file","wait"]
 const values = {
-  values: { awsCoreProfile, awsConfinfoProfile, file },
+  values: { awsCoreProfile, awsConfinfoProfile, file, wait},
 } = parseArgs({
   options: {
     awsCoreProfile: {
@@ -18,6 +19,9 @@ const values = {
     },
     file: {
       type: "string",
+    },
+    wait: {
+      type: "string",
     }
   },
 });
@@ -25,7 +29,7 @@ const values = {
 args.forEach(k => {
     if(!values.values[k]) {
       console.log("Parameter '" + k + "' is not defined")
-      console.log("Usage: node redrive_paper_events.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --file <file>")
+      console.log("Usage: node redrive_paper_events.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --file <file> --wait <ms>")
       process.exit(1)
     }
   });
@@ -278,6 +282,7 @@ async function run(){
         } else {
             console.log('skipped redrive of line '+i+' with delay '+delaySeconds+' seconds')
         }
+        if(wait) await utils.sleep(wait)
         //if(i%20==0){
         //    delaySeconds++
         //}
