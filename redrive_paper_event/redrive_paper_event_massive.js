@@ -279,10 +279,10 @@ async function run(){
         const ret = await redriveMessageToSqs(getUrlRes.QueueUrl, lines[i], delaySeconds)
         if(ret){
             console.log('redrive of line '+i+' with delay '+delaySeconds+' seconds')
+            if(wait) await utils.sleep(wait)
         } else {
             console.log('skipped redrive of line '+i+' with delay '+delaySeconds+' seconds')
         }
-        if(wait) await utils.sleep(wait)
         //if(i%20==0){
         //    delaySeconds++
         //}
