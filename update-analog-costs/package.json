@@ -1,0 +1,21 @@
+{
+  "name": "update-analog-costs",
+  "version": "1.0.0",
+  "description": "Script to update analog notification costs",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "PagoPA",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-ssm": "^3.x",
+    "axios": "^1.6.7",
+    "csv-parse": "^5.5.3",
+    "pn-common": "file:../pn-common/"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
