@@ -253,6 +253,18 @@ class AwsClientsWrapper {
     return await this._dynamoClient.send(command)
   }
   
+  async _dynamicQueryRequestByIndex(tableName, indexName, keys, logicalOperator ,lastEvaluatedKey) {
+    const input = { // QueryInput
+      TableName: tableName, // required
+      IndexName: indexName,
+      ExpressionAttributeNames: prepareExpressionAttributeNames(keys),
+      ExpressionAttributeValues: prepareExpressionAttributeValues(keys),
+      KeyConditionExpression: prepareKeyConditionExpression(keys, logicalOperator),
+    };
+    lastEvaluatedKey ? input['ExclusiveStartKey'] = lastEvaluatedKey : null
+    const command = new QueryCommand(input);
+    return await this._dynamoClient.send(command);
+  }
   /* --- _updateItem Info ---
 
   - Per le funzioni 'prepareExpression*' vedi DinaymoUtils.js.
