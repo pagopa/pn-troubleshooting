@@ -1,4 +1,3 @@
-
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
 const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
 const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, GetLogEventsCommand } = require("@aws-sdk/client-cloudwatch-logs");
@@ -12,6 +11,7 @@ const { S3Client, GetObjectCommand, PutObjectCommand } = require("@aws-sdk/clien
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, SendMessageBatchCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQueryResultsCommand: AthenaGetQueryResultsCommand } = require("@aws-sdk/client-athena");
+const { SSMClient, StartSessionCommand, TerminateSessionCommand } = require("@aws-sdk/client-ssm");
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
@@ -95,6 +95,10 @@ class AwsClientsWrapper {
 
   _initAthena() {
     this._athenaClient = this.ssoProfile ? new AthenaClient(awsClientCfg(this.ssoProfile)) : new AthenaClient();
+  }
+
+  _initSSM() {
+    this._ssmClient = this.ssoProfile ? new SSMClient(awsClientCfg(this.ssoProfile)) : new SSMClient();
   }
 
   _checkAwsSsoLogin(self) {
@@ -655,6 +659,30 @@ class AwsClientsWrapper {
       rule.Name.toLowerCase().includes(searchString.toLowerCase()) ||
       (rule.Description && rule.Description.toLowerCase().includes(searchString.toLowerCase()))
     );
+  }
+
+  // SSM
+  async _startSSMPortForwardingSession(target, host, portNumber, localPortNumber) {
+    const input = {
+      DocumentName: 'AWS-StartPortForwardingSessionToRemoteHost',
+      Parameters: {
+        'host': [host],
+        'portNumber': [portNumber.toString()],
+        'localPortNumber': [localPortNumber.toString()]
+      },
+      Target: target
+    };
+    const command = new StartSessionCommand(input);
+    const response = await this._ssmClient.send(command);
+    return response.SessionId;
+  }
+
+  async _terminateSSMSession(sessionId) {
+    const input = {
+      SessionId: sessionId
+    };
+    const command = new TerminateSessionCommand(input);
+    return await this._ssmClient.send(command);
   }
 }
 
