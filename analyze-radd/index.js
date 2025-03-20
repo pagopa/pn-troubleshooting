@@ -11,12 +11,8 @@ function appendJsonToFile(fileName, data){
   fs.appendFileSync(`results/${fileName}`, data + "\n")
 }
 
-function diffDayFromToday(datems) {
-  return Math.ceil(Math.abs(new Date().getTime() - datems) / (1000 * 60 * 60 * 24)) - 1 //removing today
-}
-
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> [--expires <expires>]"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -105,7 +101,8 @@ async function main() {
         statusRequest = false 
       }
       else {
-        await sleep(3000)
+        console.log(`CxId ${cxId}. Waiting 5 sec...`)
+        await sleep(5000)
       }
     }
     let lastEvaluatedKey;
@@ -116,11 +113,6 @@ async function main() {
       lastEvaluatedKey = result.LastEvaluatedKey
       if(result.Items.length > 0) {
         imports = imports.concat(result.Items)
-        /*result.Items.forEach(element => { TO REMOVE
-          if(element.requestId.S === requestId){
-            imports.push(unmarshall(element))
-          }
-        });*/
       }
     }
     for(let i = 0; i < imports.length; i++){
@@ -135,6 +127,7 @@ async function main() {
           break;
         case 'DELETED':
           resultsOf.DELETED++
+          appendJsonToFile(`REJECTED.json`, JSON.stringify(element))
           break;
         default:
           break;
@@ -149,9 +142,8 @@ async function main() {
       lastEvaluatedKey = result.LastEvaluatedKey
     }
     //let res; TO REMOVE
-    console.log(result.Items.length)
+    console.log(`Found for cxId ${cxId} in RaddRegistry ${result.Items.length} elements`)
     if((parseInt(resultsOf.ACCEPTED) + parseInt(resultsOf.DELETED)) == result.Items.length) {
-      //res = result.Items.find(element => element.requestId.S === requestId); TO REMOVE 
       console.log(`OK - ${JSON.stringify(resultsOf)}`)
     }
     else {
