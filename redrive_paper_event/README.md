@@ -52,10 +52,11 @@ done
 
 ### Esecuzione lista massiva requestId
 ```bash
-node redrive_paper_events_massive.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --file <file-path>
+node redrive_paper_events_massive.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --file <file-path> --wait <ms>
 
 ```
 Dove:
 - `<aws-profile-core>` è il profilo dell'account AWS core;
 - `<aws-profile-confinfo>` è il profilo dell'account AWS confinfo;
-- `<file-path>` è il path di un file csv con la lista dei requestId da processare (una sola colonna).
+- `<file-path>` è il path di un file csv con la lista dei requestId da processare (una sola colonna);
+- `<ms>` sono i ms di pausa che intercorrono tra i redrive dei messaggi.
