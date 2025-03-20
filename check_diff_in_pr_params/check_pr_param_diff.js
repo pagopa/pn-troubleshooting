@@ -2,8 +2,7 @@ const fs = require('fs');
 
 // ------------------------------------------------
 
-const workdir = "/path/to"
-const prPath = workdir + "/pn-configuration/test/_conf/core/system_params"
+const prPath = "../../pn-configuration/test/_conf/core/system_params"
 
 const filePrefix = [
     "radd-experimentation-zip-1##A##",

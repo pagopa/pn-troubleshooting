@@ -43,13 +43,10 @@ git checkout -b <branch PR> origin/<branch PR>
 git checkout <commit ID>
 
 # 2. Recupero dei valori nei parameter store
-cd /path/to/script/
+cd /path/to/pn-troubleshooting/check_diff_in_pr_params
 ./retrieve_remote_parameters.sh <aws-profile>
 
-# 3. Impostare all'interno dello script "./check_pr_param_diff.js" il valore di "workdir", 
-#    cioè il path della cartella contenente "pn-configuration"
-
-# 4. Confronto dei valori presenti nei parameter store con quelli delle PR
+# 3. Confronto dei valori presenti nei parameter store con quelli delle PR
 ./check_pr_param_diff.js
 
 ```

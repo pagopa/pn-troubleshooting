@@ -29,7 +29,7 @@ function _retrieve_ssm_parameter {
 			--output json \
 			--profile $AWS_PROFILE | jq '.Parameters[].Value | fromjson ' >> "${NAME}##A##.json"
 	done
-	echo -e "-> Done.\n"
+	echo -e " -> Done.\n"
 }
 
 # -------------------------------------------
