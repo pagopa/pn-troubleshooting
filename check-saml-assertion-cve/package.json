@@ -1,7 +1,7 @@
 {
-  "name": "decrypt-saml-request",
+  "name": "check-saml-assertion-cve",
   "version": "1.0.0",
-  "description": "`./decrypt.sh <aws-profile> <env> <saml-request-path>`",
+  "description": "`node index.js`",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
