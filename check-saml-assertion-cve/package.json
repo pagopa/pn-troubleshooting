@@ -1,0 +1,15 @@
+{
+  "name": "decrypt-saml-request",
+  "version": "1.0.0",
+  "description": "`./decrypt.sh <aws-profile> <env> <saml-request-path>`",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "xmldom": "^0.6.0",
+    "xpath": "^0.0.34"
+  }
+}
