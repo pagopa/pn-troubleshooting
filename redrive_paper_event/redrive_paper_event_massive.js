@@ -4,32 +4,25 @@ const { QueryCommand, DynamoDBDocumentClient } = require("@aws-sdk/lib-dynamodb"
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const { parseArgs } = require('util');
 const fs = require('fs');
-const { utils } = require('pn-common');
 
-const args = ["awsCoreProfile", "awsConfinfoProfile", "file","wait"]
+const args = ["awsCoreProfile", "file"]
 const values = {
-  values: { awsCoreProfile, awsConfinfoProfile, file, wait},
+  values: { awsCoreProfile, file},
 } = parseArgs({
   options: {
     awsCoreProfile: {
       type: "string",
     },
-    awsConfinfoProfile: {
-      type: "string",
-    },
     file: {
       type: "string",
     },
-    wait: {
-      type: "string",
-    }
   },
 });
 
 args.forEach(k => {
     if(!values.values[k]) {
       console.log("Parameter '" + k + "' is not defined")
-      console.log("Usage: node redrive_paper_events.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --file <file> --wait <ms>")
+      console.log("Usage: node redrive_paper_events.js --awsCoreProfile <aws-profile-core> --file <file>")
       process.exit(1)
     }
   });
@@ -37,14 +30,6 @@ args.forEach(k => {
 const tableAccountMapping = {
     'pn-Timelines': {
         account: 'core',
-        service: 'dynamoDB'
-    },
-    'pn-EcRichieste': {
-        account: 'confinfo',
-        service: 'dynamoDB'
-    },
-    'pn-EcRichiesteMetadati': {
-        account: 'confinfo',
         service: 'dynamoDB'
     },
     'pn-PaperRequestError': {
@@ -58,7 +43,6 @@ const tableAccountMapping = {
 }
 
 console.log("Using AWS Core profile: "+ awsCoreProfile)
-console.log("Using AWS Confinfo profile: "+ awsConfinfoProfile)
 
 //LOGIN PHASE
 const coreCredentials = fromSSO({ profile: awsCoreProfile })();
@@ -67,20 +51,10 @@ const coreClient = new DynamoDBClient({
     region: 'eu-south-1'
 });
 
-const confinfoCredentials = fromSSO({ profile: awsConfinfoProfile })();
-const confinfoClient = new DynamoDBClient({
-    credentials: confinfoCredentials,
-    region: 'eu-south-1'
-});
 //DynamoDB Client
 const coreDynamoClient = DynamoDBDocumentClient.from(coreClient);
-const confinfoDynamoClient = DynamoDBDocumentClient.from(confinfoClient);
 const coreSqsClient = new SQSClient({
     credentials: coreCredentials,
-    region: 'eu-south-1'
-});
-const confinfoSqsClient = new SQSClient({
-    credentials: confinfoCredentials,
     region: 'eu-south-1'
 });
 
@@ -128,14 +102,8 @@ function getClientByService(key){
         else if (tableAccountMapping[key].service === "SQS") {
             return coreSqsClient
         }
-    } 
-    if(account==='confinfo'){
-        if (tableAccountMapping[key].service === "dynamoDB") {
-            return confinfoDynamoClient
-        }
-        else if (tableAccountMapping[key].service === "SQS") {
-            return confinfoSqsClient
-        }
+    }  else {
+        throw new Error("Account not mapped " + account)
     }
 }
 
@@ -173,6 +141,7 @@ function getRequestIdWithoutPcRetry(requestId){
 
 async function redriveMessageToSqs(queueUrl, requestId, delaySeconds){
 
+    const originalRequestId = requestId
     const expectedPcRetry = getExpectedPcRetry(requestId)
     if(expectedPcRetry){
         requestId = getRequestIdWithoutPcRetry(requestId)
@@ -192,18 +161,7 @@ async function redriveMessageToSqs(queueUrl, requestId, delaySeconds){
         return false
     }
 
-    const value = await createSqsMessage(requestId)
-    if(value.Body.newPcRetry!=expectedPcRetry){
-        // append to file
-        const errorFile = 'error.json'
-        appendJSONToFile(errorFile, {
-            requestId: requestId,
-            status: "ERROR",
-            expectedPcRetry: expectedPcRetry,
-            newPcRetry: value.Body.newPcRetry
-        })
-        return false
-    }
+    const value = await createSqsMessage(originalRequestId, expectedPcRetry)
 
     await sendSQSMessage(queueUrl, value, delaySeconds)
     const okFile = 'ok.json'
@@ -214,30 +172,15 @@ async function redriveMessageToSqs(queueUrl, requestId, delaySeconds){
     return true
 }
 
-async function createSqsMessage(requestId){
-    let i = 0;
-    let temp = "pn-cons-000~" + requestId + ".PCRETRY_"
-    var items;
-    let hasNext = true;
-    while(hasNext){
-        items = await queryItemFromTable("pn-EcRichiesteMetadati", {
-            requestId: temp + i
-        })
+async function createSqsMessage(requestId, nextPcRetry){
+    let fullRequestId = "pn-cons-000~" + requestId
 
-        if(items.length == 1){
-            i = i + 1
-        }
-        else {
-            hasNext = false
-        }
-            
-    }
     const date = Date.now()
     const expiredTime = new Date(date + (1000*10)).toISOString();
     sqsMex = {
         Body: {
-            "requestId": requestId,
-            "newPcRetry": i+"" // string required
+            "requestId": fullRequestId,
+            "newPcRetry": nextPcRetry+"" // string required
         },
         MessageAttributes : {
             attempt: {
@@ -279,7 +222,9 @@ async function run(){
         const ret = await redriveMessageToSqs(getUrlRes.QueueUrl, lines[i], delaySeconds)
         if(ret){
             console.log('redrive of line '+i+' with delay '+delaySeconds+' seconds')
-            if(wait) await utils.sleep(wait)
+            //if(wait) await utils.sleep(wait)
+            // sleep
+            await new Promise(resolve => setTimeout(resolve, 5000));
         } else {
             console.log('skipped redrive of line '+i+' with delay '+delaySeconds+' seconds')
         }
