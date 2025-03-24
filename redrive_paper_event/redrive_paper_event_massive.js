@@ -38,8 +38,6 @@ const tableAccountMapping = {
     },
 }
 
-console.log("Using AWS Core profile: "+ awsCoreProfile)
-
 //LOGIN PHASE
 const coreClient = new DynamoDBClient({
     region: 'eu-south-1'
