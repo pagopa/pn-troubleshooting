@@ -1,18 +1,14 @@
 const { SQSClient, SendMessageCommand, GetQueueUrlCommand } = require("@aws-sdk/client-sqs");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { QueryCommand, DynamoDBDocumentClient } = require("@aws-sdk/lib-dynamodb");
-const { fromSSO } = require("@aws-sdk/credential-provider-sso");
 const { parseArgs } = require('util');
 const fs = require('fs');
 
-const args = ["awsCoreProfile", "file"]
+const args = ["file"]
 const values = {
-  values: { awsCoreProfile, file},
+  values: { file},
 } = parseArgs({
   options: {
-    awsCoreProfile: {
-      type: "string",
-    },
     file: {
       type: "string",
     },
@@ -22,7 +18,7 @@ const values = {
 args.forEach(k => {
     if(!values.values[k]) {
       console.log("Parameter '" + k + "' is not defined")
-      console.log("Usage: node redrive_paper_events.js --awsCoreProfile <aws-profile-core> --file <file>")
+      console.log("Usage: node redrive_paper_events.js --file <file>")
       process.exit(1)
     }
   });
@@ -45,16 +41,13 @@ const tableAccountMapping = {
 console.log("Using AWS Core profile: "+ awsCoreProfile)
 
 //LOGIN PHASE
-const coreCredentials = fromSSO({ profile: awsCoreProfile })();
 const coreClient = new DynamoDBClient({
-    credentials: coreCredentials,
     region: 'eu-south-1'
 });
 
 //DynamoDB Client
 const coreDynamoClient = DynamoDBDocumentClient.from(coreClient);
 const coreSqsClient = new SQSClient({
-    credentials: coreCredentials,
     region: 'eu-south-1'
 });
 
