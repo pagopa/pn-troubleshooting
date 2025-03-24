@@ -112,8 +112,18 @@ async function processNotification(notification, awsClient, queueUrl) {
 }
 
 async function handleApiRequest(notification) {
+  let notificationStepCost = 0;
+  
+  if (notification.category === 'VALIDATION') {
+    // For VALIDATION, cost is paFee + 100
+    notificationStepCost = parseFloat(notification.paFee) + 100;
+  } else if (['REQUEST_REFUSED', 'NOTIFICATION_CANCELLED'].includes(notification.category)) {
+    // For REQUEST_REFUSED and NOTIFICATION_CANCELLED, cost is 0
+    notificationStepCost = 0;
+  }
+
   const payload = {
-    notificationStepCost: notification['costo timelineElementId'],
+    notificationStepCost: notificationStepCost,
     iun: notification.IUN,
     paymentsInfoForRecipients: [{
       recIndex: notification.recipientIndex,
