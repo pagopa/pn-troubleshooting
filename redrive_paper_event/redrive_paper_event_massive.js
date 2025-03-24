@@ -164,13 +164,11 @@ async function redriveMessageToSqs(queueUrl, requestId, delaySeconds){
 }
 
 async function createSqsMessage(requestId, nextPcRetry){
-    let fullRequestId = "pn-cons-000~" + requestId
-
     const date = Date.now()
     const expiredTime = new Date(date + (1000*10)).toISOString();
     sqsMex = {
         Body: {
-            "requestId": fullRequestId,
+            "requestId": requestId,
             "newPcRetry": nextPcRetry+"" // string required
         },
         MessageAttributes : {
