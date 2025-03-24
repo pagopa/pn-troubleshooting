@@ -132,7 +132,6 @@ function getRequestIdWithoutPcRetry(requestId){
 
 async function redriveMessageToSqs(queueUrl, requestId, delaySeconds){
 
-    const originalRequestId = requestId
     const expectedPcRetry = getExpectedPcRetry(requestId)
     if(expectedPcRetry){
         requestId = getRequestIdWithoutPcRetry(requestId)
@@ -152,7 +151,7 @@ async function redriveMessageToSqs(queueUrl, requestId, delaySeconds){
         return false
     }
 
-    const value = await createSqsMessage(originalRequestId, expectedPcRetry)
+    const value = await createSqsMessage(requestId, expectedPcRetry)
 
     await sendSQSMessage(queueUrl, value, delaySeconds)
     const okFile = 'ok.json'
