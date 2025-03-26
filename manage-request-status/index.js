@@ -117,6 +117,8 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
         failed: 0
     };
 
+    const failedRequests = [];
+    
     for (const requestId of requestIds) {
         try {
             const timestamp = new Date().toISOString();
@@ -149,7 +151,13 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
         } catch (error) {
             console.error(`Error updating ${requestId}:`, error);
             stats.failed++;
+            failedRequests.push(requestId);
         }
+    }
+
+    if (failedRequests.length > 0) {
+        await writeFile(`${RESULTS_DIR}/failed.txt`, failedRequests.join('\n'));
+        console.log(`\nFailed request IDs have been saved to ${RESULTS_DIR}/failed.txt`);
     }
 
     console.log('\n=== Update Summary ===');
@@ -181,6 +189,8 @@ async function restoreRequestStatus(inputFile, awsClient) {
         updated: 0,
         failed: 0
     };
+
+    const failedRequests = [];
 
     for (const record of records) {
         try {
@@ -214,7 +224,13 @@ async function restoreRequestStatus(inputFile, awsClient) {
         } catch (error) {
             console.error(`Error updating ${record.requestId}:`, error);
             stats.failed++;
+            failedRequests.push(record.requestId);
         }
+    }
+
+    if (failedRequests.length > 0) {
+        await writeFile(`${RESULTS_DIR}/failed.txt`, failedRequests.join('\n'));
+        console.log(`\nFailed request IDs have been saved to ${RESULTS_DIR}/failed.txt`);
     }
 
     console.log('\n=== Update Summary ===');
