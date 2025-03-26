@@ -132,6 +132,12 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
                         codeAttr: '#sr',
                         codeValue: ':sr',
                         value: newStatus
+                    },
+                    version: {
+                        codeAttr: '#v',
+                        codeValue: ':v',
+                        value: 1,
+                        increment: true
                     }
                 },
                 'SET'
@@ -188,6 +194,12 @@ async function restoreRequestStatus(inputFile, awsClient) {
                         codeAttr: '#sr',
                         codeValue: ':sr',
                         value: record.statusRequest
+                    },
+                    version: {
+                        codeAttr: '#v',
+                        codeValue: ':v',
+                        value: 1,
+                        increment: true
                     }
                 },
                 'SET'
