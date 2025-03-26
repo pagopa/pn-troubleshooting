@@ -106,7 +106,8 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
     const requestIds = readFileSync(inputFile, 'utf-8')
         .split('\n')
         .map(line => line.trim())
-        .filter(line => line.length > 0);
+        .filter(line => line.length > 0)
+        .map(line => line.startsWith('pn-cons-000~') ? line : `pn-cons-000~${line}`);
 
     console.log(`Processing ${requestIds.length} request IDs...`);
     
@@ -163,7 +164,10 @@ async function restoreRequestStatus(inputFile, awsClient) {
     const records = parse(fileContent, {
         columns: true,
         skip_empty_lines: true
-    });
+    }).map(record => ({
+        ...record,
+        requestId: record.requestId.startsWith('pn-cons-000~') ? record.requestId : `pn-cons-000~${record.requestId}`
+    }));
 
     if (!records.length || !('requestId' in records[0]) || !('statusRequest' in records[0])) {
         console.error('Error: CSV must have "requestId" and "statusRequest" columns');
