@@ -95,6 +95,8 @@ function formatInput(msgsToRepublish) {
                 MessageBody: json.Body
             };
             json.MessageAttributes ? msg.MessageAttributes = json.MessageAttributes : null;
+            json.Attributes.MessageGroupId ? msg.MessageGroupId = json.Attributes.MessageGroupId : null;
+            json.Attributes.MessageDeduplicationId ? msg.MessageDeduplicationId = json.Attributes.MessageDeduplicationId : null;
             singleBlockOfMsgs.push(msg);
         });
         allBlocksOfMsgs.push(singleBlockOfMsgs);
@@ -151,7 +153,9 @@ async function main() {
                             Code: json.Code,
                             Error: json.Message,
                             Body: block.find(msgs => msgs.Id === json.Id)?.MessageBody,
-                            MessageAttributes: block.find(msgs => msgs.Id === json.Id)?.MessageAttributes
+                            MessageAttributes: block.find(msgs => msgs.Id === json.Id)?.MessageAttributes.
+                            MessageGroupId: block.find(msgs => msgs.Id === json.Id)?.MessageGroupId,
+                            MessageDeduplicationId: block.find(msgs => msgs.Id === json.Id)?.MessageDeduplicationId
                         }
                         writeInFile(folderName, 'msg_not_resubmitted_' + queueName + '.json', failure);
                     });
