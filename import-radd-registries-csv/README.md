@@ -1,24 +1,44 @@
 ## Istruzioni script di import massivo
 
-## esecuzione
+## Esecuzione
 
-1. Eseguire il tunnelling verso il bilanciatore di pn-core.
+1. Eseguire il tunnelling verso il bilanciatore di pn-core:
+
+    ```bash
+    aws sso login --profile <profilo AWS>
+
+    aws ssm start-session \
+	--target "<Target>"
+	--document-name AWS-StartPortForwardingSessionToRemoteHost \
+	--profile "<profilo AWS>" \
+	--parameters "{
+		\"portNumber\":[\"8080\"],
+		\"localPortNumber\":[\"8888\"],
+		\"host\":[\"<Host>\"]
+	}"
+    ```
+
+    Dove:
+    - **Target** è l'ID dell'istanza EC2 utilizzata come Bastion;
+    - **Host** è il DNS name del Load Balancer 'EcsA-...'.
+
+    **NB**: Non chiudere il terminale utilizzato per eseguire questi comandi fino a quando non saranno terminate le
+    operazioni di import tramite lo script registries-import.sh;
 
 2. Eseguire il comando:
 
-    ```
-    ./registries-import.sh "{CSV_PATH}" "{API_BASE_URL}" "{CX_ID}" "{UID}"
+    ```bash
+    ./registries-import.sh "{CSV_PATH}" "{API_BASE_URL}" "{CX_UID}"
     ```
    sostituendo i placeholder come segue:
 
      - CSV_PATH = percorso del file CSV da importare
      - API_BASE_URL = base url dell'API di pn-core (es. http://localhost:8888 se il tunnel è stato aperto sulla porta 8888)
-     - CX_ID = codice fiscale dell'ente RADD
-     - UID
+     - CX_UID = ID associato all'operazione in corso
 
-## verifica
+## Verifica
 
-- Recuperare da console il REQUEST_ID
+- Recuperare da console, o dal file fornito in output dallo script, il REQUEST_ID
 
     ```
     Richiesta di import massivo completata.
