@@ -71,17 +71,19 @@ async function saveRequestStatus(inputFile, awsClient) {
     const requestIds = readFileSync(inputFile, 'utf-8')
         .split('\n')
         .map(line => line.trim())
-        .filter(line => line.length > 0);
+        .filter(line => line.length > 0)
+        .map(line => line.startsWith('pn-cons-000~') ? line : `pn-cons-000~${line}`);
 
     console.log(`Processing ${requestIds.length} request IDs...`);
     
     const results = [];
     for (const requestId of requestIds) {
         try {
-            const response = await awsClient._queryRequest('pn-EcRichiesteMetadati', 'requestId', requestId);
+            const fullRequestId = requestId.startsWith('pn-cons-000~') ? requestId : `pn-cons-000~${requestId}`;
+            const response = await awsClient._queryRequest('pn-EcRichiesteMetadati', 'requestId', fullRequestId);
             const status = response.Items?.[0]?.statusRequest?.S || 'NOT_FOUND';
             results.push([requestId, status]);
-            console.log(`Processed ${requestId}: ${status}`);
+            console.log(`Processed ${fullRequestId}: ${status}`);
         } catch (error) {
             console.error(`Error processing ${requestId}:`, error);
             results.push([requestId, 'ERROR']);
@@ -121,7 +123,8 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
     
     for (const requestId of requestIds) {
         try {
-            const currentItem = await awsClient._queryRequest('pn-EcRichiesteMetadati', 'requestId', requestId);
+            const fullRequestId = requestId.startsWith('pn-cons-000~') ? requestId : `pn-cons-000~${requestId}`;
+            const currentItem = await awsClient._queryRequest('pn-EcRichiesteMetadati', 'requestId', fullRequestId);
             if (!currentItem.Items?.[0]) {
                 throw new Error('Item not found');
             }
@@ -129,7 +132,7 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
             const timestamp = new Date().toISOString();
             await awsClient._updateItem(
                 'pn-EcRichiesteMetadati',
-                { requestId },
+                { requestId: fullRequestId },
                 {
                     lastUpdateTimestamp: {
                         codeAttr: '#lut',
@@ -150,7 +153,7 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
                 'SET'
             );
 
-            console.log(`Updated ${requestId} with status ${newStatus} (version ${currentVersion + 1})`);
+            console.log(`Updated ${fullRequestId} with status ${newStatus} (version ${currentVersion + 1})`);
             stats.updated++;
         } catch (error) {
             console.error(`Error updating ${requestId}:`, error);
@@ -176,10 +179,7 @@ async function restoreRequestStatus(inputFile, awsClient) {
     const records = parse(fileContent, {
         columns: true,
         skip_empty_lines: true
-    }).map(record => ({
-        ...record,
-        requestId: record.requestId.startsWith('pn-cons-000~') ? record.requestId : `pn-cons-000~${record.requestId}`
-    }));
+    });
 
     if (!records.length || !('requestId' in records[0]) || !('statusRequest' in records[0])) {
         console.error('Error: CSV must have "requestId" and "statusRequest" columns');
@@ -198,7 +198,8 @@ async function restoreRequestStatus(inputFile, awsClient) {
 
     for (const record of records) {
         try {
-            const currentItem = await awsClient._queryRequest('pn-EcRichiesteMetadati', 'requestId', record.requestId);
+            const fullRequestId = record.requestId.startsWith('pn-cons-000~') ? record.requestId : `pn-cons-000~${record.requestId}`;
+            const currentItem = await awsClient._queryRequest('pn-EcRichiesteMetadati', 'requestId', fullRequestId);
             if (!currentItem.Items?.[0]) {
                 throw new Error('Item not found');
             }
@@ -207,7 +208,7 @@ async function restoreRequestStatus(inputFile, awsClient) {
             const timestamp = new Date().toISOString();
             await awsClient._updateItem(
                 'pn-EcRichiesteMetadati',
-                { requestId: record.requestId },
+                { requestId: fullRequestId },
                 {
                     lastUpdateTimestamp: {
                         codeAttr: '#lut',
@@ -228,7 +229,7 @@ async function restoreRequestStatus(inputFile, awsClient) {
                 'SET'
             );
 
-            console.log(`Updated ${record.requestId} with status ${record.statusRequest} (version ${currentVersion + 1})`);
+            console.log(`Updated ${fullRequestId} with status ${record.statusRequest} (version ${currentVersion + 1})`);
             stats.updated++;
         } catch (error) {
             console.error(`Error updating ${record.requestId}:`, error);
