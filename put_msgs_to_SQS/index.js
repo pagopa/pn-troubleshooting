@@ -153,7 +153,7 @@ async function main() {
                             Code: json.Code,
                             Error: json.Message,
                             Body: block.find(msgs => msgs.Id === json.Id)?.MessageBody,
-                            MessageAttributes: block.find(msgs => msgs.Id === json.Id)?.MessageAttributes.
+                            MessageAttributes: block.find(msgs => msgs.Id === json.Id)?.MessageAttributes,
                             MessageGroupId: block.find(msgs => msgs.Id === json.Id)?.MessageGroupId,
                             MessageDeduplicationId: block.find(msgs => msgs.Id === json.Id)?.MessageDeduplicationId
                         }
