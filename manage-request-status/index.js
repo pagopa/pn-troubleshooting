@@ -77,23 +77,22 @@ async function saveRequestStatus(inputFile, awsClient) {
     console.log(`Processing ${requestIds.length} request IDs...`);
     
     const results = [];
+    let processed = 0;
     for (const requestId of requestIds) {
         try {
             const fullRequestId = requestId.startsWith('pn-cons-000~') ? requestId : `pn-cons-000~${requestId}`;
             const response = await awsClient._queryRequest('pn-EcRichiesteMetadati', 'requestId', fullRequestId);
             const status = response.Items?.[0]?.statusRequest?.S || 'NOT_FOUND';
             results.push([requestId, status]);
-            console.log(`Processed ${fullRequestId}: ${status}`);
+            process.stdout.write(`\rProcessed ${++processed}/${requestIds.length} items`);
         } catch (error) {
-            console.error(`Error processing ${requestId}:`, error);
             results.push([requestId, 'ERROR']);
+            process.stdout.write(`\rProcessed ${++processed}/${requestIds.length} items`);
         }
     }
+    console.log();
 
-    // Ensure results directory exists
     mkdirSync(dirname(`${RESULTS_DIR}/saved.csv`), { recursive: true });
-
-    // Write CSV file
     const csvContent = stringify(results, {
         header: true,
         columns: ['requestId', 'statusRequest']
@@ -118,8 +117,9 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
         updated: 0,
         failed: 0
     };
-
+    
     const failedRequests = [];
+    let processed = 0;
     
     for (const requestId of requestIds) {
         try {
@@ -152,15 +152,14 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
                 },
                 'SET'
             );
-
-            console.log(`Updated ${fullRequestId} with status ${newStatus} (version ${currentVersion + 1})`);
             stats.updated++;
         } catch (error) {
-            console.error(`Error updating ${requestId}:`, error);
             stats.failed++;
             failedRequests.push(requestId);
         }
+        process.stdout.write(`\rProcessed ${++processed}/${requestIds.length} items`);
     }
+    console.log();
 
     if (failedRequests.length > 0) {
         await writeFile(`${RESULTS_DIR}/failed.txt`, failedRequests.join('\n'));
@@ -195,6 +194,7 @@ async function restoreRequestStatus(inputFile, awsClient) {
     };
 
     const failedRequests = [];
+    let processed = 0;
 
     for (const record of records) {
         try {
@@ -228,15 +228,14 @@ async function restoreRequestStatus(inputFile, awsClient) {
                 },
                 'SET'
             );
-
-            console.log(`Updated ${fullRequestId} with status ${record.statusRequest} (version ${currentVersion + 1})`);
             stats.updated++;
         } catch (error) {
-            console.error(`Error updating ${record.requestId}:`, error);
             stats.failed++;
             failedRequests.push(record.requestId);
         }
+        process.stdout.write(`\rProcessed ${++processed}/${records.length} items`);
     }
+    console.log();
 
     if (failedRequests.length > 0) {
         await writeFile(`${RESULTS_DIR}/failed.txt`, failedRequests.join('\n'));
@@ -252,12 +251,10 @@ async function restoreRequestStatus(inputFile, awsClient) {
 async function main() {
     const args = validateArgs();
     
-    // Initialize AWS client
     const awsClient = args.envName 
         ? new AwsClientsWrapper('confinfo', args.envName)
         : new AwsClientsWrapper();
     
-    // Initialize DynamoDB client
     awsClient._initDynamoDB();
 
     switch (args.command) {
