@@ -1,0 +1,13 @@
+{
+  "name": "set_applyRasterization_true",
+  "version": "1.0.0",
+  "description": "Add '\"applyRasterization\": \"true\"' attribute to the pn-paperRequestDelivery items",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "dependencies": {
+    "pn-common": "file:../pn-common"
+  }
+}
