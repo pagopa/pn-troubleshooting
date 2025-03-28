@@ -121,6 +121,11 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
     
     for (const requestId of requestIds) {
         try {
+            const currentItem = await awsClient._queryRequest('pn-EcRichiesteMetadati', 'requestId', requestId);
+            if (!currentItem.Items?.[0]) {
+                throw new Error('Item not found');
+            }
+            const currentVersion = parseInt(currentItem.Items[0].version?.N || '0', 10);
             const timestamp = new Date().toISOString();
             await awsClient._updateItem(
                 'pn-EcRichiesteMetadati',
@@ -139,14 +144,13 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
                     version: {
                         codeAttr: '#v',
                         codeValue: ':v',
-                        value: 1,
-                        increment: true
+                        value: currentVersion + 1
                     }
                 },
                 'SET'
             );
 
-            console.log(`Updated ${requestId} with status ${newStatus}`);
+            console.log(`Updated ${requestId} with status ${newStatus} (version ${currentVersion + 1})`);
             stats.updated++;
         } catch (error) {
             console.error(`Error updating ${requestId}:`, error);
@@ -194,6 +198,12 @@ async function restoreRequestStatus(inputFile, awsClient) {
 
     for (const record of records) {
         try {
+            const currentItem = await awsClient._queryRequest('pn-EcRichiesteMetadati', 'requestId', record.requestId);
+            if (!currentItem.Items?.[0]) {
+                throw new Error('Item not found');
+            }
+            const currentVersion = parseInt(currentItem.Items[0].version?.N || '0', 10);
+            
             const timestamp = new Date().toISOString();
             await awsClient._updateItem(
                 'pn-EcRichiesteMetadati',
@@ -212,14 +222,13 @@ async function restoreRequestStatus(inputFile, awsClient) {
                     version: {
                         codeAttr: '#v',
                         codeValue: ':v',
-                        value: 1,
-                        increment: true
+                        value: currentVersion + 1
                     }
                 },
                 'SET'
             );
 
-            console.log(`Updated ${record.requestId} with status ${record.statusRequest}`);
+            console.log(`Updated ${record.requestId} with status ${record.statusRequest} (version ${currentVersion + 1})`);
             stats.updated++;
         } catch (error) {
             console.error(`Error updating ${record.requestId}:`, error);
