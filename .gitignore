@@ -19,6 +19,10 @@ extract_log_from_s3/output
 CostSavingScript/output
 Send_Interop_Daily_Automation/output
 export_for_va/output
+check_status_request/*.json
+check_status_request/*.jsonline
+check_status_request/*.txt
+remove_from_sqs/*.json
 
 ### Rstudio ###
 .Rproj.user
@@ -71,6 +75,7 @@ legal_conservation_error_extractor/result
 
 ### Miscellaneous ###
 *.csv
+*.txt
 
 ### Automation Scripts ###
 automation_scripts/*
