@@ -325,6 +325,7 @@ async function checkDocumentState(awsClient, fileKey) {
             'PN_F24_META',
             'PN_LEGAL_FACTS',
             'PN_EXTERNAL_LEGAL_FACTS',
+            'PN_PAPER_ATTACHMENT',
             'PN_ADDRESSES_RAW',
             'PN_ADDRESSES_NORMALIZED',
             'PN_LOGS_ARCHIVE_AUDIT2Y',
