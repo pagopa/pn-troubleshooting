@@ -140,8 +140,6 @@ x
       startTime: fromEpochMs, 
       endTime: toEpochMs
     }
-    console.log(queryString)
-    console.log(query)
     const scheduleQueryCoreCommand = new StartQueryCommand(query);
     return await this._cloudWatchClient[profile].send( scheduleQueryCoreCommand ); 
   }
@@ -252,7 +250,6 @@ x
       await sleep( 1 * 1000 )
       try {
         logs = await this._fetchQueryResult( profile, queryScheduleResponse.queryId );
-        console.log(logs)
       }
       catch( error ) {
         console.log( error );
@@ -323,7 +320,6 @@ x
       startTime: fromEpochMs, 
       endTime: toEpochMs
     }
-    console.log(query)
     const scheduleQueryCommand = new StartQueryCommand(query);
     var profile = "core"
     if(logGroupNames[0].includes("ecs")){
@@ -335,7 +331,6 @@ x
       await sleep( 1 * 1000 )
       try {
         logs = await this._fetchQueryResult( profile , queryScheduleResponse.queryId );
-        console.log(logs)
       }
       catch( error ) {
         console.log( error );
@@ -358,7 +353,6 @@ x
     if (trace_ids.length > 0) {
       const reviewed = trace_ids.splice(0, limit);
       const logs = await this._getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, reviewed)
-      console.log(logs)
       return {
         logs: logs,
         trace_ids: {
