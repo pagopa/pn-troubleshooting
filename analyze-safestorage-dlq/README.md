@@ -50,11 +50,11 @@ aws sso login --profile sso_pn-confinfo-<env>
 ### Esecuzione
 
 ```bash
-node analyze-safestorage-dlq.js --envName <env> --dumpFile <path>
+node index.js --envName <env> --dumpFile <path>
 ```
 oppure
 ```bash
-node analyze-safestorage-dlq.js -e <env> -f <path>
+node index.js -e <env> -f <path>
 ```
 
 Dove:
