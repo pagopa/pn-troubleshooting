@@ -402,7 +402,6 @@ class AwsClientsWrapper {
       queryString: queryString, // required
       limit: limit
     };
-    console.log(input)
     const command = new StartQueryCommand(input);
     const response = await this._cloudwatchLogClient.send(command);
     //waiting result
