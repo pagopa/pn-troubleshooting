@@ -24,6 +24,7 @@ check_status_request/*.jsonline
 check_status_request/*.txt
 remove_from_sqs/*.json
 analyze-safestorage-dlq/*.json
+check-sent-paper-attachment/*.json
 
 ### Rstudio ###
 .Rproj.user
