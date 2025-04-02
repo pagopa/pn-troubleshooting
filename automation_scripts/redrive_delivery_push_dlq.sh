@@ -89,7 +89,7 @@ echo "STARTING EXECUTION"
 
 echo "DUMPING SQS..."
 cd "$work_dir"
-node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-core-$env_name --queueName $queue_name --visibilityTimeout 120
+node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-core-$env_name --queueName $queue_name --visibilityTimeout 60
 dumped_file=$(find ./dump_sqs/result -type f -exec ls -t1 {} + | head -1)
 echo "$dumped_file"
 
@@ -102,10 +102,11 @@ else
   cat $dumped_file | jq -r '.[] | .MessageAttributes | select(.eventType.StringValue == "NOTIFICATION_VIEWED") | .iun.StringValue' | sort | uniq > $iuns_file
 fi
 
-attachments_path="./retrieve_attachments_from_iun/results/"
+attachments_path="./retrieve_attachments_from_iun/results"
 remove_file "$attachments_path/attachments.json"
 echo "RETRIEVING ATTACHMENT..."
-node ./retrieve_attachments_from_iun/index.js --envName $env_name-ro --fileName $iuns_file
+node ./retrieve_attachments_from_iun/index.js --envName $env_name --fileName $iuns_file
+remove_file "$attachments_path/aar.json"
 
 result_file="./increase_doc_retention_for_late_notifications/files/log.json"
 echo "REMOVING DELETE MARKER..."

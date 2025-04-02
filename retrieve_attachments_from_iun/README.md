@@ -1,6 +1,6 @@
 # Retrieve Attachments from iun
 
-Script che recupera gli attachments correlati ad uno iun
+Script che recupera gli attachments e gli aar correlati ad uno iun
 
 ## Tabella dei Contenuti
 
@@ -10,7 +10,7 @@ Script che recupera gli attachments correlati ad uno iun
 
 ## Descrizione
 
-Lo Script recupera da pn-Notification gli attachments di una serie di iun.
+Lo Script recupera da pn-Notification gli attachments e gli aar di una serie di iun.
 
 ## Installazione
 

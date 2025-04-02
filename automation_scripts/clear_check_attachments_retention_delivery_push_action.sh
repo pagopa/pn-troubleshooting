@@ -108,7 +108,7 @@ attachments_path="./retrieve_attachments_from_iun/results/"
 remove_file ${attachments_path}attachments.json
 echo "RETRIEVING ATTACHMENT..."
 node ./retrieve_attachments_from_iun/index.js --envName $env_name-ro --fileName $iuns_file
-
+remove_file ${attachments_path}aar.json
 
 result_file="./increase_doc_retention_for_late_notifications/files/log.json"
 remove_file "$result_file"
