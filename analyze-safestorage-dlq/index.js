@@ -133,7 +133,7 @@ function printSummary(stats, queueName) {
     console.log(`Messages that failed: ${stats.total - stats.passed}`);
     console.log('\nFailures breakdown:');
     if (stats.docCreationRequestFailed !== undefined) {
-        console.log(`- Document creation request not found: ${stats.docCreationRequestFailed}`);
+        console.log(`- Document creation request found: ${stats.docCreationRequestFailed}`);
     } else {
         console.log(`- S3 bucket checks failed: ${stats.s3Failed}`);
         console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
