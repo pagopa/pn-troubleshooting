@@ -89,7 +89,7 @@ echo "STARTING EXECUTION"
 
 echo "DUMPING SQS..."
 cd "$work_dir"
-node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-core-$env_name --queueName $queue_name --visibilityTimeout 20
+node ./dump_sqs/dump_sqs.js --awsProfile sso_pn-core-$env_name --queueName $queue_name --visibilityTimeout 60
 dumped_file=$(find ./dump_sqs/result -type f -exec ls -t1 {} + | head -1)
 echo "$dumped_file"
 
