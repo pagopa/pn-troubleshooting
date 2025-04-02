@@ -574,12 +574,12 @@ async function main() {
         // Special handling for pn-safestore_to_deliverypush-DLQ
         if (queueName === 'pn-safestore_to_deliverypush-DLQ') {
             const docCreationCheck = await checkDocumentCreationRequest(coreClient, fileKey);
-            if (docCreationCheck.success) {
+            if (!docCreationCheck.success) {
                 stats.passed++;
                 logResult(message, 'ok', '', queueName);
             } else {
                 stats.docCreationRequestFailed++;
-                logResult(message, 'error', 'Document creation request not found', queueName);
+                logResult(message, 'error', 'Document creation request found', queueName);
             }
             continue;
         }

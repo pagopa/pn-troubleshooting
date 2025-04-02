@@ -30,7 +30,7 @@ Per `pn-safestore_to_deliverypush-DLQ`:
 2. Per ogni messaggio:
    - Estrae la chiave dell'oggetto S3 dal messaggio
    - Aggiunge il prefisso `safestorage://` alla chiave
-   - Verifica la presenza della chiave nella tabella `pn-DocumentCreationRequestTable`
+   - Verifica che la chiave non sia presente nella tabella `pn-DocumentCreationRequestTable`
 
 I risultati delle verifiche vengono salvati in:
 - `results/need_further_analysis_${queueName}_${date}.json` per i messaggi che non superano i controlli
