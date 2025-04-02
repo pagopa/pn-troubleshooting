@@ -1,0 +1,19 @@
+{
+    "name": "check-sent-paper-attachment",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Script to check the eventsList of PN_PAPER_ATTACHMENT",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "@aws-sdk/util-dynamodb": "^3.0.0",
+        "pn-common": "file:../pn-common/"
+    },
+    "author": "PagoPA S.p.A.",
+    "license": "ISC"
+}

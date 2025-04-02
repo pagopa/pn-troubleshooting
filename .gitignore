@@ -19,12 +19,6 @@ extract_log_from_s3/output
 CostSavingScript/output
 Send_Interop_Daily_Automation/output
 export_for_va/output
-check_status_request/*.json
-check_status_request/*.jsonline
-check_status_request/*.txt
-remove_from_sqs/*.json
-analyze-safestorage-dlq/*.json
-check-sent-paper-attachment/*.json
 
 ### Rstudio ###
 .Rproj.user

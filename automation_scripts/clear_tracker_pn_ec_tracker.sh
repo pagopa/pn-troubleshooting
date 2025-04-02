@@ -129,7 +129,7 @@ for channel in "${channels[@]}"; do
   #node ./delivery-push-action-PN-11794/index.js --envName $env_name-ro --fileName $refinement_file
   result=./false_negative_ec_tracker/results/to_remove_tracker_${channel}.json
   remove_file "$result"
-  node ./false_negative_ec_tracker/index.js --envName $env_name-ro --fileName $dumped_file --channelType $channel
+  node ./false_negative_ec_tracker/index.js --envName $env_name --fileName $dumped_file --channelType $channel
   if [[ -f $result ]]; then
     number_element=$(jq -c . "$result" | wc -l)
     if $purge; then
