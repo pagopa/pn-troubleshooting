@@ -3,10 +3,10 @@
     "version": "1.1.0",
     "type": "module",
     "description": "Script to analyze DLQ messages from SafeStorage events queue and validate related resources",
-    "main": "analyze-safestorage-dlq.js",
+    "main": "index.js",
     "scripts": {
-        "start": "node analyze-safestorage-dlq.js",
-        "check": "node analyze-safestorage-dlq.js --envName"
+        "start": "node index.js",
+        "check": "node index.js --envName"
     },
     "engines": {
         "node": ">=16.0.0"
