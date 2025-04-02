@@ -2,7 +2,7 @@ const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const { parseArgs } = require('util');
 const fs = require('fs');
 const path = require('path');
-const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
+const { unmarshall } = require('@aws-sdk/util-dynamodb');
 
 function _checkingParameters(args, values){
   const usage = "Usage: index.js --envName <envName> --fileName <fileName>"
@@ -29,10 +29,48 @@ function _checkingParameters(args, values){
   })
 }
 
-function appendJsonToFile(resultPath, jsonData){
+function appendJsonToFile(resultPath, fileName, jsonData){
   if(!fs.existsSync(resultPath))
     fs.mkdirSync(resultPath, { recursive: true });
-  fs.appendFileSync(`${resultPath}/attachments.json`, JSON.stringify(jsonData) + "\n")
+  fs.appendFileSync(`${resultPath}/${fileName}`, jsonData + "\n")
+}
+
+async function retrieveAttachments(awsClient, iun, resultPath) {
+  const attachments = (await awsClient._queryRequest("pn-Notifications", 'iun', iun, 'documents,recipients')).Items[0];
+  const temp = {
+    "iun": iun,
+    "attachments": [],
+  }
+  for(const doc of unmarshall(attachments).documents) {
+    temp.attachments.push(doc.ref.key)
+  }
+  
+  for(const recipient of unmarshall(attachments).recipients) {
+    
+    if(recipient.payments != null) {
+      for(const payment of recipient.payments) {
+        payment.pagoPaForm ? temp.attachments.push(payment.pagoPaForm.ref.key) : null
+        payment["f24"] ? temp.attachments.push(payment["f24"].metadataAttachment.ref.key) : null
+      }
+    }
+      
+  }
+  
+  appendJsonToFile(resultPath, "attachments.json", JSON.stringify(temp))
+}
+
+async function retrieveAARs(awsClient, iun, resultPath) {
+  const result = await awsClient._queryRequest("pn-Timelines", 'iun', iun);
+      if(result.Items.length > 0) {
+        let aar_gens = result.Items.filter(x => {
+          return x.category.S === "AAR_GENERATION"
+        })
+        aar_gens.forEach(e => {
+          const unmarshalled = unmarshall(e)
+          const legalFact = unmarshalled.details.generatedAarUrl.replace("safestorage://", "")
+          appendJsonToFile(resultPath, "aar.json", `${iun},${legalFact}`)
+        });
+      }
 }
 
 async function main() {
@@ -62,29 +100,11 @@ async function main() {
     if (iun === '')
       continue
     try {
-      const attachments = (await awsClient._queryRequest("pn-Notifications", 'iun', iun, 'documents,recipients')).Items[0];
-      const temp = {
-        "iun": iun,
-        "attachments": []
-      }
-      for(const doc of unmarshall(attachments).documents) {
-        temp.attachments.push(doc.ref.key)
-      }
-      
-      for(const recipient of unmarshall(attachments).recipients) {
-        
-        if(recipient.payments != null) {
-          for(const payment of recipient.payments) {
-            payment.pagoPaForm ? temp.attachments.push(payment.pagoPaForm.ref.key) : null
-            payment["f24"] ? temp.attachments.push(payment["f24"].metadataAttachment.ref.key) : null
-          }
-        }
-          
-      }
-      appendJsonToFile(resultPath, temp)
+      await retrieveAttachments(awsClient, iun, resultPath)
+      await retrieveAARs(awsClient, iun, resultPath)
     }
     catch (e) {
-      console.log('IUN ' + iun + ' not present in pn-Notifications')
+      console.log(`Problem to retrieve iun ${iun}`, e)
     }
   }
 }
