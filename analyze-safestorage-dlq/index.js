@@ -7,6 +7,45 @@ import { parseArgs } from 'util';                                       // Comma
 import { HeadObjectCommand } from '@aws-sdk/client-s3';                 // S3 HeadObject command
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];    // Valid environment names
 
+const QUEUE_CONFIGS = {
+    'pn-ss-main-bucket-events-queue-DLQ': {
+        requireS3Check: true,
+        requireTimelineCheck: true,
+        requireDocumentStateCheck: true,
+        documentConfig: {
+            tableName: 'pn-SsDocumenti',
+            ATTACHED_TYPES: [
+                'PN_PRINTED',
+                'PN_NOTIFICATION_ATTACHMENTS',
+                'PN_F24_META'
+            ],
+            SAVED_TYPES: [
+                'PN_AAR',
+                'PN_F24',
+                'PN_F24_META',
+                'PN_LEGAL_FACTS',
+                'PN_EXTERNAL_LEGAL_FACTS',
+                'PN_PAPER_ATTACHMENT',
+                'PN_ADDRESSES_RAW',
+                'PN_ADDRESSES_NORMALIZED',
+                'PN_LOGS_ARCHIVE_AUDIT2Y',
+                'PN_LOGS_ARCHIVE_AUDIT5Y',
+                'PN_LOGS_ARCHIVE_AUDIT10Y'
+            ],
+            timelineCheckTypes: ['PN_AAR', 'PN_LEGAL_FACTS']
+        }
+    },
+    'pn-safestore_to_deliverypush-DLQ': {
+        requireS3Check: false,
+        requireTimelineCheck: false,
+        requireDocumentStateCheck: false,
+        documentConfig: {
+            tableName: 'pn-DocumentCreationRequestTable'
+        }
+    }
+    // Add other queue configurations here as needed
+};
+
 /**
  * Validates command line arguments and displays usage information
  * @returns {Object} Parsed and validated arguments
@@ -14,7 +53,7 @@ const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];    // Valid
  */
 function validateArgs() {
     const usage = `
-Usage: node index.js --envName|-e <environment> --dumpFile|-f <path>
+Usage: node index.js --envName|-e <environment> --dumpFile|-f <path> --queueName|-q <queue>
 
 Description:
     Analyzes DLQ messages from SafeStorage events queue and validates related documents.
@@ -22,15 +61,17 @@ Description:
 Parameters:
     --envName, -e     Required. Environment to check (dev|uat|test|prod|hotfix)
     --dumpFile, -f    Required. Path to the SQS dump file
+    --queueName, -q   Required. Name of the DLQ to analyze (${Object.keys(QUEUE_CONFIGS).join('|')})
     --help, -h        Display this help message
 
 Example:
-    node index.js --envName dev --dumpFile ./dump.json`;
+    node index.js --envName dev --dumpFile ./dump.json --queueName pn-ss-main-bucket-events-queue-DLQ`;
 
     const args = parseArgs({
         options: {
             envName: { type: "string", short: "e" },
             dumpFile: { type: "string", short: "f" },
+            queueName: { type: "string", short: "q" },
             help: { type: "boolean", short: "h" }
         },
         strict: true
@@ -43,15 +84,20 @@ Example:
     }
 
     // Validate required parameters
-    if (!args.values.envName || !args.values.dumpFile) {
-        console.error("Error: Missing required parameters --envName and/or --dumpFile");
+    if (!args.values.envName || !args.values.dumpFile || !args.values.queueName) {
+        console.error("Error: Missing required parameters --envName, --dumpFile and/or --queueName");
         console.log(usage);
         process.exit(1);
     }
 
-    // Validate environment value
+    // Validate environment and queue name
     if (!VALID_ENVIRONMENTS.includes(args.values.envName)) {
         console.error(`Error: Invalid environment. Must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
+        process.exit(1);
+    }
+
+    if (!QUEUE_CONFIGS[args.values.queueName]) {
+        console.error(`Error: Invalid queue name. Must be one of: ${Object.keys(QUEUE_CONFIGS).join(', ')}`);
         process.exit(1);
     }
 
@@ -59,28 +105,44 @@ Example:
 }
 
 /**
-     * Prints a summary of the message processing statistics to the console.
-     * 
-     * @param {Object} stats - The statistics object containing the processing results
-     * @param {number} stats.total - Total number of messages processed
-     * @param {number} stats.passed - Number of messages that passed all checks
-     * @param {number} stats.s3Failed - Number of messages that failed S3 bucket checks
-     * @param {number} stats.stateCheckFailed - Number of messages that failed document state checks
-     * @param {number} stats.timelineFailed - Number of messages that failed timeline checks
-     * @returns {void}
-     */
-function printSummary(stats) {
+ * Gets formatted output filename with queue name and date
+ * @param {string} baseFilename - Base name of the file (need_further_analysis or safe_to_delete)
+ * @param {string} queueName - Name of the queue being processed
+ * @returns {string} Formatted filename
+ */
+function getOutputFilename(baseFilename, queueName) {
+    const date = new Date().toISOString().slice(0, 10); // Format: YYYY-MM-DD
+    return `results/${baseFilename}_${queueName}_${date}.json`;
+}
+
+/**
+ * Prints a summary of the message processing statistics to the console.
+ * 
+ * @param {Object} stats - The statistics object containing the processing results
+ * @param {number} stats.total - Total number of messages processed
+ * @param {number} stats.passed - Number of messages that passed all checks
+ * @param {number} stats.s3Failed - Number of messages that failed S3 bucket checks
+ * @param {number} stats.stateCheckFailed - Number of messages that failed document state checks
+ * @param {number} stats.timelineFailed - Number of messages that failed timeline checks
+ * @returns {void}
+ */
+function printSummary(stats, queueName) {
     console.log('\n=== Execution Summary ===');
     console.log(`\nTotal messages processed: ${stats.total}`);
     console.log(`Messages that passed: ${stats.passed}`);
     console.log(`Messages that failed: ${stats.total - stats.passed}`);
     console.log('\nFailures breakdown:');
-    console.log(`- S3 bucket checks failed: ${stats.s3Failed}`);
-    console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
-    console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
+    if (stats.docCreationRequestFailed !== undefined) {
+        console.log(`- Document creation request found: ${stats.docCreationRequestFailed}`);
+    } else {
+        console.log(`- S3 bucket checks failed: ${stats.s3Failed}`);
+        console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
+        console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
+    }
+    const date = new Date().toISOString().slice(0, 10);
     console.log('\nResults written to:');
-    console.log(`- Failed messages: results/need_further_analysis.json`);
-    console.log(`- Passed messages: results/safe_to_delete.json`);
+    console.log(`- Failed messages: results/need_further_analysis_${queueName}_${date}.json`);
+    console.log(`- Passed messages: results/safe_to_delete_${queueName}_${date}.json`);
 }
 
 /**
@@ -149,8 +211,9 @@ function extractMD5Fields(message) {
  * @param {Object} message - Message being processed
  * @param {string} status - Status of processing (error/ok)
  * @param {string} reason - Reason for failure
+ * @param {string} queueName - Name of the queue being processed
  */
-function logResult(message, status, reason = '') {
+function logResult(message, status, reason = '', queueName) {
     if (status === 'error') {
         // Deep clone message to avoid mutations
         const enrichedMessage = JSON.parse(JSON.stringify(message));
@@ -173,11 +236,11 @@ function logResult(message, status, reason = '') {
         // Re-stringify Body before saving
         enrichedMessage.Body = JSON.stringify(enrichedMessage.Body);
         
-        appendJsonToFile('results/need_further_analysis.json', enrichedMessage);
+        appendJsonToFile(getOutputFilename('need_further_analysis', queueName), enrichedMessage);
     } else {
         // For successes, output only MD5 fields
         const md5Data = extractMD5Fields(message);
-        appendJsonToFile('results/safe_to_delete.json', md5Data);
+        appendJsonToFile(getOutputFilename('safe_to_delete', queueName), md5Data);
     }
 }
 
@@ -205,9 +268,10 @@ async function getAccountId(awsClient) {
 /**
  * Processes SQS dump file and extracts file keys for validation
  * @param {string} dumpFilePath - Path to SQS dump JSON file
+ * @param {string} queueName - Name of the queue being processed
  * @returns {Array} Array of messages with file keys
  */
-function processSQSDump(dumpFilePath) {
+function processSQSDump(dumpFilePath, queueName) {
     try {
         // Read and parse dump file
         const dumpContent = readFileSync(dumpFilePath, 'utf-8');
@@ -218,8 +282,16 @@ function processSQSDump(dumpFilePath) {
         // Extract file keys and relevant message data
         return messages.map(message => {
             try {
-                const body = JSON.parse(message.Body);
-                const fileKey = body?.Records?.[0]?.s3?.object?.key;
+                let fileKey;
+                if (queueName === 'pn-safestore_to_deliverypush-DLQ') {
+                    // Parse delivery push format
+                    const body = JSON.parse(message.Body);
+                    fileKey = body.key;
+                } else {
+                    // Parse standard S3 event format
+                    const body = JSON.parse(message.Body);
+                    fileKey = body?.Records?.[0]?.s3?.object?.key;
+                }
 
                 if (!fileKey) {
                     console.warn('Missing or invalid fileKey in message:', message.MessageId);
@@ -281,7 +353,7 @@ async function checkS3Objects(awsClient, fileKey, accountId) {
  * @param {string} fileKey - Document key to check
  * @returns {Promise<boolean>} True if document state matches expected value
  */
-async function checkDocumentState(awsClient, fileKey) {
+async function checkDocumentState(awsClient, fileKey, queueConfig) {
     // Input validation
     if (!fileKey || typeof fileKey !== 'string') {
         console.error('Invalid fileKey:', fileKey);
@@ -291,7 +363,7 @@ async function checkDocumentState(awsClient, fileKey) {
     try {
         // Search for document by documentKey (Partition key)
         const command = new GetItemCommand({
-            TableName: 'pn-SsDocumenti',
+            TableName: queueConfig.documentConfig.tableName,
             Key: {
                 documentKey: { S: fileKey }
             }
@@ -312,32 +384,11 @@ async function checkDocumentState(awsClient, fileKey) {
             return false;
         }
 
-        // Define document types and their expected states
-        const ATTACHED_TYPES = [
-            'PN_PRINTED',
-            'PN_NOTIFICATION_ATTACHMENTS',
-            'PN_F24_META'
-        ];
-
-        const SAVED_TYPES = [
-            'PN_AAR',
-            'PN_F24',
-            'PN_F24_META',
-            'PN_LEGAL_FACTS',
-            'PN_EXTERNAL_LEGAL_FACTS',
-            'PN_PAPER_ATTACHMENT',
-            'PN_ADDRESSES_RAW',
-            'PN_ADDRESSES_NORMALIZED',
-            'PN_LOGS_ARCHIVE_AUDIT2Y',
-            'PN_LOGS_ARCHIVE_AUDIT5Y',
-            'PN_LOGS_ARCHIVE_AUDIT10Y'
-        ];
-
-        // Check if document state matches expected value
+        // Get expected state based on document type
         let expectedState = null;
-        if (ATTACHED_TYPES.includes(documentType)) {
+        if (queueConfig.documentConfig.ATTACHED_TYPES?.includes(documentType)) {
             expectedState = 'ATTACHED';
-        } else if (SAVED_TYPES.includes(documentType)) {
+        } else if (queueConfig.documentConfig.SAVED_TYPES?.includes(documentType)) {
             expectedState = 'SAVED';
         }
 
@@ -350,6 +401,37 @@ async function checkDocumentState(awsClient, fileKey) {
         };
     } catch (error) {
         console.error('DynamoDB GetItem error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * Checks if a document creation request exists
+ * @param {AwsClientsWrapper} awsClient - AWS client wrapper
+ * @param {string} fileKey - Document key to check
+ * @returns {Promise<boolean>} True if document creation request exists
+ */
+async function checkDocumentCreationRequest(awsClient, fileKey) {
+    if (!fileKey || typeof fileKey !== 'string') {
+        console.error('Invalid fileKey:', fileKey);
+        return false;
+    }
+
+    try {
+        const docRequest = await awsClient._queryRequest(
+            'pn-DocumentCreationRequestTable',
+            'key',
+            `safestorage://${fileKey}`
+        );
+
+        return {
+            success: docRequest?.Items?.length > 0
+        };
+    } catch (error) {
+        console.error('DocumentCreationRequest check error:', error);
         return {
             success: false,
             error: error.message
@@ -424,7 +506,8 @@ async function checkTimeline(awsClient, fileKey) {
  */
 async function main() {
     const args = validateArgs();
-    const { envName, dumpFile } = args.values;
+    const { envName, dumpFile, queueName } = args.values;
+    const queueConfig = QUEUE_CONFIGS[queueName];
 
     const stats = {
         total: 0,
@@ -433,6 +516,11 @@ async function main() {
         stateCheckFailed: 0,
         timelineFailed: 0
     };
+
+    // Add docCreationRequestFailed counter for pn-safestore_to_deliverypush-DLQ
+    if (queueName === 'pn-safestore_to_deliverypush-DLQ') {
+        stats.docCreationRequestFailed = 0;
+    }
 
     // Initialize AWS clients
     const confinfoClient = new AwsClientsWrapper('confinfo', envName);
@@ -463,8 +551,8 @@ async function main() {
     console.log(`CONFINFO AccountID: ${confinfoAccountId}`);
     console.log(`CORE AccountID: ${coreAccountId}`);
 
-    // Process dump file
-    const messages = processSQSDump(dumpFile);
+    // Process dump file with queue name
+    const messages = processSQSDump(dumpFile, queueName);
     stats.total = messages.length;
 
     console.log(`\nStarting validation checks for ${stats.total} messages...`);
@@ -472,7 +560,6 @@ async function main() {
 
     // Process each message separately
     for (const message of messages) {
-
         // Track progress and display status 
         progress++;
         process.stdout.write(`\rChecking fileKey ${progress} of ${stats.total}`);
@@ -484,41 +571,61 @@ async function main() {
             continue;
         }
 
-        // Check S3 objects
-        const s3Check = await checkS3Objects(confinfoClient, fileKey, confinfoAccountId);
-        if (!s3Check.success) {
-            logResult(message, 'error', `S3 check failed: ${s3Check.reason}`);
-            stats.s3Failed++;
+        // Special handling for pn-safestore_to_deliverypush-DLQ
+        if (queueName === 'pn-safestore_to_deliverypush-DLQ') {
+            const docCreationCheck = await checkDocumentCreationRequest(coreClient, fileKey);
+            if (!docCreationCheck.success) {
+                stats.passed++;
+                logResult(message, 'ok', '', queueName);
+            } else {
+                stats.docCreationRequestFailed++;
+                logResult(message, 'error', 'Document creation request found', queueName);
+            }
             continue;
         }
 
-        // Check document state
-        const docStateCheck = await checkDocumentState(confinfoClient, fileKey);
-        if (!docStateCheck.success) {
-            const reason = docStateCheck.error || 
-                          `Document state check failed: found '${docStateCheck.actualState}' but expected '${docStateCheck.expectedState}' for type '${docStateCheck.documentType}'`;
-            logResult(message, 'error', reason);
-            stats.stateCheckFailed++;
-            continue;
+        // Regular processing for other queues
+        if (queueConfig.requireS3Check) {
+            const s3Check = await checkS3Objects(confinfoClient, fileKey, confinfoAccountId);
+            if (!s3Check.success) {
+                logResult(message, 'error', `S3 check failed: ${s3Check.reason}`, queueName);
+                stats.s3Failed++;
+                continue;
+            }
         }
 
-        // Only check timeline for PN_AAR and PN_LEGAL_FACTS
-        if (['PN_AAR', 'PN_LEGAL_FACTS'].includes(docStateCheck.documentType)) {
+        let documentType;
+        // Check document state only for configured queues
+        if (queueConfig.requireDocumentStateCheck) {
+            const docStateCheck = await checkDocumentState(confinfoClient, fileKey, queueConfig);
+            if (!docStateCheck.success) {
+                const reason = docStateCheck.error || 
+                            `Document state check failed: found '${docStateCheck.actualState}' but expected '${docStateCheck.expectedState}' for type '${docStateCheck.documentType}'`;
+                logResult(message, 'error', reason, queueName);
+                stats.stateCheckFailed++;
+                continue;
+            }
+            documentType = docStateCheck.documentType;
+        }
+
+        // Only perform timeline checks for configured queues and document types
+        if (queueConfig.requireTimelineCheck && 
+            (!queueConfig.requireDocumentStateCheck || 
+             queueConfig.documentConfig.timelineCheckTypes.includes(documentType))) {
             const timelineCheck = await checkTimeline(coreClient, fileKey);
             if (!timelineCheck) {
-                logResult(message, 'error', 'Timeline check failed');
+                logResult(message, 'error', 'Timeline check failed', queueName);
                 stats.timelineFailed++;
                 continue;
             }
         }
 
         stats.passed++;
-        logResult(message, 'ok');
-
+        logResult(message, 'ok', '', queueName);
     }
 
-    process.stdout.write('\n'); // Add newline after progress tracking
-    printSummary(stats);
+    process.stdout.write('\n');
+    printSummary(stats, queueName);
 }
 
 // Start execution with error handling
