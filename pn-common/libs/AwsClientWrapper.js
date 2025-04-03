@@ -214,7 +214,7 @@ class AwsClientsWrapper {
   };
 
   // DynamoDB
-  async _queryRequest(tableName, key, value) {
+  async _queryRequest(tableName, key, value, sKey = undefined, sValue = undefined) {
     const input = { // QueryInput
       TableName: tableName, // required
       KeyConditionExpression: "#k = :k",
@@ -225,6 +225,14 @@ class AwsClientsWrapper {
         ":k": { "S": value }
       },
     };
+
+    // Query with Partition and Sort key
+    if(sKey){
+        input.KeyConditionExpression = "#k = :k AND #sk = :sk"
+        input.ExpressionAttributeNames["#sk"] = sKey
+        input.ExpressionAttributeValues[":sk"] = { "S": sValue }
+    }
+
     const command = new QueryCommand(input);
     return await this._dynamoClient.send(command);
   }
