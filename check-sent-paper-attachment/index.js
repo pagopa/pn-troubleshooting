@@ -114,16 +114,14 @@ async function checkPaperStatus(awsClient, fileKey, message) {
     }
 }
 
-function logResult(message, checkResult) {
-    const currentDate = new Date().toISOString().split('T')[0];
-    
+function logResult(message, checkResult, queueName, timestamp) {
     if (checkResult.success) {
         // For successful checks, just log MD5 fields
         const outputData = { 
             MD5OfBody: message.MD5OfBody,
             ...(message.MD5OfMessageAttributes && { MD5OfMessageAttributes: message.MD5OfMessageAttributes })
         };
-        appendFileSync(`results/to_remove_${currentDate}.json`, JSON.stringify(outputData) + '\n');
+        appendFileSync(`results/to_remove_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
     } else {
         // For failed checks, log only the required fields
         const outputData = {
@@ -131,7 +129,7 @@ function logResult(message, checkResult) {
             requestId: checkResult.requestId ? `pn-cons-000~${checkResult.requestId}` : null,
             failureReason: checkResult.reason
         };
-        appendFileSync(`results/to_keep_${currentDate}.json`, JSON.stringify(outputData) + '\n');
+        appendFileSync(`results/to_keep_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
     }
 }
 
@@ -176,13 +174,12 @@ function printSummary(stats) {
     console.log(`\nTotal messages processed: ${stats.total}`);
     console.log(`Messages that passed: ${stats.passed}`);
     console.log(`Messages that failed: ${stats.total - stats.passed}`);
-    console.log('\nResults written to:');
-    console.log('- Failed checks: results/to_keep.json');
-    console.log('- Passed checks: results/to_remove.json');
+    console.log('\nResults written to results/ directory');
 }
 
 async function main() {
     const { envName, dumpFile, srcQueue } = validateArgs();
+    const startTime = new Date().toISOString().replace(/[:.]/g, '-');  // Add timestamp when script starts
 
     const stats = {
         total: 0,
@@ -215,9 +212,9 @@ async function main() {
 
         if (checkResult.success) {
             stats.passed++;
-            logResult(message, checkResult);
+            logResult(message, checkResult, srcQueue, startTime);
         } else {
-            logResult(message, checkResult);
+            logResult(message, checkResult, srcQueue, startTime);
         }
     }
 
