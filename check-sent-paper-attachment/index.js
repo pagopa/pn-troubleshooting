@@ -4,10 +4,11 @@ import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { AwsClientsWrapper } from "pn-common";
 
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
+const VALID_QUEUES = ['pn-ec-availabilitymanager-queue-DLQ', 'pn-ss-transformation-raster-queue-DLQ'];
 
 function validateArgs() {
     const usage = `
-Usage: node index.js --envName|-e <environment> --dumpFile|-f <path>
+Usage: node index.js --envName|-e <environment> --dumpFile|-f <path> --srcQueue|-q <queue>
 
 Description:
     Analyzes SQS messages and validates paper address status.
@@ -15,15 +16,17 @@ Description:
 Parameters:
     --envName, -e     Required. Environment to check (dev|uat|test|prod|hotfix)
     --dumpFile, -f    Required. Path to the SQS dump file
+    --srcQueue, -q    Required. Source SQS queue (${VALID_QUEUES.join('|')})
     --help, -h        Display this help message
 
 Example:
-    node index.js --envName dev --dumpFile ./dump.json`;
+    node index.js --envName dev --dumpFile ./dump.json --srcQueue pn-ec-availabilitymanager-queue-DLQ`;
 
     const args = parseArgs({
         options: {
             envName: { type: "string", short: "e" },
             dumpFile: { type: "string", short: "f" },
+            srcQueue: { type: "string", short: "q" },
             help: { type: "boolean", short: "h" }
         },
         strict: true
@@ -34,7 +37,7 @@ Example:
         process.exit(0);
     }
 
-    if (!args.values.envName || !args.values.dumpFile) {
+    if (!args.values.envName || !args.values.dumpFile || !args.values.srcQueue) {
         console.error("Error: Missing required parameters");
         console.log(usage);
         process.exit(1);
@@ -42,6 +45,11 @@ Example:
 
     if (!VALID_ENVIRONMENTS.includes(args.values.envName)) {
         console.error(`Error: Invalid environment. Must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
+        process.exit(1);
+    }
+
+    if (!VALID_QUEUES.includes(args.values.srcQueue)) {
+        console.error(`Error: Invalid queue. Must be one of: ${VALID_QUEUES.join(', ')}`);
         process.exit(1);
     }
 
@@ -127,15 +135,21 @@ function logResult(message, checkResult) {
     }
 }
 
-function processSQSDump(dumpFilePath) {
+function processSQSDump(dumpFilePath, srcQueue) {
     try {
         const content = readFileSync(dumpFilePath, 'utf-8');
         const messages = JSON.parse(content);
 
         return messages.map(message => {
             try {
-                const body = JSON.parse(message.Body);
-                const fileKey = body?.detail?.key;
+                let fileKey;
+                if (srcQueue === 'pn-ec-availabilitymanager-queue-DLQ') {
+                    const body = JSON.parse(message.Body);
+                    fileKey = body?.detail?.key;
+                } else if (srcQueue === 'pn-ss-transformation-raster-queue-DLQ') {
+                    const body = JSON.parse(message.Body);
+                    fileKey = body?.fileKey;
+                }
 
                 if (!fileKey) {
                     console.warn('Missing or invalid fileKey in message:', message.MessageId);
@@ -168,7 +182,7 @@ function printSummary(stats) {
 }
 
 async function main() {
-    const { envName, dumpFile } = validateArgs();
+    const { envName, dumpFile, srcQueue } = validateArgs();
 
     const stats = {
         total: 0,
@@ -186,7 +200,7 @@ async function main() {
     }
 
     // Process dump file
-    const messages = processSQSDump(dumpFile);
+    const messages = processSQSDump(dumpFile, srcQueue);
     stats.total = messages.length;
 
     console.log(`\nStarting validation checks for ${stats.total} messages...`);
