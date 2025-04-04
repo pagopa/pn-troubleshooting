@@ -6,7 +6,7 @@ const { AwsClientsWrapper } = require("pn-common");
 
 function appendDataToFile(folderName, fileName, data){
   if(!fs.existsSync(`${folderName}/${fileName}`))
-    fs.appendFileSync(`${folderName}/${fileName}`, "iun~attachments" + "\n")
+    fs.appendFileSync(`${folderName}/${fileName}`, "iun,attachments" + "\n")
   fs.appendFileSync(`${folderName}/${fileName}`, data + "\n")
 }
 
