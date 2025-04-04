@@ -39,4 +39,5 @@ node index.js --envName <envName> --fileName <fileName>
 ```
 Dove:
 - `<envName>` è l'environment sul quale si intende effettuare la risottomissione; (prod e uat)
-- `<fileName>` è il path del file che contiene i requestId. (ottenibile eseguendo lo script get_pnPaperError)
+- `<fileName>` è il path del file che contiene i requestId.
+- `<firstAttempt>` indica se nel file ci sono primi tentativi .
