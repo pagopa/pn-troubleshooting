@@ -4,7 +4,7 @@ const fs = require('fs');
 const { ApiClient } = require("../redrive_pnPaperError/libs/api");
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config()
-const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb")
+const { unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function _checkingParameters(args, values){
   const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> [--modify]"
@@ -84,6 +84,32 @@ function _prepareAttributes(requestId){
   return attributes;
 }
 
+function skipRequestId(requestId, attempt) {
+  if(requestId.indexOf(attempt) < 0){
+    console.log(`${requestId} skipped`)
+    return true
+  }
+  return false
+}
+
+async function _prepareDataAndSendEvents(awsClient, requestId, queueUrl) {
+  const data = _prepareQueueData(requestId)
+  const attributes = _prepareAttributes(requestId)
+  console.log('message for requestId: ' +requestId, {
+    data,
+    attributes
+  })
+
+  res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
+  if ('MD5OfMessageBody' in res) {
+    console.log("RequestId " + requestId + " sent successfully!!!")
+  }
+  else {
+    failedRequestIds.push({ requestId: requestId, error: res })
+    console.error("RequestId " + requestId + " failed!!!")
+  }
+}
+
 const urls = {
   uat: {
     pdv: 'https://api.uat.tokenizer.pdv.pagopa.it',
@@ -106,20 +132,20 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "modify", mandatory: false, subcommand: [] },
+    { name: "firstAttempt", mandatory: false, subcommand: [] },
   ]
   const values = {
-    values: { envName, fileName, modify },
+    values: { envName, fileName, firstAttempt },
   } = parseArgs({
     options: {
       envName: {
-        type: "string", short: "p", default: undefined
+        type: "string", short: "e", default: undefined
       },
       fileName: {
         type: "string", short: "t", default: undefined
       },
-      modify: {
-        type: "boolean", short: "t", default: false
+      firstAttempt: {
+        type: "boolean", short: "f", default: false
       },
     },
   });  
@@ -142,103 +168,59 @@ async function main() {
 
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   for(let i = 0; i < fileRows.length; i++){
-    //const fileData = JSON.parse(fileRows[i])
-    //const requestId = fileData.requestId.S
     const requestId = fileRows[i]
-    //const created = fileData.created.S
-    if(requestId.indexOf("ATTEMPT_1") < 0 ) {
-      console.log(`${requestId} skipped`)
-      continue
-    }
     console.log('Handling requestId: ' + requestId)
-    let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
-    let isDiscoveredAddress = res.some((e) => {
-      return unmarshall(e).addressType == 'DISCOVERED_ADDRESS'
-    })
-    if(modify) {
-      let requestIdFirstAttemp = requestId.replace("ATTEMPT_1", "ATTEMPT_0")
-      let res = await awsClient._queryRequest("pn-PaperAddress", requestIdFirstAttemp)
-      if(res.length > 0) {
-        let receiverAddressesFirstAttempt = res.filter(x => {
-          return unmarshall(x).addressType == 'RECEIVER_ADDRESS'
-        })
-        let firstReceiverAddress = unmarshall(receiverAddressesFirstAttempt[0])
-        firstReceiverAddress.requestId = requestId
-        console.log(receiverAddressesFirstAttempt[0])
-        console.log(firstReceiverAddress)
-        await awsClient._putRequest("pn-PaperAddress", firstReceiverAddress)
-      }
-    }
-    console.log(isDiscoveredAddress)
-    if(isDiscoveredAddress){
-      console.log("Postal Flow. Preparing data...")
-      const data = _prepareQueueData(requestId)
-      const attributes = _prepareAttributes(requestId)
-      console.log('message for requestId: ' +requestId, {
-        data,
-        attributes
-      })
 
-      res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
-      if ('MD5OfMessageBody' in res) {
-        console.log("RequestId " + requestId + " sent successfully!!!")
-        //await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
-        /*if('ConsumedCapacity' in res) {
-          if(res.ConsumedCapacity.CapacityUnits == 1) {
-            console.log("RequestId " + requestId + " deleted successfully!!!")
-          }
-          else {
-            console.error("Problem to delete from pn-PaperRequestError " + requestId)
-          }
-        }*/
-      }
-      else {
-        failedRequestIds.push({ requestId: requestId, error: res })
-        console.error("RequestId " + requestId + " failed!!!")
-      }
-    }
-    else {
-      console.log("Registry Flow. Retrieving taxId..")
-      res = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
-      console.log(res)
-      const paperRequestDeliveryData = unmarshall(res[0])
-      let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
-      data.statusCode != "PC002" ? data.statusCode = "PC002" : null
-      await awsClient._putRequest("pn-PaperRequestDelivery", data)
-      let taxId;
-      if(paperRequestDeliveryData.receiverType == 'PF') {
-        res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlPDV, secrets.apiKeyPF)
-        taxId = res.pii
-      }
-      else {
-        res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlSelfcare, secrets.apiKeyPG)
-        taxId = res.taxCode
-      }
-
-      if(!taxId){
-        console.error("TaxId not found for requestId " + requestId+ " and fiscalCode " + paperRequestDeliveryData.fiscalCode + " and receiverType " + paperRequestDeliveryData.receiverType)
-        failedRequestIds.push({ requestId: requestId, error: res })
+    if(firstAttempt) {
+      if (skipRequestId(requestId, "ATTEMPT_0")) {
         continue
       }
-
-      const result = {
-        correlationId: paperRequestDeliveryData.correlationId,
-        taxId: taxId,
-        receiverType: paperRequestDeliveryData.receiverType
+      await _prepareDataAndSendEvents(awsClient, requestId, queueUrl)
+    }
+    else {
+      if (skipRequestId(requestId, "ATTEMPT_1")) {
+        continue
       }
-      console.log(result)
-      await ApiClient.sendNationalRegistriesRequest(result.taxId, result.correlationId, result.receiverType)
-
-      //await awsClient._deleteRequest("pn-PaperRequestError", requestId, created)
-      /*if('ConsumedCapacity' in res) {
-        if(res.ConsumedCapacity.CapacityUnits == 1) {
-          console.log("RequestId " + requestId + " deleted successfully!!!")
+      let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
+      let isDiscoveredAddress = res.some((e) => {
+        return unmarshall(e).addressType == 'DISCOVERED_ADDRESS'
+      })
+      if(isDiscoveredAddress){
+        console.log("Postal Flow. Preparing data...")
+        await _prepareDataAndSendEvents(awsClient, requestId)
+      }
+      else {
+        console.log("Registry Flow. Retrieving taxId..")
+        res = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
+        console.log(res)
+        const paperRequestDeliveryData = unmarshall(res[0])
+        let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
+        data.statusCode != "PC002" ? data.statusCode = "PC002" : null
+        await awsClient._putRequest("pn-PaperRequestDelivery", data)
+        let taxId;
+        if(paperRequestDeliveryData.receiverType == 'PF') {
+          res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlPDV, secrets.apiKeyPF)
+          taxId = res.pii
         }
         else {
-          console.error("Problem to delete from pn-PaperRequestError " + requestId)
+          res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlSelfcare, secrets.apiKeyPG)
+          taxId = res.taxCode
         }
-      }*/
-
+  
+        if(!taxId){
+          console.error("TaxId not found for requestId " + requestId+ " and fiscalCode " + paperRequestDeliveryData.fiscalCode + " and receiverType " + paperRequestDeliveryData.receiverType)
+          failedRequestIds.push({ requestId: requestId, error: res })
+          continue
+        }
+  
+        const result = {
+          correlationId: paperRequestDeliveryData.correlationId,
+          taxId: taxId,
+          receiverType: paperRequestDeliveryData.receiverType
+        }
+        console.log(result)
+        await ApiClient.sendNationalRegistriesRequest(result.taxId, result.correlationId, result.receiverType)
+      }
     }
   }
 
