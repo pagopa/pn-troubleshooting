@@ -136,8 +136,8 @@ Example:
  * @returns {string} Formatted filename
  */
 function getOutputFilename(baseFilename, queueName) {
-    const date = new Date().toISOString().slice(0, 10); // Format: YYYY-MM-DD
-    return `results/${baseFilename}_${queueName}_${date}.json`;
+    const timestamp = new Date().toISOString().replace(/:/g, '-').replace('.', '-'); // Format: YYYY-MM-DDTHH-mm-ss-sssZ
+    return `results/${baseFilename}_${queueName}_${timestamp}.json`;
 }
 
 /**
@@ -164,10 +164,10 @@ function printSummary(stats, queueName) {
         console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
         console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
     }
-    const date = new Date().toISOString().slice(0, 10);
+    const timestamp = new Date().toISOString().replace(/:/g, '-').replace('.', '-');
     console.log('\nResults written to:');
-    console.log(`- Failed messages: results/need_further_analysis_${queueName}_${date}.json`);
-    console.log(`- Passed messages: results/safe_to_delete_${queueName}_${date}.json`);
+    console.log(`- Failed messages: results/need_further_analysis_${queueName}_${timestamp}.json`);
+    console.log(`- Passed messages: results/safe_to_delete_${queueName}_${timestamp}.json`);
 }
 
 /**
