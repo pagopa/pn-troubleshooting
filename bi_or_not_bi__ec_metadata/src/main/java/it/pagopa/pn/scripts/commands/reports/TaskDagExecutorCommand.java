@@ -115,7 +115,9 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
         MsgListenerImpl logger = new MsgListenerImpl();
         SparkConf sparkConf = new SparkConf()
             .set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-            .set("spark.hadoop.fs.s3a.path.style.access", "true");
+            .set("spark.hadoop.fs.s3a.path.style.access", "true")
+            .set("spark.sql.shuffle.partitions", "10")
+            .set("spark.default.parallelism", "10");
 
         if( "true".equalsIgnoreCase( System.getProperty(PN_DATA_MONITORING_LOCAL_RUN_PROPERTY_NAME)) ) {
             sparkConf = sparkConf
