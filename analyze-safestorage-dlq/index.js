@@ -1,41 +1,59 @@
 // --- Required Dependencies ---
-import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'fs';             // File system operations
-import { AwsClientsWrapper } from "pn-common";                          // AWS services wrapper
-import { unmarshall } from '@aws-sdk/util-dynamodb';                    // DynamoDB response parser
-import { GetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';              // DynamoDB GetItem command
-import { parseArgs } from 'util';                                       // Command line argument parser
-import { HeadObjectCommand } from '@aws-sdk/client-s3';                 // S3 HeadObject command
-const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];    // Valid environment names
+import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'fs';               // File system operations
+import { AwsClientsWrapper } from "pn-common";                                          // AWS services wrapper
+import { unmarshall } from '@aws-sdk/util-dynamodb';                                    // DynamoDB response parser
+import { GetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';                // DynamoDB GetItem command
+import { parseArgs } from 'util';                                                       // Command line argument parser
+import { HeadObjectCommand } from '@aws-sdk/client-s3';                                 // S3 HeadObject command
+const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];                    // Valid environment names
 
-const QUEUE_CONFIGS = {
-    'pn-ss-main-bucket-events-queue-DLQ': {
+// Common document types configuration
+const DOCUMENT_TYPES = {
+    ATTACHED: [
+        'PN_PRINTED',
+        'PN_NOTIFICATION_ATTACHMENTS',
+        'PN_F24_META'
+    ],
+    SAVED: [
+        'PN_AAR',
+        'PN_F24',
+        'PN_F24_META',
+        'PN_LEGAL_FACTS',
+        'PN_EXTERNAL_LEGAL_FACTS',
+        'PN_PAPER_ATTACHMENT',
+        'PN_ADDRESSES_RAW',
+        'PN_ADDRESSES_NORMALIZED',
+        'PN_LOGS_ARCHIVE_AUDIT2Y',
+        'PN_LOGS_ARCHIVE_AUDIT5Y',
+        'PN_LOGS_ARCHIVE_AUDIT10Y'
+    ],
+    TIMELINE_CHECK: ['PN_AAR', 'PN_LEGAL_FACTS']
+};
+
+// Base configurations for different queue types
+const BASE_CONFIGS = {
+    safestorageMain: {
         requireS3Check: true,
         requireTimelineCheck: true,
         requireDocumentStateCheck: true,
         documentConfig: {
             tableName: 'pn-SsDocumenti',
-            ATTACHED_TYPES: [
-                'PN_PRINTED',
-                'PN_NOTIFICATION_ATTACHMENTS',
-                'PN_F24_META'
-            ],
-            SAVED_TYPES: [
-                'PN_AAR',
-                'PN_F24',
-                'PN_F24_META',
-                'PN_LEGAL_FACTS',
-                'PN_EXTERNAL_LEGAL_FACTS',
-                'PN_PAPER_ATTACHMENT',
-                'PN_ADDRESSES_RAW',
-                'PN_ADDRESSES_NORMALIZED',
-                'PN_LOGS_ARCHIVE_AUDIT2Y',
-                'PN_LOGS_ARCHIVE_AUDIT5Y',
-                'PN_LOGS_ARCHIVE_AUDIT10Y'
-            ],
-            timelineCheckTypes: ['PN_AAR', 'PN_LEGAL_FACTS']
+            ATTACHED_TYPES: DOCUMENT_TYPES.ATTACHED,
+            SAVED_TYPES: DOCUMENT_TYPES.SAVED,
+            timelineCheckTypes: DOCUMENT_TYPES.TIMELINE_CHECK
         }
     },
-    'pn-safestore_to_deliverypush-DLQ': {
+    safestorageStaging: {
+        requireS3Check: true,
+        requireTimelineCheck: false,
+        requireDocumentStateCheck: true,
+        documentConfig: {
+            tableName: 'pn-SsDocumenti',
+            ATTACHED_TYPES: DOCUMENT_TYPES.ATTACHED,
+            SAVED_TYPES: DOCUMENT_TYPES.SAVED
+        }
+    },
+    safestorageToDeliveryPush: {
         requireS3Check: false,
         requireTimelineCheck: false,
         requireDocumentStateCheck: false,
@@ -43,7 +61,14 @@ const QUEUE_CONFIGS = {
             tableName: 'pn-DocumentCreationRequestTable'
         }
     }
-    // Add other queue configurations here as needed
+};
+
+// Generate queue configurations
+const QUEUE_CONFIGS = {
+    'pn-ss-main-bucket-events-queue-DLQ': BASE_CONFIGS.safestorageMain,
+    'pn-ss-staging-bucket-events-queue-DLQ': BASE_CONFIGS.safestorageStaging,
+    'pn-ss-transformation-sign-and-timemark-queue-DLQ': BASE_CONFIGS.safestorageStaging,
+    'pn-safestore_to_deliverypush-DLQ': BASE_CONFIGS.safestorageToDeliveryPush
 };
 
 /**
@@ -111,8 +136,8 @@ Example:
  * @returns {string} Formatted filename
  */
 function getOutputFilename(baseFilename, queueName) {
-    const date = new Date().toISOString().slice(0, 10); // Format: YYYY-MM-DD
-    return `results/${baseFilename}_${queueName}_${date}.json`;
+    const timestamp = new Date().toISOString().replace(/:/g, '-').replace('.', '-'); // Format: YYYY-MM-DDTHH-mm-ss-sssZ
+    return `results/${baseFilename}_${queueName}_${timestamp}.json`;
 }
 
 /**
@@ -139,10 +164,10 @@ function printSummary(stats, queueName) {
         console.log(`- Document state checks failed: ${stats.stateCheckFailed}`);
         console.log(`- Timeline checks failed: ${stats.timelineFailed}`);
     }
-    const date = new Date().toISOString().slice(0, 10);
+    const timestamp = new Date().toISOString().replace(/:/g, '-').replace('.', '-');
     console.log('\nResults written to:');
-    console.log(`- Failed messages: results/need_further_analysis_${queueName}_${date}.json`);
-    console.log(`- Passed messages: results/safe_to_delete_${queueName}_${date}.json`);
+    console.log(`- Failed messages: results/need_further_analysis_${queueName}_${timestamp}.json`);
+    console.log(`- Passed messages: results/safe_to_delete_${queueName}_${timestamp}.json`);
 }
 
 /**
@@ -283,14 +308,20 @@ function processSQSDump(dumpFilePath, queueName) {
         return messages.map(message => {
             try {
                 let fileKey;
-                if (queueName === 'pn-safestore_to_deliverypush-DLQ') {
-                    // Parse delivery push format
-                    const body = JSON.parse(message.Body);
-                    fileKey = body.key;
-                } else {
-                    // Parse standard S3 event format
-                    const body = JSON.parse(message.Body);
-                    fileKey = body?.Records?.[0]?.s3?.object?.key;
+                const body = JSON.parse(message.Body);
+
+                switch(queueName) {
+                    case 'pn-safestore_to_deliverypush-DLQ':
+                        fileKey = body.key;
+                        break;
+                    case 'pn-ss-transformation-sign-and-timemark-queue-DLQ':
+                        fileKey = body.fileKey;
+                        break;
+                    case 'pn-ss-staging-bucket-events-queue-DLQ':
+                    case 'pn-ss-main-bucket-events-queue-DLQ':
+                    default:
+                        fileKey = body?.Records?.[0]?.s3?.object?.key ||    // S3 event format
+                                 body?.detail?.object?.key;                 // EventBridge format
                 }
 
                 if (!fileKey) {
