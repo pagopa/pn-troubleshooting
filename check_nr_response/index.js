@@ -71,6 +71,7 @@ function _sqsMsgParser(jsonLine) {
 
 function _extract_iun_from_cx_id(CX_ID) {
   return CX_ID.match(/(?<=IUN_)[^\.]+/)[0]
+  //return CX_ID.match(/(?<=IUN_)[^\.]+/)?.[0]
 }
 
 function _elapsedHoursFromNow(refReqDate) {
@@ -99,31 +100,43 @@ async function main() {
     let parsedSqsMsg = _sqsMsgParser(sqsMsg);
     const {correlationId, referenceRequestDate} = parsedSqsMsg.Body
     const iun = _extract_iun_from_cx_id(correlationId)
-    let result = await dynamoClient._queryRequest(table.name, table.pk, iun, table.sk, correlationId)
 
-    if (result.Count !== '0') {
-      let warnObj = {
-        [table.pk]: iun,
-        isNrResponsePresent: true,
-        message: "Warning: National Registries response is present in timeline. This element will be skipped."
-      }
-      console.log(JSON.stringify(warnObj))
-      continue
+    let outObj = {
+      [table.pk]: iun,
+      correlationId: correlationId
+      // isNrResponsePresent
+      // approxElapsedHoursFromNow
+      // approxElapsedDaysFromNow
     }
+
+    if(correlationId.includes("NATIONAL_REGISTRY_CALL")){
+
+      // timelineElementId = NATIONAL_REGISTRY_RESPONSE.CORRELATIONID_<correlationId>
+      const timelineElementId = "NATIONAL_REGISTRY_RESPONSE.CORRELATIONID_" + correlationId
+
+      // 1.1 Verifico su timeline
+      let result = await dynamoClient._queryRequest(table.name, table.pk, iun, table.sk, timelineElementId)
+
+      // 1.2 Elemento trovato -> non stampo age
+      if (result.Count !== 0 ) {
+        outObj.isNrResponsePresent = true
+        console.log(JSON.stringify(outObj))
+        continue
+      } else {
+        outObj.isNrResponsePresent = false
+      }
+    }
+
+    // 1.2 Elemento non trovato -> stampo age
+    // 2. correlationId != /^NATIONAL_REGISTRY_CALL/g -> stampo age
 
     const hours = _elapsedHoursFromNow(referenceRequestDate)
     const days = Math.round(hours / 24)
     
-    let infoObj = {
-      [table.pk]: iun,
-      [table.sk]: correlationId,
-      approxElapsedHoursFromNow: hours,
-      approxElapsedDaysFromNow: days,
-      isNrResponsePresent: false,
-      message: "National Registries response is not present in timeline"     
-    }
+    outObj.approxElapsedHoursFromNow = hours
+    outObj.approxElapsedDaysFromNow = days
 
-    console.log(JSON.stringify(infoObj))
+    console.log(JSON.stringify(outObj))
 
   };
 
