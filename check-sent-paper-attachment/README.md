@@ -1,6 +1,6 @@
 # check-sent-paper-attachment
 
-Script di verifica  stato dei PN_PAPER_ATTACHMENT finiti nella pn-ec-availabilitymanager-queue-DLQ.
+Script di verifica stato di invio dei PN_PAPER_ATTACHMENT.
 
 ## Tabella dei Contenuti
 
@@ -16,7 +16,9 @@ Script di verifica  stato dei PN_PAPER_ATTACHMENT finiti nella pn-ec-availabilit
 
 Lo script esegue le seguenti operazioni:
 
-1. Legge in input il dump dei messaggi dalla coda come prelevati dallo script [dump_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/dump_sqs)
+1. Legge in input il dump dei messaggi dalle code, come prelevati dallo script [dump_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/dump_sqs):
+   - `pn-ss-transformation-raster-queue-DLQ`
+   - `pn-ec-availabilitymanager-queue-DLQ` 
 2. Per ogni messaggio:
    - Estrae la chiave del file dal messaggio
    - Cerca nei log di pn-external-channel per trovare il cx_id associato
