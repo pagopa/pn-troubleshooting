@@ -36,7 +36,7 @@ const parsedArgs = { values: { region, env, sqsDumpFile } } = parseArgs(
 function _checkingParameters(args, parsedArgs) {
 
   const usage = "Usage: node index.js [--region <region>]" +
-    " --env <env> --days <number> --fileName <csv file> [--startActionId <actionId value>]\n";
+    " --env <env> --sqsDumpFile <json inline file>\n";
 
   // Verifica dei valori degli argomenti passati allo script
   function isOkValue(argName, value, ok_values) {
