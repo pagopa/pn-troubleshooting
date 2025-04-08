@@ -263,7 +263,7 @@ elif ([ $account_type == "core" ]); then
       "
   fi
 
-  export MAVEN_OPTS="-Xmx8g \
+  export MAVEN_OPTS="
     --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
     --add-opens java.base/sun.security.action=ALL-UNNAMED \
     --add-opens java.base/sun.util.calendar=ALL-UNNAMED"
