@@ -8,11 +8,14 @@
 
 ## Descrizione
 
-Dato in input il file contentente, per ogni linea, un singolo messaggio in formato JSON della coda SQS "pn-national-registries-gateway-inputs-DLQ", lo script:
+Dato in input un file contentente, per ogni linea, un messaggio in formato JSON della coda "pn-national-registries-gateway-inputs-DLQ", 
+lo script:
 - estrae correlationId e referenceRequestDate;
-- estrae lo IUN dal correlationId;
-- verifica che non esiste l’elemento di risposta da NR (NATIONAL_REGISTRY_RESPONSE.CORRELATIONID_<correlationId>), in caso contrario verrà stampato un warning e proseguirà con messaggio successivo;
-- Stampa la differenza in ore tra Date.now() e referenceRequestDate.
+- estrae lo IUN dal correlationId stampa la differenza in ore tra Date.now() e referenceRequestDate;
+- Se il correlationId non è del tipo "NATIONAL_REGISTRY_CALL" stampa la differenza in ore tra Date.now() e referenceRequestDate;
+- Se il correlationId è del tipo "NATIONAL_REGISTRY_CALL" verifica l'esistenza in timeline della risposta da NR (NATIONAL_REGISTRY_RESPONSE.CORRELATIONID_<correlationId>):
+  - Se esiste: stampa un warning e prosegue con il messaggio successivo;
+  - Se non esiste: Stampa la differenza in ore tra Date.now() e referenceRequestDate.
 
 ## Installazione
 
@@ -35,8 +38,12 @@ node index.js \
     [--env <env>] \
     --sqsDumpFile <json in line file>
 ```
-
 Dove:
 - region: è la regione AWS. Il valore di default è "eu-south-1";
 - env: è l'ambiente target;
 - sqsDumpFile: è il file contentente, per ogni riga, un messaggio SQS in formato json
+
+3. [Opzionale] Ordinare l'output dello script rispetto all'attributo "approxElapsedDaysFromNow"
+```bash
+jq -s '. | sort_by(.approxElapsedDaysFromNow) | reverse' <script output>.json | jq -c '.[]' >> <sorted script output>.json
+```
