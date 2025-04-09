@@ -16,6 +16,7 @@ import it.pagopa.pn.scripts.commands.reports.model.Report;
 import it.pagopa.pn.scripts.commands.reports.model.ReportFleet;
 import it.pagopa.pn.scripts.commands.sparksql.SparkSqlWrapper;
 import it.pagopa.pn.scripts.commands.sparksql.SqlQueryDag;
+import it.pagopa.pn.scripts.commands.utils.MemoryUsage;
 import it.pagopa.pn.scripts.commands.utils.PathsUtils;
 import it.pagopa.pn.scripts.commands.utils.QueryDagToTaskDagAdapter;
 import it.pagopa.pn.scripts.commands.utils.SparkDatasetWriter;
@@ -79,6 +80,8 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
 
         // Initialize spark session and get wrapper
         SparkSqlWrapper spark = this.sparkInit();
+
+        MemoryUsage.printMemoryUsage();
 
         // Read reports to retrieve information
         ReportFleet reports = this.mapper.readValue(reportFleetPath.toFile(), ReportFleet.class);
@@ -217,5 +220,6 @@ public class TaskDagExecutorCommand implements Callable<Integer> {
         } catch (RuntimeException e) {
             log.severe(() -> "Unexpected runtime exception " + e);
         }
+        MemoryUsage.printMemoryUsage();
     }
 }
