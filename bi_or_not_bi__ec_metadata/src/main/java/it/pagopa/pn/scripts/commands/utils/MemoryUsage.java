@@ -21,10 +21,12 @@ public class MemoryUsage {
         long totalMemoryMB = totalMemory / (1024L * 1024L);
         long freeMemoryMB = freeMemory / (1024L * 1024L);
         long usedMemoryMB = usedMemory / (1024L * 1024L);
-        
-        log.info("Max memory for this JVM: " + maxMemoryMB + "MB");
-        log.info("Total memory allocated: " + totalMemoryMB + "MB");
-        log.info("Free memory available: " + freeMemoryMB + "MB");
-        log.info("Currently used memory: " + usedMemoryMB + "MB");
+
+        String logString = "\nMax memory for this JVM: " + maxMemoryMB + "MB\n" +
+                "Max memory for this JVM: " + maxMemoryMB + "MB\n" +
+                "Total memory allocated: " + totalMemoryMB + "MB\n" +
+                "Free memory available: " + freeMemoryMB + "MB\n" +
+                "Currently used memory: " + usedMemoryMB + "MB\n";
+        log.info(logString);
     }
 }
