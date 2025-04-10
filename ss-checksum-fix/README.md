@@ -1,12 +1,13 @@
 # Script ss-checksum-fix
 
-Questo script NodeJS offre due funzionalità su oggetti SS con checksum errato.
+Lo script offre due funzionalità su oggetti SS con checksum errato.
 
 ## Funzionalità
 
 - **s3-cleanup**:  
-  Per ogni fileKey presente nella lista TXT di input, lo script utilizza le funzioni S3 (dal modulo `pn-common`) per elencare tutte le versioni dell'oggetto nel bucket `pn-safestorage-eu-south-1-<AccountId>`.  
-  Se nella lista risultano almeno due versioni (valutate in base all'attributo `LastModified`), viene eliminata la versione più recente.
+  - Per ogni fileKey presente nella lista TXT di input, lo script utilizza le funzioni S3 di `pn-common` per elencare tutte le versioni dell'oggetto nel bucket `pn-safestorage-eu-south-1-<AccountId>`.  
+  - Se nella lista risultano almeno due versioni (valutate in base all'attributo `LastModified`), viene eliminata la versione più recente.
+  - Stampa due file TXT in output, uno con la lista delle fileKeys di cui è stata cancellata una versione e l'altro con la lista di fileKeys non interessate dall'operazione.
 
 - **ddb-update**:  
   Per ogni fileKey (usato come `documentKey`), lo script esegue una query sulla tabella DynamoDB `pn-SsDocumenti` e aggiorna l'item impostando `documentLogicalState` a `'SAVED'` e `documentState` a `'available'`.
@@ -31,5 +32,3 @@ Operazione su DynamoDB:
 ```
 node index.js --envName prod --inputFile ./keys.txt --command ddb-update
 ```
-
-Assicurarsi di avere il profilo AWS corretto configurato e che il modulo `pn-common` sia installato.

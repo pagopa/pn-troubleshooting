@@ -91,6 +91,7 @@ try {
 
     // Initialize counters and prepare output files
     let total = 0, successCount = 0, failedCount = 0;
+    let skippedCount = 0;
     let deletedOutputFile, skippedOutputFile;
     if (command === 's3-cleanup') {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -137,6 +138,7 @@ try {
                     console.log(`\nSkipping ${fileKey}: less than 2 versions.`);
                     // Record fileKey as skipped
                     appendFileSync(skippedOutputFile, fileKey + "\n");
+                    skippedCount++; // record skipped fileKey
                 }
             } else if (command === 'ddb-update') {
                 if (!dryRun) {
@@ -166,6 +168,12 @@ try {
 
     console.log("\n\n=== Execution Summary ===");
     console.log(`Total fileKeys processed: ${total}`);
-    console.log(`Successful operations: ${successCount}`);
-    console.log(`Failed operations: ${failedCount}`);
+    if (command === 's3-cleanup') {
+        console.log(`Successful deletions: ${successCount}`);
+        console.log(`Skipped items: ${skippedCount}`);
+        console.log(`Failed operations: ${failedCount}`);
+    } else {
+        console.log(`Successful operations: ${successCount}`);
+        console.log(`Failed operations: ${failedCount}`);
+    }
 })();
