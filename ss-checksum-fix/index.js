@@ -1,5 +1,5 @@
 // Required dependencies
-import { readFileSync } from 'fs';
+import { readFileSync, appendFileSync } from 'fs';
 import { parseArgs } from 'util';
 import { AwsClientsWrapper } from "pn-common";
 import { ListObjectVersionsCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
@@ -10,16 +10,18 @@ const VALID_COMMANDS = ['s3-cleanup', 'ddb-update'];
 
 function printUsage() {
     console.log(`
-Usage: node index.js --envName|-e <environment> --inputFile|-i <path> --command|-c <command>
+Usage: node index.js --envName|-e <environment> --inputFile|-i <path> --command|-c <command> [--dryRun|-d]
 
 Parameters:
     --envName, -e     Required. Environment (dev|uat|test|prod|hotfix)
     --inputFile, -i   Required. TXT file with list of fileKeys (one per line)
     --command, -c     Required. Subcommand: s3-cleanup | ddb-update
+    --dryRun, -d      Optional. Simulate execution without making changes
 
 Examples:
     node index.js -e dev -i ./filekeys.txt -c s3-cleanup
     node index.js --envName prod --inputFile ./keys.txt --command ddb-update
+    node index.js -e test -i ./keys.txt -c s3-cleanup --dryRun
     `);
     process.exit(1);
 }
@@ -29,13 +31,14 @@ const args = parseArgs({
         envName: { type: "string", short: "e" },
         inputFile: { type: "string", short: "i" },
         command: { type: "string", short: "c" },
+        dryRun: { type: "boolean", short: "d" }, // added dryRun option
         help: { type: "boolean", short: "h" }
     },
     strict: true
 });
 
 if (args.values.help) printUsage();
-const { envName, inputFile, command } = args.values;
+const { envName, inputFile, command, dryRun } = args.values;
 
 if (!envName || !inputFile || !command) {
     console.error("Error: Missing required parameters.");
@@ -86,7 +89,16 @@ try {
     // For s3-cleanup, build bucket name
     const bucketName = `pn-safestorage-eu-south-1-${accountId}`;
 
+    // Initialize counters and prepare output files if needed
     let total = 0, successCount = 0, failedCount = 0;
+    let deletedOutputFile, skippedOutputFile;
+    if (command === 's3-cleanup') {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        deletedOutputFile = `s3_deleted_${timestamp}.txt`;
+        skippedOutputFile = `s3_skipped_${timestamp}.txt`;
+        console.log(`S3 cleanup - deleted output: ${deletedOutputFile}`);
+        console.log(`S3 cleanup - skipped output: ${skippedOutputFile}`);
+    }
 
     for (const fileKey of fileKeys) {
         total++;
@@ -106,34 +118,44 @@ try {
                     // Sort versions by LastModified, descending (latest first)
                     matchingVersions.sort((a, b) => new Date(b.LastModified) - new Date(a.LastModified));
                     const latest = matchingVersions[0];
-                    // Delete latest version
-                    const deleteCmd = new DeleteObjectCommand({
-                        Bucket: bucketName,
-                        Key: fileKey,
-                        VersionId: latest.VersionId
-                    });
-                    await awsClient._s3Client.send(deleteCmd);
-                    console.log(`\nDeleted latest version (${latest.VersionId}) for ${fileKey}`);
+                    if (!dryRun) {
+                        // Delete latest version if not in dry run
+                        const deleteCmd = new DeleteObjectCommand({
+                            Bucket: bucketName,
+                            Key: fileKey,
+                            VersionId: latest.VersionId
+                        });
+                        await awsClient._s3Client.send(deleteCmd);
+                        console.log(`\nDeleted latest version (${latest.VersionId}) for ${fileKey}`);
+                    } else {
+                        console.log(`\n[DryRun] Would delete latest version (${latest.VersionId}) for ${fileKey}`);
+                    }
+                    // Record fileKey as cleaned (deleted or simulated deletion)
+                    appendFileSync(deletedOutputFile, fileKey + "\n");
+                    successCount++;
                 } else {
                     console.log(`\nSkipping ${fileKey}: less than 2 versions.`);
+                    // Record fileKey as skipped
+                    appendFileSync(skippedOutputFile, fileKey + "\n");
                 }
-                successCount++;
-            }
-            else if (command === 'ddb-update') {
-                // Update document in DynamoDB table pn-SsDocumenti
-                const updateCmd = new UpdateItemCommand({
-                    TableName: 'pn-SsDocumenti',
-                    Key: {
-                        documentKey: { S: fileKey }
-                    },
-                    UpdateExpression: 'SET documentLogicalState = :saved, documentState = :available',
-                    ExpressionAttributeValues: {
-                        ':saved': { S: 'SAVED' },
-                        ':available': { S: 'available' }
-                    }
-                });
-                await awsClient._dynamoClient.send(updateCmd);
-                console.log(`\nUpdated document for ${fileKey}`);
+            } else if (command === 'ddb-update') {
+                if (!dryRun) {
+                    const updateCmd = new UpdateItemCommand({
+                        TableName: 'pn-SsDocumenti',
+                        Key: {
+                            documentKey: { S: fileKey }
+                        },
+                        UpdateExpression: 'SET documentLogicalState = :saved, documentState = :available',
+                        ExpressionAttributeValues: {
+                            ':saved': { S: 'SAVED' },
+                            ':available': { S: 'available' }
+                        }
+                    });
+                    await awsClient._dynamoClient.send(updateCmd);
+                    console.log(`\nUpdated document for ${fileKey}`);
+                } else {
+                    console.log(`\n[DryRun] Would update document for ${fileKey}`);
+                }
                 successCount++;
             }
         } catch (error) {
