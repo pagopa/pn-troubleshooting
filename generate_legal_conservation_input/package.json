@@ -1,0 +1,15 @@
+{
+  "name": "generate_legal_conservation_input",
+  "version": "1.0.0",
+  "description": "The script, starting from a list of FileKeys, must generate a json array where each element contains certain information.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.750.0",
+    "@aws-sdk/util-dynamodb": "^3.782.0",
+    "pn-common": "file:../pn-common"
+  }
+}
