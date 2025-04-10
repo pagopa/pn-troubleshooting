@@ -31,7 +31,7 @@ const args = parseArgs({
         envName: { type: "string", short: "e" },
         inputFile: { type: "string", short: "i" },
         command: { type: "string", short: "c" },
-        dryRun: { type: "boolean", short: "d" }, // added dryRun option
+        dryRun: { type: "boolean", short: "d" },
         help: { type: "boolean", short: "h" }
     },
     strict: true
@@ -69,7 +69,7 @@ try {
     console.log(`Starting ${command} in ${envName} environment...`);
     console.log(`Processing ${fileKeys.length} fileKeys from ${inputFile}`);
 
-    // Initialize AWS clients (using "confinfo" profile)
+    // Initialize AWS clients
     const awsClient = new AwsClientsWrapper('confinfo', envName);
     awsClient._initS3();
     awsClient._initDynamoDB();
@@ -89,7 +89,7 @@ try {
     // For s3-cleanup, build bucket name
     const bucketName = `pn-safestorage-eu-south-1-${accountId}`;
 
-    // Initialize counters and prepare output files if needed
+    // Initialize counters and prepare output files
     let total = 0, successCount = 0, failedCount = 0;
     let deletedOutputFile, skippedOutputFile;
     if (command === 's3-cleanup') {

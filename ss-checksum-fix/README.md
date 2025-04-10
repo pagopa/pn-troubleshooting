@@ -13,6 +13,7 @@ Questo script NodeJS offre due funzionalità su oggetti SS con checksum errato.
 
 ## Parametri
 
+- `--dryRun` oppure `-d`: Opzionale, simula esecuzione senza effettuare modifiche.
 - `--envName` oppure `-e`: Specifica l'ambiente da utilizzare. Valori validi: `dev`, `uat`, `test`, `prod`, `hotfix`.
 - `--inputFile` oppure `-i`: Percorso del file TXT contenente una lista di fileKeys (uno per linea).
 - `--command` oppure `-c`: Specifica il subcommand da eseguire. Valori ammessi:

@@ -1,6 +1,7 @@
 {
   "name": "ss-checksum-fix",
   "version": "1.0.0",
+  "type": "module",
   "description": "Script per for SS bucket files checksum mismatch cleanup",
   "main": "index.js",
   "scripts": {
