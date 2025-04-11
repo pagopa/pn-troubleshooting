@@ -101,8 +101,8 @@ async function main() {
         statusRequest = false 
       }
       else {
-        console.log(`CxId ${cxId}. Waiting 5 sec...`)
-        await sleep(5000)
+        console.log(`CxId ${cxId}. Waiting 15 sec...`)
+        await sleep(15000)
       }
     }
     let lastEvaluatedKey;
@@ -127,7 +127,7 @@ async function main() {
           break;
         case 'DELETED':
           resultsOf.DELETED++
-          appendJsonToFile(`REJECTED.json`, JSON.stringify(element))
+          appendJsonToFile(`DELETED.json`, JSON.stringify(element))
           break;
         default:
           break;
