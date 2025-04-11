@@ -1,0 +1,19 @@
+{
+  "name": "ss-checksum-fix",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Script per for SS bucket files checksum mismatch cleanup",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.250.0",
+    "@aws-sdk/client-dynamodb": "^3.250.0",
+    "@aws-sdk/client-sts": "^3.250.0",
+    "@aws-sdk/util-dynamodb": "^3.250.0",
+    "pn-common": "file:../pn-common/"
+  },
+  "author": "PagoPA S.p.A.",
+  "license": "ISC"
+}

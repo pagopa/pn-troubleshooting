@@ -54,6 +54,7 @@ build/
 
 ### VS Code ###
 .vscode/
+*.code-workspace
 
 ### MAC ###
 **/.DS_Store
