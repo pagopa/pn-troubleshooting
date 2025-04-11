@@ -126,7 +126,7 @@ function logResult(message, checkResult, queueName, timestamp) {
         // For failed checks, log only the required fields
         const outputData = {
             fileKey: message.parsedFileKey,
-            requestId: checkResult.requestId ? `pn-cons-000~${checkResult.requestId}` : null,
+            requestId: checkResult.requestId,
             failureReason: checkResult.reason
         };
         appendFileSync(`results/to_keep_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
