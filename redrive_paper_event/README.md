@@ -52,7 +52,7 @@ done
 
 ### Esecuzione lista massiva requestId
 ```bash
-node redrive_paper_events_massive.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --file <file-path> --wait <ms>
+node redrive_paper_event_massive.js --awsCoreProfile <aws-profile-core> --awsConfinfoProfile <aws-profile-confinfo> --file <file-path> [--wait <ms>]
 
 ```
 Dove:
