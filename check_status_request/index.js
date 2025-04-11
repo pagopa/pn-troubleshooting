@@ -58,7 +58,7 @@ async function main() {
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   let counter = {}
   for(let i = 0; i < fileRows.length; i++){
-    const requestId =  fileRows[i]
+    const requestId =  fileRows[i].trim()
     let result = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", 'pn-cons-000~' + requestId)
     if(result.Items.length === 0) {
       appendJsonToFile("notfound.json", requestId)
@@ -70,6 +70,10 @@ async function main() {
     console.log(`${i} ${metadata.statusRequest}`)
     if(metadata.statusRequest === "error") {
       appendJsonToFile("error.json", metadata)
+    }
+    else if(metadata.statusRequest === "PN999" && metadata.statusRequest === "PN998" ) {
+      appendJsonToFile("locked.json", metadata)
+      console.log(requestId + " locked by us")
     }
     else if(metadata.statusRequest != "booked" && metadata.statusRequest != "sent" && metadata.statusRequest != "retry") {
       appendJsonToFile("fromconsolidatore.json", metadata)
