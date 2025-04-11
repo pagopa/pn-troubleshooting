@@ -119,6 +119,7 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
     };
     
     const failedRequests = [];
+    const updatedResults = [];
     let processed = 0;
     
     for (const requestId of requestIds) {
@@ -130,7 +131,7 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
             }
             const currentVersion = parseInt(currentItem.Items[0].version?.N || '0', 10);
             const timestamp = new Date().toISOString();
-            await awsClient._updateItem(
+            const updateResult = await awsClient._updateItem(
                 'pn-EcRichiesteMetadati',
                 { requestId: fullRequestId },
                 {
@@ -152,7 +153,18 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
                 },
                 'SET'
             );
-            stats.updated++;
+            // Verify that the updated item has the expected new status
+            if (
+                updateResult &&
+                updateResult.Attributes &&
+                updateResult.Attributes.statusRequest &&
+                updateResult.Attributes.statusRequest.S === newStatus
+            ) {
+                stats.updated++;
+            } else {
+                throw new Error('ReturnValues mismatch');
+            }
+            updatedResults.push(`Request ID: ${requestId}, ReturnValues: ${JSON.stringify(updateResult.Attributes)}`);
         } catch (error) {
             stats.failed++;
             failedRequests.push(requestId);
@@ -160,12 +172,16 @@ async function setRequestStatus(inputFile, awsClient, newStatus) {
         process.stdout.write(`\rProcessed ${++processed}/${requestIds.length} items`);
     }
     console.log();
-
+    
     if (failedRequests.length > 0) {
         await writeFile(`${RESULTS_DIR}/failed.txt`, failedRequests.join('\n'));
         console.log(`\nFailed request IDs have been saved to ${RESULTS_DIR}/failed.txt`);
     }
-
+    if (updatedResults.length > 0) {
+        await writeFile(`${RESULTS_DIR}/updated.txt`, updatedResults.join('\n'));
+        console.log(`\nUpdate details saved to ${RESULTS_DIR}/updated.txt`);
+    }
+    
     console.log('\n=== Update Summary ===');
     console.log(`Total items processed: ${stats.total}`);
     console.log(`Items updated: ${stats.updated}`);
