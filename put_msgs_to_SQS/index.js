@@ -95,8 +95,10 @@ function formatInput(msgsToRepublish) {
                 MessageBody: json.Body
             };
             json.MessageAttributes ? msg.MessageAttributes = json.MessageAttributes : null;
-            json.Attributes.MessageGroupId ? msg.MessageGroupId = json.Attributes.MessageGroupId : null;
-            json.Attributes.MessageDeduplicationId ? msg.MessageDeduplicationId = json.Attributes.MessageDeduplicationId : null;
+            if(json.Attributes) {
+                json.Attributes.MessageGroupId ? msg.MessageGroupId = json.Attributes.MessageGroupId : null;
+                json.Attributes.MessageDeduplicationId ? msg.MessageDeduplicationId = json.Attributes.MessageDeduplicationId : null;
+            }
             singleBlockOfMsgs.push(msg);
         });
         allBlocksOfMsgs.push(singleBlockOfMsgs);
