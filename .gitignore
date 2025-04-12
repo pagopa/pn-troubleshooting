@@ -23,6 +23,9 @@ remove_from_sqs/to_remove_*
 remove_from_sqs/safe_to_delete_*
 check-sent-paper-attachment/dump_*
 analyze-safestorage-dlq/dump_*
+check_status_request/*.json
+!check_status_request/package.json
+!check_status_request/package-lock.json
 
 ### Rstudio ###
 .Rproj.user
