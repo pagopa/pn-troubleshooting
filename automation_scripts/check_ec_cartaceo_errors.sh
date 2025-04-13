@@ -54,7 +54,7 @@ echo "Dump file: $ORIGINAL_DUMP"
 # Step 2: Extract requestIdx values from the dump     #
 #######################################################
 cd "$WORKDIR/check_status_request"
-REQUEST_IDS_LIST="./request_ids_list.txt"
+REQUEST_IDS_LIST="./${ORIGINAL_DUMP%.json}_all_request_ids.txt"
 cat "$ORIGINAL_DUMP" | jq -r '.[] | .Body | fromjson | .requestIdx' > "$REQUEST_IDS_LIST"
 echo "Extracted requestIdx values to: $WORKDIR/check_status_request/$REQUEST_IDS_LIST"
 
@@ -73,7 +73,7 @@ fi
 ###################################################
 # Step 4: Extract requests in error status        #
 ###################################################
-ERROR_REQUEST_IDS_LIST="./error_request_ids_list.txt"
+ERROR_REQUEST_IDS_LIST="./${ORIGINAL_DUMP%.json}_error_request_ids.txt"
 cat "$ERROR_JSON" | jq -r '.requestId | sub("pn-cons-000~"; "")' > "$ERROR_REQUEST_IDS_LIST"
 echo "Extracted error requestIds to: $WORKDIR/check_status_request/$ERROR_REQUEST_IDS_LIST"
 
