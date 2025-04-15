@@ -4,7 +4,7 @@ Script Bash per la pulizia della `pn-ec-cartaceo-errori-queue-DLQ.fifo`.
 Lo script esegue le seguenti operazioni:
 1. Effettua il dump dei messaggi dalla coda DLQ `pn-ec-cartaceo-errori-queue-DLQ.fifo`.
 2. Estrae i valori `requestIdx` dal dump dei messaggi.
-3. Controlla lo stato delle richieste tramite il servizio pn-EcRichiesteMetadati.
+3. Controlla lo stato delle richieste sulla `pn-EcRichiesteMetadati` tramite il [check_status_request](https://github.com/pagopa/pn-troubleshooting/tree/main/check_status_request).
 4. Filtra i messaggi in errore e genera file in formato JSONLine.
 5. Copia i file generati in una cartella di output.
 6. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ.
