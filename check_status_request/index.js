@@ -68,10 +68,10 @@ async function main() {
     !counter[metadata.statusRequest] ? counter[metadata.statusRequest] = 0 : null
     counter[metadata.statusRequest] = counter[metadata.statusRequest] + 1
     console.log(`${i} ${metadata.statusRequest}`)
-    if(metadata.statusRequest === "error") {
+    if(metadata.statusRequest === "error" || metadata.statusRequest === "internalError") {
       appendJsonToFile("error.json", metadata)
     }
-    else if(metadata.statusRequest === "PN999" && metadata.statusRequest === "PN998" ) {
+    else if(metadata.statusRequest === "PN999" || metadata.statusRequest === "PN998" ) {
       appendJsonToFile("locked.json", metadata)
       console.log(requestId + " locked by us")
     }
