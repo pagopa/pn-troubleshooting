@@ -6,7 +6,7 @@ Lo script esegue le seguenti operazioni:
 2. Estrae i valori `requestIdx` dal dump dei messaggi.
 3. Controlla lo stato delle richieste sulla `pn-EcRichiesteMetadati` tramite il [check_status_request](https://github.com/pagopa/pn-troubleshooting/tree/main/check_status_request).
 4. Filtra i messaggi in errore e converte i dump in formato JSONLine.
-5. Copia i file generati in una cartella di output, opzionalmente specificabile.
+5. Copia i file generati in una cartella di output locale allo script.
 6. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
 
 ## Prerequisiti
@@ -32,7 +32,6 @@ aws sso login --profile sso_pn-confinfo-prod
 
 Dove:
 - `-w, --work-dir`: (Obbligatorio) Directory di lavoro contenente i sottocartelle necessarie (dump_sqs, check_status_request, remove_from_sqs).
-- `-o, --output-dir`: (Opzionale) Directory dove copiare i file generati (default: ./output nella directory di partenza).
 - `--purge`: (Opzionale) Se specificato, rimuove i messaggi in errore dalla coda DLQ dopo una pausa di 30 secondi.
 - `-h, --help`: Mostra il messaggio di aiuto.
 
@@ -44,7 +43,7 @@ Dove:
 
 ## Struttura Output
 
-I file generati dallo script vengono copiati nella directory specificata da `--output-dir`. I file includono:
+I file generati dallo script vengono copiati in una cartella apposita locale allo script. I file includono:
 - Il file dump originale.
 - Il file contenente tutti i valori `requestIdx`.
 - Il file contenente gli ID delle richieste in errore.
@@ -56,9 +55,4 @@ I file generati dallo script vengono copiati nella directory specificata da `--o
 Se attivata con `--purge`, lo script:
 - Passa alla cartella `remove_from_sqs` all'interno della directory di lavoro.
 - Attende 30 secondi per il timeout di visibilità.
-- Esegue lo script Node.js per rimuovere i messaggi dalla coda DLQ `pn-ec-cartaceo-errori-queue-DLQ.fifo`.
-
-Il comando eseguito in modalità purge è:
-```bash
-node index.js --account confinfo --envName prod --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout 30 --fileName <filtered_dump>
-```
+- Invoca il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs) per rimuovere i messaggi dalla coda DLQ `pn-ec-cartaceo-errori-queue-DLQ.fifo`.

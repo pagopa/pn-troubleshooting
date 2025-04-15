@@ -6,7 +6,6 @@ usage() {
     cat <<EOF
 Usage: $(basename "$0") -w <work-dir> [-o <output-dir>]
   -w, --work-dir           Working directory
-  -o, --output-dir         Directory to copy output files (default: ./output)
   --purge                  Purge events from the SQS queue
 EOF
     exit 1
