@@ -15,16 +15,12 @@ EOF
 # Parse parameters
 WORKDIR=""
 STARTDIR=$(pwd)
-OUTPUTDIR=""
+OUTPUTDIR="$STARTDIR/output/check_ec_cartaceo_errors"
 PURGE=false
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -w|--work-dir)
             WORKDIR="$2"
-            shift 2
-            ;;
-        -o|--output-dir)
-            OUTPUTDIR="$2"
             shift 2
             ;;
         --purge)
@@ -45,13 +41,9 @@ if [[ -z "$WORKDIR" ]]; then
     usage
 fi
 
-if [[ -z "$OUTPUTDIR" ]]; then
-    OUTPUTDIR="$STARTDIR/output"
-fi
-
-echo "Working directory: $WORKDIR"
+echo "Working directory: $(realpath $WORKDIR)"
 echo "Starting directory: $STARTDIR"
-echo "Output directory: $OUTPUTDIR"
+echo "Output directory: $(realpath "$OUTPUTDIR")"
 
 #############################################
 # Step 1: Dump messages from the SQS queue  #
