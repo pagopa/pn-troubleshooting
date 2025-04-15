@@ -124,6 +124,10 @@ cp "$JSONLINE_DUMP" "$OUTPUTDIR/"
 cp "$FILTERED_DUMP" "$OUTPUTDIR/"
 echo "Files copied to $OUTPUTDIR."
 
+#######################################################
+# Step 8 (optional): Remove events from SQS queue     #
+#######################################################
+
 if $PURGE; then
     echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
     cd "$WORKDIR/remove_from_sqs"
