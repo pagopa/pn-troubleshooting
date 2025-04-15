@@ -36,6 +36,8 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
+mkdir -p "$OUTPUTDIR"
+
 if [[ -z "$WORKDIR" ]]; then
     usage
 fi
@@ -107,7 +109,6 @@ echo "Total messages in filtered dump (to remove): $(wc -l < "$FILTERED_DUMP")"
 #######################################################
 # Step 7: Copy all generated files to OUTPUTDIR       #
 #######################################################
-mkdir -p "$OUTPUTDIR"
 cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
 cp "$WORKDIR/check_status_request/$REQUEST_IDS_LIST" "$OUTPUTDIR/"
 cp "$WORKDIR/check_status_request/$ERROR_REQUEST_IDS_LIST" "$OUTPUTDIR/"
@@ -125,7 +126,7 @@ if $PURGE; then
     echo "Waiting for the visibility timeout to expire..."
     sleep 30
     echo "Purging events from the SQS queue..."
-    node index.js --account confinfo --envName prod --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout 30 --fileName "$FILTERED_DUMP"
+    node index.js --account confinfo --envName prod --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout 30 --fileName "$FILTERED_DUMP" > /dev/null
 fi
 
 echo "Process completed."
