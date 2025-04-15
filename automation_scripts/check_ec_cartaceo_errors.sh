@@ -4,19 +4,32 @@ set -Eeuo pipefail
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") -w <work-dir>
+Usage: $(basename "$0") -w <work-dir> [-o <output-dir>]
   -w, --work-dir           Working directory
+  -o, --output-dir         Directory to copy output files (default: ./output)
+  --purge                  Purge events from the SQS queue
 EOF
     exit 1
 }
 
 # Parse parameters
 WORKDIR=""
+STARTDIR=$(pwd)
+OUTPUTDIR=""
+PURGE=false
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -w|--work-dir)
             WORKDIR="$2"
             shift 2
+            ;;
+        -o|--output-dir)
+            OUTPUTDIR="$2"
+            shift 2
+            ;;
+        --purge)
+            PURGE=true
+            shift
             ;;
         -h|--help)
             usage
@@ -32,7 +45,13 @@ if [[ -z "$WORKDIR" ]]; then
     usage
 fi
 
+if [[ -z "$OUTPUTDIR" ]]; then
+    OUTPUTDIR="$STARTDIR/output"
+fi
+
 echo "Working directory: $WORKDIR"
+echo "Starting directory: $STARTDIR"
+echo "Output directory: $OUTPUTDIR"
 
 #############################################
 # Step 1: Dump messages from the SQS queue  #
@@ -76,6 +95,7 @@ fi
 ERROR_REQUEST_IDS_LIST="./${ORIGINAL_DUMP%.json}_error_request_ids.txt"
 cat "$ERROR_JSON" | jq -r '.requestId | sub("pn-cons-000~"; "")' > "$ERROR_REQUEST_IDS_LIST"
 echo "Extracted error requestIds to: $WORKDIR/check_status_request/$ERROR_REQUEST_IDS_LIST"
+echo "Total requestIds in error status (not to remove): $(wc -l < "$ERROR_REQUEST_IDS_LIST")"
 
 ###########################################################
 # Step 5: Convert the original dump to JSONLine format    #
@@ -83,6 +103,7 @@ echo "Extracted error requestIds to: $WORKDIR/check_status_request/$ERROR_REQUES
 JSONLINE_DUMP="${ORIGINAL_DUMP%.json}.jsonline"
 jq -c '.[]' "$ORIGINAL_DUMP" > "$JSONLINE_DUMP"
 echo "Converted dump to JSONLine file: $JSONLINE_DUMP"
+echo "Total messages in JSONLine dump: $(wc -l < "$JSONLINE_DUMP")"
 
 #######################################################
 # Step 6: Filter out events from requests in error    #
@@ -90,5 +111,26 @@ echo "Converted dump to JSONLine file: $JSONLINE_DUMP"
 FILTERED_DUMP="${ORIGINAL_DUMP%.json}_filtered.jsonline"
 grep -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
 echo "Filtered dump stored in: $FILTERED_DUMP"
+echo "Total messages in filtered dump (to remove): $(wc -l < "$FILTERED_DUMP")"
+
+#######################################################
+# Step 7: Copy all generated files to OUTPUTDIR       #
+#######################################################
+mkdir -p "$OUTPUTDIR"
+cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+cp "$WORKDIR/check_status_request/$REQUEST_IDS_LIST" "$OUTPUTDIR/"
+cp "$WORKDIR/check_status_request/$ERROR_REQUEST_IDS_LIST" "$OUTPUTDIR/"
+cp "$JSONLINE_DUMP" "$OUTPUTDIR/"
+cp "$FILTERED_DUMP" "$OUTPUTDIR/"
+echo "Files copied to $OUTPUTDIR."
+
+if $PURGE; then
+    echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
+    cd "$WORKDIR/remove_from_sqs"
+    echo "Waiting for the visibility timeout to expire..."
+    sleep 30
+    echo "Purging events from the SQS queue..."
+    node index.js --account confinfo --envName prod --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout 30 --fileName "$FILTERED_DUMP"
+fi
 
 echo "Process completed."
