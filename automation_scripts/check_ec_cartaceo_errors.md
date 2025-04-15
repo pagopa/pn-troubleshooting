@@ -1,6 +1,6 @@
 # Script di Troubleshooting Errori EC Cartaceo
 
-Script Bash per il troubleshooting degli errori relativi al sistema EC Cartaceo.  
+Script Bash per la pulizia della `pn-ec-cartaceo-errori-queue-DLQ.fifo`.  
 Lo script esegue le seguenti operazioni:
 1. Effettua il dump dei messaggi dalla coda DLQ `pn-ec-cartaceo-errori-queue-DLQ.fifo`.
 2. Estrae i valori `requestIdx` dal dump dei messaggi.
