@@ -12,7 +12,7 @@ conf$spark.dynamicAllocation.enabled <- "false"
 
 sc <- spark_connect(master = "local", version = "3.5.0", hadoop_version = "3", config = conf)
 
-spark_read_csv(sc, 'matrice_costi_def', "data/20250131_Matrice Fatturazione _Aggiornamento Iva indetraibile e stampa a colori.csv", delimiter = ';')
+spark_read_csv(sc, 'matrice_costi_def', "data/20250331_Matrice Fatturazione _Aggiornamento Prezzi Poste & CAP", delimiter = ';')
 
 spark_read_csv(sc, 'zone', "data/20240625_zones.csv", delimiter = ';')
 
@@ -221,7 +221,7 @@ sdf_collect(
         max,
         CAST(CAST(REPLACE(costo, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo,
         CAST(CAST(REPLACE(costo_base_20gr, ',', '.') AS DECIMAL(10, 2)) * 100 as int) AS costo_base_20gr,
-        '2025-01-31T23:00:00.000Z' as startDate, 
+        '2025-03-31T22:00:00.000Z' as startDate, 
         '2999-01-01T23:59:59.999Z' as endDate
       FROM
         completePivot c 
