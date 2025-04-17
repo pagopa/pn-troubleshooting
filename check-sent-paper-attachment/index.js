@@ -123,10 +123,17 @@ function logResult(message, checkResult, queueName, timestamp) {
         };
         appendFileSync(`results/to_remove_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
     } else {
-        // For failed checks, log only the required fields
+        // Ensure the requestId has a single prefix
+        let formattedRequestId = null;
+        if (checkResult.requestId) {
+            formattedRequestId = checkResult.requestId.startsWith('pn-cons-000~')
+                ? checkResult.requestId
+                : `pn-cons-000~${checkResult.requestId}`;
+        }
+        // For failed checks, log the required fields
         const outputData = {
             fileKey: message.parsedFileKey,
-            requestId: checkResult.requestId,
+            requestId: formattedRequestId,
             failureReason: checkResult.reason
         };
         appendFileSync(`results/to_keep_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
