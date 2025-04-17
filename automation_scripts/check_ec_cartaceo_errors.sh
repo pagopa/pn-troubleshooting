@@ -100,29 +100,42 @@ if [[ ! -f "$ERROR_JSON" ]]; then
   exit 1
 fi
 
+###########################################################
+# Step 4: Convert the original dump to JSONLine format    #
+###########################################################
+JSONLINE_DUMP="${ORIGINAL_DUMP%.json}.jsonline"
+jq -c '.[]' "$ORIGINAL_DUMP" > "$JSONLINE_DUMP"
+JSONLINE_COUNT=$(wc -l < "$JSONLINE_DUMP")
+if [[ $JSONLINE_COUNT -eq 0 ]]; then
+  echo "No events found in JSONLine dump. Exiting."
+  exit 1
+fi
+echo "Converted dump to JSONLine file: $(realpath "$JSONLINE_DUMP")"
+echo "Total events in JSONLine dump: $JSONLINE_COUNT"
+
 ###################################################
-# Step 4: Extract requests in error status        #
+# Step 5: Extract requests in error status        #
 ###################################################
 ERROR_REQUEST_IDS_LIST="${ORIGINAL_DUMP%.json}_error_request_ids.txt"
 jq -r '.requestId | sub("pn-cons-000~"; "")' "$ERROR_JSON" > "$ERROR_REQUEST_IDS_LIST"
 echo "Extracted error requestIds to: $(realpath "$ERROR_REQUEST_IDS_LIST")"
 echo "Total requestIds in error status (not to remove): $(wc -l < "$ERROR_REQUEST_IDS_LIST")"
 
-###########################################################
-# Step 5: Convert the original dump to JSONLine format    #
-###########################################################
-JSONLINE_DUMP="${ORIGINAL_DUMP%.json}.jsonline"
-jq -c '.[]' "$ORIGINAL_DUMP" > "$JSONLINE_DUMP"
-echo "Converted dump to JSONLine file: $(realpath "$JSONLINE_DUMP")"
-echo "Total events in JSONLine dump: $(wc -l < "$JSONLINE_DUMP")"
-
 #######################################################
 # Step 6: Filter out events from requests in error    #
 #######################################################
 FILTERED_DUMP="${ORIGINAL_DUMP%.json}_filtered.jsonline"
 grep -x -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
+FILTERED_COUNT=$(wc -l < "$FILTERED_DUMP")
 echo "Filtered dump stored in: $(realpath "$FILTERED_DUMP")"
-echo "Total events in filtered dump (to remove): $(wc -l < "$FILTERED_DUMP")"
+echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
+
+# Compare counts and warn if JSONLine dump count is greater than filtered dump count
+if [[ $JSONLINE_COUNT -gt $FILTERED_COUNT ]]; then
+    echo "WARNING: Total events count is greater than the count of events to remove."
+    echo "Please analyze the requestIds in error status for discrepancies."
+    echo "See: $(realpath "$ERROR_REQUEST_IDS_LIST")"
+fi
 
 #######################################################
 # Step 7: Copy all generated files to OUTPUTDIR       #
