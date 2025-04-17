@@ -5,7 +5,8 @@ Lo script esegue le seguenti operazioni:
 1. Effettua il dump dei messaggi dalla coda DLQ `pn-ec-availabilitymanager-queue-DLQ`.
 2. Verifica se esiste un evento `sent` relativo agli allegati cartacei usando il [check-sent-paper-attachment](https://github.com/pagopa/pn-troubleshooting/tree/main/check-sent-paper-attachment).
 3. Copia il dump originale ed il file di analisi generato nella cartella di output (`output/check_ec_availability_manager`).
-4. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
+4. Se il totale degli eventi nel dump originale è maggiore di quelli da rimuovere, viene stampato un WARNING.
+5. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
 
 ## Prerequisiti
 

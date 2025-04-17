@@ -130,7 +130,7 @@ FILTERED_COUNT=$(wc -l < "$FILTERED_DUMP")
 echo "Filtered dump stored in: $(realpath "$FILTERED_DUMP")"
 echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
 
-# Compare counts and warn if JSONLine dump count is greater than filtered dump count
+# Compare counts and warn if total events > removable events
 if [[ $JSONLINE_COUNT -gt $FILTERED_COUNT ]]; then
     echo "WARNING: Total events count is greater than the count of events to remove."
     echo "Please analyze the requestIds in error status for discrepancies."

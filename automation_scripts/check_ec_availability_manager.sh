@@ -15,7 +15,7 @@ EOF
 # Default values
 WORKDIR=""
 STARTDIR=$(pwd)
-OUTPUTDIR="$STARTDIR/output/check_ec_availability_manager"  # Fixed output directory
+OUTPUTDIR="$STARTDIR/output/check_ec_availability_manager"
 V_TIMEOUT=30
 PURGE=false
 
@@ -74,7 +74,8 @@ if [[ -z "$ORIGINAL_DUMP" ]]; then
   exit 1
 fi
 echo "Dump file: $ORIGINAL_DUMP"
-echo "Total events in SQS dump: $(jq -c '.[]' "$ORIGINAL_DUMP" | wc -l)"
+TOTAL_EVENTS=$(wc -l < "$ORIGINAL_DUMP")
+echo "Total events in SQS dump: $TOTAL_EVENTS"
 
 #######################################################
 # Step 2: Check if the request has a 'sent' event     #
@@ -84,16 +85,26 @@ if [[ ! -d "$WORKDIR/check-sent-paper-attachment" ]]; then
     exit 1
 fi
 cd "$WORKDIR/check-sent-paper-attachment" || { echo "Failed to cd into '$WORKDIR/check-sent-paper-attachment'"; exit 1; }
+RESULTSDIR="$WORKDIR/check-sent-paper-attachment/results"
 node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --srcQueue pn-ec-availabilitymanager-queue-DLQ
 
 # Get the most recent analysis output file
-ANALYSIS_OUTPUT=$(find "$WORKDIR/check-sent-paper-attachment/result" -type f -name 'to_remove_pn-ec-availabilitymanager-queue-DLQ*' -exec ls -t1 {} + | head -1)
+ANALYSIS_OUTPUT=$(find "$RESULTSDIR" -type f -name 'to_remove_pn-ec-availabilitymanager-queue-DLQ*' -exec ls -t1 {} + | head -1)
 if [[ -z "$ANALYSIS_OUTPUT" ]]; then
   echo "No analysis output file found. Exiting."
   exit 1
 fi
 echo "Analysis output file: $ANALYSIS_OUTPUT"
-echo "Total events to remove: $(wc -l < "$ANALYSIS_OUTPUT")"
+REMOVABLE_EVENTS=$(wc -l < "$ANALYSIS_OUTPUT")
+echo "Total events to remove: $REMOVABLE_EVENTS"
+
+# Compare counts and warn if total events > removable events
+if [[ $TOTAL_EVENTS -gt $REMOVABLE_EVENTS ]]; then
+    echo "WARNING: Total events count is greater than the count of events to remove."
+    echo "Please check the analysis outputs."
+    echo "Outputs folder: $(realpath "$RESULTSDIR")"
+fi
+
 #######################################################
 # Step 3: Copy all generated files to OUTPUTDIR       #
 #######################################################
