@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") -w <work-dir> [-t <visibility-timeout>] [--purge]
+  -w, --work-dir           Working directory
+  -t, --visibility-timeout Visibility timeout in seconds (default: 30)
+  --purge                  Purge events from the SQS queue
+EOF
+    exit 1
+}
+
+# Default values
+WORKDIR=""
+STARTDIR=$(pwd)
+OUTPUTDIR="$STARTDIR/output/check_ec_availability_manager"  # Fixed output directory
+V_TIMEOUT=30
+PURGE=false
+
+# Parse parameters
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        -w|--work-dir)
+            WORKDIR="$2"
+            shift 2
+            ;;
+        -t|--visibility-timeout)
+            V_TIMEOUT="$2"
+            shift 2
+            ;;
+        --purge)
+            PURGE=true
+            shift
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            echo "Unknown parameter passed: $1"
+            usage
+            ;;
+    esac
+done
+
+if [[ -z "$WORKDIR" ]]; then
+    usage
+fi
+
+mkdir -p "$OUTPUTDIR"
+
+echo "Working directory: $(realpath "$WORKDIR")"
+echo "Starting directory: $STARTDIR"
+echo "Output directory: $(realpath "$OUTPUTDIR")"
+echo "Visibility Timeout: $V_TIMEOUT seconds"
+
+#############################################
+# Step 1: Dump events from the SQS queue    #
+#############################################
+
+echo "Dumping SQS queue..."
+if [[ ! -d "$WORKDIR/dump_sqs" ]]; then
+    echo "Script directory '$WORKDIR/dump_sqs' does not exist. Exiting."
+    exit 1
+fi
+cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1; }
+node dump_sqs.js --awsProfile sso_pn-confinfo-prod --queueName pn-ec-availabilitymanager-queue-DLQ --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
+
+# Get the most recent dump file
+ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -exec ls -t1 {} + | head -1)
+if [[ -z "$ORIGINAL_DUMP" ]]; then
+  echo "No dump file found. Exiting."
+  exit 1
+fi
+echo "Dump file: $ORIGINAL_DUMP"
+echo "Total events in SQS dump: $(jq -c '.[]' "$ORIGINAL_DUMP" | wc -l)"
+
+#######################################################
+# Step 2: Check if the request has a 'sent' event     #
+#######################################################
+if [[ ! -d "$WORKDIR/check-sent-paper-attachment" ]]; then
+    echo "Script directory '$WORKDIR/check-sent-paper-attachment' does not exist. Exiting."
+    exit 1
+fi
+cd "$WORKDIR/check-sent-paper-attachment" || { echo "Failed to cd into '$WORKDIR/check-sent-paper-attachment'"; exit 1; }
+node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --srcQueue pn-ec-availabilitymanager-queue-DLQ
+
+# Get the most recent analysis output file
+ANALYSIS_OUTPUT=$(find "$WORKDIR/check-sent-paper-attachment/result" -type f -name 'to_remove_pn-ec-availabilitymanager-queue-DLQ*' -exec ls -t1 {} + | head -1)
+if [[ -z "$ANALYSIS_OUTPUT" ]]; then
+  echo "No analysis output file found. Exiting."
+  exit 1
+fi
+echo "Analysis output file: $ANALYSIS_OUTPUT"
+echo "Total events to remove: $(wc -l < "$ANALYSIS_OUTPUT")"
+#######################################################
+# Step 3: Copy all generated files to OUTPUTDIR       #
+#######################################################
+cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+cp "$ANALYSIS_OUTPUT" "$OUTPUTDIR/"
+echo "Files copied to $OUTPUTDIR."
+
+#######################################################
+# Step 4 (optional): Remove events from SQS queue     #
+#######################################################
+if $PURGE; then
+    echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
+    if [[ ! -d "$WORKDIR/remove_from_sqs" ]]; then
+        echo "Script directory '$WORKDIR/remove_from_sqs' does not exist. Exiting."
+        exit 1
+    fi
+    cd "$WORKDIR/remove_from_sqs" || { echo "Failed to cd into '$WORKDIR/remove_from_sqs'"; exit 1; }
+    echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
+    sleep "$V_TIMEOUT"
+    echo "Purging events from the SQS queue..."
+    node index.js --account confinfo --envName prod --queueName pn-ec-availabilitymanager-queue-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$ANALYSIS_OUTPUT" 1>/dev/null
+fi
+
+echo "Process completed."
