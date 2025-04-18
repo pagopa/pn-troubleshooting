@@ -125,7 +125,7 @@ echo "Total requestIds in error status (not to remove): $(wc -l < "$ERROR_REQUES
 # Step 6: Filter out events from requests in error    #
 #######################################################
 FILTERED_DUMP="${ORIGINAL_DUMP%.json}_filtered.jsonline"
-grep -x -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
+grep -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
 FILTERED_COUNT=$(wc -l < "$FILTERED_DUMP")
 echo "Filtered dump stored in: $(realpath "$FILTERED_DUMP")"
 echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
