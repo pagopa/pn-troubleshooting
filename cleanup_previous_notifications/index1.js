@@ -85,7 +85,7 @@ async function main() {
         let info = unmarshall(result.Items[0]);
         let temp = {};
         for (evnt of info.eventsList) {
-            if (evnt.paperProgrStatus.statusCode == 'RECRN001A'){
+            if (evnt.paperProgrStatus.statusCode == 'RECRN010'){
                 temp = {
                     pk: 'META##' + info.requestId.replace(/pn-cons-000~/g, ''),
                     sk: 'META##' + evnt.paperProgrStatus.statusCode,
