@@ -24,9 +24,9 @@ Lo script esegue le seguenti operazioni:
    - Cerca nei log di pn-external-channel per trovare il cx_id associato
    - Verifica nella tabella `pn-EcRichiesteMetadati` se la richiesta ha raggiunto lo stato 'sent'
 
-I risultati delle verifiche vengono salvati in due file con data nel formato YYYY-MM-DD:
-- `results/to_keep_<data>.json` per i messaggi che non hanno superato il controllo
-- `results/to_remove_<data>.json` per i messaggi che hanno superato il controllo e che possono essere rimossi dalla DLQ
+I risultati delle verifiche vengono salvati in:
+- `results/need_further_analysis_${queueName}_${date}.json` per i messaggi che non hanno superato il controllo
+- `results/safe_to_delete_${queueName}_${date}.json` per i messaggi che hanno superato il controllo e che possono essere rimossi dalla DLQ
 
 ## Installazione
 
@@ -49,11 +49,11 @@ aws sso login --profile sso_pn-confinfo-<env>
 ### Esecuzione
 
 ```bash
-node index.js --envName <env> --dumpFile <path>
+node index.js --envName <env> --dumpFile <path> --queueName <queue>
 ```
 oppure
 ```bash
-node index.js -e <env> -f <path>
+node index.js -e <env> -f <path> -q <queue>
 ```
 
 Dove:
