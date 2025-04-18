@@ -83,6 +83,14 @@ if [[ ! -d "$WORKDIR/check_status_request" ]]; then
     exit 1
 fi
 cd "$WORKDIR/check_status_request" || { echo "Failed to cd into '$WORKDIR/check_status_request'"; exit 1; }
+# Remove pre-existing JSON files if they are present
+for file in counter.json error.json fromconsolidatore.json toconsolidatore.json locked.json notfound.json; do
+    if [[ -f "$file" ]]; then
+        rm "$file"
+        echo "Removed existing file: $file"
+    fi
+done
+
 BASENAME=$(basename "${ORIGINAL_DUMP%.json}")
 REQUEST_IDS_LIST="${BASENAME}_all_request_ids.txt"
 jq -r '.[] | .Body | fromjson | .requestIdx' "$ORIGINAL_DUMP" > "$REQUEST_IDS_LIST"
@@ -133,7 +141,7 @@ echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
 # Compare counts and warn if total events > removable events
 if [[ $JSONLINE_COUNT -gt $FILTERED_COUNT ]]; then
     echo "WARNING: Total events count is greater than the count of events to remove."
-    echo "Please analyze the requestIds in error status for discrepancies."
+    echo "Please analyze the requestIds in error status."
     echo "See: $(realpath "$ERROR_REQUEST_IDS_LIST")"
 fi
 
