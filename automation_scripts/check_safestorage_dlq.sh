@@ -96,7 +96,7 @@ process_queue(){
     ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
     if [[ -z "$ORIGINAL_DUMP" ]]; then
       echo "No dump file found for $TARGET_QUEUE. Skipping queue."
-      return 1
+      return 0
     fi
     
     echo "Dump file: $(realpath "$ORIGINAL_DUMP")"
@@ -125,7 +125,7 @@ process_queue(){
     ANALYSIS_OUTPUT=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
     if [[ -z "$ANALYSIS_OUTPUT" ]]; then
       echo "No removable events found for $TARGET_QUEUE. Skipping queue."
-      return 1
+      return 0
     fi
     echo "Analysis output file: $ANALYSIS_OUTPUT"
     REMOVABLE_EVENTS=$(wc -l < "$ANALYSIS_OUTPUT")
@@ -157,7 +157,11 @@ process_queue(){
         echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
         sleep "$V_TIMEOUT"
         echo "Purging events from the SQS queue..."
-        node index.js --account confinfo --envName prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$ANALYSIS_OUTPUT" 1>/dev/null
+        if [[ "$TARGET_QUEUE" == "pn-safestore_to_deliverypush-DLQ" ]]; then
+            node index.js --account core --envName prod --queueName pn-safestore_to_deliverypush-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$ANALYSIS_OUTPUT" 1>/dev/null
+        else
+            node index.js --account confinfo --envName prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$ANALYSIS_OUTPUT" 1>/dev/null
+        fi    
     fi
 
     echo "Process for queue $TARGET_QUEUE completed."
