@@ -103,6 +103,10 @@ process_queue(){
 
     TOTAL_EVENTS=$(jq -c '.[]' "$ORIGINAL_DUMP" | wc -l)
     echo "Total events in SQS dump: $TOTAL_EVENTS"
+    if [[ $TOTAL_EVENTS -eq 0 ]]; then
+        echo "No events found in the dump file. Skipping queue."
+        return 0
+    fi
 
     #######################################################
     # Step 2: Analyze events in the DLQ dump              #
