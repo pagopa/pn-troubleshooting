@@ -114,6 +114,13 @@ Example:
             console.error(`Error: Invalid queue name. Must be one of: ${Object.keys(QUEUE_CONFIGS).join(', ')}`);
             process.exit(1);
     }
+
+    // Safety check: dumpFile name must begin with "dump_" + queueName
+    const dumpFilename = args.values.dumpFile.split('/').pop();
+    if (!dumpFilename.startsWith(`dump_${args.values.queueName}`)) {
+        console.error(`Error: dump file name doesn't match with queue name "${args.values.queueName}"`);
+        process.exit(1);
+    }
     
     return args;
 }
