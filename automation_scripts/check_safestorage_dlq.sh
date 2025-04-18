@@ -27,6 +27,11 @@ OUTPUTDIR_BASE="$STARTDIR/output/check_safestorage_dlq"
 V_TIMEOUT=30
 PURGE=false
 
+# Declare summary associative arrays
+declare -A Q_totalEvents
+declare -A Q_removableEvents
+declare -A Q_unremovableEvents
+
 # Parse parameters
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -96,6 +101,9 @@ process_queue(){
     ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
     if [[ -z "$ORIGINAL_DUMP" ]]; then
       echo "No dump file found for $TARGET_QUEUE. Skipping queue."
+      Q_totalEvents["$TARGET_QUEUE"]=0
+      Q_removableEvents["$TARGET_QUEUE"]=0
+      Q_unremovableEvents["$TARGET_QUEUE"]=0
       return 0
     fi
     
@@ -103,7 +111,10 @@ process_queue(){
 
     TOTAL_EVENTS=$(jq -c '.[]' "$ORIGINAL_DUMP" | wc -l)
     echo "Total events in SQS dump: $TOTAL_EVENTS"
+    Q_totalEvents["$TARGET_QUEUE"]="$TOTAL_EVENTS"
     if [[ $TOTAL_EVENTS -eq 0 ]]; then
+        Q_removableEvents["$TARGET_QUEUE"]=0
+        Q_unremovableEvents["$TARGET_QUEUE"]=0
         echo "No events found in the dump file. Skipping queue."
         return 0
     fi
@@ -126,26 +137,27 @@ process_queue(){
     node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
 
     # Get the most recent analysis output file
-    ANALYSIS_OUTPUT=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
-    if [[ -z "$ANALYSIS_OUTPUT" ]]; then
+    SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
+    if [[ -z "$SAFE_TO_DELETE" ]]; then
       echo "No removable events found for $TARGET_QUEUE. Skipping queue."
+      Q_removableEvents["$TARGET_QUEUE"]=0
+      Q_unremovableEvents["$TARGET_QUEUE"]=0
       return 0
     fi
-    echo "Analysis output file: $ANALYSIS_OUTPUT"
-    REMOVABLE_EVENTS=$(wc -l < "$ANALYSIS_OUTPUT")
-    echo "Total events to remove: $REMOVABLE_EVENTS"
-
-    if [[ $TOTAL_EVENTS -gt $REMOVABLE_EVENTS ]]; then
-        echo "WARNING: Total events count is greater than the count of events to remove."
-        echo "Please check the analysis outputs."
-        echo "Outputs folder: $(realpath "$RESULTSDIR")"
-    fi
+    UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
+    echo "Analysis output file: $(realpath "$SAFE_TO_DELETE")"
+    REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
+    UNREMOVABLE_EVENTS=$(wc -l < "$UNSAFE_TO_DELETE")
+    echo "Total removable events: $REMOVABLE_EVENTS"
+    echo "Total unremovable events: $UNREMOVABLE_EVENTS"
+    Q_removableEvents["$TARGET_QUEUE"]="$REMOVABLE_EVENTS"
+    Q_unremovableEvents["$TARGET_QUEUE"]="$UNREMOVABLE_EVENTS"
 
     #######################################################
     # Step 3: Copy all generated files to OUTPUTDIR       #
     #######################################################
     cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-    cp "$ANALYSIS_OUTPUT" "$OUTPUTDIR/"
+    cp "$SAFE_TO_DELETE" "$OUTPUTDIR/"
     echo "Files copied to $OUTPUTDIR."
 
     #######################################################
@@ -162,9 +174,9 @@ process_queue(){
         sleep "$V_TIMEOUT"
         echo "Purging events from the SQS queue..."
         if [[ "$TARGET_QUEUE" == "pn-safestore_to_deliverypush-DLQ" ]]; then
-            node index.js --account core --envName prod --queueName pn-safestore_to_deliverypush-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$ANALYSIS_OUTPUT" 1>/dev/null
+            node index.js --account core --envName prod --queueName pn-safestore_to_deliverypush-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
         else
-            node index.js --account confinfo --envName prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$ANALYSIS_OUTPUT" 1>/dev/null
+            node index.js --account confinfo --envName prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
         fi    
     fi
 
@@ -179,3 +191,12 @@ if [[ "$QUEUE" == "all" ]]; then
 else
     process_queue "$QUEUE"
 fi
+
+# Summary: Print totals for each processed queue.
+echo "---------- Summary ----------"
+for queue in "${!Q_totalEvents[@]}"; do
+    echo "Queue: $queue"
+    echo "  Total events: ${Q_totalEvents[$queue]}"
+    echo "  Total removable events: ${Q_removableEvents[$queue]}"
+    echo "  Total unremovable events: ${Q_unremovableEvents[$queue]}"
+done
