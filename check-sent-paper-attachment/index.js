@@ -121,7 +121,7 @@ function logResult(message, checkResult, queueName, timestamp) {
             MD5OfBody: message.MD5OfBody,
             ...(message.MD5OfMessageAttributes && { MD5OfMessageAttributes: message.MD5OfMessageAttributes })
         };
-        appendFileSync(`results/to_remove_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
+        appendFileSync(`results/safe_to_delete_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
     } else {
         // Ensure the requestId has a single prefix
         let formattedRequestId = null;
@@ -136,7 +136,7 @@ function logResult(message, checkResult, queueName, timestamp) {
             requestId: formattedRequestId,
             failureReason: checkResult.reason
         };
-        appendFileSync(`results/to_keep_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
+        appendFileSync(`results/need_further_analysis_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
     }
 }
 
@@ -186,7 +186,7 @@ function printSummary(stats) {
 
 async function main() {
     const { envName, dumpFile, queueName } = validateArgs();
-    const startTime = new Date().toISOString().replace(/[:.]/g, '-');  // Add timestamp when script starts
+    const startTime = new Date().toISOString().replace(/[:.]/g, '-');
 
     const stats = {
         total: 0,
