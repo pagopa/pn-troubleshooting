@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, appendFileSync } from 'fs';
+import path from 'path'; // Added import for path module
 import { parseArgs } from 'util';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { AwsClientsWrapper } from "pn-common";
@@ -141,6 +142,13 @@ function logResult(message, checkResult, queueName, timestamp) {
 }
 
 function processSQSDump(dumpFilePath, queueName) {
+    // Safety check to ensure dump file name matches queueName
+    const fileName = path.basename(dumpFilePath);
+    if (!fileName.startsWith(`dump_${queueName}`)) {
+        console.error(`Error: dump file name "${fileName}" does not match queueName "${queueName}"`);
+        process.exit(1);
+    }
+    
     try {
         const content = readFileSync(dumpFilePath, 'utf-8');
         const messages = JSON.parse(content);

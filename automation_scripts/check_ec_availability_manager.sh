@@ -86,7 +86,7 @@ if [[ ! -d "$WORKDIR/check-sent-paper-attachment" ]]; then
 fi
 cd "$WORKDIR/check-sent-paper-attachment" || { echo "Failed to cd into '$WORKDIR/check-sent-paper-attachment'"; exit 1; }
 RESULTSDIR="$WORKDIR/check-sent-paper-attachment/results"
-node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --srcQueue pn-ec-availabilitymanager-queue-DLQ
+node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --queueName pn-ec-availabilitymanager-queue-DLQ
 
 # Get the most recent analysis output file
 ANALYSIS_OUTPUT=$(find "$RESULTSDIR" -type f -name 'to_remove_pn-ec-availabilitymanager-queue-DLQ*' -exec ls -t1 {} + | head -1)
