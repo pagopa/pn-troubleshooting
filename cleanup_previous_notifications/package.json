@@ -1,0 +1,14 @@
+{
+  "name": "cleanup_previous_notifications",
+  "version": "1.0.0",
+  "description": "The script, starting from a list of requestId , must generate a json array where each element contains certain information and with this output insert the data in pn-PaperEvents table.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "dependencies": {
+    "@aws-sdk/util-dynamodb": "^3.782.0",
+    "pn-common": "file:../pn-common"
+  }
+}
