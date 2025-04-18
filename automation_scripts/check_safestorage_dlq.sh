@@ -98,8 +98,11 @@ process_queue(){
       echo "No dump file found. Exiting."
       exit 1
     fi
+
+    
     echo "Dump file: $ORIGINAL_DUMP"
-    TOTAL_EVENTS=$(wc -l < "$ORIGINAL_DUMP")
+
+    TOTAL_EVENTS=$(jq -c '.[]' "$ORIGINAL_DUMP" | wc -l)
     echo "Total events in SQS dump: $TOTAL_EVENTS"
 
     #######################################################
@@ -122,7 +125,7 @@ process_queue(){
     # Get the most recent analysis output file
     ANALYSIS_OUTPUT=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
     if [[ -z "$ANALYSIS_OUTPUT" ]]; then
-      echo "No analysis output file found. Exiting."
+      echo "No removable events found. Exiting."
       exit 1
     fi
     echo "Analysis output file: $ANALYSIS_OUTPUT"
