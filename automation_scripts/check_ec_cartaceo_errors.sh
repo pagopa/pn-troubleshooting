@@ -73,7 +73,7 @@ if [[ -z "$ORIGINAL_DUMP" ]]; then
   echo "No dump file found. Exiting."
   exit 1
 fi
-echo "Dump file: $ORIGINAL_DUMP"
+echo "Dump file: $(realpath "$ORIGINAL_DUMP")"
 
 #######################################################
 # Step 2: Extract requestIdx values from the dump     #
