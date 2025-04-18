@@ -95,10 +95,9 @@ process_queue(){
     # Get the most recent dump file
     ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
     if [[ -z "$ORIGINAL_DUMP" ]]; then
-      echo "No dump file found. Exiting."
-      exit 1
+      echo "No dump file found for $TARGET_QUEUE. Skipping queue."
+      return 1
     fi
-
     
     echo "Dump file: $(realpath "$ORIGINAL_DUMP")"
 
@@ -125,8 +124,8 @@ process_queue(){
     # Get the most recent analysis output file
     ANALYSIS_OUTPUT=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
     if [[ -z "$ANALYSIS_OUTPUT" ]]; then
-      echo "No removable events found. Exiting."
-      exit 1
+      echo "No removable events found for $TARGET_QUEUE. Skipping queue."
+      return 1
     fi
     echo "Analysis output file: $ANALYSIS_OUTPUT"
     REMOVABLE_EVENTS=$(wc -l < "$ANALYSIS_OUTPUT")
