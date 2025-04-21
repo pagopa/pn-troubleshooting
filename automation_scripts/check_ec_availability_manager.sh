@@ -90,27 +90,22 @@ RESULTSDIR="$WORKDIR/check-sent-paper-attachment/results"
 node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --queueName pn-ec-availabilitymanager-queue-DLQ
 
 # Get the most recent analysis output file
-ANALYSIS_OUTPUT=$(find "$RESULTSDIR" -type f -name 'to_remove_pn-ec-availabilitymanager-queue-DLQ*' -exec ls -t1 {} + | head -1)
-if [[ -z "$ANALYSIS_OUTPUT" ]]; then
+SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name 'to_remove_pn-ec-availabilitymanager-queue-DLQ*' -exec ls -t1 {} + | head -1)
+if [[ -z "$SAFE_TO_DELETE" ]]; then
   echo "No removable events found. Exiting."
   exit 1
 fi
-echo "Analysis output file: $ANALYSIS_OUTPUT"
-REMOVABLE_EVENTS=$(wc -l < "$ANALYSIS_OUTPUT")
-echo "Total events to remove: $REMOVABLE_EVENTS"
-
-# Compare counts and warn if total events > removable events
-if [[ $TOTAL_EVENTS -gt $REMOVABLE_EVENTS ]]; then
-    echo "WARNING: Total events count is greater than the count of events to remove."
-    echo "Please check the analysis outputs."
-    echo "Outputs folder: $(realpath "$RESULTSDIR")"
-fi
+UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
+REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
+UNREMOVABLE_EVENTS=$(wc -l < "$UNSAFE_TO_DELETE")
+echo "Total removable events: $REMOVABLE_EVENTS"
+echo "Total unremovable events: $UNREMOVABLE_EVENTS"
 
 #######################################################
 # Step 3: Copy all generated files to OUTPUTDIR       #
 #######################################################
 cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-cp "$ANALYSIS_OUTPUT" "$OUTPUTDIR/"
+cp "$SAFE_TO_DELETE" "$OUTPUTDIR/"
 echo "Files copied to $OUTPUTDIR."
 
 #######################################################
@@ -126,7 +121,7 @@ if $PURGE; then
     echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
-    node index.js --account confinfo --envName prod --queueName pn-ec-availabilitymanager-queue-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$ANALYSIS_OUTPUT" 1>/dev/null
+    node index.js --account confinfo --envName prod --queueName pn-ec-availabilitymanager-queue-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
 fi
 
 echo "Process completed."

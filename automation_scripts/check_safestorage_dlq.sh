@@ -145,7 +145,6 @@ process_queue(){
       return 0
     fi
     UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
-    echo "Analysis output file: $(realpath "$SAFE_TO_DELETE")"
     REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
     UNREMOVABLE_EVENTS=$(wc -l < "$UNSAFE_TO_DELETE")
     echo "Total removable events: $REMOVABLE_EVENTS"
