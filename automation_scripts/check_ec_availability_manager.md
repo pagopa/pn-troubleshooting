@@ -43,7 +43,7 @@ I file generati vengono copiati nella cartella `output/check_ec_availability_man
 
 ## Modalità Purge
 
-Se attivata con `--purge`, lo script:
+Se eseguito con opzione `--purge`, lo script:
 - Passa alla cartella `remove_from_sqs` all'interno della directory di lavoro.
 - Attende il timeout di visibilità (predefinito 30 secondi).
 - Invoca il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs) per rimuovere i messaggi dalla coda DLQ.
