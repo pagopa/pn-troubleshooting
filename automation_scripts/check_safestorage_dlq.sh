@@ -144,10 +144,10 @@ process_queue(){
       Q_unremovableEvents["$TARGET_QUEUE"]=0
       return 0
     fi
-    UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
     REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
     echo "Total removable events: $REMOVABLE_EVENTS"
     Q_removableEvents["$TARGET_QUEUE"]="$REMOVABLE_EVENTS"
+    UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
     if [[ "$UNSAFE_TO_DELETE" != "" ]]; then
         echo "Unremovable events found. Further analysis required."
         echo "Unremovable events file: $(realpath "$UNSAFE_TO_DELETE")"
