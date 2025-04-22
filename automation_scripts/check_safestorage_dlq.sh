@@ -146,12 +146,20 @@ process_queue(){
     fi
     UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
     REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
-    UNREMOVABLE_EVENTS=$(wc -l < "$UNSAFE_TO_DELETE")
     echo "Total removable events: $REMOVABLE_EVENTS"
-    echo "Total unremovable events: $UNREMOVABLE_EVENTS"
     Q_removableEvents["$TARGET_QUEUE"]="$REMOVABLE_EVENTS"
-    Q_unremovableEvents["$TARGET_QUEUE"]="$UNREMOVABLE_EVENTS"
-
+    if [[ "$UNSAFE_TO_DELETE" != "" ]]; then
+        echo "Unremovable events found. Further analysis required."
+        echo "Unremovable events file: $(realpath "$UNSAFE_TO_DELETE")"
+        UNREMOVABLE_EVENTS=$(wc -l < "$UNSAFE_TO_DELETE")
+        echo "Total unremovable events: $UNREMOVABLE_EVENTS"   
+        Q_unremovableEvents["$TARGET_QUEUE"]="$UNREMOVABLE_EVENTS"
+    else
+        UNREMOVABLE_EVENTS=0
+        Q_unremovableEvents["$TARGET_QUEUE"]="$UNREMOVABLE_EVENTS"
+        echo "No unremovable events found."
+    fi
+    
     #######################################################
     # Step 3: Copy all generated files to OUTPUTDIR       #
     #######################################################
