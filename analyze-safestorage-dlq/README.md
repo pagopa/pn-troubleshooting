@@ -39,9 +39,9 @@ Per `pn-safestore_to_deliverypush-DLQ`:
    - Aggiunge il prefisso `safestorage://` alla chiave
    - Verifica che la chiave non sia presente nella tabella `pn-DocumentCreationRequestTable`
 
-I risultati delle verifiche vengono salvati in:
-- `results/need_further_analysis_${queueName}_${date}.json` per i messaggi che non superano i controlli
-- `results/safe_to_delete_${queueName}_${date}.json` per i messaggi che superano tutti i controlli, contenente solo gli MD5 necessari per la cancellazione
+I messaggi proessati dal dump vengono infine suddivisi nei seguenti file di output:
+- `results/need_further_analysis_${queueName}_${date}.json`: messaggi che non hanno superato il controllo, con dettagli sul controllo non superato
+- `results/safe_to_delete_${queueName}_${date}.json`: messaggi che hanno superato il controllo e che possono essere rimossi dalla DLQ
 
 ## Installazione
 
@@ -102,21 +102,3 @@ Per analizzare messaggi dalla `pn-safestore_to_deliverypush-DLQ`:
 ```bash
 node index.js -e dev -f ./dump.json -q pn-safestore_to_deliverypush-DLQ
 ```
-
-### Formato Output
-
-Per entrambe le code, i risultati delle verifiche vengono salvati in:
-- `results/need_further_analysis_${queueName}_${date}.json` per i messaggi che non superano i controlli
-- `results/safe_to_delete_${queueName}_${date}.json` per i messaggi che superano tutti i controlli
-
-Per i messaggi che superano tutti i controlli, il file `safe_to_delete_${queueName}_${date}.json` contiene una riga per messaggio nel formato:
-
-```json
-{"MD5OfBody": "abc123", "MD5OfMessageAttributes": "xyz789"}
-```
-oppure, se non sono presenti attributi:
-```json
-{"MD5OfBody": "def456"}
-```
-
-Per i messaggi che non superano i controlli, il file `need_further_analysis_${queueName}_${date}.json` contiene il messaggio completo con dettagli aggiuntivi sul tipo di errore riscontrato.

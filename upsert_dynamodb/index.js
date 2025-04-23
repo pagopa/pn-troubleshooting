@@ -1,6 +1,7 @@
 const { parseArgs } = require('util');
 const fs = require('fs');
 const { AwsClientsWrapper } = require("pn-common");
+const { marshall } = require('@aws-sdk/util-dynamodb');
 
 function _checkingParameters(args, values){
   const usage = "Usage: node index.js --envName <env-name> --account <account> --tableName <table-name> --fileName <file-name>"
@@ -61,7 +62,7 @@ async function main() {
   for(let i = 0; i < fileRows.length; i++) {
     items.push({
       PutRequest: {
-        Item: JSON.parse(fileRows[i])
+        Item: marshall(JSON.parse(fileRows[i]))
       }
     })
   }
