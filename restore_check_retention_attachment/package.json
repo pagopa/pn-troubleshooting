@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "pn-common": "file:../pn-common"
+    "pn-common": "file:../pn-common",
+    "uuid": "^11.1.0"
   }
 }

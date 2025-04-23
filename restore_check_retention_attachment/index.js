@@ -1,68 +1,92 @@
 const AwsClientsWrapper = require("../pn-common/libs/AwsClientWrapper")
+const { open } = require ('node:fs/promises')
+const { v4: uuidv4 } = require('uuid')
+const { parseArgs } = require('node:util')
+const { openSync, closeSync, mkdirSync, appendFileSync } = require('node:fs')
+const { join } = require('node:path')
 
-const accountType = "confinfo"
-const env = "hotfix"
+// ------------------------------------------------
 
+// Bucket confinfo hotfix
 const bucket = "pn-safestorage-eu-south-1-839620963891"
 
-// go-153-test-delete-marker.txt
+// --- Variabili ---
+const args = [
+    { name: "region", mandatory: false},
+    { name: "env", mandatory: true},
+    { name: "fileName", mandatory: true},
+    { name: "startIun", mandatory: false}
+  ];
 
-// ---------------------------------
-// DYNAMODB
-// documentKey: PN_NOTIFICATION_ATTACHMENTS-75018000ac6849ea8197da3081d5efef.pdf
-// documentLogicalState: ATTACHED
-// documentState: deleted
-
-//S3
-// originariamente aveva delete marker con versionId 'dMf3sMsyTYDjyBj740wU7SR16coOgiJ7'
-// const fk = "PN_NOTIFICATION_ATTACHMENTS-75018000ac6849ea8197da3081d5efef.pdf" 
-
-/*
-1. Recupero iun in refinement da timeline;
-2. uso lo iun come pk nella tabella pn-notification per recuperare la fk dell'allegato
-3. uso la fk come pk nelle tabella pn-ssDocumenti per verificare lo stato del documento
- */
-
-
-// Nessun Evento in pn-futureAction, delete marker attivo, documentState in pn-SsDocumenti: deleted
-const iun = 'AZHM-KDKH-VPNP-202312-U-1'
-const fk = "PN_NOTIFICATION_ATTACHMENTS-1518c389a3b741d196b3670a1520b171.pdf"
-
-// Evento in pn-futureAction con type=check_attachment_retention, no delete marker, documentState in pn-SsDocumenti: attached
-const iun2 = 'KNDA-NPAG-VANA-202502-J-1'
-const fk2 = 'PN_NOTIFICATION_ATTACHMENTS-d14e8cd72feb4737a9deca0a4d9960f6.pdf'
+  const parsedArgs = { values: { region, env, fileName, startIun }} = parseArgs(
+      { options: {
+            region: {type: "string", short: "r", default: "eu-south-1"},
+            env: {type: "string", short: "e"},
+            fileName: {type: "string",short: "f"},
+            startIun: {type: "string",short: "a"}
+        }
+  })
 
 // ----------------------------------------------
 
 async function main() {
 
-    async function _removeS3DeleteMarker(bucket, fkey) {
+    function _checkingParameters(args, parsedArgs){
+
+        const usage = `Usage: 
+        node index.js \\
+            [--region <region>] \\
+            --env <env> \\
+            --fileName <output file from 'retrieve_attachments_from_iun'> \\
+            [--startIun <iun value>]\n`
+    
+        // Verifica dei valori degli argomenti passati allo script
+         function isOkValue(argName,value,ok_values){
+             if(!ok_values.includes(value)) {
+                 console.log("Error: \"" + value + "\" value for \"--" + argName +
+                    "\" argument is not available, it must be in " + ok_values + "\n");
+                 process.exit(1);
+             }
+         };
+    
+        // Verifica se un argomento è stato inserito oppure inserito con valore vuoto
+        args.forEach(el => {
+            if(el.mandatory && !parsedArgs.values[el.name]){
+                console.log("\nParam \"" + el.name + "\" is not defined or empty.")
+                console.log(usage)
+                process.exit(1)
+            }
+         });
+    }
+
+    function createOutputFile() {
+        mkdirSync(join(__dirname, "results"), { recursive: true });
+        const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
+        const resultPath = join(__dirname, "results", 'sqsMsg_' + dateIsoString + '.json');
+        return resultPath;
+    }
+
+    async function _removeAllS3DeleteMarker(bucket, fkey) {
 
         awsClientConfinfo._initS3()
 
+        let toReturn = false // true if there is at least one delete marker deletion
+        const fkObj = {fk: fkey}
         const { DeleteMarkers } = await awsClientConfinfo._listObjectVersions(bucket, fkey);
-        let LatestDeleteMarkers = DeleteMarkers?.filter((el) => el.IsLatest == true)[0]
+        fkObj.hasDeleteMarker = DeleteMarkers ? true : false
 
-        let outputObj = {}
-        if (LatestDeleteMarkers) {
-            const { $metadata: { httpStatusCode } } = await awsClientConfinfo._deleteObject(bucket, fkey, LatestDeleteMarkers.VersionId)
-            outputObj = {
-                key: fk.key,
-                hasDeleteMarker: true,
-                versionId: LatestDeleteMarkers.VersionId,
-                deleteMarkerRemoved: httpStatusCode.toString().match(/2[0-9]{2}/) ? true : false,
-                httpStatusCode: httpStatusCode
+        if(DeleteMarkers){
+            let removed = 0
+            for (const item of DeleteMarkers){
+                const { $metadata: { httpStatusCode } } = await awsClientConfinfo._deleteObject(
+                    bucket, fkey, item.VersionId)
+                removed = httpStatusCode.toString().match(/2[0-9]{2}/) ? removed + 1 : removed
             }
+            fkObj.DeleteMarkersRemoved = removed
+            toReturn = true
         }
-        else {
-            outputObj = {
-                key: fk.key,
-                hasDeleteMarker: false,
-                deleteMarkerRemoved: false
-            }
-        }
-
-        console.log(outputObj)
+        outputObj.attachments.push(fkObj)
+        return toReturn
     }
 
     async function _setDocumentStateAttached(fkey) {
@@ -78,8 +102,9 @@ async function main() {
                 value: 'attached' // 'deleted'
             }
         }
-        const { $metadata: { httpStatusCode } } = await awsClientConfinfo._updateItem(tableName, keys, values, 'SET')
-        return httpStatusCode
+        await awsClientConfinfo._updateItem(tableName, keys, values, 'SET')
+        const lastElem = outputObj.attachments.length - 1
+        outputObj.attachments[lastElem].documentStateAttached = true        
     }
 
     async function _getItemFromPnFutureAction(iunValue) {
@@ -89,7 +114,8 @@ async function main() {
         const tableName = "pn-FutureAction"
         return await awsClientCore._queryRequestByIndex(tableName, 'iun-index', 'iun', iunValue)
     }
-
+       
+    // try/catch with exit code 1; no return value
     async function _setLogicalDeletedInPnFutureAction(timeSlotvalue, actionIdValue) {
 
         awsClientCore._initDynamoDB()
@@ -107,44 +133,37 @@ async function main() {
             },
             type: {
                 codeAttr: '#type',
-                codeValue: ':codeValue',
-                value: 5,
+                // codeValue: ':codeValue',
+                // value: <valore per update>,
                 condCodeValue: ':condCodeValue',
-                condValue: 10
+                condValue: 'CHECK_ATTACHMENT_RETENTION'
             }
         }
         try {
-            const result = await awsClientCore._updateItem(
-                tableName, keys, values, 'SET', '#type > :condCodeValue'
+            const { $metadata: { httpStatusCode } } = await awsClientCore._updateItem(
+                tableName, keys, values, 'SET', '#type = :condCodeValue'
             )
-            return result
+            outputObj.LogicalDeletedTrue = httpStatusCode.toString().match(/2[0-9]{2}/) ? true : false
         }
         catch (e) {
             switch (e.name) {
                 case 'ConditionalCheckFailedException':
-                    console.log("'type' attribute not equal to \'" + values.type.value + "\'. Skipped")
+                    outputObj.info = "'type' attribute not equal to '" + values.type.condCodeValue + "'. Skipped"
                     break
                 default:
                     console.log(e)
-                    process.exit(1)
+                    process.exit(2)
             }
         }
     }
 
+    // eventId.StringValue = uuidv4()
     function _printMsgIntoFile(iunV) {
-
-        // ttl serve a far si che le righe non vengano eleminate dal database
-
-        // notbefore = now() = timeSlot = momento in cui partirà l'azione.
-        // Se parte azione è notifica != perfezionata allora
-	    //     nuova azione CHECK_ATTACHMENT_RETENTION
-		//         notBefore = notBefore + 110 -->> se notBefore > now -> azione in pn-FutureAction altrimenti in coda SQS pn-delivery-push-action
-	    //     retention file = now + 120gg
 
         const nowSec = Math.floor(Date.now() / 1000) // ok
         const yearInSec = (60 * 60 * 24 * 365) // il 2028 è bisestile -> un giorno in meno nel risultato
-        const notBeforeV = new Date().toISOString().replace(/Z$/,'000000Z'); // 2025-04-05T08:29:17.005269680Z
-        const timeSlotV = notBeforeV.replace(/:\d{2}\.\d+Z$/,'')
+        const notBeforeV = new Date().toISOString().replace(/Z$/, '000000Z'); // 2025-04-05T08:29:17.005269680Z
+        const timeSlotV = notBeforeV.replace(/:\d{2}\.\d+Z$/, '')
         const actionIdV = "check_attachment_retention_iun_" + iunV + "_scheduling-date_" + notBeforeV
 
         const sqsMsg = {
@@ -159,11 +178,11 @@ async function main() {
             MessageAttributes: {
                 createdAt: {
                     DataType: "String",
-                    StringValue:  new Date().toISOString()
+                    StringValue: new Date().toISOString()
                 },
                 eventId: {
                     DataType: "String",
-                    StringValue: "ad538d32-d36e-4db4-8862-9abf08c7a502" // X??? lib cripto
+                    StringValue: uuidv4()
                 },
                 eventType: {
                     DataType: "String",
@@ -179,37 +198,77 @@ async function main() {
                 }
             }
         }
+
+        appendFileSync(sqsMsgFileHandler,JSON.stringify(sqsMsg) + "\n")
     }
 
     // -------------------------------------------
 
-    
-    console.log(' -> Login with AWS "confinfo" account')
+    _checkingParameters(args,parsedArgs)
+
+    console.log('\n -> Login with AWS "confinfo" account')
     const awsClientConfinfo = new AwsClientsWrapper('confinfo', env)
 
-    console.log(' -> Login with AWS "core" account')
+    console.log('\n -> Login with AWS "core" account')
     const awsClientCore = new AwsClientsWrapper('core', env)
 
-    // await _removeS3DeleteMarker(bucket, fk)
+    const inputFile = await open(fileName)
 
-    // await _setDocumentStateAttached(fk)
+    const sqsMsgFile = createOutputFile()
+    sqsMsgFileHandler = openSync(sqsMsgFile,'a') // Se il file non esiste verrà creato
 
-    const result = await _getItemFromPnFutureAction(iun2)
+    let keepSkip = 0;
+    for await (const row of inputFile.readLines()) {
 
-    if (result.Count !== 0) {
-        for (const item of result.Items) {
+        const parsedRow = JSON.parse(row)
+        const {attachments} = parsedRow
+        const {iun} = parsedRow
 
-            // NON POSSO AGGIORNARE LA TABELLA TRAMITE GSI
+        // Skippa le righe del csv fino a quando non incontra quella con row.actionId === actionId
+        if(startIun !== undefined & iun !== startIun & keepSkip == 0){
+            continue;
+        } 
+        else{
+            keepSkip = 1;
+        };
 
-            const pk = item.timeSlot.S // 2025-06-10T21:06
-            const sk = item.actionId.S // check_attachment_retention_iun_KNDA-NPAG-VANA-202502-J-1_scheduling-date_2025-06-10T21:06:01.182068834Z
-
-            const updatedItem = await _setLogicalDeletedInPnFutureAction(pk, sk)
-            console.log(updatedItem)
+        // Output su console. L'esecuzione delle funzioni nel main aggiungono
+        // nuovi attribbuti.
+        outputObj = {
+            iun: iun,
+            attachments: []
         }
+
+        // Una notifica può avere più attachments -> più fk
+        for(fk of attachments){
+
+            const delMarkerRemoved = await _removeAllS3DeleteMarker(bucket,fk)
+
+            if(delMarkerRemoved){
+                await _setDocumentStateAttached(fk)
+            }
+        }
+ 
+        const result = await _getItemFromPnFutureAction(iun)
+
+        if (result.Count !== 0) {
+            for (const item of result.Items) {
+    
+                const pk = item.timeSlot.S // 2025-06-10T21:06
+                const sk = item.actionId.S // check_attachment_retention_iun_KNDA-NPAG-VANA-202502-J-1_scheduling-date_2025-06-10T21:06:01.182068834Z
+    
+                // only if 'type = "CHECK_ATTACHMENT_RETENTION"'
+                const updatedItem = await _setLogicalDeletedInPnFutureAction(pk, sk)    
+            }
+        }
+
+        _printMsgIntoFile()
+
+        console.log(JSON.stringify(outputObj))
     }
 
-    _printMsgIntoFile()
+    closeSync(sqsMsgFileHandler);
+    await inputFile?.close();
 }
 
 main()
