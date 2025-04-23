@@ -72,7 +72,7 @@ async function main() {
     const args = validateArgs();
     const { envName, inputFile } = args.values;
     const data = readFileSync(inputFile, 'utf8');
-    const fileRows = data.split('\n');
+    const fileRows = data.split('\n').filter(row => row.trim() !== '');
 
     // Initialize AWS client
     const clientDB = new AwsClientsWrapper("confinfo", envName);
@@ -80,6 +80,7 @@ async function main() {
 
     // Creation of the output
     let final = [];
+
     for (row of fileRows) {
         let result = await clientDB._queryRequest('pn-EcRichiesteMetadati', 'requestId', 'pn-cons-000~' + row);
         let info = unmarshall(result.Items[0]);
