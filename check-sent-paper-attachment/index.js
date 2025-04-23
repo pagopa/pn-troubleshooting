@@ -116,28 +116,22 @@ async function checkPaperStatus(awsClient, fileKey, message) {
 }
 
 function logResult(message, checkResult, queueName, timestamp) {
+    const clonedMessage = JSON.parse(JSON.stringify(message));
+    if (typeof clonedMessage.Body === 'string') {
+        clonedMessage.Body = JSON.parse(clonedMessage.Body);
+    }
     if (checkResult.success) {
-        // For successful checks, just log MD5 fields
-        const outputData = { 
-            MD5OfBody: message.MD5OfBody,
-            ...(message.MD5OfMessageAttributes && { MD5OfMessageAttributes: message.MD5OfMessageAttributes })
-        };
-        appendFileSync(`results/safe_to_delete_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
+        appendFileSync(`results/safe_to_delete_${queueName}_${timestamp}.json`, JSON.stringify(clonedMessage) + '\n');
     } else {
-        // Ensure the requestId has a single prefix
         let formattedRequestId = null;
         if (checkResult.requestId) {
             formattedRequestId = checkResult.requestId.startsWith('pn-cons-000~')
                 ? checkResult.requestId
                 : `pn-cons-000~${checkResult.requestId}`;
         }
-        // For failed checks, log the required fields
-        const outputData = {
-            fileKey: message.parsedFileKey,
-            requestId: formattedRequestId,
-            failureReason: checkResult.reason
-        };
-        appendFileSync(`results/need_further_analysis_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
+        clonedMessage.dlqCheckRequestId = formattedRequestId;
+        clonedMessage.dlqCheckFailureReason = checkResult.reason;
+        appendFileSync(`results/need_further_analysis_${queueName}_${timestamp}.json`, JSON.stringify(clonedMessage) + '\n');
     }
 }
 

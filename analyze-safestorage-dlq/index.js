@@ -191,27 +191,29 @@ function extractMD5Fields(message) {
 }
 
 function logResult(message, status, reason = '', queueName) {
-        if (status === 'error') {
-                const enrichedMessage = JSON.parse(JSON.stringify(message));
-                if (typeof enrichedMessage.Body === 'string') {
-                        enrichedMessage.Body = JSON.parse(enrichedMessage.Body);
-                }
-                
-                if (enrichedMessage.Body?.Records?.[0]) {
-                        enrichedMessage.Body.Records[0] = {
-                                ...enrichedMessage.Body.Records[0],
-                                dlqCheckTimestamp: new Date().toISOString(),
-                                dlqCheckStatus: status,
-                                dlqCheckResult: reason
-                        };
-                }
-                
-                enrichedMessage.Body = JSON.stringify(enrichedMessage.Body);
-                appendJsonToFile(needFurtherAnalysisFilename, enrichedMessage);
-        } else {
-                const md5Data = extractMD5Fields(message);
-                appendJsonToFile(safeToDeleteFilename, md5Data);
+    const clonedMessage = JSON.parse(JSON.stringify(message));
+    if (typeof clonedMessage.Body === 'string') {
+        clonedMessage.Body = JSON.parse(clonedMessage.Body);
+    }
+    if (status === 'error') {
+        let failureType = "Unknown Check";
+        if (reason.toLowerCase().includes("s3 check")) {
+            failureType = "S3 Check";
+        } else if (reason.toLowerCase().includes("document creation request")) {
+            failureType = "Document Creation Request Check";
+        } else if (reason.toLowerCase().includes("document state")) {
+            failureType = "Document State Check";
+        } else if (reason.toLowerCase().includes("timeline")) {
+            failureType = "Timeline Check";
+        } else if (reason.toLowerCase().includes("filekey")) {
+            failureType = "Validation Check";
         }
+        clonedMessage.dlqCheckFailure = failureType;
+        clonedMessage.dlqCheckFailureReason = reason;
+        appendJsonToFile(needFurtherAnalysisFilename, clonedMessage);
+    } else {
+        appendJsonToFile(safeToDeleteFilename, clonedMessage);
+    }
 }
 
 function appendJsonToFile(fileName, data) {
