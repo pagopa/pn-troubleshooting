@@ -12,7 +12,7 @@ conf$spark.dynamicAllocation.enabled <- "false"
 
 sc <- spark_connect(master = "local", version = "3.5.0", hadoop_version = "3", config = conf)
 
-spark_read_csv(sc, 'matrice_costi_def', "data/20250331_Matrice Fatturazione _Aggiornamento Prezzi Poste & CAP", delimiter = ';')
+spark_read_csv(sc, 'matrice_costi_def', "data/20250331_Matrice Fatturazione _Aggiornamento Prezzi Poste & CAP_97-98-99_v1.csv", delimiter = ';')
 
 spark_read_csv(sc, 'zone', "data/20240625_zones.csv", delimiter = ';')
 
@@ -234,7 +234,8 @@ sdf_collect(
   ")
 )
 
-write.csv2(matrice_costi_pivot, "data/out/matrice_costi_20250201_pivot.csv", row.names=FALSE, na = "")
+write.csv2(matrice_costi_pivot, "data/out/matrice_costi_20250401_pivot.csv", row.names=FALSE, na = "")
+
 
 
 
