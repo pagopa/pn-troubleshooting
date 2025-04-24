@@ -19,6 +19,10 @@ function _checkStatusRequest(statusRequest) {
   return ANALOG_STATUS_REQUEST.indexOf(statusRequest.toUpperCase()) >= 0
 }
 
+function _retrieveNextStatus(el) {
+  return JSON.parse(JSON.parse(el).Body).nextStatus
+}
+
 function _checkingEventsList(eventsList, type) {
   let map;  
   if(type == 'pec') {
@@ -170,8 +174,16 @@ async function main() {
       else {
         if(_checkingEventsList(metadata.eventsList, channelType)) {
           for(const row of requestIdsMap[requestId]) {
-            appendJsonToFile(`to_remove_tracker_${channelType}.json`, row)
-            console.log("to remove", requestId)
+            const nextStatus = _retrieveNextStatus(row)
+            const found = metadata.eventsList.some(item => item.digProgrStatus?.status === nextStatus);
+            if(!found) {
+              console.log("PROBLEM: NextStatus not found in eventList", nextStatus, requestId)
+              appendJsonToFile(`problem_found_${channelType}.json`, row)
+            }
+            else {
+              appendJsonToFile(`to_remove_tracker_${channelType}.json`, row)
+              console.log("to remove", requestId)
+            }
           }
         }
         else {
