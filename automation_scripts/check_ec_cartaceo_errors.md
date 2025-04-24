@@ -5,8 +5,8 @@ Lo script esegue le seguenti operazioni:
 1. Effettua il dump dei messaggi dalla coda DLQ `pn-ec-cartaceo-errori-queue-DLQ.fifo`.
 2. Converte il dump in formato JSONLine ed estrae i valori `requestIdx`.
 3. Controlla lo stato delle richieste sulla `pn-EcRichiesteMetadati` tramite il [check_status_request](https://github.com/pagopa/pn-troubleshooting/tree/main/check_status_request).
-4. Filtra gli eventi di richieste in errore dal dump originale, lasciando così solo gli eventi da rimuovere dalla DLQ.
-5. Se il totale degli eventi nel dump originale è maggiore di quelli da rimuovere, viene stampato un WARNING.
+4. Filtra gli eventi di richieste in errore dal dump originale lasciando solo gli eventi di richieste perfezionate, i quali possono essere rimossi dalla DLQ.
+5. Se il totale degli eventi nel dump originale è maggiore di quelli da rimuovere, stampa un WARNING.
 6. Copia i file generati in una cartella di output relativa allo script (`output/check_ec_cartaceo_errors`).
 7. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
 
@@ -44,7 +44,7 @@ I file generati vengono copiati nella cartella `output/check_ec_cartaceo_errors`
 - Il file con tutti i valori `requestIdx`.
 - Il file con gli ID delle richieste in errore.
 - Il file in formato JSONLine ottenuto dal dump.
-- Il file filtrato (a cui sono stati rimossi i messaggi in errore).
+- Il file filtrato (da cui sono stati rimossi gli eventi di richieste in errore).
 
 ## Modalità Purge
 
