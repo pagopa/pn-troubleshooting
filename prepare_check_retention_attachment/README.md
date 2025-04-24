@@ -14,7 +14,7 @@ Lo script, dato in input un file JSON inline ottenuto come output dallo script [
 - nella tabella "pn-FutureAction", tramite l'indice "iun-index", recupera timeslot e actionId associati allo IUN;
 - nella tabella "pn-FutureAction" e per ogni coppia timeSlot/actionId identificata al punto precedente, verifica la presenza di item per i quali l'attributo type = "CHECK_ATTACHMENT_RETENTION":
   - se esiste, allo stesso item verrà aggiunto l'attributo "logicalDeleted = true";
-- in un file di output verrà generato un JSON inline che può essere risottomesso, tramite lo script [put_msgs_to_SQS](https://github.com/pagopa/pn-troubleshooting/tree/main/put_msgs_to_SQS), nella coda SQS pn-delivery_push_actions
+- in un file di output verrà generato un JSON inline che può essere risottomesso, tramite lo script [put_msgs_to_SQS](https://github.com/pagopa/pn-troubleshooting/tree/main/put_msgs_to_SQS), nella coda SQS pn-delivery_push_actions.
 	
 
 ## Installazione
