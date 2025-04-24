@@ -133,7 +133,7 @@ echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
 #######################################################
 cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
 cp "$(realpath "$REQUEST_IDS_LIST")" "$OUTPUTDIR/"
-cp "$(realpath "$NOT_FOUND")" "$OUTPUTDIR/"
+cp "$(realpath "$NOT_FOUND")" "$OUTPUTDIR/${BASENAME}_not_found.txt"
 cp "$JSONLINE_DUMP" "$OUTPUTDIR/"
 cp "$FILTERED_DUMP" "$OUTPUTDIR/"
 echo "Files copied to $OUTPUTDIR."
