@@ -68,7 +68,7 @@ cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1
 node dump_sqs.js --awsProfile sso_pn-core-prod --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
 # Get the most recent dump file
-ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -exec ls -t1 {} + | head -1)
+ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_pn-external_channel_to_paper_channel-DLQ*" -exec ls -t1 {} + | head -1)
 if [[ -z "$ORIGINAL_DUMP" ]]; then
   echo "No dump file found. Exiting."
   exit 1
