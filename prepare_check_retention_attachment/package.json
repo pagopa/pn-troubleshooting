@@ -1,5 +1,5 @@
 {
-  "name": "restore_check_retention_attachment",
+  "name": "prepare_check_retention_attachment",
   "version": "1.0.0",
   "description": "Task ops/GO-153",
   "main": "index.js",
