@@ -262,7 +262,7 @@ async function main() {
             }
         }
 
-        _printMsgIntoFile()
+        _printMsgIntoFile(iun)
 
         console.log(JSON.stringify(outputObj))
     }
