@@ -148,7 +148,7 @@ async function main() {
         catch (e) {
             switch (e.name) {
                 case 'ConditionalCheckFailedException':
-                    outputObj.info = "'type' attribute not equal to '" + values.type.condCodeValue + "'. Skipped"
+                    outputObj.info = "'type' attribute not equal to '" + values.type.condValue + "'. Skipped"
                     break
                 default:
                     console.log(e)
