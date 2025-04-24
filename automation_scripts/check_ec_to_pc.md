@@ -50,5 +50,5 @@ I file generati vengono copiati nella cartella `output/check_ec_to_pc`, e includ
 
 Se eseguito con opzione `--purge`, lo script:
 - Passa alla cartella `remove_from_sqs` all'interno della directory di lavoro.
-- Attende il timeout di visibilità (predefinito 30 secondi).
+- Attende il timeout di visibilità (predefinito 180 secondi).
 - Invoca il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs) per rimuovere i messaggi dalla coda DLQ.
