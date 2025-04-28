@@ -66,7 +66,10 @@ async function main() {
       }
     })
   }
-  awsClient._batchWriteItem(tableName, items)
+  for (let i = 0; i < items.length; i += 25) {
+    const batch = items.slice(i, i + 25);
+    await awsClient._batchWriteItem(tableName, batch)
+  }
 }
 
 main();
