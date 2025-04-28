@@ -146,4 +146,6 @@ for channel in "${channels[@]}"; do
   fi 
 done
 
+remove_dir "$work_dir/results"
+
 echo "END EXECUTION"

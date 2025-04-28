@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, appendFileSync } from 'fs';
+import path from 'path'; // Added import for path module
 import { parseArgs } from 'util';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { AwsClientsWrapper } from "pn-common";
@@ -8,7 +9,7 @@ const VALID_QUEUES = ['pn-ec-availabilitymanager-queue-DLQ', 'pn-ss-transformati
 
 function validateArgs() {
     const usage = `
-Usage: node index.js --envName|-e <environment> --dumpFile|-f <path> --srcQueue|-q <queue>
+Usage: node index.js --envName|-e <environment> --dumpFile|-f <path> --queueName|-q <queue>
 
 Description:
     Analyzes SQS messages and validates paper address status.
@@ -16,17 +17,17 @@ Description:
 Parameters:
     --envName, -e     Required. Environment to check (dev|uat|test|prod|hotfix)
     --dumpFile, -f    Required. Path to the SQS dump file
-    --srcQueue, -q    Required. Source SQS queue (${VALID_QUEUES.join('|')})
+    --queueName, -q    Required. Source SQS queue (${VALID_QUEUES.join('|')})
     --help, -h        Display this help message
 
 Example:
-    node index.js --envName dev --dumpFile ./dump.json --srcQueue pn-ec-availabilitymanager-queue-DLQ`;
+    node index.js --envName dev --dumpFile ./dump.json --queueName pn-ec-availabilitymanager-queue-DLQ`;
 
     const args = parseArgs({
         options: {
             envName: { type: "string", short: "e" },
             dumpFile: { type: "string", short: "f" },
-            srcQueue: { type: "string", short: "q" },
+            queueName: { type: "string", short: "q" },
             help: { type: "boolean", short: "h" }
         },
         strict: true
@@ -37,7 +38,7 @@ Example:
         process.exit(0);
     }
 
-    if (!args.values.envName || !args.values.dumpFile || !args.values.srcQueue) {
+    if (!args.values.envName || !args.values.dumpFile || !args.values.queueName) {
         console.error("Error: Missing required parameters");
         console.log(usage);
         process.exit(1);
@@ -48,7 +49,7 @@ Example:
         process.exit(1);
     }
 
-    if (!VALID_QUEUES.includes(args.values.srcQueue)) {
+    if (!VALID_QUEUES.includes(args.values.queueName)) {
         console.error(`Error: Invalid queue. Must be one of: ${VALID_QUEUES.join(', ')}`);
         process.exit(1);
     }
@@ -115,25 +116,33 @@ async function checkPaperStatus(awsClient, fileKey, message) {
 }
 
 function logResult(message, checkResult, queueName, timestamp) {
+    const clonedMessage = JSON.parse(JSON.stringify(message));
+    if (typeof clonedMessage.Body === 'string') {
+        clonedMessage.Body = JSON.parse(clonedMessage.Body);
+    }
     if (checkResult.success) {
-        // For successful checks, just log MD5 fields
-        const outputData = { 
-            MD5OfBody: message.MD5OfBody,
-            ...(message.MD5OfMessageAttributes && { MD5OfMessageAttributes: message.MD5OfMessageAttributes })
-        };
-        appendFileSync(`results/to_remove_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
+        appendFileSync(`results/safe_to_delete_${queueName}_${timestamp}.json`, JSON.stringify(clonedMessage) + '\n');
     } else {
-        // For failed checks, log only the required fields
-        const outputData = {
-            fileKey: message.parsedFileKey,
-            requestId: checkResult.requestId ? `pn-cons-000~${checkResult.requestId}` : null,
-            failureReason: checkResult.reason
-        };
-        appendFileSync(`results/to_keep_${queueName}_${timestamp}.json`, JSON.stringify(outputData) + '\n');
+        let formattedRequestId = null;
+        if (checkResult.requestId) {
+            formattedRequestId = checkResult.requestId.startsWith('pn-cons-000~')
+                ? checkResult.requestId
+                : `pn-cons-000~${checkResult.requestId}`;
+        }
+        clonedMessage.dlqCheckRequestId = formattedRequestId;
+        clonedMessage.dlqCheckFailureReason = checkResult.reason;
+        appendFileSync(`results/need_further_analysis_${queueName}_${timestamp}.json`, JSON.stringify(clonedMessage) + '\n');
     }
 }
 
-function processSQSDump(dumpFilePath, srcQueue) {
+function processSQSDump(dumpFilePath, queueName) {
+    // Safety check to ensure dump file name matches queueName
+    const fileName = path.basename(dumpFilePath);
+    if (!fileName.startsWith(`dump_${queueName}`)) {
+        console.error(`Error: dump file name "${fileName}" does not match queueName "${queueName}"`);
+        process.exit(1);
+    }
+    
     try {
         const content = readFileSync(dumpFilePath, 'utf-8');
         const messages = JSON.parse(content);
@@ -141,10 +150,10 @@ function processSQSDump(dumpFilePath, srcQueue) {
         return messages.map(message => {
             try {
                 let fileKey;
-                if (srcQueue === 'pn-ec-availabilitymanager-queue-DLQ') {
+                if (queueName === 'pn-ec-availabilitymanager-queue-DLQ') {
                     const body = JSON.parse(message.Body);
                     fileKey = body?.detail?.key;
-                } else if (srcQueue === 'pn-ss-transformation-raster-queue-DLQ') {
+                } else if (queueName === 'pn-ss-transformation-raster-queue-DLQ') {
                     const body = JSON.parse(message.Body);
                     fileKey = body?.fileKey;
                 }
@@ -178,8 +187,8 @@ function printSummary(stats) {
 }
 
 async function main() {
-    const { envName, dumpFile, srcQueue } = validateArgs();
-    const startTime = new Date().toISOString().replace(/[:.]/g, '-');  // Add timestamp when script starts
+    const { envName, dumpFile, queueName } = validateArgs();
+    const startTime = new Date().toISOString().replace(/[:.]/g, '-');
 
     const stats = {
         total: 0,
@@ -197,7 +206,7 @@ async function main() {
     }
 
     // Process dump file
-    const messages = processSQSDump(dumpFile, srcQueue);
+    const messages = processSQSDump(dumpFile, queueName);
     stats.total = messages.length;
 
     console.log(`\nStarting validation checks for ${stats.total} messages...`);
@@ -212,9 +221,9 @@ async function main() {
 
         if (checkResult.success) {
             stats.passed++;
-            logResult(message, checkResult, srcQueue, startTime);
+            logResult(message, checkResult, queueName, startTime);
         } else {
-            logResult(message, checkResult, srcQueue, startTime);
+            logResult(message, checkResult, queueName, startTime);
         }
     }
 
