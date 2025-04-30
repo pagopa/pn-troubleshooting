@@ -457,9 +457,6 @@ async function main() {
                 getAccountId(coreClient)
         ]);
     
-        console.log(`CONFINFO AccountID: ${confinfoAccountId}`);
-        console.log(`CORE AccountID: ${coreAccountId}`);
-    
         // Compute a single timestamp that will be used for both output files.
         const finalTimestamp = new Date().toISOString().replace(/:/g, '-').replace('.', '-');
         safeToDeleteFilename = `results/safe_to_delete_${queueName}_${finalTimestamp}.json`;
