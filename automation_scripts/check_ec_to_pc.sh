@@ -129,13 +129,13 @@ echo "Filtered dump stored in: $(realpath "$FILTERED_DUMP")"
 echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
 
 #######################################################
-# Step 6: Copy all generated files to OUTPUTDIR       #
+# Step 6: Move all generated files to OUTPUTDIR       #
 #######################################################
-cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-cp "$(realpath "$REQUEST_IDS_LIST")" "$OUTPUTDIR/"
-cp "$(realpath "$NOT_FOUND")" "$OUTPUTDIR/${BASENAME}_not_found.txt"
-cp "$JSONLINE_DUMP" "$OUTPUTDIR/"
-cp "$FILTERED_DUMP" "$OUTPUTDIR/"
+mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+mv "$(realpath "$REQUEST_IDS_LIST")" "$OUTPUTDIR/"
+mv "$(realpath "$NOT_FOUND")" "$OUTPUTDIR/${BASENAME}_not_found.txt"
+mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
+mv "$FILTERED_DUMP" "$OUTPUTDIR/"
 echo "Files copied to $OUTPUTDIR."
 
 #######################################################

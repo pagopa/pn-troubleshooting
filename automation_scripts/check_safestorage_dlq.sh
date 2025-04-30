@@ -161,10 +161,10 @@ process_queue(){
     fi
     
     #######################################################
-    # Step 3: Copy all generated files to OUTPUTDIR       #
+    # Step 3: Move all generated files to OUTPUTDIR       #
     #######################################################
-    cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-    cp "$SAFE_TO_DELETE" "$OUTPUTDIR/"
+    mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+    mv "$SAFE_TO_DELETE" "$OUTPUTDIR/"
     echo "Files copied to $OUTPUTDIR."
 
     #######################################################

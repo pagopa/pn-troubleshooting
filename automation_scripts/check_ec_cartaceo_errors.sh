@@ -146,13 +146,13 @@ if [[ $JSONLINE_COUNT -gt $FILTERED_COUNT ]]; then
 fi
 
 #######################################################
-# Step 7: Copy all generated files to OUTPUTDIR       #
+# Step 7: Move all generated files to OUTPUTDIR       #
 #######################################################
-cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-cp "$(realpath "$REQUEST_IDS_LIST")" "$OUTPUTDIR/"
-cp "$(realpath "$ERROR_REQUEST_IDS_LIST")" "$OUTPUTDIR/"
-cp "$JSONLINE_DUMP" "$OUTPUTDIR/"
-cp "$FILTERED_DUMP" "$OUTPUTDIR/"
+mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+mv "$(realpath "$REQUEST_IDS_LIST")" "$OUTPUTDIR/"
+mv "$(realpath "$ERROR_REQUEST_IDS_LIST")" "$OUTPUTDIR/"
+mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
+mv "$FILTERED_DUMP" "$OUTPUTDIR/"
 echo "Files copied to $OUTPUTDIR."
 
 #######################################################
