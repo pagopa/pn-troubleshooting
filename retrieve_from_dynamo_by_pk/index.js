@@ -79,7 +79,10 @@ async function main() {
   const awsClient = new AwsClientsWrapper( account, envName );
   awsClient._initDynamoDB()
   const now = new Date().toISOString()
-  const pks = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter(x=>x!='')
+  const pks = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
+  .split('\n')
+  .map(x => x.replace(/\r/g, '').trim())
+  .filter(x => x !== '');
   let i = 1;
   for(const pk of pks) {
     const keyValue = `${prefix}${pk}${suffix}`
@@ -87,7 +90,7 @@ async function main() {
     const result = await awsClient._queryRequest(tableName, keyName, keyValue)
     if(result.Items.length > 0) {
       const items = normalizeResult(result.Items)
-      for(const i of items) {
+      for(const i of items){
         appendJsonToFile(`result/${envName}-${now}`, `${tableName}`, JSON.stringify(i))
       }
     }
