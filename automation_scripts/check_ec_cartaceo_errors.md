@@ -2,6 +2,7 @@
 
 Script Bash per la pulizia della `pn-ec-cartaceo-errori-queue-DLQ.fifo`.  
 Lo script esegue le seguenti operazioni:
+
 1. Effettua il dump dei messaggi dalla coda DLQ `pn-ec-cartaceo-errori-queue-DLQ.fifo`.
 2. Converte il dump in formato JSONLine ed estrae i valori `requestIdx`.
 3. Controlla lo stato delle richieste sulla `pn-EcRichiesteMetadati` tramite il [check_status_request](https://github.com/pagopa/pn-troubleshooting/tree/main/check_status_request).
@@ -21,6 +22,7 @@ Lo script esegue le seguenti operazioni:
 ### Autenticazione AWS
 
 Accedi ad AWS tramite SSO, ad esempio:
+
 ```bash
 aws sso login --profile sso_pn-confinfo-prod
 ```
@@ -32,6 +34,7 @@ aws sso login --profile sso_pn-confinfo-prod
 ```
 
 Dove:
+
 - `-w, --work-dir`: (Obbligatorio) Directory di lavoro contenente le sottocartelle necessarie (dump_sqs, check_status_request, remove_from_sqs).
 - `-t, --visibility-timeout`: (Opzionale) Timeout di visibilità dei messaggi sulla coda DLQ per gli script di dump e rimozione.
 - `--purge`: (Opzionale) Se specificato, rimuove i messaggi in errore dalla coda DLQ dopo il timeout di visibilità.
@@ -40,6 +43,7 @@ Dove:
 ## Struttura Output
 
 I file generati vengono copiati nella cartella `output/check_ec_cartaceo_errors`, e includono:
+
 - Il dump originale.
 - Il file con tutti i valori `requestIdx`.
 - Il file con gli ID delle richieste in errore.
@@ -49,6 +53,7 @@ I file generati vengono copiati nella cartella `output/check_ec_cartaceo_errors`
 ## Modalità Purge
 
 Se eseguito con opzione `--purge`, lo script:
+
 - Passa alla cartella `remove_from_sqs` all'interno della directory di lavoro.
 - Attende il timeout di visibilità (predefinito 30 secondi).
 - Invoca il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs) per rimuovere i messaggi dalla coda DLQ.
