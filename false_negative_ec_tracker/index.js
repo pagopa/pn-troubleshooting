@@ -4,7 +4,7 @@ const { AwsClientsWrapper } = require('../pn-common');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const path = require('path');
 
-const CHANNEL_TYPE = ['email', 'pec', 'cartaceo']
+const CHANNEL_TYPE = ['email', 'pec', 'cartaceo', 'sms']
 const ANALOG_STATUS_REQUEST = ["RECRS006", "RECRN006", "RECAG004", "RECRI005", "RECRSI005", "RECRS013", "RECRN013", "RECAG013", "PN999"]
 
 function appendJsonToFile(fileName, data){
@@ -47,7 +47,7 @@ function _checkingEventsList(eventsList, type) {
     }
     return true;
   }
-  else if (type == 'email') {
+  else if (type == 'email' || type == 'sms') {
     map = {
       booked: false,
       sent: false
