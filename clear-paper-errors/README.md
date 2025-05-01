@@ -48,11 +48,11 @@ aws sso login --profile sso_pn-core-<env>
 ```
 Dopodiché eseguire
 ```bash
-node clear-paper-errors.js --envName <env> --dumpFile <path>
+node index.js --envName <env> --dumpFile <path>
 ```
 oppure
 ```bash
-node clear-paper-errors.js -e <env> -f <path>
+node index.js -e <env> -f <path>
 ```
 Dove:
 
@@ -76,5 +76,5 @@ Lo script genera due file nella cartella results/:
 
 Analisi di un file di dump in ambiente dev:
 ```bash
-node clear-paper-errors.js --envName dev --dumpFile ./dump.json
+node index.js --envName dev --dumpFile ./dump.json
 ```
