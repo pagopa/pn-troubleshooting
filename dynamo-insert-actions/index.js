@@ -297,30 +297,6 @@ function logResult(data, dryRun) {
 }
 
 /**
- * Tests SSO credentials for AWS client
- * @param {AwsClientsWrapper} awsClient - AWS client wrapper
- * @returns {Promise<void>}
- */
-async function testSsoCredentials(awsClient) {
-    try {
-        awsClient._initSTS();
-        await awsClient._getCallerIdentity();
-    } catch (error) {
-        if (error.name === 'CredentialsProviderError' ||
-            error.message?.includes('expired') ||
-            error.message?.includes('credentials')) {
-            console.error('\n=== SSO Authentication Error ===');
-            console.error('Your SSO session has expired or is invalid.');
-            console.error('Please run the following commands:');
-            console.error('1. aws sso logout');
-            console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
-            process.exit(1);
-        }
-        throw error;
-    }
-}
-
-/**
  * Prints a summary of the execution results including performance metrics
  * @param {Object} stats - Statistics object containing results
  * @param {number} stats.totalProcessed - Total number of items processed
@@ -379,7 +355,6 @@ async function main() {
         AwsClient = new AwsClientsWrapper();
     }
 
-    await testSsoCredentials(AwsClient);
     AwsClient._initDynamoDB();
 
     try {

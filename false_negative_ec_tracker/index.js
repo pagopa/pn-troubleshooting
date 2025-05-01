@@ -92,25 +92,6 @@ function printSummary(stats, channelType) {
     console.log(`- Errors: ${errorFilename}`);
 }
 
-async function testSsoCredentials(awsClient, clientName) {
-    try {
-        awsClient._initSTS();
-        await awsClient._getCallerIdentity();
-    } catch (error) {
-        if (error.name === 'CredentialsProviderError' ||
-            error.message?.includes('expired') ||
-            error.message?.includes('credentials')) {
-            console.error(`\n=== SSO Authentication Error for ${clientName} client ===`);
-            console.error('Your SSO session has expired or is invalid.');
-            console.error('Please run the following commands:');
-            console.error('1. aws sso logout');
-            console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
-            process.exit(1);
-        }
-        throw error;
-    }
-}
-
 async function initializeAwsClients(awsClient) {
     awsClient._initSQS();
     awsClient._initDynamoDB();
@@ -216,7 +197,6 @@ async function main() {
 
     const awsClient = new AwsClientsWrapper('confinfo', envName);
 
-    await testSsoCredentials(awsClient, 'confinfo');
     await initializeAwsClients(awsClient);
 
     const messages = processSQSDump(fileName);
