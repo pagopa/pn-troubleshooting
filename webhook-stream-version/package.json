@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Script to update version attribute for items in pn-WebhookStreams DynamoDB table",
   "type": "module",
-  "main": "webhook-stream-version.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node webhook-stream-version.js"
+    "start": "node index.js"
   },
   "author": "PagoPA",
   "license": "ISC",

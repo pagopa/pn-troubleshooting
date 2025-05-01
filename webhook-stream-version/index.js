@@ -11,7 +11,7 @@ const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
  */
 function validateArgs() {
     const usage = `
-Usage: node webhook-stream-version.js --envName|-e <environment> --csvFile|-f <path>
+Usage: node index.js --envName|-e <environment> --csvFile|-f <path>
 
 Description:
     Updates DynamoDB items in pn-WebhookStreams table with version information.
@@ -47,29 +47,6 @@ Parameters:
     }
 
     return args.values;
-}
-
-/**
- * Tests SSO credentials for AWS client
- * @param {AwsClientsWrapper} awsClient - AWS client wrapper
- */
-async function testSsoCredentials(awsClient) {
-    try {
-        awsClient._initSTS();
-        await awsClient._getCallerIdentity();
-    } catch (error) {
-        if (error.name === 'CredentialsProviderError' ||
-            error.message?.includes('expired') ||
-            error.message?.includes('credentials')) {
-            console.error('\n=== SSO Authentication Error ===');
-            console.error('Your SSO session has expired or is invalid.');
-            console.error('Please run the following commands:');
-            console.error('1. aws sso logout');
-            console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
-            process.exit(1);
-        }
-        throw error;
-    }
 }
 
 /**
@@ -123,7 +100,6 @@ async function main() {
 
     // Initialize AWS client
     const coreClient = new AwsClientsWrapper('core', envName);
-    await testSsoCredentials(coreClient);
     coreClient._initDynamoDB();
 
     // Parse CSV file
