@@ -1,201 +1,307 @@
-const { parseArgs } = require('util');
-const fs = require('fs');
-const { AwsClientsWrapper } = require('../pn-common');
-const { unmarshall } = require('@aws-sdk/util-dynamodb');
-const path = require('path');
+import { parseArgs } from 'util';
+import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'fs';
+import { AwsClientsWrapper } from "pn-common";
+import { unmarshall } from '@aws-sdk/util-dynamodb';
 
-const CHANNEL_TYPE = ['email', 'pec', 'cartaceo', 'sms']
-const ANALOG_STATUS_REQUEST = ["RECRS006", "RECRN006", "RECAG004", "RECRI005", "RECRSI005", "RECRS013", "RECRN013", "RECAG013", "PN999"]
+const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
+const CHANNEL_TYPES = ['email', 'pec', 'cartaceo', 'sms'];
+const ANALOG_STATUS_REQUEST = [
+    "RECRS006", "RECRN006", "RECAG004", "RECRI005", "RECRSI005",
+    "RECRS013", "RECRN013", "RECAG013", "PN999"
+];
 
-function appendJsonToFile(fileName, data){
-  const pathResult = path.join(__dirname, 'results');
-  if(!fs.existsSync(pathResult))
-    fs.mkdirSync(pathResult, { recursive: true });
-  fs.appendFileSync(`${pathResult}/${fileName}`, data + "\n")
+let toRemoveFilename, problemFoundFilename, toKeepFilename, errorFilename;
+
+function printUsage() {
+    const usage = `
+Usage: node index.js --envName|-e <environment> --fileName|-f <path> --channelType|-c <channel>
+
+Description:
+    Analyzes EC tracker DLQ events and checks related metadata for events that can be safely removed.
+
+Parameters:
+    --envName, -e      Required. Environment to check (dev|uat|test|prod|hotfix)
+    --fileName, -f     Required. Path to the SQS dump file
+    --channelType, -c  Required. Channel type (email|pec|cartaceo|sms)
+    --help, -h         Display this help message
+
+Example:
+    node index.js --envName dev --fileName ./dump.json --channelType pec
+`;
+    console.log(usage);
 }
 
-function _checkStatusRequest(statusRequest) {
-  console.log(`status request is ${statusRequest}`)
-  return ANALOG_STATUS_REQUEST.indexOf(statusRequest.toUpperCase()) >= 0
-}
+function validateArgs() {
+    const args = parseArgs({
+        options: {
+            envName: { type: "string", short: "e" },
+            fileName: { type: "string", short: "f" },
+            channelType: { type: "string", short: "c" },
+            help: { type: "boolean", short: "h" }
+        },
+        strict: true
+    });
 
-function _retrieveNextStatus(el) {
-  return JSON.parse(JSON.parse(el).Body).nextStatus
-}
-
-function _checkingEventsList(eventsList, type) {
-  let map;  
-  if(type == 'pec') {
-    map = {
-      booked: false,
-      sent: false,
-      accepted: false,
+    if (args.values.help) {
+        printUsage();
+        process.exit(0);
     }
-    for(const e of eventsList ) {
-      map[e.digProgrStatus.status] = true
+
+    if (!args.values.envName || !args.values.fileName || !args.values.channelType) {
+        console.error("Error: Missing required parameters --envName, --fileName and/or --channelType");
+        printUsage();
+        process.exit(1);
     }
-    if( 'delivered' in map || 'notDelivered' in map){
-      console.log(map)
-      for(const param in map) {
-        if (!map[param]) {
-          return false
+
+    if (!VALID_ENVIRONMENTS.includes(args.values.envName)) {
+        console.error(`Error: Invalid environment. Must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
+        process.exit(1);
+    }
+
+    if (!CHANNEL_TYPES.includes(args.values.channelType)) {
+        console.error(`Error: Invalid channelType. Must be one of: ${CHANNEL_TYPES.join(', ')}`);
+        process.exit(1);
+    }
+
+    return args;
+}
+
+function ensureResultsDir() {
+    if (!existsSync('results')) mkdirSync('results');
+}
+
+function getTimestamp() {
+    return new Date().toISOString().replace(/:/g, '-').replace('.', '-');
+}
+
+function appendJsonToFile(fileName, data) {
+    appendFileSync(fileName, JSON.stringify(data) + "\n");
+}
+
+function printSummary(stats, channelType) {
+    console.log('\n=== Execution Summary ===');
+    console.log(`\nTotal messages processed: ${stats.total}`);
+    console.log(`To remove: ${stats.toRemove}`);
+    console.log(`Problems found: ${stats.problemFound}`);
+    console.log(`Kept: ${stats.toKeep}`);
+    console.log(`Errors: ${stats.errors}`);
+    console.log('\nResults written to:');
+    console.log(`- To remove: ${toRemoveFilename}`);
+    console.log(`- Problems found: ${problemFoundFilename}`);
+    console.log(`- Kept: ${toKeepFilename}`);
+    console.log(`- Errors: ${errorFilename}`);
+}
+
+async function testSsoCredentials(awsClient, clientName) {
+    try {
+        awsClient._initSTS();
+        await awsClient._getCallerIdentity();
+    } catch (error) {
+        if (error.name === 'CredentialsProviderError' ||
+            error.message?.includes('expired') ||
+            error.message?.includes('credentials')) {
+            console.error(`\n=== SSO Authentication Error for ${clientName} client ===`);
+            console.error('Your SSO session has expired or is invalid.');
+            console.error('Please run the following commands:');
+            console.error('1. aws sso logout');
+            console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
+            process.exit(1);
         }
-      }
+        throw error;
     }
-    else {
-      return false
-    }
-    return true;
-  }
-  else if (type == 'email' || type == 'sms') {
-    map = {
-      booked: false,
-      sent: false
-    }
-    for(const e of eventsList ) {
-      map[e.digProgrStatus.status] = true
-    }
-    console.log(map)
-    for(const param in map) {
-      if (!map[param]) {
-        return false
-      }
-    }
-    return true
-  }
 }
 
-function _checkChannelType(channelType) {
-  console.log(`Channel type choose: ${channelType}`)
-  if(CHANNEL_TYPE.includes(channelType)) {
-    console.log(`Script execution on ${channelType} channel`)
-    return true
-  }
-  console.log(`Wrong channel type, insert one of ${CHANNEL_TYPE}`)
-  process.exit(1)
+async function initializeAwsClients(awsClient) {
+    awsClient._initSQS();
+    awsClient._initDynamoDB();
+    awsClient._initSTS();
+    return {
+        sqsClient: awsClient._sqsClient,
+        dynamoDBClient: awsClient._dynamoClient,
+        stsClient: awsClient._stsClient
+    };
 }
 
-function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> --channelType <channel-type>"
-  //CHECKING PARAMETER
-  args.forEach(el => {
-    if(el.mandatory && !values.values[el.name]){
-      console.log("Param " + el.name + " is not defined")
-      console.log(usage)
-      process.exit(1)
+function processSQSDump(fileName) {
+    try {
+        const fileContent = readFileSync(fileName, { encoding: 'utf8', flag: 'r' });
+        const messages = JSON.parse(fileContent).filter(x => x != '');
+        console.log(`Processing ${messages.length} messages from dump file`);
+        return messages;
+    } catch (error) {
+        console.error('Error reading/parsing dump file:', error);
+        process.exit(1);
     }
-  })
-  args.filter(el=> {
-    return el.subcommand.length > 0
-  }).forEach(el => {
-    if(values.values[el.name]) {
-      el.subcommand.forEach(val => {
-        if (!values.values[val]) {
-          console.log("SubParam " + val + " is not defined")
-          console.log(usage)
-          process.exit(1)
+}
+
+function checkStatusRequest(statusRequest) {
+    return ANALOG_STATUS_REQUEST.includes(statusRequest?.toUpperCase());
+}
+
+function retrieveNextStatus(message) {
+    try {
+        return typeof message.Body === 'string'
+            ? JSON.parse(message.Body).nextStatus
+            : message.Body.nextStatus;
+    } catch {
+        return undefined;
+    }
+}
+
+function checkingEventsList(eventsList, type) {
+    const map = type === 'pec'
+        ? { booked: false, sent: false, accepted: false }
+        : (type === 'email' || type === 'sms')
+            ? { booked: false, sent: false }
+            : null;
+    if (!map) return false;
+    for (const e of eventsList) {
+        map[e.digProgrStatus.status] = true;
+    }
+    if (type === 'pec') {
+        if ('delivered' in map || 'notDelivered' in map) {
+            for (const param in map) {
+                if (!map[param]) return false;
+            }
+        } else {
+            return false;
         }
-      })
+        return true;
+    } else {
+        for (const param in map) {
+            if (!map[param]) return false;
+        }
+        return true;
     }
-  })
+}
+
+function logResult(message, status, reason = '', channelType, extra = {}) {
+    const clonedMessage = JSON.parse(JSON.stringify(message));
+    if (typeof clonedMessage.Body === 'string') {
+        try {
+            clonedMessage.Body = JSON.parse(clonedMessage.Body);
+        } catch {}
+    }
+    if (status === 'toRemove') {
+        appendJsonToFile(toRemoveFilename, { ...clonedMessage, ...extra });
+    } else if (status === 'problemFound') {
+        clonedMessage.problemReason = reason;
+        appendJsonToFile(problemFoundFilename, { ...clonedMessage, ...extra });
+    } else if (status === 'toKeep') {
+        appendJsonToFile(toKeepFilename, { ...clonedMessage, ...extra });
+    } else if (status === 'error') {
+        clonedMessage.errorReason = reason;
+        appendJsonToFile(errorFilename, { ...clonedMessage, ...extra });
+    }
 }
 
 async function main() {
+    const args = validateArgs();
+    const { envName, fileName, channelType } = args.values;
 
-  const args = [
-    { name: "envName", mandatory: true, subcommand: [] },
-    { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "channelType", mandatory: true, subcommand: [] },
-  ]
-  const values = {
-    values: { envName, fileName, channelType },
-  } = parseArgs({
-    options: {
-      envName: {
-        type: "string", short: "p", default: undefined
-      },
-      fileName: {
-        type: "string", short: "t", default: undefined
-      },
-      channelType: {
-        type: "string", short: "c", default: undefined
-      }
-    },
-  });  
-  
-  _checkingParameters(args, values)
-  let queueUrls = [];
-  const awsClient = new AwsClientsWrapper('confinfo', envName)
-  awsClient._initSQS()
-  awsClient._initDynamoDB()
+    ensureResultsDir();
+    const timestamp = getTimestamp();
+    toRemoveFilename = `results/to_remove_tracker_${channelType}_${timestamp}.json`;
+    problemFoundFilename = `results/problem_found_${channelType}_${timestamp}.json`;
+    toKeepFilename = `results/to_keep_tracker_${channelType}_${timestamp}.json`;
+    errorFilename = `results/error_tracker_${channelType}_${timestamp}.json`;
 
-  if(channelType) {
-    console.log(channelType)
-    _checkChannelType(channelType)
-    const queueUrl = await awsClient._getQueueUrl(`pn-ec-tracker-${channelType}-errori-queue-DLQ.fifo`);
-    queueUrls.push(queueUrl);
-  }
+    const stats = {
+        total: 0,
+        toRemove: 0,
+        problemFound: 0,
+        toKeep: 0,
+        errors: 0
+    };
 
-  console.log('Preparing data...')
+    const awsClient = new AwsClientsWrapper('confinfo', envName);
 
-  console.log('Reading from file...')
-  let requestIdsMap = {}
-  const fileRows = JSON.parse(fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })).filter(x=>x != '')
-  for( let i = 0; i < fileRows.length; i++ ){
-    const fileData = JSON.parse(JSON.stringify(fileRows[i]))
-    const body = JSON.parse(fileData.Body)
-    if(body.paperProgressStatusDto && body.paperProgressStatusDto.statusCode.startsWith("CON020")) {
-      console.log("CON020 found:", body.requestIdx)
-      appendJsonToFile(`CON020_found.json`, JSON.stringify(fileRows[i]))
-    }
-    else {
-      const requestId = `${body.xpagopaExtchCxId}~${body.requestIdx}`
-      if (!requestIdsMap[requestId]) {
-        requestIdsMap[requestId] = []
-      } 
-      requestIdsMap[requestId].push(JSON.stringify(fileData))
-    }
-  }
-  for ( const requestId in requestIdsMap ) {
-    const res = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", requestId)
-    if(res.Items.length > 0) {
-      const metadata = unmarshall(res.Items[0])
-      if(channelType=='cartaceo') {
-        if(_checkStatusRequest(metadata.statusRequest)) {
-          for(const row of requestIdsMap[requestId]) {
-            appendJsonToFile(`to_remove_tracker_${channelType}.json`, row)
-            console.log("to remove", requestId)
-          }
-        }
-        else {
-          console.log("to keep", requestId)
-        }
-      }
-      else {
-        if(_checkingEventsList(metadata.eventsList, channelType)) {
-          for(const row of requestIdsMap[requestId]) {
-            const nextStatus = _retrieveNextStatus(row)
-            const found = metadata.eventsList.some(item => item.digProgrStatus?.status === nextStatus);
-            if(!found) {
-              console.log("PROBLEM: NextStatus not found in eventList", nextStatus, requestId)
-              appendJsonToFile(`problem_found_${channelType}.json`, row)
+    await testSsoCredentials(awsClient, 'confinfo');
+    await initializeAwsClients(awsClient);
+
+    const messages = processSQSDump(fileName);
+    stats.total = messages.length;
+
+    const requestIdsMap = {};
+    for (const fileData of messages) {
+        try {
+            const body = typeof fileData.Body === 'string' ? JSON.parse(fileData.Body) : fileData.Body;
+            if (body.paperProgressStatusDto && body.paperProgressStatusDto.statusCode?.startsWith("CON020")) {
+                logResult(fileData, 'problemFound', 'CON020 found');
+                stats.problemFound++;
+                continue;
             }
-            else {
-              appendJsonToFile(`to_remove_tracker_${channelType}.json`, row)
-              console.log("to remove", requestId)
-            }
-          }
+            const requestId = `${body.xpagopaExtchCxId}~${body.requestIdx}`;
+            if (!requestIdsMap[requestId]) requestIdsMap[requestId] = [];
+            requestIdsMap[requestId].push(fileData); // Store object directly
+        } catch (err) {
+            logResult(fileData, 'error', `Body parse error: ${err.message}`);
+            stats.errors++;
         }
-        else {
-          console.log("to keep", requestId)
-        }
-      }
-    }
-    else {
-      console.log(`ERROR: requestId ${requestId} not found!`)
     }
 
-  }
+    let progress = 0;
+    const requestIds = Object.keys(requestIdsMap);
+    for (const requestId of requestIds) {
+        progress++;
+        process.stdout.write(`\rProcessing requestId ${progress} of ${requestIds.length}`);
+        let res;
+        try {
+            res = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", requestId);
+        } catch (err) {
+            for (const row of requestIdsMap[requestId]) {
+                logResult(row, 'error', `DynamoDB query error: ${err.message}`);
+                stats.errors++;
+            }
+            continue;
+        }
+        if (res.Items.length > 0) {
+            const metadata = unmarshall(res.Items[0]);
+            if (channelType === 'cartaceo') {
+                if (checkStatusRequest(metadata.statusRequest)) {
+                    for (const row of requestIdsMap[requestId]) {
+                        logResult(row, 'toRemove');
+                        stats.toRemove++;
+                    }
+                } else {
+                    for (const row of requestIdsMap[requestId]) {
+                        logResult(row, 'toKeep');
+                        stats.toKeep++;
+                    }
+                }
+            } else {
+                if (checkingEventsList(metadata.eventsList, channelType)) {
+                    for (const row of requestIdsMap[requestId]) {
+                        const nextStatus = retrieveNextStatus(row);
+                        const found = metadata.eventsList.some(item => item.digProgrStatus?.status === nextStatus);
+                        if (!found) {
+                            logResult(row, 'problemFound', `NextStatus not found in eventList: ${nextStatus}`);
+                            stats.problemFound++;
+                        } else {
+                            logResult(row, 'toRemove');
+                            stats.toRemove++;
+                        }
+                    }
+                } else {
+                    for (const row of requestIdsMap[requestId]) {
+                        logResult(row, 'toKeep');
+                        stats.toKeep++;
+                    }
+                }
+            }
+        } else {
+            for (const row of requestIdsMap[requestId]) {
+                logResult(row, 'error', `requestId ${requestId} not found`);
+                stats.errors++;
+            }
+        }
+    }
+
+    process.stdout.write('\n');
+    printSummary(stats, channelType);
 }
 
-main();
+main().catch(err => {
+    console.error('\nUnexpected error:', err);
+    process.exit(1);
+});
