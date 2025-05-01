@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, appendFileSync } from 'fs';
-import path from 'path'; // Added import for path module
+import path from 'path';
 import { parseArgs } from 'util';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { AwsClientsWrapper } from "pn-common";
@@ -77,7 +77,6 @@ async function checkPaperStatus(awsClient, fileKey, message) {
             return { success: false, reason: 'No logs found for fileKey', requestId: null };
         }
 
-        // Find the cx_id field in the log entry
         const cxIdField = logs[0].find(field => field.field === 'cx_id');
         if (!cxIdField?.value) {
             return { success: false, reason: 'No cx_id found in logs', requestId: null };
@@ -85,7 +84,6 @@ async function checkPaperStatus(awsClient, fileKey, message) {
 
         const requestId = cxIdField.value;
 
-        // Query metadata table with the found requestId
         const metadataResult = await awsClient._queryRequest(
             'pn-EcRichiesteMetadati',
             'requestId',
@@ -98,7 +96,6 @@ async function checkPaperStatus(awsClient, fileKey, message) {
 
         const metadata = unmarshall(metadataResult.Items[0]);
         
-        // Check for 'sent' status in eventsList
         const hasSentStatus = metadata.eventsList?.some(event => 
             event?.paperProgrStatus?.status === 'sent'
         );
@@ -136,7 +133,6 @@ function logResult(message, checkResult, queueName, timestamp) {
 }
 
 function processSQSDump(dumpFilePath, queueName) {
-    // Safety check to ensure dump file name matches queueName
     const fileName = path.basename(dumpFilePath);
     if (!fileName.startsWith(`dump_${queueName}`)) {
         console.error(`Error: dump file name "${fileName}" does not match queueName "${queueName}"`);
@@ -195,24 +191,20 @@ async function main() {
         passed: 0
     };
 
-    // Initialize AWS client
     const awsClient = new AwsClientsWrapper('confinfo', envName);
     awsClient._initDynamoDB();
     awsClient._initCloudwatch();
 
-    // Create results directory
     if (!existsSync('results')) {
         mkdirSync('results');
     }
 
-    // Process dump file
     const messages = processSQSDump(dumpFile, queueName);
     stats.total = messages.length;
 
     console.log(`\nStarting validation checks for ${stats.total} messages...`);
     let progress = 0;
 
-    // Process each message
     for (const message of messages) {
         progress++;
         process.stdout.write(`\rChecking message ${progress} of ${stats.total}`);

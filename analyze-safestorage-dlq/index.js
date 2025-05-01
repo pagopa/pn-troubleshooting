@@ -115,7 +115,6 @@ Example:
             process.exit(1);
     }
 
-    // Safety check: dumpFile name must begin with "dump_" + queueName
     const dumpFilename = args.values.dumpFile.split('/').pop();
     if (!dumpFilename.startsWith(`dump_${args.values.queueName}`)) {
         console.error(`Error: dump file name doesn't match with queue name "${args.values.queueName}"`);
@@ -457,7 +456,6 @@ async function main() {
                 getAccountId(coreClient)
         ]);
     
-        // Compute a single timestamp that will be used for both output files.
         const finalTimestamp = new Date().toISOString().replace(/:/g, '-').replace('.', '-');
         safeToDeleteFilename = `results/safe_to_delete_${queueName}_${finalTimestamp}.json`;
         needFurtherAnalysisFilename = `results/need_further_analysis_${queueName}_${finalTimestamp}.json`;
