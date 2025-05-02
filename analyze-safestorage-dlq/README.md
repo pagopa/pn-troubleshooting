@@ -40,7 +40,7 @@ Per `pn-safestore_to_deliverypush-DLQ`:
    * Aggiunge il prefisso `safestorage://` alla chiave
    * Verifica che la chiave non sia presente nella tabella `pn-DocumentCreationRequestTable`
 
-I messaggi proessati dal dump vengono infine suddivisi nei seguenti file di output:
+I messaggi processati dal dump vengono infine suddivisi nei seguenti file di output:
 
 * `results/need_further_analysis_${queueName}_${date}.json`: messaggi che non hanno superato il controllo, con dettagli sul controllo non superato
 * `results/safe_to_delete_${queueName}_${date}.json`: messaggi che hanno superato il controllo e che possono essere rimossi dalla DLQ

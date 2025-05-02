@@ -23,7 +23,7 @@ Lo script esegue le seguenti operazioni:
    * Cerca nei log di pn-external-channel per trovare il cx_id associato
    * Verifica nella tabella `pn-EcRichiesteMetadati` se la richiesta ha raggiunto lo stato 'sent'
 
-I messaggi proessati dal dump vengono infine suddivisi nei seguenti file di output:
+I messaggi processati dal dump vengono infine suddivisi nei seguenti file di output:
 
 * `results/need_further_analysis_${queueName}_${date}.json`: messaggi che non hanno superato il controllo, con dettagli sul controllo non superato
 * `results/safe_to_delete_${queueName}_${date}.json`: messaggi che hanno superato il controllo e che possono essere rimossi dalla DLQ
