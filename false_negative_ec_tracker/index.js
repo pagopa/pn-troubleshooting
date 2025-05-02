@@ -182,10 +182,10 @@ async function main() {
 
     ensureResultsDir();
     const timestamp = getTimestamp();
-    toRemoveFilename = `results/to_remove_tracker_${channelType}_${timestamp}.json`;
+    toRemoveFilename = `results/to_remove_${channelType}_${timestamp}.json`;
     problemFoundFilename = `results/problem_found_${channelType}_${timestamp}.json`;
-    toKeepFilename = `results/to_keep_tracker_${channelType}_${timestamp}.json`;
-    errorFilename = `results/error_tracker_${channelType}_${timestamp}.json`;
+    toKeepFilename = `results/to_keep_${channelType}_${timestamp}.json`;
+    errorFilename = `results/error_${channelType}_${timestamp}.json`;
 
     const stats = {
         total: 0,
@@ -213,7 +213,7 @@ async function main() {
             }
             const requestId = `${body.xpagopaExtchCxId}~${body.requestIdx}`;
             if (!requestIdsMap[requestId]) requestIdsMap[requestId] = [];
-            requestIdsMap[requestId].push(fileData); // Store object directly
+            requestIdsMap[requestId].push(fileData);
         } catch (err) {
             logResult(fileData, 'error', `Body parse error: ${err.message}`);
             stats.errors++;
