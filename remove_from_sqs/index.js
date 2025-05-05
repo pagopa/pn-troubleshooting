@@ -136,7 +136,6 @@ async function main() {
       delete data[k]
     }
   });
-  appendJsonToFile(`${fileName}_result.json`, JSON.stringify(data))
 }
 
 main();
