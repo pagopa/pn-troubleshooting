@@ -129,17 +129,7 @@ echo "Filtered dump stored in: $(realpath "$FILTERED_DUMP")"
 echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
 
 #######################################################
-# Step 6: Move all generated files to OUTPUTDIR       #
-#######################################################
-mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-mv "$(realpath "$REQUEST_IDS_LIST")" "$OUTPUTDIR/"
-mv "$(realpath "$NOT_FOUND")" "$OUTPUTDIR/${BASENAME}_not_found.txt"
-mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
-mv "$FILTERED_DUMP" "$OUTPUTDIR/"
-echo "Files copied to $OUTPUTDIR."
-
-#######################################################
-# Step 7 (optional): Remove events from SQS queue     #
+# Step 6 (optional): Remove events from SQS queue     #
 #######################################################
 if $PURGE; then
     echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
@@ -153,5 +143,15 @@ if $PURGE; then
     echo "Purging events from the SQS queue..."
     node index.js --account core --envName prod --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
 fi
+
+#######################################################
+# Step 7: Move all generated files to OUTPUTDIR       #
+#######################################################
+mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+mv "$REQUEST_IDS_LIST" "$OUTPUTDIR/"
+mv "$NOT_FOUND" "$OUTPUTDIR/${BASENAME}_not_found.txt"
+mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
+mv "$FILTERED_DUMP" "$OUTPUTDIR/"
+echo "Files copied to $OUTPUTDIR."
 
 echo "Process completed."

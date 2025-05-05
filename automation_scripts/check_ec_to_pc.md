@@ -7,8 +7,8 @@ Lo script esegue le seguenti operazioni:
 2. Converte il dump in formato JSONLine ed estrae i valori `requestId`.
 3. Estrae le richieste per le quali è stato ricevuto *feedback* e quelle per cui non è stato ricevuto mediante il [check_feedback_from_requestId_simplified](https://github.com/pagopa/pn-troubleshooting/tree/main/check_feedback_from_requestId_simplified).
 4. Filtra gli eventi di richieste che non hanno ricevuto *feedback* dal dump originale lasciando solo gli eventi di richieste che lo hanno ricevuto, i quali possono essere rimossi dalla DLQ.
-5. Copia i file generati in una cartella di output relativa allo script (`output/check_ec_to_pc`).
-6. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
+5. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
+6. Copia i file generati in una cartella di output relativa allo script (`output/check_ec_to_pc`).
 
 ## Prerequisiti
 
