@@ -89,6 +89,4 @@ legal_conservation_error_extractor/result
 *.txt
 
 ### Automation Scripts ###
-automation_scripts/**
-!automation_scripts/*.sh
-!automation_scripts/*.md
+automation_scripts/output/**
