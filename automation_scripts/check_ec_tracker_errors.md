@@ -55,7 +55,7 @@ Dove:
 
 ## Struttura Output
 
-I file generati vengono copiati nella cartella `output/check_safestorage_dlq` e includono:
+I file generati vengono copiati nella cartella `output/check_ec_tracker_errors` e includono:
 
 - Il dump originale dei messaggi.
 - Il file di analisi che contiene gli eventi da rimuovere.
