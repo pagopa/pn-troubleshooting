@@ -63,6 +63,19 @@ function validateArgs() {
         process.exit(1);
     }
 
+    const dumpFilename = args.values.fileName.split('/').pop();
+    const channelPrefixMap = {
+        cartaceo: "dump_pn-ec-tracker-cartaceo-errori-queue-DLQ",
+        email: "dump_pn-ec-tracker-email-errori-queue-DLQ",
+        pec: "dump_pn-ec-tracker-pec-errori-queue-DLQ",
+        sms: "dump_pn-ec-tracker-sms-errori-queue-DLQ"
+    };
+    const expectedPrefix = channelPrefixMap[args.values.channelType];
+    if (!dumpFilename.startsWith(expectedPrefix)) {
+        console.error(`Error: dump file name "${dumpFilename}" does not match channelType "${args.values.channelType}" (should start with "${expectedPrefix}")`);
+        process.exit(1);
+    }
+
     return args;
 }
 

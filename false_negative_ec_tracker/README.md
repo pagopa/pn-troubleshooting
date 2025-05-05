@@ -97,23 +97,23 @@ Esempi:
 Per analizzare messaggi dalla `pn-ec-tracker-pec-errori-queue-DLQ.fifo`:
 
 ```bash
-node index.js -e dev -f ./dump.json -q pn-ec-tracker-pec-errori-queue-DLQ.fifo
+node index.js -e dev -f ./dump.json -c pec
 ```
 
 Per analizzare messaggi dalla `pn-ec-tracker-sms-errori-queue-DLQ.fifo`:
 
 ```bash
-node index.js -e dev -f ./dump.json -q pn-ec-tracker-sms-errori-queue-DLQ.fifo
+node index.js -e dev -f ./dump.json -c sms
 ```
 
 Per analizzare messaggi dalla `pn-ec-tracker-email-errori-queue-DLQ.fifo`:
 
 ```bash
-node index.js -e dev -f ./dump.json -q pn-ec-tracker-email-errori-queue-DLQ.fifo
+node index.js -e dev -f ./dump.json -c email
 ```
 
 Per analizzare messaggi dalla `pn-ec-tracker-cartaceo-errori-queue-DLQ.fifo`:
 
 ```bash
-node index.js -e dev -f ./dump.json -q pn-ec-tracker-cartaceo-errori-queue-DLQ.fifo
+node index.js -e dev -f ./dump.json -c cartaceo
 ```

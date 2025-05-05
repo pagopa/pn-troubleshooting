@@ -21,11 +21,18 @@ Send_Interop_Daily_Automation/output
 export_for_va/output
 remove_from_sqs/to_remove_*
 remove_from_sqs/safe_to_delete_*
-check-sent-paper-attachment/dump_*
-analyze-safestorage-dlq/dump_*
+check-sent-paper-attachment/*.json
+!check-sent-paper-attachment/package.json
+!check-sent-paper-attachment/package-lock.json
+analyze-safestorage-dlq/*.json
+!analyze-safestorage-dlq/package.json
+!analyze-safestorage-dlq/package-lock.json
 check_status_request/*.json
 !check_status_request/package.json
 !check_status_request/package-lock.json
+false_negative_ec_tracker/*.json
+!false_negative_ec_tracker/package.json
+!false_negative_ec_tracker/package-lock.json
 
 ### Rstudio ###
 .Rproj.user

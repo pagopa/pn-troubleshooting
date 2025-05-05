@@ -54,6 +54,12 @@ Example:
         process.exit(1);
     }
 
+    const dumpFilename = args.values.dumpFile.split('/').pop();
+    if (!dumpFilename.startsWith(`dump_${args.values.queueName}`)) {
+        console.error(`Error: dump file name "${dumpFilename}" does not match queueName "${args.values.queueName}"`);
+        process.exit(1);
+    }
+
     return args.values;
 }
 
