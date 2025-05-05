@@ -161,14 +161,7 @@ process_queue(){
     fi
     
     #######################################################
-    # Step 3: Move all generated files to OUTPUTDIR       #
-    #######################################################
-    mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-    mv "$SAFE_TO_DELETE" "$OUTPUTDIR/"
-    echo "Files copied to $OUTPUTDIR."
-
-    #######################################################
-    # Step 4 (optional): Remove events from SQS queue     #
+    # Step 3 (optional): Remove events from SQS queue     #
     #######################################################
     if $PURGE; then
         echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
@@ -184,8 +177,16 @@ process_queue(){
             node index.js --account core --envName prod --queueName pn-safestore_to_deliverypush-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
         else
             node index.js --account confinfo --envName prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
-        fi    
+        fi
+        echo "Events purged from the SQS queue."
     fi
+
+    #######################################################
+    # Step 4: Move all generated files to OUTPUTDIR       #
+    #######################################################
+    mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+    mv "$SAFE_TO_DELETE" "$OUTPUTDIR/"
+    echo "Files moved to $OUTPUTDIR."
 
     echo "Process for queue $TARGET_QUEUE completed."
 }

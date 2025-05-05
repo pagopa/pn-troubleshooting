@@ -146,17 +146,7 @@ if [[ $JSONLINE_COUNT -gt $FILTERED_COUNT ]]; then
 fi
 
 #######################################################
-# Step 7: Move all generated files to OUTPUTDIR       #
-#######################################################
-mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-mv "$(realpath "$REQUEST_IDS_LIST")" "$OUTPUTDIR/"
-mv "$(realpath "$ERROR_REQUEST_IDS_LIST")" "$OUTPUTDIR/"
-mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
-mv "$FILTERED_DUMP" "$OUTPUTDIR/"
-echo "Files copied to $OUTPUTDIR."
-
-#######################################################
-# Step 8 (optional): Remove events from SQS queue     #
+# Step 7 (optional): Remove events from SQS queue     #
 #######################################################
 if $PURGE; then
     echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
@@ -169,6 +159,17 @@ if $PURGE; then
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
     node index.js --account confinfo --envName prod --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
+    echo "Events purged from the SQS queue."
 fi
+
+#######################################################
+# Step 8: Move all generated files to OUTPUTDIR       #
+#######################################################
+mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+mv "$REQUEST_IDS_LIST" "$OUTPUTDIR/"
+mv "$ERROR_REQUEST_IDS_LIST" "$OUTPUTDIR/"
+mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
+mv "$FILTERED_DUMP" "$OUTPUTDIR/"
+echo "Files moved to $OUTPUTDIR."
 
 echo "Process completed."

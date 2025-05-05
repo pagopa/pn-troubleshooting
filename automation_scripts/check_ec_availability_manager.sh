@@ -90,14 +90,14 @@ RESULTSDIR="$WORKDIR/check-sent-paper-attachment/results"
 node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --queueName pn-ec-availabilitymanager-queue-DLQ
 
 # Get the most recent analysis output file
-SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name 'to_remove_pn-ec-availabilitymanager-queue-DLQ*' -exec ls -t1 {} + | head -1)
+SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name 'safe_to_delete_pn-ec-availabilitymanager-queue-DLQ*' -exec ls -t1 {} + | head -1)
 if [[ -z "$SAFE_TO_DELETE" ]]; then
   echo "No removable events found. Exiting."
   exit 1
 fi
 REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
 echo "Total removable events: $REMOVABLE_EVENTS"
-UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
+UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_pn-ec-availabilitymanager-queue-DLQ*" -exec ls -t1 {} + | head -1)
 if [[ "$UNSAFE_TO_DELETE" != "" ]]; then
   echo "Unremovable events found. Please check the file: $(realpath "$UNSAFE_TO_DELETE")"
   UNREMOVABLE_EVENTS=$(wc -l < "$UNSAFE_TO_DELETE")
@@ -107,14 +107,7 @@ else
 fi
 
 #######################################################
-# Step 3: Move all generated files to OUTPUTDIR       #
-#######################################################
-mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-mv "$SAFE_TO_DELETE" "$OUTPUTDIR/"
-echo "Files copied to $OUTPUTDIR."
-
-#######################################################
-# Step 4 (optional): Remove events from SQS queue     #
+# Step 3 (optional): Remove events from SQS queue     #
 #######################################################
 if $PURGE; then
     echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
@@ -127,6 +120,14 @@ if $PURGE; then
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
     node index.js --account confinfo --envName prod --queueName pn-ec-availabilitymanager-queue-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
+    echo "Events purged from the SQS queue."
 fi
+
+#######################################################
+# Step 4: Move all generated files to OUTPUTDIR       #
+#######################################################
+mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+mv "$SAFE_TO_DELETE" "$OUTPUTDIR/"
+echo "Files moved to $OUTPUTDIR."
 
 echo "Process completed."
