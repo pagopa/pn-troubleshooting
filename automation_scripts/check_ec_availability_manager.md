@@ -2,10 +2,11 @@
 
 Script Bash per la pulizia della `pn-ec-availabilitymanager-queue-DLQ`.  
 Lo script esegue le seguenti operazioni:
+
 1. Effettua il dump dei messaggi dalla coda DLQ `pn-ec-availabilitymanager-queue-DLQ`.
 2. Verifica se esiste un evento `sent` relativo agli allegati cartacei usando il [check-sent-paper-attachment](https://github.com/pagopa/pn-troubleshooting/tree/main/check-sent-paper-attachment).
-3. Copia il dump originale ed il file di analisi generato nella cartella di output (`output/check_ec_availability_manager`).
-4. Se il totale degli eventi nel dump originale è maggiore di quelli da rimuovere, viene stampato un WARNING.
+3. Copia il dump originale ed il file di analisi, contenente gli eventi rimuovibili dalla DLQ, nella cartella di output (`output/check_ec_availability_manager`).
+4. Stampa un conteggio degli eventi totali, rimuovibili e non.
 5. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
 
 ## Prerequisiti
@@ -19,6 +20,7 @@ Lo script esegue le seguenti operazioni:
 ### Autenticazione AWS
 
 Accedi ad AWS tramite SSO, ad esempio:
+
 ```bash
 aws sso login --profile sso_pn-confinfo-prod
 ```
@@ -30,6 +32,7 @@ aws sso login --profile sso_pn-confinfo-prod
 ```
 
 Dove:
+
 - `-w, --work-dir`: (Obbligatorio) Directory di lavoro contenente le sottocartelle necessarie (dump_sqs, check-sent-paper-attachment, remove_from_sqs).
 - `-t, --visibility-timeout`: (Opzionale) Timeout di visibilità dei messaggi sulla coda DLQ per gli script di dump e rimozione.
 - `--purge`: (Opzionale) Se specificato, rimuove i messaggi elaborati dalla coda DLQ dopo il timeout di visibilità.
@@ -38,12 +41,14 @@ Dove:
 ## Struttura Output
 
 I file generati vengono copiati nella cartella `output/check_ec_availability_manager` e includono:
+
 - Il dump originale dei messaggi.
 - Il file di analisi che contiene gli eventi da rimuovere (relativi al controllo dell'evento "sent").
 
 ## Modalità Purge
 
 Se eseguito con opzione `--purge`, lo script:
+
 - Passa alla cartella `remove_from_sqs` all'interno della directory di lavoro.
 - Attende il timeout di visibilità (predefinito 30 secondi).
 - Invoca il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs) per rimuovere i messaggi dalla coda DLQ.
