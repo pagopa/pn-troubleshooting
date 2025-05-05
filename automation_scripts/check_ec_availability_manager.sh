@@ -76,6 +76,11 @@ fi
 echo "Dump file: $(realpath "$ORIGINAL_DUMP")"
 
 TOTAL_EVENTS=$(jq -c '.[]' "$ORIGINAL_DUMP" | wc -l)
+if [[ $TOTAL_EVENTS -eq 0 ]]; then
+  echo "No events found in the dump file. Exiting."
+  rm "$ORIGINAL_DUMP"
+  exit 1
+fi
 echo "Total events in SQS dump: $TOTAL_EVENTS"
 
 #######################################################

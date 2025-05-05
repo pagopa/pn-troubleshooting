@@ -116,6 +116,8 @@ process_queue(){
         Q_removableEvents["$TARGET_QUEUE"]=0
         Q_unremovableEvents["$TARGET_QUEUE"]=0
         echo "No events found in the dump file. Skipping queue."
+        rm "$ORIGINAL_DUMP"
+        echo "Dump file removed."
         return 0
     fi
 

@@ -108,6 +108,8 @@ process_channel(){
         C_removableEvents["$CHANNEL"]=0
         C_unremovableEvents["$CHANNEL"]=0
         echo "No events found in the dump file. Skipping channel."
+        rm "$ORIGINAL_DUMP"
+        echo "Dump file removed."
         return 0
     fi
 
