@@ -1,0 +1,15 @@
+{
+  "name": "inipec_error_report",
+  "version": "1.0.0",
+  "description": "Retrive blocked pollingId and taxId",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/util-dynamodb": "^3.798.0",
+    "pn-common": "file:../pn-common"
+  }
+}
