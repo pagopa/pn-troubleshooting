@@ -127,7 +127,7 @@ Example:
 let safeToDeleteFilename, needFurtherAnalysisFilename;
 
 function printSummary(stats, queueName) {
-        console.log('\n=== Execution Summary ===');
+        console.log('\n=== Execution Summary for Queue: ' + queueName + ' ===');
         console.log(`\nTotal messages processed: ${stats.total}`);
         console.log(`Messages that passed: ${stats.passed}`);
         console.log(`Messages that failed: ${stats.total - stats.passed}`);
@@ -156,18 +156,6 @@ async function initializeAwsClients(awsClient) {
                 stsClient: awsClient._stsClient,
                 sqsClient: awsClient._sqsClient
         };
-}
-
-function extractMD5Fields(message) {
-        const result = {
-                MD5OfBody: message.MD5OfBody
-        };
-        
-        if (message.MD5OfMessageAttributes) {
-                result.MD5OfMessageAttributes = message.MD5OfMessageAttributes;
-        }
-        
-        return result;
 }
 
 function logResult(message, status, reason = '', queueName) {
