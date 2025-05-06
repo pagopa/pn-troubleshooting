@@ -4,10 +4,15 @@ const path = require('path');
 const { AwsClientsWrapper } = require("pn-common");
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 
-function appendJsonToFile(fileName, data){
-  if(!fs.existsSync("results"))
+function appendJsonToFile(fileName, data, summary = {}) {
+  if (!fs.existsSync("results"))
     fs.mkdirSync("results", { recursive: true });
-  fs.appendFileSync(fileName, data + "\n")
+  const output = {
+    timestamp: new Date().toISOString(),
+    summary,
+    data: JSON.parse(data)
+  };
+  fs.appendFileSync(fileName, JSON.stringify(output, null, 2) + "\n");
 }
 
 function prepareData(data){
@@ -15,7 +20,6 @@ function prepareData(data){
   const dataSample = JSON.parse(data[0])
   console.log(dataSample)
   if(dataSample.MD5OfMessageAttributes) {
-    result['hasMessageAttributes'] = false
     data.forEach(line => {
       const tmp = JSON.parse(line)
       if(result[tmp.MD5OfBody]){
@@ -27,7 +31,6 @@ function prepareData(data){
     });
   }
   else {
-    result['hasMessageAttributes'] = true
     data.forEach(line => {
       const tmp = JSON.parse(line)
       if(result[tmp.MD5OfBody]){
@@ -136,7 +139,12 @@ async function main() {
       delete data[k]
     }
   });
-  appendJsonToFile(`${fileName}_result.json`, JSON.stringify(data))
+  const actualKeys = Object.keys(data)
+  const summary = {
+    totalProcessed: i,
+    remainingKeys: actualKeys.length
+  };
+  appendJsonToFile(`${fileName}_result.json`, JSON.stringify(data), summary);
 }
 
 main();
