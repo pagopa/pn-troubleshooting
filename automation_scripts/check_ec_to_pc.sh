@@ -148,6 +148,8 @@ if $PURGE; then
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
     node index.js --account core --envName prod --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
+    find "$RESULTSDIR" -type f -name "dump_pn-external_channel_to_paper_channel-DLQ*.jsonline_result.json" | xargs rm
+    echo "Events purged from the SQS queue."
 fi
 
 #######################################################

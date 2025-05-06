@@ -164,6 +164,7 @@ process_channel(){
         sleep "$V_TIMEOUT"
         echo "Purging events from the SQS queue..."
         node index.js --account confinfo --envName prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
+        find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*.json_result.json" | xargs rm
         echo "Events purged from the SQS queue."
     fi
 

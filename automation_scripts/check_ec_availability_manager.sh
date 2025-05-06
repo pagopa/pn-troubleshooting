@@ -125,6 +125,7 @@ if $PURGE; then
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
     node index.js --account confinfo --envName prod --queueName pn-ec-availabilitymanager-queue-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
+    find "$RESULTSDIR" -type f -name "safe_to_delete_pn-ec-availabilitymanager-queue-DLQ*.json_result.json" | xargs rm
     echo "Events purged from the SQS queue."
 fi
 
