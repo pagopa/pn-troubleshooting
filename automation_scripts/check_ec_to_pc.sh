@@ -16,7 +16,7 @@ EOF
 WORKDIR=""
 STARTDIR=$(pwd)
 OUTPUTDIR="$STARTDIR/output/check_ec_to_pc"
-V_TIMEOUT=180
+V_TIMEOUT=300
 PURGE=false
 
 # Parse parameters
@@ -159,6 +159,7 @@ fi
 mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
 mv "$REQUEST_IDS_LIST" "$OUTPUTDIR/"
 mv "$NOT_FOUND" "$OUTPUTDIR/${BASENAME}_not_found.txt"
+mv "$FOUND_JSON" "$OUTPUTDIR/${BASENAME}_found.json"
 mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
 mv "$FILTERED_DUMP" "$OUTPUTDIR/"
 echo "Files copied to $OUTPUTDIR."
