@@ -126,14 +126,14 @@ process_channel(){
     node index.js --envName prod --fileName "$ORIGINAL_DUMP" --channelType "$CHANNEL"
 
     # Get the most recent removable events file
-    SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "to_remove_${CHANNEL}*" -exec ls -t1 {} + | head -1)
-    if [[ -z "$SAFE_TO_DELETE" ]]; then
+    TO_REMOVE=$(find "$RESULTSDIR" -type f -name "to_remove_${CHANNEL}*" -exec ls -t1 {} + | head -1)
+    if [[ -z "$TO_REMOVE" ]]; then
       echo "No removable events found for $CHANNEL. Skipping channel."
       C_removableEvents["$CHANNEL"]=0
       C_unremovableEvents["$CHANNEL"]=0
       return 0
     fi
-    REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
+    REMOVABLE_EVENTS=$(wc -l < "$TO_REMOVE")
     echo "Total removable events: $REMOVABLE_EVENTS"
     C_removableEvents["$CHANNEL"]="$REMOVABLE_EVENTS"
 
@@ -163,8 +163,8 @@ process_channel(){
         echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
         sleep "$V_TIMEOUT"
         echo "Purging events from the SQS queue..."
-        node index.js --account confinfo --envName prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
-        find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*.json_result.json" | xargs rm
+        node index.js --account confinfo --envName prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$TO_REMOVE" 1>/dev/null
+        find "$RESULTSDIR" -type f -name "to_remove_$CHANNEL*.json_result.json" | xargs rm
         echo "Events purged from the SQS queue."
     fi
 
@@ -172,7 +172,7 @@ process_channel(){
     # Step 4: Move all generated files to OUTPUTDIR       #
     #######################################################
     mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-    mv "$SAFE_TO_DELETE" "$OUTPUTDIR/"
+    mv "$TO_REMOVE" "$OUTPUTDIR/"
     echo "Files moved to $OUTPUTDIR."
 
     echo "Process for channel $CHANNEL completed."
