@@ -68,12 +68,13 @@ cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1
 node dump_sqs.js --awsProfile sso_pn-confinfo-prod --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
 # Get the most recent dump file
-ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "pn-ec-cartaceo-errori-queue-DLQ.fifo*" -exec ls -t1 {} + | head -1)
+ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*" -exec ls -t1 {} + | head -1)
 if [[ -z "$ORIGINAL_DUMP" ]]; then
   echo "No dump file found. Exiting."
   exit 1
 fi
-echo "Dump file: $(realpath "$ORIGINAL_DUMP")"
+ORIGINAL_DUMP=$(realpath "$ORIGINAL_DUMP")
+echo "Dump file: $ORIGINAL_DUMP"
 
 #######################################################
 # Step 2: Extract requestIdx values from the dump     #
@@ -92,9 +93,11 @@ for file in counter.json error.json fromconsolidatore.json toconsolidatore.json 
 done
 
 BASENAME=$(basename "${ORIGINAL_DUMP%.json}")
-REQUEST_IDS_LIST="${BASENAME}_all_request_ids.txt"
+RESULTSDIR="$WORKDIR/check_status_request/results"
+REQUEST_IDS_LIST="$WORKDIR/check_status_request/${BASENAME}_all_request_ids.txt"
 jq -r '.[] | .Body | fromjson | .requestIdx' "$ORIGINAL_DUMP" > "$REQUEST_IDS_LIST"
-echo "Extracted requestIdx values to: $(realpath "$REQUEST_IDS_LIST")"
+REQUEST_IDS_LIST=$(realpath "$REQUEST_IDS_LIST")
+echo "Extracted requestIdx values to: $REQUEST_IDS_LIST"
 
 #############################################################
 # Step 3: Check request status on pn-EcRichiesteMetadati    #
@@ -102,40 +105,44 @@ echo "Extracted requestIdx values to: $(realpath "$REQUEST_IDS_LIST")"
 node index.js --envName prod --fileName "$REQUEST_IDS_LIST" 1>/dev/null
 
 # Assume that the node script produces an error.json file in this folder.
-ERROR_JSON="error.json"
+ERROR_JSON="$WORKDIR/check_status_request/error.json"
 if [[ ! -f "$ERROR_JSON" ]]; then
   echo "error.json not found. Exiting."
   exit 1
 fi
+ERROR_JSON=$(realpath "$ERROR_JSON")
 
 ###########################################################
 # Step 4: Convert the original dump to JSONLine format    #
 ###########################################################
-JSONLINE_DUMP="${ORIGINAL_DUMP%.json}.jsonline"
+JSONLINE_DUMP="$WORKDIR/check_status_request/${BASENAME}.jsonline"
 jq -c '.[]' "$ORIGINAL_DUMP" > "$JSONLINE_DUMP"
+JSONLINE_DUMP=$(realpath "$JSONLINE_DUMP")
 JSONLINE_COUNT=$(wc -l < "$JSONLINE_DUMP")
 if [[ $JSONLINE_COUNT -eq 0 ]]; then
   echo "No events found in JSONLine dump. Exiting."
   exit 1
 fi
-echo "Converted dump to JSONLine file: $(realpath "$JSONLINE_DUMP")"
+echo "Converted dump to JSONLine file: $JSONLINE_DUMP"
 echo "Total events in JSONLine dump: $JSONLINE_COUNT"
 
 ###################################################
 # Step 5: Extract requests in error status        #
 ###################################################
-ERROR_REQUEST_IDS_LIST="${ORIGINAL_DUMP%.json}_error_request_ids.txt"
+ERROR_REQUEST_IDS_LIST="$WORKDIR/check_status_request/${BASENAME}_error_request_ids.txt"
 jq -r '.requestId | sub("pn-cons-000~"; "")' "$ERROR_JSON" > "$ERROR_REQUEST_IDS_LIST"
-echo "Extracted error requestIds to: $(realpath "$ERROR_REQUEST_IDS_LIST")"
+ERROR_REQUEST_IDS_LIST=$(realpath "$ERROR_REQUEST_IDS_LIST")
+echo "Extracted error requestIds to: $ERROR_REQUEST_IDS_LIST"
 echo "Total requestIds in error status (not to remove): $(wc -l < "$ERROR_REQUEST_IDS_LIST")"
 
 #######################################################
 # Step 6: Filter out events from requests in error    #
 #######################################################
-FILTERED_DUMP="${ORIGINAL_DUMP%.json}_filtered.jsonline"
+FILTERED_DUMP="$WORKDIR/check_status_request/${BASENAME}_filtered.jsonline"
 grep -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
+FILTERED_DUMP=$(realpath "$FILTERED_DUMP")
 FILTERED_COUNT=$(wc -l < "$FILTERED_DUMP")
-echo "Filtered dump stored in: $(realpath "$FILTERED_DUMP")"
+echo "Filtered dump stored in: $FILTERED_DUMP"
 echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
 
 # Compare counts and warn if total events > removable events
@@ -146,17 +153,7 @@ if [[ $JSONLINE_COUNT -gt $FILTERED_COUNT ]]; then
 fi
 
 #######################################################
-# Step 7: Copy all generated files to OUTPUTDIR       #
-#######################################################
-cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-cp "$(realpath "$REQUEST_IDS_LIST")" "$OUTPUTDIR/"
-cp "$(realpath "$ERROR_REQUEST_IDS_LIST")" "$OUTPUTDIR/"
-cp "$JSONLINE_DUMP" "$OUTPUTDIR/"
-cp "$FILTERED_DUMP" "$OUTPUTDIR/"
-echo "Files copied to $OUTPUTDIR."
-
-#######################################################
-# Step 8 (optional): Remove events from SQS queue     #
+# Step 7 (optional): Remove events from SQS queue     #
 #######################################################
 if $PURGE; then
     echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
@@ -169,6 +166,18 @@ if $PURGE; then
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
     node index.js --account confinfo --envName prod --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
+    find "$RESULTSDIR" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*.jsonline_result.json" | xargs rm
+    echo "Events purged from the SQS queue."
 fi
+
+#######################################################
+# Step 8: Move all generated files to OUTPUTDIR       #
+#######################################################
+mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+mv "$REQUEST_IDS_LIST" "$OUTPUTDIR/"
+mv "$ERROR_REQUEST_IDS_LIST" "$OUTPUTDIR/"
+mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
+mv "$FILTERED_DUMP" "$OUTPUTDIR/"
+echo "Files moved to $OUTPUTDIR."
 
 echo "Process completed."

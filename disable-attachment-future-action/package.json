@@ -1,0 +1,17 @@
+{
+  "name": "disable-attachment-future-action",
+  "version": "1.0.0",
+  "description": "Script to logically delete future actions for DLQ messages of refined notifications",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/util-dynamodb": "^3.0.0",
+    "pn-common": "file:../pn-common"
+  }
+}

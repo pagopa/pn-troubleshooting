@@ -12,7 +12,7 @@ const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
  */
 function validateArgs() {
     const usage = `
-Usage: node analyze-paper-channel-dlq.js --envName|-e <environment> --dumpFile|-f <path>
+Usage: node index.js --envName|-e <environment> --dumpFile|-f <path>
 
 Description:
     Analyzes paper channel delivery requests and checks their cancellation status.
@@ -23,7 +23,7 @@ Parameters:
     --help, -h        Display this help message
 
 Example:
-    node analyze-paper-channel-dlq.js --envName dev --dumpFile ./dump.json`;
+    node index.js --envName dev --dumpFile ./dump.json`;
 
     const args = parseArgs({
         options: {
@@ -51,29 +51,6 @@ Example:
     }
 
     return args;
-}
-
-/**
- * Tests SSO credentials for AWS client
- * @param {AwsClientsWrapper} awsClient - AWS client wrapper
- */
-async function testSsoCredentials(awsClient) {
-    try {
-        awsClient._initSTS();
-        await awsClient._getCallerIdentity();
-    } catch (error) {
-        if (error.name === 'CredentialsProviderError' || 
-            error.message?.includes('expired') || 
-            error.message?.includes('credentials')) {
-            console.error('\n=== SSO Authentication Error ===');
-            console.error('Your SSO session has expired or is invalid.');
-            console.error('Please run the following commands:');
-            console.error('1. aws sso logout');
-            console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
-            process.exit(1);
-        }
-        throw error;
-    }
 }
 
 /**
@@ -205,7 +182,6 @@ async function main() {
 
     // Initialize AWS client
     const coreClient = new AwsClientsWrapper('core', envName);
-    await testSsoCredentials(coreClient);
     coreClient._initDynamoDB();
 
     // Process dump file

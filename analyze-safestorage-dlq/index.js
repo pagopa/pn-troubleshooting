@@ -115,7 +115,6 @@ Example:
             process.exit(1);
     }
 
-    // Safety check: dumpFile name must begin with "dump_" + queueName
     const dumpFilename = args.values.dumpFile.split('/').pop();
     if (!dumpFilename.startsWith(`dump_${args.values.queueName}`)) {
         console.error(`Error: dump file name doesn't match with queue name "${args.values.queueName}"`);
@@ -128,7 +127,7 @@ Example:
 let safeToDeleteFilename, needFurtherAnalysisFilename;
 
 function printSummary(stats, queueName) {
-        console.log('\n=== Execution Summary ===');
+        console.log('\n=== Execution Summary for Queue: ' + queueName + ' ===');
         console.log(`\nTotal messages processed: ${stats.total}`);
         console.log(`Messages that passed: ${stats.passed}`);
         console.log(`Messages that failed: ${stats.total - stats.passed}`);
@@ -145,25 +144,6 @@ function printSummary(stats, queueName) {
         console.log(`- Passed messages: ${safeToDeleteFilename}`);
 }
 
-async function testSsoCredentials(awsClient, clientName) {
-        try {
-                awsClient._initSTS();
-                await awsClient._getCallerIdentity();
-        } catch (error) {
-                if (error.name === 'CredentialsProviderError' ||
-                        error.message?.includes('expired') ||
-                        error.message?.includes('credentials')) {
-                        console.error(`\n=== SSO Authentication Error for ${clientName} client ===`);
-                        console.error('Your SSO session has expired or is invalid.');
-                        console.error('Please run the following commands:');
-                        console.error('1. aws sso logout');
-                        console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
-                        process.exit(1);
-                }
-                throw error;
-        }
-}
-
 async function initializeAwsClients(awsClient) {
         awsClient._initS3();
         awsClient._initDynamoDB();
@@ -176,18 +156,6 @@ async function initializeAwsClients(awsClient) {
                 stsClient: awsClient._stsClient,
                 sqsClient: awsClient._sqsClient
         };
-}
-
-function extractMD5Fields(message) {
-        const result = {
-                MD5OfBody: message.MD5OfBody
-        };
-        
-        if (message.MD5OfMessageAttributes) {
-                result.MD5OfMessageAttributes = message.MD5OfMessageAttributes;
-        }
-        
-        return result;
 }
 
 function logResult(message, status, reason = '', queueName) {
@@ -437,12 +405,7 @@ async function main() {
     
         const confinfoClient = new AwsClientsWrapper('confinfo', envName);
         const coreClient = new AwsClientsWrapper('core', envName);
-    
-        await Promise.all([
-                testSsoCredentials(confinfoClient, 'confinfo'),
-                testSsoCredentials(coreClient, 'core')
-        ]);
-    
+       
         await Promise.all([
                 initializeAwsClients(confinfoClient),
                 initializeAwsClients(coreClient),
@@ -457,10 +420,6 @@ async function main() {
                 getAccountId(coreClient)
         ]);
     
-        console.log(`CONFINFO AccountID: ${confinfoAccountId}`);
-        console.log(`CORE AccountID: ${coreAccountId}`);
-    
-        // Compute a single timestamp that will be used for both output files.
         const finalTimestamp = new Date().toISOString().replace(/:/g, '-').replace('.', '-');
         safeToDeleteFilename = `results/safe_to_delete_${queueName}_${finalTimestamp}.json`;
         needFurtherAnalysisFilename = `results/need_further_analysis_${queueName}_${finalTimestamp}.json`;

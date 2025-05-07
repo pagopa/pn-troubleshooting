@@ -111,7 +111,7 @@ dump_params
 echo "STARTING EXECUTION"
 
 if [[ "$channel_type" == "all" ]]; then
-  channels=("email" "pec" "cartaceo")
+  channels=("email" "pec" "cartaceo" "sms")
 else
   channels=("$channel_type")
 fi

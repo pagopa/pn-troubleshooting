@@ -56,30 +56,6 @@ Parameters:
 }
 
 /**
- * Tests SSO credentials for AWS client
- * @param {AwsClientsWrapper} awsClient - AWS client wrapper
- * @returns {Promise<void>}
- */
-async function testSsoCredentials(awsClient) {
-    try {
-        awsClient._initSTS();
-        await awsClient._getCallerIdentity();
-    } catch (error) {
-        if (error.name === 'CredentialsProviderError' ||
-            error.message?.includes('expired') ||
-            error.message?.includes('credentials')) {
-            console.error('\n=== SSO Authentication Error ===');
-            console.error('Your SSO session has expired or is invalid.');
-            console.error('Please run the following commands:');
-            console.error('1. aws sso logout');
-            console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
-            process.exit(1);
-        }
-        throw error;
-    }
-}
-
-/**
  * Prints execution summary
  * @param {Object} stats - Processing statistics
  * @param {string} resultPath - Path to the result file
@@ -173,7 +149,6 @@ async function main() {
         const stats = { total: 0, updated: 0 };
         // Initialize AWS client
         const awsClient = new AwsClientsWrapper('core', args.values.envName);
-        await testSsoCredentials(awsClient);
         awsClient._initDynamoDB();
         // Read messages from dump file
         const messages = readFileSync(args.values.dumpFile, 'utf8')

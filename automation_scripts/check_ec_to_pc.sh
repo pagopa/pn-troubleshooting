@@ -16,7 +16,7 @@ EOF
 WORKDIR=""
 STARTDIR=$(pwd)
 OUTPUTDIR="$STARTDIR/output/check_ec_to_pc"
-V_TIMEOUT=180
+V_TIMEOUT=300
 PURGE=false
 
 # Parse parameters
@@ -73,7 +73,8 @@ if [[ -z "$ORIGINAL_DUMP" ]]; then
   echo "No dump file found. Exiting."
   exit 1
 fi
-echo "Dump file: $(realpath "$ORIGINAL_DUMP")"
+ORIGINAL_DUMP=$(realpath "$ORIGINAL_DUMP")
+echo "Dump file: $ORIGINAL_DUMP"
 
 #######################################################
 # Step 2: Extract requestId values from the dump     #
@@ -85,9 +86,11 @@ fi
 cd "$WORKDIR/check_feedback_from_requestId_simplified" || { echo "Failed to cd into '$WORKDIR/check_feedback_from_requestId_simplified'"; exit 1; }
 
 BASENAME=$(basename "${ORIGINAL_DUMP%.json}")
-REQUEST_IDS_LIST="${BASENAME}_all_request_ids.txt"
+RESULTSDIR="$WORKDIR/check_feedback_from_requestId_simplified/results"
+REQUEST_IDS_LIST="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_all_request_ids.txt"
 jq -r '.[] | .Body | fromjson | .analogMail.requestId' "$ORIGINAL_DUMP" | sort -u > "$REQUEST_IDS_LIST"
-echo "Extracted requestId values to: $(realpath "$REQUEST_IDS_LIST")"
+REQUEST_IDS_LIST=$(realpath "$REQUEST_IDS_LIST")
+echo "Extracted requestId values to: $REQUEST_IDS_LIST"
 
 #############################################################
 # Step 3: Check if there is a feedback for each requestId   #
@@ -99,47 +102,41 @@ if [[ ! -d "$CHECK_FEEDBACK_RESULTS" ]]; then
   echo "No feedback check results found. Exiting."
   exit 1
 fi
+CHECK_FEEDBACK_RESULTS=$(realpath "$CHECK_FEEDBACK_RESULTS")
 
-echo "Feedback check results directory: $(realpath "$CHECK_FEEDBACK_RESULTS")"
 FOUND_JSON="${CHECK_FEEDBACK_RESULTS}/found.json"
+FOUND_JSON=$(realpath "$FOUND_JSON")
 echo "Total requestIds that received a feedback (to remove): $(wc -l < "$FOUND_JSON")"
 NOT_FOUND="${CHECK_FEEDBACK_RESULTS}/not_found.txt"
+NOT_FOUND=$(realpath "$NOT_FOUND")
 echo "Total requestIds that didn't receive a feedback (not to remove): $(wc -l < "$NOT_FOUND")"
 
 ###########################################################
 # Step 4: Convert the original dump to JSONLine format    #
 ###########################################################
-JSONLINE_DUMP="${ORIGINAL_DUMP%.json}.jsonline"
+JSONLINE_DUMP="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}.jsonline"
 jq -c '.[]' "$ORIGINAL_DUMP" > "$JSONLINE_DUMP"
+JSONLINE_DUMP=$(realpath "$JSONLINE_DUMP")
 JSONLINE_COUNT=$(wc -l < "$JSONLINE_DUMP")
 if [[ $JSONLINE_COUNT -eq 0 ]]; then
   echo "No events found in JSONLine dump. Exiting."
   exit 1
 fi
-echo "Converted dump to JSONLine file: $(realpath "$JSONLINE_DUMP")"
+echo "Converted dump to JSONLine file: $JSONLINE_DUMP"
 echo "Total events in JSONLine dump: $JSONLINE_COUNT"
 
 #######################################################
 # Step 5: Filter out events from requests in error    #
 #######################################################
-FILTERED_DUMP="${ORIGINAL_DUMP%.json}_filtered.jsonline"
+FILTERED_DUMP="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_filtered.jsonline"
 grep -F -v -f "$NOT_FOUND" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
+FILTERED_DUMP=$(realpath "$FILTERED_DUMP")
 FILTERED_COUNT=$(wc -l < "$FILTERED_DUMP")
-echo "Filtered dump stored in: $(realpath "$FILTERED_DUMP")"
+echo "Filtered dump stored in: $FILTERED_DUMP"
 echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
 
 #######################################################
-# Step 6: Copy all generated files to OUTPUTDIR       #
-#######################################################
-cp "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-cp "$(realpath "$REQUEST_IDS_LIST")" "$OUTPUTDIR/"
-cp "$(realpath "$NOT_FOUND")" "$OUTPUTDIR/${BASENAME}_not_found.txt"
-cp "$JSONLINE_DUMP" "$OUTPUTDIR/"
-cp "$FILTERED_DUMP" "$OUTPUTDIR/"
-echo "Files copied to $OUTPUTDIR."
-
-#######################################################
-# Step 7 (optional): Remove events from SQS queue     #
+# Step 6 (optional): Remove events from SQS queue     #
 #######################################################
 if $PURGE; then
     echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
@@ -152,6 +149,19 @@ if $PURGE; then
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
     node index.js --account core --envName prod --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
+    find "$RESULTSDIR" -type f -name "dump_pn-external_channel_to_paper_channel-DLQ*.jsonline_result.json" | xargs rm
+    echo "Events purged from the SQS queue."
 fi
+
+#######################################################
+# Step 7: Move all generated files to OUTPUTDIR       #
+#######################################################
+mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
+mv "$REQUEST_IDS_LIST" "$OUTPUTDIR/"
+mv "$NOT_FOUND" "$OUTPUTDIR/${BASENAME}_not_found.txt"
+mv "$FOUND_JSON" "$OUTPUTDIR/${BASENAME}_found.json"
+mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
+mv "$FILTERED_DUMP" "$OUTPUTDIR/"
+echo "Files copied to $OUTPUTDIR."
 
 echo "Process completed."

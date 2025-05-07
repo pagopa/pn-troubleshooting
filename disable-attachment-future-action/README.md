@@ -1,4 +1,4 @@
-# Delete Attachment Future Action
+# Disable Attachment Future Action
 
 Script per la gestione logica delle azioni future relative ad allegati di notifiche perfezionate.
 
@@ -31,11 +31,11 @@ npm install
 
 ### Esecuzione
 ```bash
-node delete-attachment-future-action.js --envName <env> --dumpFile <path> --resultPath <path>
+node index.js --envName <env> --dumpFile <path> --resultPath <path>
 ```
 oppure
 ```bash
-node delete-attachment-future-action.js -e <env> -f <path> -r <path>
+node index.js -e <env> -f <path> -r <path>
 ```
 Dove:
 

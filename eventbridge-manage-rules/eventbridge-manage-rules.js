@@ -115,33 +115,6 @@ Examples:
 }
 
 /**
- * Tests AWS SSO credentials and provides clear error messages for authentication issues
- * Exits with code 1 if credentials are invalid or expired
- * @param {AwsClientsWrapper} awsClient - AWS client wrapper instance
- * @param {string} clientName - Account name for error reporting
- * @returns {Promise<void>}
- * @throws {Error} For non-credential related errors
- */
-async function testSsoCredentials(awsClient, clientName) {
-    try {
-        awsClient._initSTS();
-        await awsClient._getCallerIdentity();
-    } catch (error) {
-        if (error.name === 'CredentialsProviderError' ||
-            error.message?.includes('expired') ||
-            error.message?.includes('credentials')) {
-            console.error(`\n=== SSO Authentication Error for ${clientName} client ===`);
-            console.error('Your SSO session has expired or is invalid.');
-            console.error('Please run the following commands:');
-            console.error('1. aws sso logout');
-            console.error(`2. aws sso login --profile ${awsClient.ssoProfile}`);
-            process.exit(1);
-        }
-        throw error;
-    }
-}
-
-/**
  * Initializes required AWS service clients (EventBridge and STS)
  * @param {AwsClientsWrapper} awsClient - AWS client wrapper instance
  * @returns {Object} Object containing initialized AWS service clients
@@ -254,9 +227,6 @@ async function main() {
 
     // Only initialize the client for the specified account
     const awsClient = new AwsClientsWrapper(account, envName);
-
-    // Test SSO credentials
-    await testSsoCredentials(awsClient, account);
 
     // Initialize AWS client
     await initializeAwsClients(awsClient);

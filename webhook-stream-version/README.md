@@ -18,7 +18,7 @@ Il file CSV deve contenere le seguenti colonne:
 ## Utilizzo
 
 ```bash
-node webhook-stream-version.js --envName|-e <ambiente> --csvFile|-f <percorso>
+node index.js --envName|-e <ambiente> --csvFile|-f <percorso>
 ```
 
 ### Parametri
@@ -31,7 +31,7 @@ node webhook-stream-version.js --envName|-e <ambiente> --csvFile|-f <percorso>
 
 ```bash
 # Aggiornamento degli stream in ambiente dev
-node webhook-stream-version.js -e dev -f ./streams.csv
+node index.js -e dev -f ./streams.csv
 ```
 
 ## Output

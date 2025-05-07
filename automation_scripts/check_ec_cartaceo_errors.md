@@ -8,8 +8,8 @@ Lo script esegue le seguenti operazioni:
 3. Controlla lo stato delle richieste sulla `pn-EcRichiesteMetadati` tramite il [check_status_request](https://github.com/pagopa/pn-troubleshooting/tree/main/check_status_request).
 4. Filtra gli eventi di richieste in errore dal dump originale lasciando solo gli eventi di richieste perfezionate, i quali possono essere rimossi dalla DLQ.
 5. Se il totale degli eventi nel dump originale è maggiore di quelli da rimuovere, stampa un WARNING.
-6. Copia i file generati in una cartella di output relativa allo script (`output/check_ec_cartaceo_errors`).
-7. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
+6. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
+7. Copia i file generati in una cartella di output relativa allo script (`output/check_ec_cartaceo_errors`).
 
 ## Prerequisiti
 
