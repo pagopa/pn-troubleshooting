@@ -1,10 +1,9 @@
-// --- Required Dependencies ---
 import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'fs';
 import { AwsClientsWrapper } from "pn-common";
 import { unmarshall } from '@aws-sdk/util-dynamodb';
-import { GetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
+import { GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { parseArgs } from 'util';
-import { HeadObjectCommand } from '@aws-sdk/client-s3';
+import { HeadObjectCommand, ListObjectVersionsCommand } from '@aws-sdk/client-s3';
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
 
 const DOCUMENT_TYPES = {
@@ -194,123 +193,193 @@ async function getAccountId(awsClient) {
 }
 
 function processSQSDump(dumpFilePath, queueName) {
-        try {
-                const dumpContent = readFileSync(dumpFilePath, 'utf-8');
-                const messages = JSON.parse(dumpContent);
-    
-                console.log(`Processing ${messages.length} messages from dump file`);
-    
-                return messages.map(message => {
-                        try {
-                                let fileKey;
-                                const body = JSON.parse(message.Body);
-    
-                                switch(queueName) {
-                                        case 'pn-safestore_to_deliverypush-DLQ':
-                                                fileKey = body.key;
-                                                break;
-                                        case 'pn-ss-transformation-sign-and-timemark-queue-DLQ':
-                                                fileKey = body.fileKey;
-                                                break;
-                                        case 'pn-ss-staging-bucket-events-queue-DLQ':
-                                        case 'pn-ss-main-bucket-events-queue-DLQ':
-                                        default:
-                                                fileKey = body?.Records?.[0]?.s3?.object?.key ||
-                                                                    body?.detail?.object?.key;
-                                }
-    
-                                if (!fileKey) {
-                                        console.warn('Missing or invalid fileKey in message:', message.MessageId);
-                                        return null;
-                                }
-    
-                                return {
-                                        ...message,
-                                        parsedFileKey: fileKey
-                                };
-                        } catch (err) {
-                                console.warn('Error parsing message:', err);
-                                return null;
+    try {
+        const dumpContent = readFileSync(dumpFilePath, 'utf-8');
+        const messages = JSON.parse(dumpContent);
+
+        console.log(`Processing ${messages.length} messages from dump file`);
+
+        return messages.map(message => {
+            try {
+                let fileKey, eventName;
+                const body = JSON.parse(message.Body);
+
+                switch(queueName) {
+                    case 'pn-safestore_to_deliverypush-DLQ':
+                        fileKey = body.key;
+                        break;
+                    case 'pn-ss-transformation-sign-and-timemark-queue-DLQ':
+                        fileKey = body.fileKey;
+                        break;
+                    case 'pn-ss-staging-bucket-events-queue-DLQ':
+                        fileKey = body?.Records?.[0]?.s3?.object?.key ||
+                                  body?.detail?.object?.key;
+                        break;
+                    case 'pn-ss-main-bucket-events-queue-DLQ':
+                        fileKey = body?.Records?.[0]?.s3?.object?.key ||
+                                  body?.detail?.object?.key;
+                        eventName = body?.Records?.[0]?.eventName ||
+                                    body?.detail?.eventName;
+                        if (!eventName) {
+                            console.warn('Missing or invalid eventName in message:', message.MessageId);
+                            return null;
                         }
-                }).filter(Boolean);
-    
-        } catch (error) {
-                console.error('Error reading/parsing dump file:', error);
-                process.exit(1);
-        }
+                        break;
+                    default:
+                        fileKey = body?.Records?.[0]?.s3?.object?.key ||
+                                  body?.detail?.object?.key;
+                }
+
+                if (!fileKey) {
+                    console.warn('Missing or invalid fileKey in message:', message.MessageId);
+                    return null;
+                }
+
+                if (queueName === 'pn-ss-main-bucket-events-queue-DLQ') {
+                    return {
+                        ...message,
+                        parsedFileKey: fileKey,
+                        parsedEventName: eventName
+                    };
+                } else {
+                    return {
+                        ...message,
+                        parsedFileKey: fileKey
+                    };
+                }
+            } catch (err) {
+                console.warn('Error parsing message:', err);
+                return null;
+            }
+        }).filter(Boolean);
+
+    } catch (error) {
+        console.error('Error reading/parsing dump file:', error);
+        process.exit(1);
+    }
 }
 
-async function checkS3Objects(awsClient, fileKey, accountId) {
+async function checkS3Objects(awsClient, fileKey, accountId, queueName, eventName) {
+    if (queueName === 'pn-ss-main-bucket-events-queue-DLQ') {
+        const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
+        try {
+            const listCmd = new ListObjectVersionsCommand({
+                Bucket: mainBucket,
+                Prefix: fileKey
+            });
+            const result = await awsClient._s3Client.send(listCmd);
+            const deleteMarkers = result.DeleteMarkers || [];
+            const hasDeleteMarker = deleteMarkers.some(dm => dm.Key === fileKey);
+
+            if (eventName === 'ObjectCreated:Put') {
+                if (hasDeleteMarker) {
+                    return { success: false, reason: 'Delete marker exists for ObjectCreated:Put event' };
+                }
+                return { success: true };
+            } else if (eventName === 'ObjectRemoved:DeleteMarkerCreated') {
+                if (hasDeleteMarker) {
+                    return { success: true };
+                }
+                return { success: false, reason: 'Delete marker missing for ObjectRemoved:DeleteMarkerCreated event' };
+            } else {
+                return { success: false, reason: `Unsupported eventName: ${eventName}` };
+            }
+        } catch (e) {
+            return { success: false, reason: `S3 ListObjectVersions error: ${e.message}` };
+        }
+    } else {
         const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
         const stagingBucket = `pn-safestorage-staging-eu-south-1-${accountId}`;
-    
+
         try {
+            await awsClient._s3Client.send(new HeadObjectCommand({
+                Bucket: mainBucket,
+                Key: fileKey
+            }));
+
+            try {
                 await awsClient._s3Client.send(new HeadObjectCommand({
-                        Bucket: mainBucket,
-                        Key: fileKey
+                    Bucket: stagingBucket,
+                    Key: fileKey
                 }));
-    
-                try {
-                        await awsClient._s3Client.send(new HeadObjectCommand({
-                                Bucket: stagingBucket,
-                                Key: fileKey
-                        }));
-                        return { success: false, reason: 'Object still exists in staging bucket' };
-                } catch (e) {
-                        return { success: true };
-                }
+                return { success: false, reason: 'Object still exists in staging bucket' };
+            } catch (e) {
+                return { success: true };
+            }
         } catch (e) {
-                return { success: false, reason: 'Object not found in main bucket' };
+            return { success: false, reason: 'Object not found in main bucket' };
         }
+    }
 }
 
-async function checkDocumentState(awsClient, fileKey, queueConfig) {
-        if (!fileKey || typeof fileKey !== 'string') {
-                console.error('Invalid fileKey:', fileKey);
-                return false;
+async function checkDocumentState(awsClient, fileKey, queueConfig, queueName, eventName) {
+    if (!fileKey || typeof fileKey !== 'string') {
+        console.error('Invalid fileKey:', fileKey);
+        return false;
+    }
+
+    try {
+        const command = new GetItemCommand({
+            TableName: queueConfig.documentConfig.tableName,
+            Key: {
+                documentKey: { S: fileKey }
+            }
+        });
+
+        const result = await awsClient._dynamoClient.send(command);
+
+        if (!result?.Item) {
+            return false;
         }
-    
-        try {
-                const command = new GetItemCommand({
-                        TableName: queueConfig.documentConfig.tableName,
-                        Key: {
-                                documentKey: { S: fileKey }
-                        }
-                });
-    
-                const result = await awsClient._dynamoClient.send(command);
-    
-                if (!result?.Item) {
-                        return false;
-                }
-    
-                const item = unmarshall(result.Item);
-                const documentType = item.documentType?.tipoDocumento;
-    
-                if (!documentType) {
-                        return false;
-                }
-    
-                let expectedState = null;
-                if (queueConfig.documentConfig.ATTACHED_TYPES?.includes(documentType)) {
-                        expectedState = 'ATTACHED';
-                } else if (queueConfig.documentConfig.SAVED_TYPES?.includes(documentType)) {
-                        expectedState = 'SAVED';
-                }
-    
-                return {
-                        success: item.documentLogicalState === expectedState,
-                        documentType,
-                        actualState: item.documentLogicalState,
-                        expectedState
-                };
-        } catch (error) {
-                console.error('DynamoDB GetItem error:', error);
-                return {
-                        success: false,
-                        error: error.message
-                };
+
+        const item = unmarshall(result.Item);
+        const documentType = item.documentType?.tipoDocumento;
+
+        if (!documentType) {
+            return false;
         }
+
+        let expectedLogicalState = null;
+        if (queueConfig.documentConfig.ATTACHED_TYPES?.includes(documentType)) {
+            expectedLogicalState = 'ATTACHED';
+        } else if (queueConfig.documentConfig.SAVED_TYPES?.includes(documentType)) {
+            expectedLogicalState = 'SAVED';
+        }
+
+        let logicalStateOk = item.documentLogicalState === expectedLogicalState;
+
+        if (queueName === 'pn-ss-main-bucket-events-queue-DLQ') {
+            let documentStateOk = false;
+            if (eventName === 'ObjectCreated:Put') {
+                documentStateOk = item.documentState === 'attached';
+            } else if (eventName === 'ObjectRemoved:DeleteMarkerCreated') {
+                documentStateOk = item.documentState === 'deleted';
+            } else {
+                documentStateOk = false;
+            }
+            return {
+                success: logicalStateOk && documentStateOk,
+                documentType,
+                actualState: item.documentLogicalState,
+                expectedLogicalState,
+                actualDocumentState: item.documentState,
+                expectedDocumentState: eventName === 'ObjectCreated:Put' ? 'attached' : (eventName === 'ObjectRemoved:DeleteMarkerCreated' ? 'deleted' : undefined)
+            };
+        } else {
+            return {
+                success: logicalStateOk,
+                documentType,
+                actualState: item.documentLogicalState,
+                expectedLogicalState
+            };
+        }
+    } catch (error) {
+        console.error('DynamoDB GetItem error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
 }
 
 async function checkDocumentCreationRequest(awsClient, fileKey) {
@@ -435,6 +504,8 @@ async function main() {
                 process.stdout.write(`\rChecking fileKey ${progress} of ${stats.total}`);
     
                 const fileKey = message.parsedFileKey;
+                const eventName = message.parsedEventName;
+
                 if (!fileKey) {
                         logResult(message, 'error', 'Missing or invalid fileKey in message');
                         continue;
@@ -453,7 +524,13 @@ async function main() {
                 }
     
                 if (queueConfig.requireS3Check) {
-                        const s3Check = await checkS3Objects(confinfoClient, fileKey, confinfoAccountId);
+                        const s3Check = await checkS3Objects(
+                                confinfoClient,
+                                fileKey,
+                                confinfoAccountId,
+                                queueName,
+                                eventName
+                        );
                         if (!s3Check.success) {
                                 logResult(message, 'error', `S3 check failed: ${s3Check.reason}`, queueName);
                                 stats.s3Failed++;
@@ -463,10 +540,22 @@ async function main() {
     
                 let documentType;
                 if (queueConfig.requireDocumentStateCheck) {
-                        const docStateCheck = await checkDocumentState(confinfoClient, fileKey, queueConfig);
+                        const docStateCheck = await checkDocumentState(
+                                confinfoClient,
+                                fileKey,
+                                queueConfig,
+                                queueName,
+                                eventName
+                        );
                         if (!docStateCheck.success) {
-                                const reason = docStateCheck.error ||
-                                                    `Document state check failed: found '${docStateCheck.actualState}' but expected '${docStateCheck.expectedState}' for type '${docStateCheck.documentType}'`;
+                                let reason;
+                                if (queueName === 'pn-ss-main-bucket-events-queue-DLQ') {
+                                        reason = docStateCheck.error ||
+                                            `Document state check failed: found logicalState '${docStateCheck.actualState}' (expected '${docStateCheck.expectedLogicalState}'), documentState '${docStateCheck.actualDocumentState}' (expected '${docStateCheck.expectedDocumentState}') for type '${docStateCheck.documentType}'`;
+                                } else {
+                                        reason = docStateCheck.error ||
+                                            `Document state check failed: found '${docStateCheck.actualState}' but expected '${docStateCheck.expectedLogicalState}' for type '${docStateCheck.documentType}'`;
+                                }
                                 logResult(message, 'error', reason, queueName);
                                 stats.stateCheckFailed++;
                                 continue;
