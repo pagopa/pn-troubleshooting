@@ -123,7 +123,8 @@ if [[ ! -f "$ERROR_JSON" ]]; then
   exit 1
 fi
 ERROR_JSON=$(realpath "$ERROR_JSON")
-GENERATED_FILES+=("$ERROR_JSON")
+cp "$WORKDIR/check_status_request/counter.json" "$WORKDIR/check_status_request/${BASENAME}_counter.json"
+GENERATED_FILES+=("$WORKDIR/check_status_request/${BASENAME}_counter.json")
 
 ###########################################################
 # Step 4: Convert the original dump to JSONLine format    #
@@ -161,13 +162,6 @@ GENERATED_FILES+=("$FILTERED_DUMP")
 FILTERED_COUNT=$(wc -l < "$FILTERED_DUMP")
 echo "Filtered dump stored in: $FILTERED_DUMP"
 echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
-
-# Compare counts and warn if total events > removable events
-if [[ $JSONLINE_COUNT -gt $FILTERED_COUNT ]]; then
-    echo "WARNING: Total events count is greater than the count of events to remove."
-    echo "Please analyze the requestIds in error status."
-    echo "See: $(realpath "$ERROR_REQUEST_IDS_LIST")"
-fi
 
 #######################################################
 # Step 7 (optional): Remove events from SQS queue     #
