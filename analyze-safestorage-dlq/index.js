@@ -260,8 +260,19 @@ function processSQSDump(dumpFilePath, queueName) {
 }
 
 async function checkS3Objects(awsClient, fileKey, accountId, queueName, eventName) {
+    const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
+    const stagingBucket = `pn-safestorage-staging-eu-south-1-${accountId}`;
+
+    try {
+        await awsClient._s3Client.send(new HeadObjectCommand({
+            Bucket: stagingBucket,
+            Key: fileKey
+        }));
+        return { success: false, reason: 'Object still exists in staging bucket' };
+    } catch (e) {
+    }
+
     if (queueName === 'pn-ss-main-bucket-events-queue-DLQ') {
-        const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
         try {
             const listCmd = new ListObjectVersionsCommand({
                 Bucket: mainBucket,
@@ -288,24 +299,12 @@ async function checkS3Objects(awsClient, fileKey, accountId, queueName, eventNam
             return { success: false, reason: `S3 ListObjectVersions error: ${e.message}` };
         }
     } else {
-        const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
-        const stagingBucket = `pn-safestorage-staging-eu-south-1-${accountId}`;
-
         try {
             await awsClient._s3Client.send(new HeadObjectCommand({
                 Bucket: mainBucket,
                 Key: fileKey
             }));
-
-            try {
-                await awsClient._s3Client.send(new HeadObjectCommand({
-                    Bucket: stagingBucket,
-                    Key: fileKey
-                }));
-                return { success: false, reason: 'Object still exists in staging bucket' };
-            } catch (e) {
-                return { success: true };
-            }
+            return { success: true };
         } catch (e) {
             return { success: false, reason: 'Object not found in main bucket' };
         }
