@@ -27,6 +27,12 @@ OUTPUTDIR_BASE="$STARTDIR/output/check_safestorage_dlq"
 V_TIMEOUT=30
 PURGE=false
 
+cleanup() {
+    for f in "${GENERATED_FILES[@]}"; do
+        [[ -f "$f" ]] && rm -f "$f"
+    done
+}
+
 # Declare summary associative arrays
 declare -A Q_totalEvents
 declare -A Q_removableEvents
@@ -107,7 +113,9 @@ process_queue(){
       return 0
     fi
     
-    echo "Dump file: $(realpath "$ORIGINAL_DUMP")"
+    ORIGINAL_DUMP=$(realpath "$ORIGINAL_DUMP")
+    GENERATED_FILES+=("$ORIGINAL_DUMP")
+    echo "Dump file: $ORIGINAL_DUMP"
 
     TOTAL_EVENTS=$(jq -c '.[]' "$ORIGINAL_DUMP" | wc -l)
     echo "Total events in SQS dump: $TOTAL_EVENTS"
@@ -116,8 +124,7 @@ process_queue(){
         Q_removableEvents["$TARGET_QUEUE"]=0
         Q_unremovableEvents["$TARGET_QUEUE"]=0
         echo "No events found in the dump file. Skipping queue."
-        rm "$ORIGINAL_DUMP"
-        echo "Dump file removed."
+        cleanup
         return 0
     fi
 
@@ -132,6 +139,7 @@ process_queue(){
 
     if [[ ! -d "$ANALYSIS_SCRIPT_DIR" ]]; then
         echo "Script directory '$ANALYSIS_SCRIPT_DIR' does not exist. Exiting."
+        cleanup
         exit 1
     fi
     cd "$ANALYSIS_SCRIPT_DIR" || { echo "Failed to cd into '$ANALYSIS_SCRIPT_DIR'"; exit 1; }
@@ -144,8 +152,10 @@ process_queue(){
       echo "No removable events found for $TARGET_QUEUE. Skipping queue."
       Q_removableEvents["$TARGET_QUEUE"]=0
       Q_unremovableEvents["$TARGET_QUEUE"]=0
+      cleanup
       return 0
     fi
+    GENERATED_FILES+=("$SAFE_TO_DELETE")
     REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
     echo "Total removable events: $REMOVABLE_EVENTS"
     Q_removableEvents["$TARGET_QUEUE"]="$REMOVABLE_EVENTS"
@@ -153,6 +163,7 @@ process_queue(){
     if [[ "$UNSAFE_TO_DELETE" != "" ]]; then
         echo "Unremovable events found. Further analysis required."
         echo "Unremovable events file: $(realpath "$UNSAFE_TO_DELETE")"
+        GENERATED_FILES+=("$UNSAFE_TO_DELETE")
         UNREMOVABLE_EVENTS=$(wc -l < "$UNSAFE_TO_DELETE")
         echo "Total unremovable events: $UNREMOVABLE_EVENTS"   
         Q_unremovableEvents["$TARGET_QUEUE"]="$UNREMOVABLE_EVENTS"
@@ -169,6 +180,7 @@ process_queue(){
         echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
         if [[ ! -d "$WORKDIR/remove_from_sqs" ]]; then
             echo "Script directory '$WORKDIR/remove_from_sqs' does not exist. Exiting."
+            cleanup
             exit 1
         fi
         cd "$WORKDIR/remove_from_sqs" || { echo "Failed to cd into '$WORKDIR/remove_from_sqs'"; exit 1; }
@@ -187,8 +199,9 @@ process_queue(){
     #######################################################
     # Step 4: Move all generated files to OUTPUTDIR       #
     #######################################################
-    mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-    mv "$SAFE_TO_DELETE" "$OUTPUTDIR/"
+    for f in "${GENERATED_FILES[@]}"; do
+        [[ -f "$f" ]] && mv "$f" "$OUTPUTDIR/"
+    done
     echo "Files moved to $OUTPUTDIR."
 
     echo "Process for queue $TARGET_QUEUE completed."
@@ -197,9 +210,23 @@ process_queue(){
 # Main execution
 if [[ "$QUEUE" == "all" ]]; then
     for q in "${SUPPORTED_QUEUES[@]}"; do
+        GENERATED_FILES=()
         process_queue "$q"
     done
 else
+    # Validate queue
+    found=false
+    for q in "${SUPPORTED_QUEUES[@]}"; do
+        if [[ "$QUEUE" == "$q" ]]; then
+            found=true
+            break
+        fi
+    done
+    if ! $found; then
+        echo "Unsupported queue: $QUEUE"
+        usage
+    fi
+    GENERATED_FILES=()
     process_queue "$QUEUE"
 fi
 

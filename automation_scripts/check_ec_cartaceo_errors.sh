@@ -19,6 +19,14 @@ OUTPUTDIR="$STARTDIR/output/check_ec_cartaceo_errors"
 V_TIMEOUT=30
 PURGE=false
 
+GENERATED_FILES=()
+
+cleanup() {
+    for f in "${GENERATED_FILES[@]}"; do
+        [[ -f "$f" ]] && rm -f "$f"
+    done
+}
+
 # Parse parameters
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -74,6 +82,7 @@ if [[ -z "$ORIGINAL_DUMP" ]]; then
   exit 1
 fi
 ORIGINAL_DUMP=$(realpath "$ORIGINAL_DUMP")
+GENERATED_FILES+=("$ORIGINAL_DUMP")
 echo "Dump file: $ORIGINAL_DUMP"
 
 #######################################################
@@ -81,6 +90,7 @@ echo "Dump file: $ORIGINAL_DUMP"
 #######################################################
 if [[ ! -d "$WORKDIR/check_status_request" ]]; then
     echo "Script directory '$WORKDIR/check_status_request' does not exist. Exiting."
+    cleanup
     exit 1
 fi
 cd "$WORKDIR/check_status_request" || { echo "Failed to cd into '$WORKDIR/check_status_request'"; exit 1; }
@@ -97,6 +107,7 @@ RESULTSDIR="$WORKDIR/check_status_request/results"
 REQUEST_IDS_LIST="$WORKDIR/check_status_request/${BASENAME}_all_request_ids.txt"
 jq -r '.[] | .Body | fromjson | .requestIdx' "$ORIGINAL_DUMP" > "$REQUEST_IDS_LIST"
 REQUEST_IDS_LIST=$(realpath "$REQUEST_IDS_LIST")
+GENERATED_FILES+=("$REQUEST_IDS_LIST")
 echo "Extracted requestIdx values to: $REQUEST_IDS_LIST"
 
 #############################################################
@@ -108,9 +119,11 @@ node index.js --envName prod --fileName "$REQUEST_IDS_LIST" 1>/dev/null
 ERROR_JSON="$WORKDIR/check_status_request/error.json"
 if [[ ! -f "$ERROR_JSON" ]]; then
   echo "error.json not found. Exiting."
+  cleanup
   exit 1
 fi
 ERROR_JSON=$(realpath "$ERROR_JSON")
+GENERATED_FILES+=("$ERROR_JSON")
 
 ###########################################################
 # Step 4: Convert the original dump to JSONLine format    #
@@ -118,9 +131,11 @@ ERROR_JSON=$(realpath "$ERROR_JSON")
 JSONLINE_DUMP="$WORKDIR/check_status_request/${BASENAME}.jsonline"
 jq -c '.[]' "$ORIGINAL_DUMP" > "$JSONLINE_DUMP"
 JSONLINE_DUMP=$(realpath "$JSONLINE_DUMP")
+GENERATED_FILES+=("$JSONLINE_DUMP")
 JSONLINE_COUNT=$(wc -l < "$JSONLINE_DUMP")
 if [[ $JSONLINE_COUNT -eq 0 ]]; then
   echo "No events found in JSONLine dump. Exiting."
+  cleanup
   exit 1
 fi
 echo "Converted dump to JSONLine file: $JSONLINE_DUMP"
@@ -132,6 +147,7 @@ echo "Total events in JSONLine dump: $JSONLINE_COUNT"
 ERROR_REQUEST_IDS_LIST="$WORKDIR/check_status_request/${BASENAME}_error_request_ids.txt"
 jq -r '.requestId | sub("pn-cons-000~"; "")' "$ERROR_JSON" > "$ERROR_REQUEST_IDS_LIST"
 ERROR_REQUEST_IDS_LIST=$(realpath "$ERROR_REQUEST_IDS_LIST")
+GENERATED_FILES+=("$ERROR_REQUEST_IDS_LIST")
 echo "Extracted error requestIds to: $ERROR_REQUEST_IDS_LIST"
 echo "Total requestIds in error status (not to remove): $(wc -l < "$ERROR_REQUEST_IDS_LIST")"
 
@@ -141,6 +157,7 @@ echo "Total requestIds in error status (not to remove): $(wc -l < "$ERROR_REQUES
 FILTERED_DUMP="$WORKDIR/check_status_request/${BASENAME}_filtered.jsonline"
 grep -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
 FILTERED_DUMP=$(realpath "$FILTERED_DUMP")
+GENERATED_FILES+=("$FILTERED_DUMP")
 FILTERED_COUNT=$(wc -l < "$FILTERED_DUMP")
 echo "Filtered dump stored in: $FILTERED_DUMP"
 echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
@@ -159,6 +176,7 @@ if $PURGE; then
     echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
     if [[ ! -d "$WORKDIR/remove_from_sqs" ]]; then
         echo "Script directory '$WORKDIR/remove_from_sqs' does not exist. Exiting."
+        cleanup
         exit 1
     fi
     cd "$WORKDIR/remove_from_sqs" || { echo "Failed to cd into '$WORKDIR/remove_from_sqs'"; exit 1; }
@@ -173,11 +191,9 @@ fi
 #######################################################
 # Step 8: Move all generated files to OUTPUTDIR       #
 #######################################################
-mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-mv "$REQUEST_IDS_LIST" "$OUTPUTDIR/"
-mv "$ERROR_REQUEST_IDS_LIST" "$OUTPUTDIR/"
-mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
-mv "$FILTERED_DUMP" "$OUTPUTDIR/"
+for f in "${GENERATED_FILES[@]}"; do
+    [[ -f "$f" ]] && mv "$f" "$OUTPUTDIR/"
+done
 echo "Files moved to $OUTPUTDIR."
 
 echo "Process completed."
