@@ -1,0 +1,18 @@
+{
+    "name": "check-notification-refinement",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Script to verify the refinement of notifications",
+    "main": "index.js",
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.0.0",
+        "@aws-sdk/client-s3": "^3.0.0",
+        "@aws-sdk/util-dynamodb": "^3.0.0",
+        "pn-common": "file:../pn-common/"
+    },
+    "author": "PagoPA S.p.A.",
+    "license": "ISC"
+}
