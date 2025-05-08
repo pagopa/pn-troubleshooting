@@ -56,7 +56,7 @@ I messaggi processati dal dump vengono infine suddivisi nei seguenti file di out
 
 ### Prerequisiti
 
-Lo script è stato testato con Node LTS v22.13.0 e richiede versione minima v16.0.0
+Lo script è stato testato con Node LTS v22.14.0
 
 ```bash
 npm install
