@@ -7,10 +7,6 @@ const { join } = require('node:path')
 
 // ------------------------------------------------
 
-// Bucket confinfo hotfix
-const bucket = "pn-safestorage-eu-south-1-839620963891"
-
-// --- Variabili ---
 const args = [
     { name: "region", mandatory: false},
     { name: "env", mandatory: true},
@@ -39,16 +35,7 @@ async function main() {
             --env <env> \\
             --fileName <output file from 'retrieve_attachments_from_iun'> \\
             [--startIun <iun value>]\n`
-    
-        // Verifica dei valori degli argomenti passati allo script
-         function isOkValue(argName,value,ok_values){
-             if(!ok_values.includes(value)) {
-                 console.log("Error: \"" + value + "\" value for \"--" + argName +
-                    "\" argument is not available, it must be in " + ok_values + "\n");
-                 process.exit(1);
-             }
-         };
-    
+       
         // Verifica se un argomento è stato inserito oppure inserito con valore vuoto
         args.forEach(el => {
             if(el.mandatory && !parsedArgs.values[el.name]){
@@ -64,6 +51,20 @@ async function main() {
         const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
         const resultPath = join(__dirname, "results", 'sqsMsg_' + dateIsoString + '.json');
         return resultPath;
+    }
+
+    async function _getSsBuckets(){
+
+        awsClientConfinfo._initS3()
+    
+        const bucketList = await awsClientConfinfo._getBucketList()
+        const outputObj = {}
+        for (const item of bucketList.Buckets){
+            if(item.Name.includes("pn-safestorage")){
+                item.Name.includes("staging") ? outputObj.stagingBucket = item.Name : outputObj.mainBucket = item.Name
+            }
+        }
+        return outputObj
     }
 
     async function _removeAllS3DeleteMarker(bucket, fkey) {
@@ -216,6 +217,9 @@ async function main() {
 
     const sqsMsgFile = createOutputFile()
     sqsMsgFileHandler = openSync(sqsMsgFile,'a') // Se il file non esiste verrà creato
+
+    const ssBucketsList = await _getSsBuckets()
+    const bucket = ssBucketsList.mainBucket
 
     let keepSkip = 0;
     for await (const row of inputFile.readLines()) {
