@@ -66,6 +66,10 @@ function appendIunToFile(fileName, iun) {
     appendFileSync(fileName, iun + "\n");
 }
 
+function appendIunTtlToCsv(fileName, iun, ttl) {
+    appendFileSync(fileName, `${iun},${ttl}\n`);
+}
+
 function printSummary(stats, outputFiles) {
     console.log('\n=== Execution Summary ===');
     console.log(`Total IUNs processed: ${stats.total}`);
@@ -121,7 +125,7 @@ async function main() {
     const outputFiles = {
         unrefined: `results/unrefined_${timestamp}.txt`,
         refined120plus: `results/refined_120plus_${timestamp}.txt`,
-        refined120minus: `results/refined_120minus_${timestamp}.txt`,
+        refined120minus: `results/refined_120minus_${timestamp}.csv`,
         error: `results/error_${timestamp}.txt`
     };
 
@@ -139,6 +143,8 @@ async function main() {
     const awsClient = new AwsClientsWrapper('core', envName);
     await initializeAwsClients(awsClient);
 
+    appendFileSync(outputFiles.refined120minus, "iun,ttl\n");
+
     let progress = 0;
     for (const iun of iuns) {
         progress++;
@@ -147,7 +153,6 @@ async function main() {
         try {
             items = await queryTimelineItems(awsClient._dynamoClient, iun);
         } catch (err) {
-            // If query fails, treat as error
             appendIunToFile(outputFiles.error, iun);
             stats.error++;
             continue;
@@ -157,7 +162,6 @@ async function main() {
             appendIunToFile(outputFiles.unrefined, iun);
             stats.unrefined++;
         } else {
-            // Refined: check timestamp
             const refinedDate = new Date(classification.timestamp);
             const now = new Date();
             const days = daysBetween(refinedDate, now);
@@ -165,7 +169,8 @@ async function main() {
                 appendIunToFile(outputFiles.refined120plus, iun);
                 stats.refined120plus++;
             } else {
-                appendIunToFile(outputFiles.refined120minus, iun);
+                const ttlDate = new Date(refinedDate.getTime() + 120 * 24 * 60 * 60 * 1000);
+                appendIunTtlToCsv(outputFiles.refined120minus, iun, ttlDate.toISOString());
                 stats.refined120minus++;
             }
         }
