@@ -19,7 +19,13 @@ function prepareExpressionAttributeNames(data) {
 function prepareExpressionAttributeValues(data) {
   let expressionAttributeValues = {};
   Object.keys(data).forEach(k => {
-    expressionAttributeValues[data[k]['codeValue']] = marshall(data[k]['value'])
+    if(data[k]['codeValue']){
+      expressionAttributeValues[data[k]['codeValue']] = marshall(data[k]['value'])
+    }
+   
+    if(data[k]['condCodeValue']){
+      expressionAttributeValues[data[k]['condCodeValue']] = marshall(data[k]['condValue'])
+    }
   });
   return expressionAttributeValues;
 }
@@ -27,7 +33,9 @@ function prepareExpressionAttributeValues(data) {
 function prepareUpdateExpression(operator, data) {
   let updateExpression = `${operator} `
   Object.keys(data).forEach(k => {
-    updateExpression = `${updateExpression} ${data[k]['codeAttr']} = ${data[k]['codeValue']},`
+    if(data[k]['codeValue']){
+      updateExpression = `${updateExpression} ${data[k]['codeAttr']} = ${data[k]['codeValue']},`
+    }
   });
   return updateExpression.substring(0, updateExpression.length - 1)
 }

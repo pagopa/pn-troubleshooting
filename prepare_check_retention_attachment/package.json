@@ -1,0 +1,15 @@
+{
+  "name": "prepare_check_retention_attachment",
+  "version": "1.0.0",
+  "description": "Task ops/GO-153",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "pn-common": "file:../pn-common",
+    "uuid": "^11.1.0"
+  }
+}
