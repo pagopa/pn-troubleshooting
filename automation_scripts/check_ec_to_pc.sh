@@ -6,7 +6,7 @@ usage() {
     cat <<EOF
 Usage: $(basename "$0") -w <work-dir> [-t <visibility-timeout>] [--purge]
   -w, --work-dir           Working directory
-  -t, --visibility-timeout Visibility timeout in seconds (default: 180)
+  -t, --visibility-timeout Visibility timeout in seconds (default: 300)
   --purge                  Purge events from the SQS queue
 EOF
     exit 1
@@ -18,6 +18,16 @@ STARTDIR=$(pwd)
 OUTPUTDIR="$STARTDIR/output/check_ec_to_pc"
 V_TIMEOUT=300
 PURGE=false
+
+GENERATED_FILES=()
+CHECK_FEEDBACK_RESULTS=""
+
+cleanup() {
+    for f in "${GENERATED_FILES[@]}"; do
+        [[ -f "$f" ]] && rm -f "$f"
+    done
+    [[ -n "$CHECK_FEEDBACK_RESULTS" && -d "$CHECK_FEEDBACK_RESULTS" ]] && rm -rf "$CHECK_FEEDBACK_RESULTS"
+}
 
 # Parse parameters
 while [[ "$#" -gt 0 ]]; do
@@ -74,6 +84,7 @@ if [[ -z "$ORIGINAL_DUMP" ]]; then
   exit 1
 fi
 ORIGINAL_DUMP=$(realpath "$ORIGINAL_DUMP")
+GENERATED_FILES+=("$ORIGINAL_DUMP")
 echo "Dump file: $ORIGINAL_DUMP"
 
 #######################################################
@@ -81,6 +92,7 @@ echo "Dump file: $ORIGINAL_DUMP"
 #######################################################
 if [[ ! -d "$WORKDIR/check_feedback_from_requestId_simplified" ]]; then
     echo "Script directory '$WORKDIR/check_feedback_from_requestId_simplified' does not exist. Exiting."
+    cleanup
     exit 1
 fi
 cd "$WORKDIR/check_feedback_from_requestId_simplified" || { echo "Failed to cd into '$WORKDIR/check_feedback_from_requestId_simplified'"; exit 1; }
@@ -90,6 +102,7 @@ RESULTSDIR="$WORKDIR/check_feedback_from_requestId_simplified/results"
 REQUEST_IDS_LIST="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_all_request_ids.txt"
 jq -r '.[] | .Body | fromjson | .analogMail.requestId' "$ORIGINAL_DUMP" | sort -u > "$REQUEST_IDS_LIST"
 REQUEST_IDS_LIST=$(realpath "$REQUEST_IDS_LIST")
+GENERATED_FILES+=("$REQUEST_IDS_LIST")
 echo "Extracted requestId values to: $REQUEST_IDS_LIST"
 
 #############################################################
@@ -100,16 +113,30 @@ node index.js --envName prod --fileName "$REQUEST_IDS_LIST" 1>/dev/null
 CHECK_FEEDBACK_RESULTS=$(find "$WORKDIR/check_feedback_from_requestId_simplified/results" -maxdepth 1 -type d -name "prod_*" | sort | tail -n 1)
 if [[ ! -d "$CHECK_FEEDBACK_RESULTS" ]]; then
   echo "No feedback check results found. Exiting."
+  cleanup
   exit 1
 fi
 CHECK_FEEDBACK_RESULTS=$(realpath "$CHECK_FEEDBACK_RESULTS")
 
-FOUND_JSON="${CHECK_FEEDBACK_RESULTS}/found.json"
-FOUND_JSON=$(realpath "$FOUND_JSON")
-echo "Total requestIds that received a feedback (to remove): $(wc -l < "$FOUND_JSON")"
 NOT_FOUND="${CHECK_FEEDBACK_RESULTS}/not_found.txt"
-NOT_FOUND=$(realpath "$NOT_FOUND")
-echo "Total requestIds that didn't receive a feedback (not to remove): $(wc -l < "$NOT_FOUND")"
+FOUND_JSON="${CHECK_FEEDBACK_RESULTS}/found.json"
+
+if [[ ! -f "$NOT_FOUND" ]]; then
+  echo "WARNING: All requestIds received a feedback (not_found.txt not produced)."
+else
+  NOT_FOUND=$(realpath "$NOT_FOUND")
+  GENERATED_FILES+=("$NOT_FOUND")
+  echo "Total requestIds that didn't receive a feedback (not to remove): $(wc -l < "$NOT_FOUND")"
+fi
+
+if [[ ! -f "$FOUND_JSON" ]]; then
+  echo "WARNING: No requestIds received a feedback (found.json not produced). Cleaning up and exiting."
+  cleanup
+  exit 0
+fi
+FOUND_JSON=$(realpath "$FOUND_JSON")
+GENERATED_FILES+=("$FOUND_JSON")
+echo "Total requestIds that received a feedback (to remove): $(wc -l < "$FOUND_JSON")"
 
 ###########################################################
 # Step 4: Convert the original dump to JSONLine format    #
@@ -117,9 +144,11 @@ echo "Total requestIds that didn't receive a feedback (not to remove): $(wc -l <
 JSONLINE_DUMP="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}.jsonline"
 jq -c '.[]' "$ORIGINAL_DUMP" > "$JSONLINE_DUMP"
 JSONLINE_DUMP=$(realpath "$JSONLINE_DUMP")
+GENERATED_FILES+=("$JSONLINE_DUMP")
 JSONLINE_COUNT=$(wc -l < "$JSONLINE_DUMP")
 if [[ $JSONLINE_COUNT -eq 0 ]]; then
   echo "No events found in JSONLine dump. Exiting."
+  cleanup
   exit 1
 fi
 echo "Converted dump to JSONLine file: $JSONLINE_DUMP"
@@ -131,6 +160,7 @@ echo "Total events in JSONLine dump: $JSONLINE_COUNT"
 FILTERED_DUMP="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_filtered.jsonline"
 grep -F -v -f "$NOT_FOUND" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
 FILTERED_DUMP=$(realpath "$FILTERED_DUMP")
+GENERATED_FILES+=("$FILTERED_DUMP")
 FILTERED_COUNT=$(wc -l < "$FILTERED_DUMP")
 echo "Filtered dump stored in: $FILTERED_DUMP"
 echo "Total events in filtered dump (to remove): $FILTERED_COUNT"
@@ -156,12 +186,10 @@ fi
 #######################################################
 # Step 7: Move all generated files to OUTPUTDIR       #
 #######################################################
-mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-mv "$REQUEST_IDS_LIST" "$OUTPUTDIR/"
-mv "$NOT_FOUND" "$OUTPUTDIR/${BASENAME}_not_found.txt"
-mv "$FOUND_JSON" "$OUTPUTDIR/${BASENAME}_found.json"
-mv "$JSONLINE_DUMP" "$OUTPUTDIR/"
-mv "$FILTERED_DUMP" "$OUTPUTDIR/"
+for f in "${GENERATED_FILES[@]}"; do
+    [[ -f "$f" ]] && mv "$f" "$OUTPUTDIR/"
+done
+[[ -n "$CHECK_FEEDBACK_RESULTS" && -d "$CHECK_FEEDBACK_RESULTS" ]] && rm -rf "$CHECK_FEEDBACK_RESULTS"
 echo "Files copied to $OUTPUTDIR."
 
 echo "Process completed."

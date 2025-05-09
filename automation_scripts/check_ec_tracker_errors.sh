@@ -22,6 +22,12 @@ OUTPUTDIR_BASE="$STARTDIR/output/check_ec_tracker_errors"
 V_TIMEOUT=30
 PURGE=false
 
+cleanup() {
+    for f in "${GENERATED_FILES[@]}"; do
+        [[ -f "$f" ]] && rm -f "$f"
+    done
+}
+
 # Supported channel types
 SUPPORTED_CHANNELS=("pec" "email" "cartaceo" "sms")
 
@@ -99,7 +105,9 @@ process_channel(){
       return 0
     fi
 
-    echo "Dump file: $(realpath "$ORIGINAL_DUMP")"
+    ORIGINAL_DUMP=$(realpath "$ORIGINAL_DUMP")
+    GENERATED_FILES+=("$ORIGINAL_DUMP")
+    echo "Dump file: $ORIGINAL_DUMP"
 
     TOTAL_EVENTS=$(jq -c '.[]' "$ORIGINAL_DUMP" | wc -l)
     echo "Total events in SQS dump: $TOTAL_EVENTS"
@@ -108,8 +116,7 @@ process_channel(){
         C_removableEvents["$CHANNEL"]=0
         C_unremovableEvents["$CHANNEL"]=0
         echo "No events found in the dump file. Skipping channel."
-        rm "$ORIGINAL_DUMP"
-        echo "Dump file removed."
+        cleanup
         return 0
     fi
 
@@ -119,6 +126,7 @@ process_channel(){
     ANALYSIS_SCRIPT_DIR="$WORKDIR/false_negative_ec_tracker"
     if [[ ! -d "$ANALYSIS_SCRIPT_DIR" ]]; then
         echo "Script directory '$ANALYSIS_SCRIPT_DIR' does not exist. Exiting."
+        cleanup
         exit 1
     fi
     cd "$ANALYSIS_SCRIPT_DIR" || { echo "Failed to cd into '$ANALYSIS_SCRIPT_DIR'"; exit 1; }
@@ -131,8 +139,10 @@ process_channel(){
       echo "No removable events found for $CHANNEL. Skipping channel."
       C_removableEvents["$CHANNEL"]=0
       C_unremovableEvents["$CHANNEL"]=0
+      cleanup
       return 0
     fi
+    GENERATED_FILES+=("$TO_REMOVE")
     REMOVABLE_EVENTS=$(wc -l < "$TO_REMOVE")
     echo "Total removable events: $REMOVABLE_EVENTS"
     C_removableEvents["$CHANNEL"]="$REMOVABLE_EVENTS"
@@ -141,6 +151,7 @@ process_channel(){
     UNREMOVABLE_EVENTS=0
     for f in problem_found_${CHANNEL}* to_keep_${CHANNEL}* error_${CHANNEL}*; do
         FILEPATH=$(find "$RESULTSDIR" -type f -name "$f" -exec ls -t1 {} + | head -1 || true)
+        GENERATED_FILES+=("$FILEPATH")
         if [[ -n "$FILEPATH" && -f "$FILEPATH" ]]; then
             COUNT=$(wc -l < "$FILEPATH")
             UNREMOVABLE_EVENTS=$((UNREMOVABLE_EVENTS + COUNT))
@@ -157,6 +168,7 @@ process_channel(){
         echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
         if [[ ! -d "$WORKDIR/remove_from_sqs" ]]; then
             echo "Script directory '$WORKDIR/remove_from_sqs' does not exist. Exiting."
+            cleanup
             exit 1
         fi
         cd "$WORKDIR/remove_from_sqs" || { echo "Failed to cd into '$WORKDIR/remove_from_sqs'"; exit 1; }
@@ -171,8 +183,9 @@ process_channel(){
     #######################################################
     # Step 4: Move all generated files to OUTPUTDIR       #
     #######################################################
-    mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-    mv "$TO_REMOVE" "$OUTPUTDIR/"
+    for f in "${GENERATED_FILES[@]}"; do
+        [[ -f "$f" ]] && mv "$f" "$OUTPUTDIR/"
+    done
     echo "Files moved to $OUTPUTDIR."
 
     echo "Process for channel $CHANNEL completed."
@@ -181,6 +194,7 @@ process_channel(){
 # Main execution
 if [[ "$CHANNEL_TYPE" == "all" ]]; then
     for c in "${SUPPORTED_CHANNELS[@]}"; do
+        GENERATED_FILES=()
         process_channel "$c"
     done
 else
@@ -196,6 +210,7 @@ else
         echo "Unsupported channel type: $CHANNEL_TYPE"
         usage
     fi
+    GENERATED_FILES=()
     process_channel "$CHANNEL_TYPE"
 fi
 

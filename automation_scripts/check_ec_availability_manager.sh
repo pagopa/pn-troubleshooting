@@ -19,6 +19,14 @@ OUTPUTDIR="$STARTDIR/output/check_ec_availability_manager"
 V_TIMEOUT=30
 PURGE=false
 
+GENERATED_FILES=()
+
+cleanup() {
+    for f in "${GENERATED_FILES[@]}"; do
+        [[ -f "$f" ]] && rm -f "$f"
+    done
+}
+
 # Parse parameters
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -73,12 +81,14 @@ if [[ -z "$ORIGINAL_DUMP" ]]; then
   echo "No dump file found. Exiting."
   exit 1
 fi
-echo "Dump file: $(realpath "$ORIGINAL_DUMP")"
+ORIGINAL_DUMP=$(realpath "$ORIGINAL_DUMP")
+GENERATED_FILES+=("$ORIGINAL_DUMP")
+echo "Dump file: $ORIGINAL_DUMP"
 
 TOTAL_EVENTS=$(jq -c '.[]' "$ORIGINAL_DUMP" | wc -l)
 if [[ $TOTAL_EVENTS -eq 0 ]]; then
   echo "No events found in the dump file. Exiting."
-  rm "$ORIGINAL_DUMP"
+  cleanup
   exit 1
 fi
 echo "Total events in SQS dump: $TOTAL_EVENTS"
@@ -88,6 +98,7 @@ echo "Total events in SQS dump: $TOTAL_EVENTS"
 #######################################################
 if [[ ! -d "$WORKDIR/check-sent-paper-attachment" ]]; then
     echo "Script directory '$WORKDIR/check-sent-paper-attachment' does not exist. Exiting."
+    cleanup
     exit 1
 fi
 cd "$WORKDIR/check-sent-paper-attachment" || { echo "Failed to cd into '$WORKDIR/check-sent-paper-attachment'"; exit 1; }
@@ -98,13 +109,16 @@ node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --queueName pn-ec-avail
 SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name 'safe_to_delete_pn-ec-availabilitymanager-queue-DLQ*' -exec ls -t1 {} + | head -1)
 if [[ -z "$SAFE_TO_DELETE" ]]; then
   echo "No removable events found. Exiting."
+  cleanup
   exit 1
 fi
+GENERATED_FILES+=("$SAFE_TO_DELETE")
 REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
 echo "Total removable events: $REMOVABLE_EVENTS"
 UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_pn-ec-availabilitymanager-queue-DLQ*" -exec ls -t1 {} + | head -1)
 if [[ "$UNSAFE_TO_DELETE" != "" ]]; then
   echo "Unremovable events found. Please check the file: $(realpath "$UNSAFE_TO_DELETE")"
+  GENERATED_FILES+=("$UNSAFE_TO_DELETE")
   UNREMOVABLE_EVENTS=$(wc -l < "$UNSAFE_TO_DELETE")
   echo "Total unremovable events: $UNREMOVABLE_EVENTS"
 else
@@ -118,6 +132,7 @@ if $PURGE; then
     echo "Purge option enabled. Proceeding to remove events from the SQS queue..."
     if [[ ! -d "$WORKDIR/remove_from_sqs" ]]; then
         echo "Script directory '$WORKDIR/remove_from_sqs' does not exist. Exiting."
+        cleanup
         exit 1
     fi
     cd "$WORKDIR/remove_from_sqs" || { echo "Failed to cd into '$WORKDIR/remove_from_sqs'"; exit 1; }
@@ -132,8 +147,9 @@ fi
 #######################################################
 # Step 4: Move all generated files to OUTPUTDIR       #
 #######################################################
-mv "$ORIGINAL_DUMP" "$OUTPUTDIR/"
-mv "$SAFE_TO_DELETE" "$OUTPUTDIR/"
+for f in "${GENERATED_FILES[@]}"; do
+    [[ -f "$f" ]] && mv "$f" "$OUTPUTDIR/"
+done
 echo "Files moved to $OUTPUTDIR."
 
 echo "Process completed."
