@@ -36,11 +36,11 @@ npm install
 ### Configurazione AWS SSO
 
 ```bash
-node ss-retention-update.js --csvFile <path-to-csv>
+node index.js --csvFile <path-to-csv>
 ```
 oppure
 ```bash
-node ss-retention-update.js -f <path-to-csv>
+node index.js -f <path-to-csv>
 ```
 ### Parametri
 
@@ -59,5 +59,5 @@ Lo script mostra:
 ### Esempi
 
 ```bash
-node ss-retention-update.js --csvFile ./PN-13809.csv
+node index.js --csvFile ./PN-13809.csv
 ```
