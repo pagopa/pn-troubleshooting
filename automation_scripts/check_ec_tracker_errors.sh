@@ -2,6 +2,8 @@
 
 set -Eeuo pipefail
 
+SCRIPT_START_TIME=$(date +%s)
+
 usage() {
     cat <<EOF
 Usage: $(basename "$0") -w <work-dir> -c <channel-type|all> [-t <visibility-timeout>] [--purge]
@@ -96,7 +98,7 @@ process_channel(){
     node dump_sqs.js --awsProfile sso_pn-confinfo-prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
     # Get the most recent dump file
-    ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_${TARGET_QUEUE}*" -exec ls -t1 {} + | head -1)
+    ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_${TARGET_QUEUE}*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
     if [[ -z "$ORIGINAL_DUMP" ]]; then
       echo "No dump file found for $TARGET_QUEUE. Skipping channel."
       C_totalEvents["$CHANNEL"]=0
@@ -134,7 +136,7 @@ process_channel(){
     node index.js --envName prod --fileName "$ORIGINAL_DUMP" --channelType "$CHANNEL"
 
     # Get the most recent removable events file
-    TO_REMOVE=$(find "$RESULTSDIR" -type f -name "to_remove_${CHANNEL}*" -exec ls -t1 {} + | head -1)
+    TO_REMOVE=$(find "$RESULTSDIR" -type f -name "to_remove_${CHANNEL}*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
     if [[ -z "$TO_REMOVE" ]]; then
       echo "No removable events found for $CHANNEL. Skipping channel."
       C_removableEvents["$CHANNEL"]=0
@@ -150,7 +152,7 @@ process_channel(){
     # Sum lines from problem_found, to_keep, error files for unremovable events
     UNREMOVABLE_EVENTS=0
     for f in problem_found_${CHANNEL}* to_keep_${CHANNEL}* error_${CHANNEL}*; do
-        FILEPATH=$(find "$RESULTSDIR" -type f -name "$f" -exec ls -t1 {} + | head -1 || true)
+        FILEPATH=$(find "$RESULTSDIR" -type f -name "$f" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1 || true)
         GENERATED_FILES+=("$FILEPATH")
         if [[ -n "$FILEPATH" && -f "$FILEPATH" ]]; then
             COUNT=$(wc -l < "$FILEPATH")

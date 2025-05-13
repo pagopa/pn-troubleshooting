@@ -2,6 +2,8 @@
 
 set -Eeuo pipefail
 
+SCRIPT_START_TIME=$(date +%s)
+
 usage() {
     cat <<EOF
 Usage: $(basename "$0") -w <work-dir> [-t <visibility-timeout>] [--purge]
@@ -76,7 +78,7 @@ cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1
 node dump_sqs.js --awsProfile sso_pn-confinfo-prod --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
 # Get the most recent dump file
-ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*" -exec ls -t1 {} + | head -1)
+ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
 if [[ -z "$ORIGINAL_DUMP" ]]; then
   echo "No dump file found. Exiting."
   exit 1

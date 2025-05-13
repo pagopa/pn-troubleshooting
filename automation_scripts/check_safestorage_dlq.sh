@@ -2,6 +2,8 @@
 
 set -Eeuo pipefail
 
+SCRIPT_START_TIME=$(date +%s)
+
 usage() {
     cat <<EOF
 Usage: $(basename "$0") -w <work-dir> -q <dlq-queue|all> [-t <visibility-timeout>] [--purge]
@@ -104,7 +106,7 @@ process_queue(){
     fi
 
     # Get the most recent dump file
-    ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
+    ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_$TARGET_QUEUE*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
     if [[ -z "$ORIGINAL_DUMP" ]]; then
       echo "No dump file found for $TARGET_QUEUE. Skipping queue."
       Q_totalEvents["$TARGET_QUEUE"]=0
@@ -147,7 +149,7 @@ process_queue(){
     node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
 
     # Get the most recent analysis output file
-    SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
+    SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
     if [[ -z "$SAFE_TO_DELETE" ]]; then
       echo "No removable events found for $TARGET_QUEUE. Skipping queue."
       Q_removableEvents["$TARGET_QUEUE"]=0
@@ -159,7 +161,7 @@ process_queue(){
     REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
     echo "Total removable events: $REMOVABLE_EVENTS"
     Q_removableEvents["$TARGET_QUEUE"]="$REMOVABLE_EVENTS"
-    UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -exec ls -t1 {} + | head -1)
+    UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
     if [[ "$UNSAFE_TO_DELETE" != "" ]]; then
         echo "Unremovable events found. Further analysis required."
         echo "Unremovable events file: $(realpath "$UNSAFE_TO_DELETE")"

@@ -2,6 +2,8 @@
 
 set -Eeuo pipefail
 
+SCRIPT_START_TIME=$(date +%s)
+
 usage() {
     cat <<EOF
 Usage: $(basename "$0") -w <work-dir> [-t <visibility-timeout>] [--purge]
@@ -106,7 +108,7 @@ RESULTSDIR="$WORKDIR/check-sent-paper-attachment/results"
 node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --queueName pn-ec-availabilitymanager-queue-DLQ
 
 # Get the most recent analysis output file
-SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name 'safe_to_delete_pn-ec-availabilitymanager-queue-DLQ*' -exec ls -t1 {} + | head -1)
+SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name 'safe_to_delete_pn-ec-availabilitymanager-queue-DLQ*' -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
 if [[ -z "$SAFE_TO_DELETE" ]]; then
   echo "No removable events found. Exiting."
   cleanup
@@ -115,7 +117,7 @@ fi
 GENERATED_FILES+=("$SAFE_TO_DELETE")
 REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
 echo "Total removable events: $REMOVABLE_EVENTS"
-UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_pn-ec-availabilitymanager-queue-DLQ*" -exec ls -t1 {} + | head -1)
+UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_pn-ec-availabilitymanager-queue-DLQ*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
 if [[ "$UNSAFE_TO_DELETE" != "" ]]; then
   echo "Unremovable events found. Please check the file: $(realpath "$UNSAFE_TO_DELETE")"
   GENERATED_FILES+=("$UNSAFE_TO_DELETE")

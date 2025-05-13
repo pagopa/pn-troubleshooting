@@ -2,6 +2,8 @@
 
 set -Eeuo pipefail
 
+SCRIPT_START_TIME=$(date +%s)
+
 usage() {
     cat <<EOF
 Usage: $(basename "$0") -w <work-dir> [-t <visibility-timeout>] [--purge]
@@ -78,7 +80,7 @@ cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1
 node dump_sqs.js --awsProfile sso_pn-core-prod --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
 # Get the most recent dump file
-ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_pn-external_channel_to_paper_channel-DLQ*" -exec ls -t1 {} + | head -1)
+ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_pn-external_channel_to_paper_channel-DLQ*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
 if [[ -z "$ORIGINAL_DUMP" ]]; then
   echo "No dump file found. Exiting."
   exit 1
@@ -110,7 +112,7 @@ echo "Extracted requestId values to: $REQUEST_IDS_LIST"
 #############################################################
 node index.js --envName prod --fileName "$REQUEST_IDS_LIST" 1>/dev/null
 
-CHECK_FEEDBACK_RESULTS=$(find "$WORKDIR/check_feedback_from_requestId_simplified/results" -maxdepth 1 -type d -name "prod_*" | sort | tail -n 1)
+CHECK_FEEDBACK_RESULTS=$(find "$WORKDIR/check_feedback_from_requestId_simplified/results" -maxdepth 1 -type d -name "prod_*" -newermt "@$SCRIPT_START_TIME" | sort | tail -n 1)
 if [[ ! -d "$CHECK_FEEDBACK_RESULTS" ]]; then
   echo "No feedback check results found. Exiting."
   cleanup
