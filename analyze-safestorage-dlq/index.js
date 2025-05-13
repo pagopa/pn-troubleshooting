@@ -350,7 +350,7 @@ async function checkDocumentState(awsClient, fileKey, queueConfig, queueName, ev
         if (queueName === 'pn-ss-main-bucket-events-queue-DLQ') {
             let documentStateOk = false;
             if (eventName === 'ObjectCreated:Put') {
-                documentStateOk = item.documentState === 'attached' || item.documentState === 'available';
+                documentStateOk = (item.documentState === 'attached' || item.documentState === 'available');
             } else if (eventName === 'ObjectRemoved:DeleteMarkerCreated') {
                 documentStateOk = item.documentState === 'deleted';
             } else {
@@ -362,7 +362,7 @@ async function checkDocumentState(awsClient, fileKey, queueConfig, queueName, ev
                 actualState: item.documentLogicalState,
                 expectedLogicalState,
                 actualDocumentState: item.documentState,
-                expectedDocumentState: eventName === 'ObjectCreated:Put' ? 'attached' : (eventName === 'ObjectRemoved:DeleteMarkerCreated' ? 'deleted' : undefined)
+                expectedDocumentState: eventName === 'ObjectCreated:Put' ? ['attached', 'available'] : (eventName === 'ObjectRemoved:DeleteMarkerCreated' ? 'deleted' : undefined)
             };
         } else {
             return {
