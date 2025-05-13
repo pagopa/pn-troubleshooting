@@ -6,10 +6,10 @@ import axios from 'axios';
 
 // Validation constants
 const USAGE = `
-Usage: node update-retention-dates.js --csvFile <path-to-csv>
+Usage: node index.js --csvFile <path-to-csv>
 
 Description:
-    Updates retention dates for SafeStorage documents by adding 1 hour.
+    Updates the retention date of documents in SafeStorage.
 
 Parameters:
     --csvFile, -f    Required. Path to the CSV file containing document metadata
