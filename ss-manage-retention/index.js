@@ -97,28 +97,30 @@ function toISO8601(date) {
     }
 }
 
-function validateCSVHeaders(records) {
+function validateCSVHeaders(records, updateMode) {
     if (!records.length) {
         console.error("Error: CSV file is empty.");
         process.exit(1);
     }
-    const requiredColumns = ['fileKey', 'retentionUntil'];
+    const requiredColumns = updateMode ? ['fileKey', 'retentionUntil'] : ['fileKey'];
     const recordKeys = Object.keys(records[0]);
     const missing = requiredColumns.filter(col => !recordKeys.includes(col));
     if (missing.length) {
         console.error(`Error: CSV missing required columns: ${missing.join(', ')}`);
         process.exit(1);
     }
-    let invalidRows = [];
-    records.forEach((row, idx) => {
-        if (row.retentionUntil && !isISO8601(row.retentionUntil)) {
-            invalidRows.push(idx + 2);
+    if (updateMode) {
+        let invalidRows = [];
+        records.forEach((row, idx) => {
+            if (row.retentionUntil && !isISO8601(row.retentionUntil)) {
+                invalidRows.push(idx + 2);
+            }
+        });
+        if (invalidRows.length) {
+            console.error(`Error: The following rows have non-ISO 8601 retentionUntil values: ${invalidRows.join(', ')}`);
+            console.error('Expected format: YYYY-MM-DDTHH:mm:ss.sssZ (e.g., 2024-06-01T12:00:00.000Z)');
+            process.exit(1);
         }
-    });
-    if (invalidRows.length) {
-        console.error(`Error: The following rows have non-ISO 8601 retentionUntil values: ${invalidRows.join(', ')}`);
-        console.error('Expected format: YYYY-MM-DDTHH:mm:ss.sssZ (e.g., 2024-06-01T12:00:00.000Z)');
-        process.exit(1);
     }
 }
 
@@ -221,7 +223,7 @@ async function main() {
     coreClient._initSSM();
 
     const records = await parseCSV(csvFile);
-    validateCSVHeaders(records);
+    validateCSVHeaders(records, update);
     console.log(`Found ${records.length} records to process`);
 
     const accountId = (await confinfoClient._getCallerIdentity()).Account;
