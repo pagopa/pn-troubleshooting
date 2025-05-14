@@ -128,7 +128,7 @@ async function getRetention(s3Client, bucket, fileKey) {
         const response = await s3Client.send(command);
         return response.Retention?.RetainUntilDate ? toISO8601(response.Retention.RetainUntilDate) : null;
     } catch (error) {
-        console.error(`Error fetching retention for ${fileKey}:`, error.message, error.stack);
+        console.error(`Error fetching retention for ${fileKey}:`, error && error.message ? error.message : String(error));
         return null;
     }
 }
@@ -146,7 +146,7 @@ async function updateRetention(apiClient, fileKey, newRetentionUntil) {
     try {
         await apiClient.post(url, { status: null, retentionUntil: newRetentionUntil }, { headers });
     } catch (error) {
-        console.error(`Error updating retention for ${fileKey}:`, error.message, error.stack);
+        console.error(`Error updating retention for ${fileKey}:`, error && error.message ? error.message : String(error));
         throw error;
     }
 }
@@ -247,7 +247,7 @@ async function main() {
                 previousRetentionUntil = await getRetention(confinfoClient._s3Client, mainBucket, fileKey);
                 processed++;
             } catch (error) {
-                console.error(`Error fetching retention for ${fileKey}:`, error && error.stack ? error.stack : error);
+                console.error(`Error fetching retention for ${fileKey}:`, error && error.message ? error.message : String(error));
             }
             outputData.push({
                 fileKey,
@@ -339,7 +339,7 @@ async function main() {
                 }
             } catch (error) {
                 status = 'error';
-                let rawMsg = error && error.stack ? error.stack : (error && error.message ? error.message : String(error));
+                let rawMsg = error && error.message ? error.message : String(error);
                 errorMsg = rawMsg.split('\n')[0];
                 console.error(`Error processing ${fileKey}:`, errorMsg);
             }
@@ -398,7 +398,7 @@ function areDatesEqual(dateA, dateB) {
 }
 
 main().catch(err => {
-    console.error('Fatal error:', err && err.stack ? err.stack : err);
+    console.error('Fatal error:', err && err.message ? err.message : String(err));
     if (portForwardProcess) {
         stopPortForwarding(portForwardProcess);
     }
