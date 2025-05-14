@@ -1,4 +1,5 @@
 import { parseArgs } from 'util';
+import fs from 'fs';
 import { parse } from 'csv-parse';
 import { readFileSync, writeFileSync } from 'fs';
 import { GetObjectRetentionCommand } from '@aws-sdk/client-s3';
@@ -118,11 +119,19 @@ async function updateRetention(apiClient, fileKey, newRetentionUntil) {
     }
 }
 
-function writeCSVOutput(outputPath, data) {
-    const header = 'fileKey,previousRetentionUntil,updatedRetentionUntil,status,error\n';
-    const rows = data.map(row =>
-        `${row.fileKey},${row.previousRetentionUntil || ''},${row.updatedRetentionUntil || ''},${row.status || ''},${row.error ? `"${row.error.replace(/"/g, '""')}"` : ''}`
-    ).join('\n');
+function writeCSVOutput(outputPath, data, updateMode) {
+    let header, rows;
+    if (!updateMode) {
+        header = 'fileKey,currentRetentionUntil,status,error\n';
+        rows = data.map(row =>
+            `${row.fileKey},${row.previousRetentionUntil || ''},${row.status || ''},${row.error ? `"${row.error.replace(/"/g, '""')}"` : ''}`
+        ).join('\n');
+    } else {
+        header = 'fileKey,previousRetentionUntil,updatedRetentionUntil,status,error\n';
+        rows = data.map(row =>
+            `${row.fileKey},${row.previousRetentionUntil || ''},${row.updatedRetentionUntil || ''},${row.status || ''},${row.error ? `"${row.error.replace(/"/g, '""')}"` : ''}`
+        ).join('\n');
+    }
     const resultsDir = path.join(__dirname, 'results');
     if (!fs.existsSync(resultsDir)) {
         fs.mkdirSync(resultsDir);
@@ -139,6 +148,9 @@ async function main() {
 
     confinfoClient = new AwsClientsWrapper('confinfo', envName);
     coreClient = new AwsClientsWrapper('core', envName);
+
+    confinfoClient._initSTS();
+    confinfoClient._initS3();
 
     const records = await parseCSV(csvFile);
     validateCSVHeaders(records);
@@ -157,7 +169,6 @@ async function main() {
                 outputData.push({
                     fileKey: fileKey || '',
                     previousRetentionUntil: '',
-                    updatedRetentionUntil: '',
                     status: 'skipped',
                     error: 'Missing fileKey'
                 });
@@ -165,7 +176,7 @@ async function main() {
             }
             let previousRetentionUntil = null;
             try {
-                previousRetentionUntil = await getRetention(confinfoClient, mainBucket, fileKey);
+                previousRetentionUntil = await getRetention(confinfoClient._s3Client, mainBucket, fileKey);
                 processed++;
             } catch (error) {
                 console.error(`Error fetching retention for ${fileKey}:`, error && error.stack ? error.stack : error);
@@ -173,15 +184,14 @@ async function main() {
             outputData.push({
                 fileKey,
                 previousRetentionUntil,
-                updatedRetentionUntil: '',
                 status: 'queried',
-                error: ''
+                error: 'none'
             });
             process.stdout.write(`\rProcessed ${processed}/${records.length} records`);
         }
         process.stdout.write('\n');
         const outputPath = `retention_query_results_${new Date().toISOString().replace(/:/g, '-')}.csv`;
-        writeCSVOutput(outputPath, outputData);
+        writeCSVOutput(outputPath, outputData, false);
         console.log('Query complete!');
         console.log(`Successfully processed: ${processed}/${records.length} records`);
         console.log(`Results written to: results/${outputPath}`);
@@ -219,7 +229,7 @@ async function main() {
             let errorMsg = '';
 
             try {
-                previousRetentionUntil = await getRetention(s3Client, mainBucket, fileKey);
+                previousRetentionUntil = await getRetention(confinfoClient._s3Client, mainBucket, fileKey);
                 if (!previousRetentionUntil) {
                     status = 'skipped';
                     errorMsg = 'Unable to fetch current retention';
@@ -235,7 +245,7 @@ async function main() {
                 }
 
                 await updateRetention(axios, fileKey, retentionUntil);
-                updatedRetentionUntil = await getRetention(s3Client, mainBucket, fileKey);
+                updatedRetentionUntil = await getRetention(confinfoClient._s3Client, mainBucket, fileKey);
 
                 if (areDatesEqual(updatedRetentionUntil, retentionUntil)) {
                     status = 'success';
@@ -269,7 +279,7 @@ async function main() {
     }
 
     const outputPath = `retention_update_results_${new Date().toISOString().replace(/:/g, '-')}.csv`;
-    writeCSVOutput(outputPath, outputData);
+    writeCSVOutput(outputPath, outputData, true);
 
     console.log('Processing complete!');
     console.log(`Successfully processed: ${processed}/${records.length} records`);
