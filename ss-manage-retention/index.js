@@ -5,17 +5,27 @@ import { GetObjectRetentionCommand } from '@aws-sdk/client-s3';
 import axios from 'axios';
 import { AwsClientsWrapper } from "pn-common";
 import { DescribeInstancesCommand } from '@aws-sdk/client-ec2';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: `${__dirname}/.env` });
+
+const SS_ALB_ENDPOINT = process.env.SS_ALB_ENDPOINT || 'alb.confidential.pn.internal';
+const SSM_FORWARD_PORT = parseInt(process.env.SSM_FORWARD_PORT, 10) || 8080;
+const SSM_LOCAL_PORT = parseInt(process.env.SSM_LOCAL_PORT, 10) || 8888;
+const SS_BASE_URL = process.env.SS_BASE_URL || 'http://127.0.0.1';
 
 const VALID_ENVIRONMENTS = ['prod', 'uat', 'hotfix', 'test'];
 const USAGE = `
-Usage: node index.js --csvFile <path-to-csv> --envName <environment>
+Usage: node index.js --csvFile <path-to-csv> --envName <environment> [--update]
 
 Description:
-    Updates the retention date of documents in SafeStorage.
+    By default, prints the current retention date of fileKeys in the CSV.
+    If --update is provided, updates the retention date of documents in SafeStorage.
 
 Parameters:
     --csvFile, -f    Required. Path to the CSV file containing document metadata
     --envName, -e    Required. Environment to use (prod|uat|hotfix)
+    --update, -u     Optional. If set, updates the retention date
     --help, -h       Display this help message
 `;
 
@@ -24,6 +34,7 @@ function validateArgs() {
         options: {
             csvFile: { type: "string", short: "f" },
             envName: { type: "string", short: "e" },
+            update: { type: "boolean", short: "u" },
             help: { type: "boolean", short: "h" }
         },
         strict: true
@@ -90,7 +101,7 @@ async function getRetention(s3Client, bucket, fileKey) {
 }
 
 async function updateRetention(apiClient, fileKey, newRetentionUntil) {
-    const url = `http://127.0.0.1:8888/safe-storage/v1/files/${fileKey}`;
+    const url = `${SS_BASE_URL}:${SSM_LOCAL_PORT}/safe-storage/v1/files/${fileKey}`;
     const headers = {
         'x-pagopa-safestorage-cx-id': 'pn-delivery',
         'Content-Type': 'application/json'
@@ -144,7 +155,7 @@ let sessionId = null;
 let awsClient = null;
 
 async function main() {
-    const { csvFile, envName } = validateArgs();
+    const { csvFile, envName, update } = validateArgs();
     awsClient = new AwsClientsWrapper('core', envName);
     awsClient._initS3();
     const s3Client = awsClient._s3Client;
@@ -158,12 +169,51 @@ async function main() {
     const outputData = [];
     let processed = 0;
 
+    if (!update) {
+        for (const record of records) {
+            const { fileKey } = record;
+            if (!fileKey) {
+                console.warn('Skipping record - Missing fileKey:', record);
+                outputData.push({
+                    fileKey: fileKey || '',
+                    previousRetentionUntil: '',
+                    updatedRetentionUntil: '',
+                    status: 'skipped',
+                    error: 'Missing fileKey'
+                });
+                continue;
+            }
+            let previousRetentionUntil = null;
+            try {
+                previousRetentionUntil = await getRetention(s3Client, mainBucket, fileKey);
+                processed++;
+            } catch (error) {
+                console.error(`Error fetching retention for ${fileKey}:`, error && error.stack ? error.stack : error);
+            }
+            outputData.push({
+                fileKey,
+                previousRetentionUntil,
+                updatedRetentionUntil: '',
+                status: 'queried',
+                error: ''
+            });
+            process.stdout.write(`\rProcessed ${processed}/${records.length} records`);
+        }
+        process.stdout.write('\n');
+        const outputPath = `retention_query_results_${new Date().toISOString().replace(/:/g, '-')}.csv`;
+        writeCSVOutput(outputPath, outputData);
+        console.log('Query complete!');
+        console.log(`Successfully processed: ${processed}/${records.length} records`);
+        console.log(`Results written to: ${outputPath}`);
+        return;
+    }
+
     const bastionInstanceId = await getBastionInstanceId(awsClient);
     sessionId = await awsClient._startSSMPortForwardingSession(
         bastionInstanceId,
-        'alb.confidential.pn.internal',
-        8080,
-        8888
+        SS_ALB_ENDPOINT,
+        SSM_FORWARD_PORT,
+        SSM_LOCAL_PORT
     );
 
     try {
