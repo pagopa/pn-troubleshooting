@@ -10,6 +10,7 @@ Lo script esegue le seguenti operazioni:
     - Port: variabile d'ambiente `$SSM_FORWARD_PORT`, se definita (predefinita `8080`)
     - Local Port: variabile d'ambiente `$SSM_LOCAL_PORT`, se definita (predefinita `8888`)
     - Host: variabile d'ambiente `$CONFINFO_ALB_ENDPOINT`, se definita (predefinita `alb.confidential.pn.internal`)
+    Le variabili d'ambiente vengono lette da un eventuale file locale `.env` nella stessa cartella dello script.
     Il PID del processo viene salvato sotto `output/ssm_bastion_to_confinfo`
 3. Se lanciato con `--stop`, legge il PID del processo sotto `output/ssm_bastion_to_confinfo` e lo termina, dopodiché verifica se c'è ancora un processo in ascolto sulla `$SSM_LOCAL_PORT` e termina anche quello.
 
