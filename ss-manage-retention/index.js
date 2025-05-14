@@ -64,35 +64,51 @@ function parseCSV(filePath) {
     });
 }
 
+function validateCSVHeaders(records) {
+    if (!records.length) {
+        console.error("Error: CSV file is empty.");
+        process.exit(1);
+    }
+    const requiredColumns = ['fileKey', 'retentionUntil'];
+    const recordKeys = Object.keys(records[0]);
+    const missing = requiredColumns.filter(col => !recordKeys.includes(col));
+    if (missing.length) {
+        console.error(`Error: CSV missing required columns: ${missing.join(', ')}`);
+        process.exit(1);
+    }
+}
+
 async function getRetention(s3Client, bucket, fileKey) {
     try {
         const command = new GetObjectRetentionCommand({ Bucket: bucket, Key: fileKey });
         const response = await s3Client.send(command);
         return response.Retention?.RetainUntilDate || null;
     } catch (error) {
-        console.error(`Error fetching retention for ${fileKey}:`, error.message);
+        console.error(`Error fetching retention for ${fileKey}:`, error.message, error.stack);
         return null;
     }
 }
 
-async function updateRetention(apiClient, fileKey, newRetentionDate) {
-    const url = `${process.env.BASE_URL}/safe-storage/v1/files/${fileKey}`;
+async function updateRetention(apiClient, fileKey, newRetentionUntil) {
+    const url = `http://127.0.0.1:8888/safe-storage/v1/files/${fileKey}`;
     const headers = {
         'x-pagopa-safestorage-cx-id': 'pn-delivery',
         'Content-Type': 'application/json'
     };
 
     try {
-        await apiClient.post(url, { status: null, retentionUntil: newRetentionDate }, { headers });
+        await apiClient.post(url, { status: null, retentionUntil: newRetentionUntil }, { headers });
     } catch (error) {
-        console.error(`Error updating retention for ${fileKey}:`, error.message);
+        console.error(`Error updating retention for ${fileKey}:`, error.message, error.stack);
         throw error;
     }
 }
 
 function writeCSVOutput(outputPath, data) {
-    const header = 'fileKey,previousTtl,updatedTtl\n';
-    const rows = data.map(row => `${row.fileKey},${row.previousTtl},${row.updatedTtl}`).join('\n');
+    const header = 'fileKey,previousRetentionUntil,updatedRetentionUntil,status,error\n';
+    const rows = data.map(row =>
+        `${row.fileKey},${row.previousRetentionUntil || ''},${row.updatedRetentionUntil || ''},${row.status || ''},${row.error ? `"${row.error.replace(/"/g, '""')}"` : ''}`
+    ).join('\n');
     writeFileSync(outputPath, header + rows, 'utf-8');
 }
 
@@ -113,13 +129,28 @@ async function getBastionInstanceId(awsClient) {
     return instance.InstanceId;
 }
 
+function areDatesEqual(dateA, dateB) {
+    if (!dateA || !dateB) return false;
+    try {
+        const tsA = new Date(dateA).getTime();
+        const tsB = new Date(dateB).getTime();
+        return tsA === tsB;
+    } catch {
+        return false;
+    }
+}
+
+let sessionId = null;
+let awsClient = null;
+
 async function main() {
     const { csvFile, envName } = validateArgs();
-    const awsClient = new AwsClientsWrapper('core', envName);
+    awsClient = new AwsClientsWrapper('core', envName);
     awsClient._initS3();
     const s3Client = awsClient._s3Client;
 
     const records = await parseCSV(csvFile);
+    validateCSVHeaders(records);
     console.log(`Found ${records.length} records to process`);
 
     const accountId = (await awsClient._getCallerIdentity()).Account;
@@ -128,7 +159,7 @@ async function main() {
     let processed = 0;
 
     const bastionInstanceId = await getBastionInstanceId(awsClient);
-    const sessionId = await awsClient._startSSMPortForwardingSession(
+    sessionId = await awsClient._startSSMPortForwardingSession(
         bastionInstanceId,
         'alb.confidential.pn.internal',
         8080,
@@ -137,45 +168,101 @@ async function main() {
 
     try {
         for (const record of records) {
-            const { fileKey, ttl } = record;
+            const { fileKey, retentionUntil } = record;
 
-            if (!fileKey || !ttl) {
-                console.warn('Skipping record - missing required fields:', record);
+            if (!fileKey || !retentionUntil) {
+                const msg = 'Missing required fields';
+                console.warn(`Skipping record - ${msg}:`, record);
+                outputData.push({
+                    fileKey: fileKey || '',
+                    previousRetentionUntil: '',
+                    updatedRetentionUntil: '',
+                    status: 'skipped',
+                    error: msg
+                });
                 continue;
             }
 
-            const previousTtl = await getRetention(s3Client, mainBucket, fileKey);
-            if (!previousTtl) {
-                console.warn(`Skipping ${fileKey} - unable to fetch current retention`);
-                continue;
-            }
+            let previousRetentionUntil = null;
+            let updatedRetentionUntil = null;
+            let status = '';
+            let errorMsg = '';
 
             try {
-                await updateRetention(axios, fileKey, ttl);
-                const updatedTtl = await getRetention(s3Client, mainBucket, fileKey);
-
-                if (updatedTtl === ttl) {
-                    outputData.push({ fileKey, previousTtl, updatedTtl });
-                    processed++;
-                } else {
-                    console.warn(`Retention update verification failed for ${fileKey}`);
+                previousRetentionUntil = await getRetention(s3Client, mainBucket, fileKey);
+                if (!previousRetentionUntil) {
+                    status = 'skipped';
+                    errorMsg = 'Unable to fetch current retention';
+                    console.warn(`Skipping ${fileKey} - ${errorMsg}`);
+                    outputData.push({
+                        fileKey,
+                        previousRetentionUntil: '',
+                        updatedRetentionUntil: '',
+                        status,
+                        error: errorMsg
+                    });
+                    continue;
                 }
 
-                process.stdout.write(`\rProcessed ${processed}/${records.length} records`);
+                await updateRetention(axios, fileKey, retentionUntil);
+                updatedRetentionUntil = await getRetention(s3Client, mainBucket, fileKey);
+
+                if (areDatesEqual(updatedRetentionUntil, retentionUntil)) {
+                    status = 'success';
+                    processed++;
+                } else {
+                    status = 'verification_failed';
+                    errorMsg = 'Retention update verification failed';
+                    console.warn(`${errorMsg} for ${fileKey}`);
+                }
             } catch (error) {
-                console.error(`Error processing ${fileKey}:`, error.message);
+                status = 'error';
+                errorMsg = error && error.stack ? error.stack : (error && error.message ? error.message : String(error));
+                console.error(`Error processing ${fileKey}:`, errorMsg);
             }
+
+            outputData.push({
+                fileKey,
+                previousRetentionUntil,
+                updatedRetentionUntil,
+                status,
+                error: errorMsg
+            });
+
+            process.stdout.write(`\rProcessed ${processed}/${records.length} records`);
         }
+        process.stdout.write('\n');
     } finally {
-        await awsClient._terminateSSMSession(sessionId);
+        if (sessionId) {
+            await awsClient._terminateSSMSession(sessionId);
+        }
     }
 
     const outputPath = `retention_update_results_${new Date().toISOString().replace(/:/g, '-')}.csv`;
     writeCSVOutput(outputPath, outputData);
 
-    console.log('\nProcessing complete!');
+    console.log('Processing complete!');
     console.log(`Successfully processed: ${processed}/${records.length} records`);
     console.log(`Results written to: ${outputPath}`);
 }
 
-main().catch(console.error);
+async function handleExit(signal) {
+    console.log(`\nReceived ${signal}, cleaning up...`);
+    if (sessionId && awsClient) {
+        try {
+            await awsClient._terminateSSMSession(sessionId);
+            console.log('SSM session terminated.');
+        } catch (e) {
+            console.error('Error terminating SSM session:', e && e.stack ? e.stack : e);
+        }
+    }
+    process.exit(1);
+}
+
+process.on('SIGINT', () => handleExit('SIGINT'));
+process.on('SIGTERM', () => handleExit('SIGTERM'));
+
+main().catch(err => {
+    console.error('Fatal error:', err && err.stack ? err.stack : err);
+    process.exit(1);
+});
