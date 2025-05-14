@@ -9,6 +9,7 @@ import { DescribeInstancesCommand } from '@aws-sdk/client-ec2';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: `${__dirname}/.env` });
@@ -79,6 +80,23 @@ function parseCSV(filePath) {
     });
 }
 
+const ISO_8601_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+
+function isISO8601(str) {
+    return typeof str === 'string' && ISO_8601_REGEX.test(str);
+}
+
+function toISO8601(date) {
+    if (!date) return '';
+    try {
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return '';
+        return d.toISOString();
+    } catch {
+        return '';
+    }
+}
+
 function validateCSVHeaders(records) {
     if (!records.length) {
         console.error("Error: CSV file is empty.");
@@ -91,13 +109,24 @@ function validateCSVHeaders(records) {
         console.error(`Error: CSV missing required columns: ${missing.join(', ')}`);
         process.exit(1);
     }
+    let invalidRows = [];
+    records.forEach((row, idx) => {
+        if (row.retentionUntil && !isISO8601(row.retentionUntil)) {
+            invalidRows.push(idx + 2);
+        }
+    });
+    if (invalidRows.length) {
+        console.error(`Error: The following rows have non-ISO 8601 retentionUntil values: ${invalidRows.join(', ')}`);
+        console.error('Expected format: YYYY-MM-DDTHH:mm:ss.sssZ (e.g., 2024-06-01T12:00:00.000Z)');
+        process.exit(1);
+    }
 }
 
 async function getRetention(s3Client, bucket, fileKey) {
     try {
         const command = new GetObjectRetentionCommand({ Bucket: bucket, Key: fileKey });
         const response = await s3Client.send(command);
-        return response.Retention?.RetainUntilDate || null;
+        return response.Retention?.RetainUntilDate ? toISO8601(response.Retention.RetainUntilDate) : null;
     } catch (error) {
         console.error(`Error fetching retention for ${fileKey}:`, error.message, error.stack);
         return null;
@@ -105,6 +134,9 @@ async function getRetention(s3Client, bucket, fileKey) {
 }
 
 async function updateRetention(apiClient, fileKey, newRetentionUntil) {
+    if (!isISO8601(newRetentionUntil)) {
+        throw new Error(`retentionUntil value is not ISO 8601: ${newRetentionUntil}`);
+    }
     const url = `${SS_BASE_URL}:${SSM_LOCAL_PORT}/safe-storage/v1/files/${fileKey}`;
     const headers = {
         'x-pagopa-safestorage-cx-id': 'pn-delivery',
@@ -124,12 +156,12 @@ function writeCSVOutput(outputPath, data, updateMode) {
     if (!updateMode) {
         header = 'fileKey,currentRetentionUntil,status,error\n';
         rows = data.map(row =>
-            `${row.fileKey},${row.previousRetentionUntil || ''},${row.status || ''},${row.error ? `"${row.error.replace(/"/g, '""')}"` : ''}`
+            `${row.fileKey},${toISO8601(row.previousRetentionUntil) || ''},${row.status || ''},${row.error ? `"${row.error.replace(/"/g, '""')}"` : ''}`
         ).join('\n');
     } else {
         header = 'fileKey,previousRetentionUntil,updatedRetentionUntil,status,error\n';
         rows = data.map(row =>
-            `${row.fileKey},${row.previousRetentionUntil || ''},${row.updatedRetentionUntil || ''},${row.status || ''},${row.error ? `"${row.error.replace(/"/g, '""')}"` : ''}`
+            `${row.fileKey},${toISO8601(row.previousRetentionUntil) || ''},${toISO8601(row.updatedRetentionUntil) || ''},${row.status || ''},${row.error ? `"${row.error.replace(/"/g, '""')}"` : ''}`
         ).join('\n');
     }
     const resultsDir = path.join(__dirname, 'results');
@@ -139,9 +171,43 @@ function writeCSVOutput(outputPath, data, updateMode) {
     writeFileSync(path.join(resultsDir, outputPath), header + rows, 'utf-8');
 }
 
-let sessionId = null;
 let confinfoClient = null;
 let coreClient = null;
+let portForwardProcess = null;
+
+async function startPortForwarding(instanceId, localPort, remoteHost, remotePort, envName) {
+    const profile = `sso_pn-core-${envName}`;
+    const args = [
+        'ssm', 'start-session',
+        '--target', instanceId,
+        '--document-name', 'AWS-StartPortForwardingSessionToRemoteHost',
+        '--parameters', `portNumber=${remotePort},localPortNumber=${localPort},host=${remoteHost}`,
+        '--profile', profile
+    ];
+    console.log(`Starting AWS CLI port forwarding: aws ${args.join(' ')}`);
+    const proc = spawn('aws', args, { stdio: 'inherit' });
+
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    return proc;
+}
+
+function stopPortForwarding(proc) {
+    if (proc && !proc.killed) {
+        proc.kill();
+        console.log('Port forwarding process terminated.');
+    }
+}
+
+async function handleExit(signal) {
+    console.log(`\nReceived ${signal}, cleaning up...`);
+    if (portForwardProcess) {
+        stopPortForwarding(portForwardProcess);
+    }
+    process.exit(1);
+}
+
+process.on('SIGINT', () => handleExit('SIGINT'));
+process.on('SIGTERM', () => handleExit('SIGTERM'));
 
 async function main() {
     const { csvFile, envName, update } = validateArgs();
@@ -151,6 +217,8 @@ async function main() {
 
     confinfoClient._initSTS();
     confinfoClient._initS3();
+    coreClient._initEC2();
+    coreClient._initSSM();
 
     const records = await parseCSV(csvFile);
     validateCSVHeaders(records);
@@ -185,7 +253,7 @@ async function main() {
                 fileKey,
                 previousRetentionUntil,
                 status: 'queried',
-                error: 'none'
+                error: ''
             });
             process.stdout.write(`\rProcessed ${processed}/${records.length} records`);
         }
@@ -199,11 +267,12 @@ async function main() {
     }
 
     const bastionInstanceId = await getBastionInstanceId(coreClient);
-    sessionId = await coreClient._startSSMPortForwardingSession(
+    portForwardProcess = await startPortForwarding(
         bastionInstanceId,
+        SSM_LOCAL_PORT,
         SS_ALB_ENDPOINT,
         SSM_FORWARD_PORT,
-        SSM_LOCAL_PORT
+        envName
     );
 
     try {
@@ -215,6 +284,19 @@ async function main() {
                 console.warn(`Skipping record - ${msg}:`, record);
                 outputData.push({
                     fileKey: fileKey || '',
+                    previousRetentionUntil: '',
+                    updatedRetentionUntil: '',
+                    status: 'skipped',
+                    error: msg
+                });
+                continue;
+            }
+
+            if (!isISO8601(retentionUntil)) {
+                const msg = 'retentionUntil is not ISO 8601';
+                console.warn(`Skipping record - ${msg}:`, record);
+                outputData.push({
+                    fileKey,
                     previousRetentionUntil: '',
                     updatedRetentionUntil: '',
                     status: 'skipped',
@@ -257,7 +339,8 @@ async function main() {
                 }
             } catch (error) {
                 status = 'error';
-                errorMsg = error && error.stack ? error.stack : (error && error.message ? error.message : String(error));
+                let rawMsg = error && error.stack ? error.stack : (error && error.message ? error.message : String(error));
+                errorMsg = rawMsg.split('\n')[0];
                 console.error(`Error processing ${fileKey}:`, errorMsg);
             }
 
@@ -273,8 +356,9 @@ async function main() {
         }
         process.stdout.write('\n');
     } finally {
-        if (sessionId) {
-            await coreClient._terminateSSMSession(sessionId);
+        if (portForwardProcess) {
+            stopPortForwarding(portForwardProcess);
+            portForwardProcess = null;
         }
     }
 
@@ -305,31 +389,18 @@ async function getBastionInstanceId(awsClient) {
 function areDatesEqual(dateA, dateB) {
     if (!dateA || !dateB) return false;
     try {
-        const tsA = new Date(dateA).getTime();
-        const tsB = new Date(dateB).getTime();
-        return tsA === tsB;
+        const isoA = toISO8601(dateA);
+        const isoB = toISO8601(dateB);
+        return isoA === isoB;
     } catch {
         return false;
     }
 }
 
-async function handleExit(signal) {
-    console.log(`\nReceived ${signal}, cleaning up...`);
-    if (sessionId && coreClient) {
-        try {
-            await coreClient._terminateSSMSession(sessionId);
-            console.log('SSM session terminated.');
-        } catch (e) {
-            console.error('Error terminating SSM session:', e && e.stack ? e.stack : e);
-        }
-    }
-    process.exit(1);
-}
-
-process.on('SIGINT', () => handleExit('SIGINT'));
-process.on('SIGTERM', () => handleExit('SIGTERM'));
-
 main().catch(err => {
     console.error('Fatal error:', err && err.stack ? err.stack : err);
+    if (portForwardProcess) {
+        stopPortForwarding(portForwardProcess);
+    }
     process.exit(1);
 });
