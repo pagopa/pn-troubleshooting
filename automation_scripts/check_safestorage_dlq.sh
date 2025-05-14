@@ -6,7 +6,7 @@ SCRIPT_START_TIME=$(date +%s)
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") -w <work-dir> -q <dlq-queue|all> [-t <visibility-timeout>] [--purge]
+Usage: $(basename "$0") -w <work-dir> -q <dlq-queue|all> [-e <env>] [-t <visibility-timeout>] [--purge]
   -w, --work-dir           Working directory
   -q, --queue              Target DLQ queue name or "all". Supported values:
                            pn-ss-transformation-raster-queue-DLQ,
@@ -15,6 +15,7 @@ Usage: $(basename "$0") -w <work-dir> -q <dlq-queue|all> [-t <visibility-timeout
                            pn-ss-transformation-sign-and-timemark-queue-DLQ,
                            pn-ss-main-bucket-events-queue-DLQ,
                            all
+  -e, --env                Environment (prod, test, uat, hotfix). Default: prod
   -t, --visibility-timeout Visibility timeout in seconds (default: 30)
   --purge                  Purge events from the SQS queue
 EOF
@@ -28,6 +29,7 @@ STARTDIR=$(pwd)
 OUTPUTDIR_BASE="$STARTDIR/output/check_safestorage_dlq"
 V_TIMEOUT=30
 PURGE=false
+ENV="prod"
 
 cleanup() {
     for f in "${GENERATED_FILES[@]}"; do
@@ -49,6 +51,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         -q|--queue)
             QUEUE="$2"
+            shift 2
+            ;;
+        -e|--env)
+            ENV="$2"
             shift 2
             ;;
         -t|--visibility-timeout)
@@ -73,6 +79,39 @@ if [[ -z "$WORKDIR" || -z "$QUEUE" ]]; then
     usage
 fi
 
+# Validate ENV
+case "$ENV" in
+    prod|test|uat|hotfix) ;;
+    *)
+        echo "Unsupported environment: $ENV"
+        usage
+        ;;
+esac
+
+# Set AWS profiles and envName
+case "$ENV" in
+    prod)
+        AWS_PROFILE_CONFINFO="sso_pn-confinfo-prod"
+        AWS_PROFILE_CORE="sso_pn-core-prod"
+        ENV_NAME="prod"
+        ;;
+    test)
+        AWS_PROFILE_CONFINFO="sso_pn-confinfo-test"
+        AWS_PROFILE_CORE="sso_pn-core-test"
+        ENV_NAME="test"
+        ;;
+    uat)
+        AWS_PROFILE_CONFINFO="sso_pn-confinfo-uat"
+        AWS_PROFILE_CORE="sso_pn-core-uat"
+        ENV_NAME="uat"
+        ;;
+    hotfix)
+        AWS_PROFILE_CONFINFO="sso_pn-confinfo-hotfix"
+        AWS_PROFILE_CORE="sso_pn-core-hotfix"
+        ENV_NAME="hotfix"
+        ;;
+esac
+
 # Define supported queues array.
 SUPPORTED_QUEUES=("pn-ss-transformation-raster-queue-DLQ" "pn-safestore_to_deliverypush-DLQ" "pn-ss-staging-bucket-events-queue-DLQ" "pn-ss-transformation-sign-and-timemark-queue-DLQ" "pn-ss-main-bucket-events-queue-DLQ")
 
@@ -87,6 +126,7 @@ process_queue(){
     echo "Working directory: $(realpath "$WORKDIR")"
     echo "Starting directory: $STARTDIR"
     echo "Output directory: $(realpath "$OUTPUTDIR")"
+    echo "Environment: $ENV"
     echo "Visibility Timeout: $V_TIMEOUT seconds"
 
     #############################################
@@ -100,9 +140,9 @@ process_queue(){
     cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1; }
     
     if [[ "$TARGET_QUEUE" == "pn-safestore_to_deliverypush-DLQ" ]]; then
-        node dump_sqs.js --awsProfile sso_pn-core-prod --queueName pn-safestore_to_deliverypush-DLQ --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
+        node dump_sqs.js --awsProfile "$AWS_PROFILE_CORE" --queueName pn-safestore_to_deliverypush-DLQ --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
     else
-        node dump_sqs.js --awsProfile sso_pn-confinfo-prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
+        node dump_sqs.js --awsProfile "$AWS_PROFILE_CONFINFO" --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
     fi
 
     # Get the most recent dump file
@@ -146,7 +186,7 @@ process_queue(){
     fi
     cd "$ANALYSIS_SCRIPT_DIR" || { echo "Failed to cd into '$ANALYSIS_SCRIPT_DIR'"; exit 1; }
     RESULTSDIR="$ANALYSIS_SCRIPT_DIR/results"
-    node index.js --envName prod --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
+    node index.js --envName "$ENV_NAME" --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
 
     # Get the most recent analysis output file
     SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
@@ -190,9 +230,9 @@ process_queue(){
         sleep "$V_TIMEOUT"
         echo "Purging events from the SQS queue..."
         if [[ "$TARGET_QUEUE" == "pn-safestore_to_deliverypush-DLQ" ]]; then
-            node index.js --account core --envName prod --queueName pn-safestore_to_deliverypush-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
+            node index.js --account core --envName "$ENV_NAME" --queueName pn-safestore_to_deliverypush-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
         else
-            node index.js --account confinfo --envName prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
+            node index.js --account confinfo --envName "$ENV_NAME" --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
         fi
         find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*.json_result.json" | xargs rm
         echo "Events purged from the SQS queue."

@@ -6,8 +6,9 @@ SCRIPT_START_TIME=$(date +%s)
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") -w <work-dir> [-t <visibility-timeout>] [--purge]
+Usage: $(basename "$0") -w <work-dir> [-e <env>] [-t <visibility-timeout>] [--purge]
   -w, --work-dir           Working directory
+  -e, --env                Environment (prod, test, uat, hotfix). Default: prod
   -t, --visibility-timeout Visibility timeout in seconds (default: 300)
   --purge                  Purge events from the SQS queue
 EOF
@@ -20,6 +21,7 @@ STARTDIR=$(pwd)
 OUTPUTDIR="$STARTDIR/output/check_ec_to_pc"
 V_TIMEOUT=300
 PURGE=false
+ENV="prod"
 
 GENERATED_FILES=()
 CHECK_FEEDBACK_RESULTS=""
@@ -36,6 +38,10 @@ while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -w|--work-dir)
             WORKDIR="$2"
+            shift 2
+            ;;
+        -e|--env)
+            ENV="$2"
             shift 2
             ;;
         -t|--visibility-timeout)
@@ -60,11 +66,41 @@ if [[ -z "$WORKDIR" ]]; then
     usage
 fi
 
+# Validate ENV
+case "$ENV" in
+    prod|test|uat|hotfix) ;;
+    *)
+        echo "Unsupported environment: $ENV"
+        usage
+        ;;
+esac
+
+# Set AWS profile and envName
+case "$ENV" in
+    prod)
+        AWS_PROFILE="sso_pn-core-prod"
+        ENV_NAME="prod"
+        ;;
+    test)
+        AWS_PROFILE="sso_pn-core-test"
+        ENV_NAME="test"
+        ;;
+    uat)
+        AWS_PROFILE="sso_pn-core-uat"
+        ENV_NAME="uat"
+        ;;
+    hotfix)
+        AWS_PROFILE="sso_pn-core-hotfix"
+        ENV_NAME="hotfix"
+        ;;
+esac
+
 mkdir -p "$OUTPUTDIR"
 
 echo "Working directory: $(realpath "$WORKDIR")"
 echo "Starting directory: $STARTDIR"
 echo "Output directory: $(realpath "$OUTPUTDIR")"
+echo "Environment: $ENV"
 echo "Visibility Timeout: $V_TIMEOUT seconds"
 
 #############################################
@@ -77,7 +113,7 @@ if [[ ! -d "$WORKDIR/dump_sqs" ]]; then
     exit 1
 fi
 cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1; }
-node dump_sqs.js --awsProfile sso_pn-core-prod --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
+node dump_sqs.js --awsProfile "$AWS_PROFILE" --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
 # Get the most recent dump file
 ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_pn-external_channel_to_paper_channel-DLQ*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
@@ -110,7 +146,7 @@ echo "Extracted requestId values to: $REQUEST_IDS_LIST"
 #############################################################
 # Step 3: Check if there is a feedback for each requestId   #
 #############################################################
-node index.js --envName prod --fileName "$REQUEST_IDS_LIST" 1>/dev/null
+node index.js --envName "$ENV_NAME" --fileName "$REQUEST_IDS_LIST" 1>/dev/null
 
 CHECK_FEEDBACK_RESULTS=$(find "$WORKDIR/check_feedback_from_requestId_simplified/results" -maxdepth 1 -type d -name "prod_*" -newermt "@$SCRIPT_START_TIME" | sort | tail -n 1)
 if [[ ! -d "$CHECK_FEEDBACK_RESULTS" ]]; then
@@ -180,7 +216,7 @@ if $PURGE; then
     echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
-    node index.js --account core --envName prod --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
+    node index.js --account core --envName "$ENV_NAME" --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
     find "$RESULTSDIR" -type f -name "dump_pn-external_channel_to_paper_channel-DLQ*.jsonline_result.json" | xargs rm
     echo "Events purged from the SQS queue."
 fi

@@ -6,10 +6,11 @@ SCRIPT_START_TIME=$(date +%s)
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") -w <work-dir> -c <channel-type|all> [-t <visibility-timeout>] [--purge]
+Usage: $(basename "$0") -w <work-dir> -c <channel-type|all> [-e <env>] [-t <visibility-timeout>] [--purge]
   -w, --work-dir           Working directory
   -c, --channel-type       Channel type to process. Supported values:
                            pec, email, cartaceo, sms, all
+  -e, --env                Environment (prod, test, uat, hotfix). Default: prod
   -t, --visibility-timeout Visibility timeout in seconds (default: 30)
   --purge                  Purge events from the SQS queue
 EOF
@@ -23,6 +24,7 @@ STARTDIR=$(pwd)
 OUTPUTDIR_BASE="$STARTDIR/output/check_ec_tracker_errors"
 V_TIMEOUT=30
 PURGE=false
+ENV="prod"
 
 cleanup() {
     for f in "${GENERATED_FILES[@]}"; do
@@ -49,6 +51,10 @@ while [[ "$#" -gt 0 ]]; do
             CHANNEL_TYPE="$2"
             shift 2
             ;;
+        -e|--env)
+            ENV="$2"
+            shift 2
+            ;;
         -t|--visibility-timeout)
             V_TIMEOUT="$2"
             shift 2
@@ -71,6 +77,35 @@ if [[ -z "$WORKDIR" || -z "$CHANNEL_TYPE" ]]; then
     usage
 fi
 
+# Validate ENV
+case "$ENV" in
+    prod|test|uat|hotfix) ;;
+    *)
+        echo "Unsupported environment: $ENV"
+        usage
+        ;;
+esac
+
+# Set AWS profile and envName
+case "$ENV" in
+    prod)
+        AWS_PROFILE="sso_pn-confinfo-prod"
+        ENV_NAME="prod"
+        ;;
+    test)
+        AWS_PROFILE="sso_pn-confinfo-test"
+        ENV_NAME="test"
+        ;;
+    uat)
+        AWS_PROFILE="sso_pn-confinfo-uat"
+        ENV_NAME="uat"
+        ;;
+    hotfix)
+        AWS_PROFILE="sso_pn-confinfo-hotfix"
+        ENV_NAME="hotfix"
+        ;;
+esac
+
 # Function to process a single channel type
 process_channel(){
     local CHANNEL="$1"
@@ -84,6 +119,7 @@ process_channel(){
     echo "Working directory: $(realpath "$WORKDIR")"
     echo "Starting directory: $STARTDIR"
     echo "Output directory: $(realpath "$OUTPUTDIR")"
+    echo "Environment: $ENV"
     echo "Visibility Timeout: $V_TIMEOUT seconds"
 
     #############################################
@@ -95,7 +131,7 @@ process_channel(){
         exit 1
     fi
     cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1; }
-    node dump_sqs.js --awsProfile sso_pn-confinfo-prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
+    node dump_sqs.js --awsProfile "$AWS_PROFILE" --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
     # Get the most recent dump file
     ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_${TARGET_QUEUE}*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
@@ -133,7 +169,7 @@ process_channel(){
     fi
     cd "$ANALYSIS_SCRIPT_DIR" || { echo "Failed to cd into '$ANALYSIS_SCRIPT_DIR'"; exit 1; }
     RESULTSDIR="$ANALYSIS_SCRIPT_DIR/results"
-    node index.js --envName prod --fileName "$ORIGINAL_DUMP" --channelType "$CHANNEL"
+    node index.js --envName "$ENV_NAME" --fileName "$ORIGINAL_DUMP" --channelType "$CHANNEL"
 
     # Get the most recent removable events file
     TO_REMOVE=$(find "$RESULTSDIR" -type f -name "to_remove_${CHANNEL}*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
@@ -177,7 +213,7 @@ process_channel(){
         echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
         sleep "$V_TIMEOUT"
         echo "Purging events from the SQS queue..."
-        node index.js --account confinfo --envName prod --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$TO_REMOVE" 1>/dev/null
+        node index.js --account confinfo --envName "$ENV_NAME" --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$TO_REMOVE" 1>/dev/null
         find "$RESULTSDIR" -type f -name "to_remove_$CHANNEL*.json_result.json" | xargs rm
         echo "Events purged from the SQS queue."
     fi
