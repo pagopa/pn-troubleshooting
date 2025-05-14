@@ -6,7 +6,10 @@ import axios from 'axios';
 import { AwsClientsWrapper } from "pn-common";
 import { DescribeInstancesCommand } from '@aws-sdk/client-ec2';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: `${__dirname}/.env` });
 
 const SS_ALB_ENDPOINT = process.env.SS_ALB_ENDPOINT || 'alb.confidential.pn.internal';
@@ -120,51 +123,28 @@ function writeCSVOutput(outputPath, data) {
     const rows = data.map(row =>
         `${row.fileKey},${row.previousRetentionUntil || ''},${row.updatedRetentionUntil || ''},${row.status || ''},${row.error ? `"${row.error.replace(/"/g, '""')}"` : ''}`
     ).join('\n');
-    writeFileSync(outputPath, header + rows, 'utf-8');
-}
-
-async function getBastionInstanceId(awsClient) {
-    const ec2Client = awsClient._initEC2();
-    const command = new DescribeInstancesCommand({
-        Filters: [
-            { Name: 'tag:Name', Values: ['*bastion*'] },
-            { Name: 'instance-state-name', Values: ['running'] }
-        ]
-    });
-
-    const response = await ec2Client.send(command);
-    const instance = response.Reservations?.[0]?.Instances?.[0];
-    if (!instance) {
-        throw new Error('No running bastion instance found');
+    const resultsDir = path.join(__dirname, 'results');
+    if (!fs.existsSync(resultsDir)) {
+        fs.mkdirSync(resultsDir);
     }
-    return instance.InstanceId;
-}
-
-function areDatesEqual(dateA, dateB) {
-    if (!dateA || !dateB) return false;
-    try {
-        const tsA = new Date(dateA).getTime();
-        const tsB = new Date(dateB).getTime();
-        return tsA === tsB;
-    } catch {
-        return false;
-    }
+    writeFileSync(path.join(resultsDir, outputPath), header + rows, 'utf-8');
 }
 
 let sessionId = null;
-let awsClient = null;
+let confinfoClient = null;
+let coreClient = null;
 
 async function main() {
     const { csvFile, envName, update } = validateArgs();
-    awsClient = new AwsClientsWrapper('core', envName);
-    awsClient._initS3();
-    const s3Client = awsClient._s3Client;
+
+    confinfoClient = new AwsClientsWrapper('confinfo', envName);
+    coreClient = new AwsClientsWrapper('core', envName);
 
     const records = await parseCSV(csvFile);
     validateCSVHeaders(records);
     console.log(`Found ${records.length} records to process`);
 
-    const accountId = (await awsClient._getCallerIdentity()).Account;
+    const accountId = (await confinfoClient._getCallerIdentity()).Account;
     const mainBucket = `pn-safestorage-eu-south-1-${accountId}`;
     const outputData = [];
     let processed = 0;
@@ -185,7 +165,7 @@ async function main() {
             }
             let previousRetentionUntil = null;
             try {
-                previousRetentionUntil = await getRetention(s3Client, mainBucket, fileKey);
+                previousRetentionUntil = await getRetention(confinfoClient, mainBucket, fileKey);
                 processed++;
             } catch (error) {
                 console.error(`Error fetching retention for ${fileKey}:`, error && error.stack ? error.stack : error);
@@ -204,12 +184,12 @@ async function main() {
         writeCSVOutput(outputPath, outputData);
         console.log('Query complete!');
         console.log(`Successfully processed: ${processed}/${records.length} records`);
-        console.log(`Results written to: ${outputPath}`);
+        console.log(`Results written to: results/${outputPath}`);
         return;
     }
 
-    const bastionInstanceId = await getBastionInstanceId(awsClient);
-    sessionId = await awsClient._startSSMPortForwardingSession(
+    const bastionInstanceId = await getBastionInstanceId(coreClient);
+    sessionId = await coreClient._startSSMPortForwardingSession(
         bastionInstanceId,
         SS_ALB_ENDPOINT,
         SSM_FORWARD_PORT,
@@ -284,7 +264,7 @@ async function main() {
         process.stdout.write('\n');
     } finally {
         if (sessionId) {
-            await awsClient._terminateSSMSession(sessionId);
+            await coreClient._terminateSSMSession(sessionId);
         }
     }
 
@@ -293,14 +273,41 @@ async function main() {
 
     console.log('Processing complete!');
     console.log(`Successfully processed: ${processed}/${records.length} records`);
-    console.log(`Results written to: ${outputPath}`);
+    console.log(`Results written to: results/${outputPath}`);
+}
+
+async function getBastionInstanceId(awsClient) {
+    const command = new DescribeInstancesCommand({
+        Filters: [
+            { Name: 'tag:Name', Values: ['*bastion*'] },
+            { Name: 'instance-state-name', Values: ['running'] }
+        ]
+    });
+
+    const response = await awsClient._ec2Client.send(command);
+    const instance = response.Reservations?.[0]?.Instances?.[0];
+    if (!instance) {
+        throw new Error('No running bastion instance found');
+    }
+    return instance.InstanceId;
+}
+
+function areDatesEqual(dateA, dateB) {
+    if (!dateA || !dateB) return false;
+    try {
+        const tsA = new Date(dateA).getTime();
+        const tsB = new Date(dateB).getTime();
+        return tsA === tsB;
+    } catch {
+        return false;
+    }
 }
 
 async function handleExit(signal) {
     console.log(`\nReceived ${signal}, cleaning up...`);
-    if (sessionId && awsClient) {
+    if (sessionId && coreClient) {
         try {
-            await awsClient._terminateSSMSession(sessionId);
+            await coreClient._terminateSSMSession(sessionId);
             console.log('SSM session terminated.');
         } catch (e) {
             console.error('Error terminating SSM session:', e && e.stack ? e.stack : e);

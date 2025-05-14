@@ -1,7 +1,7 @@
 {
-  "name": "ss-retention-update",
+  "name": "ss-manage-retention",
   "version": "1.0.0",
-  "description": "Updates retention dates for SafeStorage documents",
+  "description": "Get and optionally update retention dates for SafeStorage attachments",
   "type": "module",
   "main": "index.js",
   "scripts": {
