@@ -141,7 +141,7 @@ for file in counter.json error.json fromconsolidatore.json toconsolidatore.json 
 done
 
 BASENAME=$(basename "${ORIGINAL_DUMP%.json}")
-RESULTSDIR="$WORKDIR/check_status_request/results"
+RESULTSDIR="$WORKDIR/check_status_request/result"
 REQUEST_IDS_LIST="$WORKDIR/check_status_request/${BASENAME}_all_request_ids.txt"
 jq -r '.[] | .Body | fromjson | .requestIdx' "$ORIGINAL_DUMP" > "$REQUEST_IDS_LIST"
 REQUEST_IDS_LIST=$(realpath "$REQUEST_IDS_LIST")
