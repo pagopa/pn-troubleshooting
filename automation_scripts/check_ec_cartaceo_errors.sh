@@ -167,7 +167,7 @@ GENERATED_FILES+=("$WORKDIR/check_status_request/${BASENAME}_counter.json")
 ###########################################################
 # Step 4: Convert the original dump to JSONLine format    #
 ###########################################################
-JSONLINE_DUMP="$WORKDIR/check_status_request/${BASENAME}.jsonline"
+JSONLINE_DUMP="$WORKDIR/check_status_request/${BASENAME}.jsonl"
 jq -c '.[]' "$ORIGINAL_DUMP" > "$JSONLINE_DUMP"
 JSONLINE_DUMP=$(realpath "$JSONLINE_DUMP")
 GENERATED_FILES+=("$JSONLINE_DUMP")
@@ -193,7 +193,7 @@ echo "Total requestIds in error status (not to remove): $(wc -l < "$ERROR_REQUES
 #######################################################
 # Step 6: Filter out events from requests in error    #
 #######################################################
-FILTERED_DUMP="$WORKDIR/check_status_request/${BASENAME}_filtered.jsonline"
+FILTERED_DUMP="$WORKDIR/check_status_request/${BASENAME}_filtered.jsonl"
 grep -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
 FILTERED_DUMP=$(realpath "$FILTERED_DUMP")
 GENERATED_FILES+=("$FILTERED_DUMP")
@@ -216,7 +216,7 @@ if $PURGE; then
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
     node index.js --account confinfo --envName "$ENV_NAME" --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
-    find "$RESULTSDIR" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*.jsonline_result.json" | xargs rm
+    find "$RESULTSDIR" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*.jsonl_result.json" | xargs rm
     echo "Events purged from the SQS queue."
 fi
 
