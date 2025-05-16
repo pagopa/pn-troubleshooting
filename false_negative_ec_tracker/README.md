@@ -31,8 +31,8 @@ Gli eventi dalla DLQ vengono analizzati in base allo stato del `requestId` sulla
 2. Per ogni messaggio:
    * Estrae il `requestId`
    * Verifica gli eventi (`eventsList`) della richiesta sulla `pn-EcRichiesteMetadati`
-   * Se sono presenti eventi `digProgrStatus` negli stati *booked* e *sent*, più un evento uguale al `nextStatus` ricavato dal campo `Body` del messaggio JSON, l'evento può essere rimosso dalla DLQ, altrimenti viene considerato `toKeep`
-   * Il caso limite in cui sono presenti gli stati *booked* e *sent* ma non un evento uguale al `nextStatus` viene classificato come `problemFound`
+   * Se sono presenti eventi `digProgrStatus` negli stati *booked* e *sent*, l'evento può essere rimosso dalla DLQ, altrimenti viene considerato `toKeep`
+   * Il caso specifico in cui sono presenti gli stati *booked* e *sent* ma non c'è corrispondenza fra l'attributo DynamoDB `statusRequest` ed il campo `nextStatus` nel messaggio JSON viene classificato come `problemFound`
    * Se si verificano errori nel processamento del messaggio o nella richiesta a DynamoDB, l'evento viene inserito fra gli `error`
 
 **PEC** (`pn-ec-tracker-pec-errori-queue-DLQ.fifo`):
@@ -41,8 +41,8 @@ Gli eventi dalla DLQ vengono analizzati in base allo stato del `requestId` sulla
 2. Per ogni messaggio:
    * Estrae il `requestId`
    * Verifica gli eventi (`eventsList`) della richiesta sulla `pn-EcRichiesteMetadati`
-   * Se sono presenti eventi `digProgrStatus` negli stati *booked*, *sent*, *accepted* e uno fra *delivered* o *notDelivered* più un evento uguale al `nextStatus` ricavato dal campo `Body` del messaggio JSON, l'evento può essere rimosso dalla DLQ, altrimenti viene considerato `toKeep`
-   * Il caso limite in cui sono presenti gli stati *booked*, *sent*, *accepted* e uno fra *delivered* o *notDelivered* ma non un evento uguale al `nextStatus` viene classificato come `problemFound`
+   * Se sono presenti eventi `digProgrStatus` negli stati *booked*, *sent*, *accepted* e uno fra *delivered* o *notDelivered*, l'evento può essere rimosso dalla DLQ, altrimenti viene considerato `toKeep`
+   * Il caso specifico in cui sono presenti gli stati *booked*, *sent*, *accepted* e uno fra *delivered* o *notDelivered* ma non c'è corrispondenza fra l'attributo DynamoDB `statusRequest` ed il campo `nextStatus` nel messaggio JSON viene classificato come `problemFound`
    * Se si verificano errori nel processamento del messaggio o nella richiesta a DynamoDB, l'evento viene inserito fra gli `error`
 
 I messaggi processati dal dump vengono infine suddivisi nei seguenti file di output a seconda della classificazione in seguito all'analisi:

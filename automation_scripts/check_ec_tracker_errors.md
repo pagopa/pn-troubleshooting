@@ -36,19 +36,20 @@ aws sso login --profile sso_pn-confinfo-prod
 Esecuzione su tutti i canali di notificazione supportati:
 
 ```bash
-./check_ec_tracker_errors.sh -w <work-dir> -c all [--visibility-timeout] [--purge]
+./check_ec_tracker_errors.sh -w <work-dir> -c all [--visibility-timeout] [--env] [--purge]
 ```
 
 oppure per singola DLQ:
 
 ```bash
-./check_ec_tracker_errors.sh -w <work-dir> -c <channel> [--visibility-timeout] [--purge]
+./check_ec_tracker_errors.sh -w <work-dir> -c <channel> [--visibility-timeout] [--env] [--purge]
 ```
 
 Dove:
 
 - `-w, --work-dir`: (Obbligatorio) Directory di lavoro contenente le sottocartelle necessarie (dump_sqs, check-sent-paper-attachment, remove_from_sqs).
 - `-c, --channel-type`: (Obbligatorio) Canale di notificazione oggetto di analisi e pulizia.
+- `-e, --env`: (Opzionale) Ambiente destinazione (prod, test, uat, hotfix), il predefinito è prod.
 - `-t, --visibility-timeout`: (Opzionale) Timeout di visibilità dei messaggi sulla coda DLQ per gli script di dump e rimozione.
 - `--purge`: (Opzionale) Se specificato, rimuove i messaggi elaborati dalla coda DLQ dopo il timeout di visibilità.
 - `-h, --help`: Mostra il messaggio di aiuto.

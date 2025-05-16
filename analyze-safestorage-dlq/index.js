@@ -482,12 +482,7 @@ async function main() {
                         resolve();
                 })
         ]);
-    
-        const [confinfoAccountId, coreAccountId] = await Promise.all([
-                getAccountId(confinfoClient),
-                getAccountId(coreClient)
-        ]);
-    
+       
         const finalTimestamp = new Date().toISOString().replace(/:/g, '-').replace('.', '-');
         safeToDeleteFilename = `results/safe_to_delete_${queueName}_${finalTimestamp}.json`;
         needFurtherAnalysisFilename = `results/need_further_analysis_${queueName}_${finalTimestamp}.json`;
@@ -526,7 +521,6 @@ async function main() {
                         const s3Check = await checkS3Objects(
                                 confinfoClient,
                                 fileKey,
-                                confinfoAccountId,
                                 queueName,
                                 eventName
                         );

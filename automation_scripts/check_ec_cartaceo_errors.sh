@@ -2,10 +2,13 @@
 
 set -Eeuo pipefail
 
+SCRIPT_START_TIME=$(date +%s)
+
 usage() {
     cat <<EOF
-Usage: $(basename "$0") -w <work-dir> [-t <visibility-timeout>] [--purge]
+Usage: $(basename "$0") -w <work-dir> [-e <env>] [-t <visibility-timeout>] [--purge]
   -w, --work-dir           Working directory
+  -e, --env                Environment (prod, test, uat, hotfix). Default: prod
   -t, --visibility-timeout Visibility timeout in seconds (default: 30)
   --purge                  Purge events from the SQS queue
 EOF
@@ -18,6 +21,7 @@ STARTDIR=$(pwd)
 OUTPUTDIR="$STARTDIR/output/check_ec_cartaceo_errors"
 V_TIMEOUT=30
 PURGE=false
+ENV="prod"
 
 GENERATED_FILES=()
 
@@ -32,6 +36,10 @@ while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -w|--work-dir)
             WORKDIR="$2"
+            shift 2
+            ;;
+        -e|--env)
+            ENV="$2"
             shift 2
             ;;
         -t|--visibility-timeout)
@@ -56,11 +64,41 @@ if [[ -z "$WORKDIR" ]]; then
     usage
 fi
 
+# Validate ENV
+case "$ENV" in
+    prod|test|uat|hotfix) ;;
+    *)
+        echo "Unsupported environment: $ENV"
+        usage
+        ;;
+esac
+
+# Set AWS profile and envName
+case "$ENV" in
+    prod)
+        AWS_PROFILE="sso_pn-confinfo-prod"
+        ENV_NAME="prod"
+        ;;
+    test)
+        AWS_PROFILE="sso_pn-confinfo-test"
+        ENV_NAME="test"
+        ;;
+    uat)
+        AWS_PROFILE="sso_pn-confinfo-uat"
+        ENV_NAME="uat"
+        ;;
+    hotfix)
+        AWS_PROFILE="sso_pn-confinfo-hotfix"
+        ENV_NAME="hotfix"
+        ;;
+esac
+
 mkdir -p "$OUTPUTDIR"
 
 echo "Working directory: $(realpath "$WORKDIR")"
 echo "Starting directory: $STARTDIR"
 echo "Output directory: $(realpath "$OUTPUTDIR")"
+echo "Environment: $ENV"
 echo "Visibility Timeout: $V_TIMEOUT seconds"
 
 #############################################
@@ -73,10 +111,10 @@ if [[ ! -d "$WORKDIR/dump_sqs" ]]; then
     exit 1
 fi
 cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1; }
-node dump_sqs.js --awsProfile sso_pn-confinfo-prod --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
+node dump_sqs.js --awsProfile "$AWS_PROFILE" --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
 # Get the most recent dump file
-ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*" -exec ls -t1 {} + | head -1)
+ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
 if [[ -z "$ORIGINAL_DUMP" ]]; then
   echo "No dump file found. Exiting."
   exit 1
@@ -103,7 +141,7 @@ for file in counter.json error.json fromconsolidatore.json toconsolidatore.json 
 done
 
 BASENAME=$(basename "${ORIGINAL_DUMP%.json}")
-RESULTSDIR="$WORKDIR/check_status_request/results"
+RESULTSDIR="$WORKDIR/check_status_request/result"
 REQUEST_IDS_LIST="$WORKDIR/check_status_request/${BASENAME}_all_request_ids.txt"
 jq -r '.[] | .Body | fromjson | .requestIdx' "$ORIGINAL_DUMP" > "$REQUEST_IDS_LIST"
 REQUEST_IDS_LIST=$(realpath "$REQUEST_IDS_LIST")
@@ -113,7 +151,7 @@ echo "Extracted requestIdx values to: $REQUEST_IDS_LIST"
 #############################################################
 # Step 3: Check request status on pn-EcRichiesteMetadati    #
 #############################################################
-node index.js --envName prod --fileName "$REQUEST_IDS_LIST" 1>/dev/null
+node index.js --envName "$ENV_NAME" --fileName "$REQUEST_IDS_LIST" 1>/dev/null
 
 # Assume that the node script produces an error.json file in this folder.
 ERROR_JSON="$WORKDIR/check_status_request/error.json"
@@ -129,7 +167,7 @@ GENERATED_FILES+=("$WORKDIR/check_status_request/${BASENAME}_counter.json")
 ###########################################################
 # Step 4: Convert the original dump to JSONLine format    #
 ###########################################################
-JSONLINE_DUMP="$WORKDIR/check_status_request/${BASENAME}.jsonline"
+JSONLINE_DUMP="$WORKDIR/check_status_request/${BASENAME}.jsonl"
 jq -c '.[]' "$ORIGINAL_DUMP" > "$JSONLINE_DUMP"
 JSONLINE_DUMP=$(realpath "$JSONLINE_DUMP")
 GENERATED_FILES+=("$JSONLINE_DUMP")
@@ -155,7 +193,7 @@ echo "Total requestIds in error status (not to remove): $(wc -l < "$ERROR_REQUES
 #######################################################
 # Step 6: Filter out events from requests in error    #
 #######################################################
-FILTERED_DUMP="$WORKDIR/check_status_request/${BASENAME}_filtered.jsonline"
+FILTERED_DUMP="$WORKDIR/check_status_request/${BASENAME}_filtered.jsonl"
 grep -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
 FILTERED_DUMP=$(realpath "$FILTERED_DUMP")
 GENERATED_FILES+=("$FILTERED_DUMP")
@@ -177,8 +215,8 @@ if $PURGE; then
     echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
-    node index.js --account confinfo --envName prod --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
-    find "$RESULTSDIR" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*.jsonline_result.json" | xargs rm
+    node index.js --account confinfo --envName "$ENV_NAME" --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
+    find "$RESULTSDIR" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*.jsonl_result.json" | xargs rm
     echo "Events purged from the SQS queue."
 fi
 

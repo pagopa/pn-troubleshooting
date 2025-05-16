@@ -12,6 +12,7 @@ const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageComma
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQueryResultsCommand: AthenaGetQueryResultsCommand } = require("@aws-sdk/client-athena");
 const { SSMClient, StartSessionCommand, TerminateSessionCommand } = require("@aws-sdk/client-ssm");
+const { EC2Client } = require("@aws-sdk/client-ec2");
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
 const { sleep } = require("./utils");
@@ -88,9 +89,12 @@ class AwsClientsWrapper {
     this._eventBridgeClient = this.ssoProfile ? new EventBridgeClient(awsClientCfg(this.ssoProfile)) : new EventBridgeClient();
   }
 
-  // ECS
   _initECS() {
     this._ecsClient = this.ssoProfile ? new ECSClient(awsClientCfg(this.ssoProfile)) : new ECSClient();
+  }
+
+  _initEC2() {
+    this._ec2Client = this.ssoProfile ? new EC2Client(awsClientCfg(this.ssoProfile)) : new EC2Client();
   }
 
   _initAthena() {

@@ -47,13 +47,14 @@ Esecuzione su tutte le DLQ supportate:
 oppure per singola DLQ:
 
 ```bash
-./check_safestorage_dlq.sh -w <work-dir> -q <queue> [--visibility-timeout] [--purge]
+./check_safestorage_dlq.sh -w <work-dir> -q <queue> [--visibility-timeout] [--env] [--purge]
 ```
 
 Dove:
 
 - `-w, --work-dir`: (Obbligatorio) Directory di lavoro contenente le sottocartelle necessarie (dump_sqs, analyze-safestorage-dlq, remove_from_sqs).
 - `-q, --queue`: (Obbligatorio) Coda DLQ di SS oggetto di analisi e pulizia.
+- `-e, --env`: (Opzionale) Ambiente destinazione (prod, test, uat, hotfix), il predefinito è prod.
 - `-t, --visibility-timeout`: (Opzionale) Timeout di visibilità dei messaggi sulla coda DLQ per gli script di dump e rimozione.
 - `--purge`: (Opzionale) Se specificato, rimuove i messaggi elaborati dalla coda DLQ dopo il timeout di visibilità.
 - `-h, --help`: Mostra il messaggio di aiuto.

@@ -33,6 +33,7 @@ check_status_request/*.json
 false_negative_ec_tracker/*.json
 !false_negative_ec_tracker/package.json
 !false_negative_ec_tracker/package-lock.json
+ss-manage-retention/.env
 
 ### Rstudio ###
 .Rproj.user
