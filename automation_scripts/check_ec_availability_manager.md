@@ -28,13 +28,14 @@ aws sso login --profile sso_pn-confinfo-prod
 ### Esecuzione Script
 
 ```bash
-./check_ec_availability_manager.sh -w <work-dir> [--visibility-timeout] [--purge]
+./check_ec_availability_manager.sh -w <work-dir> [--visibility-timeout] [--env] [--purge]
 ```
 
 Dove:
 
 - `-w, --work-dir`: (Obbligatorio) Directory di lavoro contenente le sottocartelle necessarie (dump_sqs, check-sent-paper-attachment, remove_from_sqs).
 - `-t, --visibility-timeout`: (Opzionale) Timeout di visibilità dei messaggi sulla coda DLQ per gli script di dump e rimozione.
+- `-e, --env`: (Opzionale) Ambiente destinazione (prod, test, uat, hotfix), il predefinito è prod.
 - `--purge`: (Opzionale) Se specificato, rimuove i messaggi elaborati dalla coda DLQ dopo il timeout di visibilità.
 - `-h, --help`: Mostra il messaggio di aiuto.
 
