@@ -6,7 +6,6 @@ Script di verifica stato di invio dei PN_PAPER_ATTACHMENT.
 
 * [Descrizione](#descrizione)
 * [Installazione](#installazione)
-  * [Prerequisiti](#prerequisiti)
 * [Utilizzo](#utilizzo)
   * [Preparazione](#preparazione)
   * [Esecuzione](#esecuzione)
@@ -29,10 +28,6 @@ I messaggi processati dal dump vengono infine suddivisi nei seguenti file di out
 * `results/safe_to_delete_${queueName}_${date}.json`: messaggi che hanno superato il controllo e che possono essere rimossi dalla DLQ
 
 ## Installazione
-
-### Prerequisiti
-
-Lo script è stato testato con Node LTS v22.14.0
 
 ```bash
 npm install

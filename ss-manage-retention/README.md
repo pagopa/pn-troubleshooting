@@ -28,12 +28,14 @@ Nella seconda modalità, lo script esegue le seguenti operazioni aggiuntive:
 ## Prerequisiti
 
 * Node.js >= 18.0.0
-* File .env locale con le variabili d'ambiente necessarie
+* File CSV con i documenti da verificare
+* Opzionalmente, un file .env locale con le seguenti variabili d'ambiente valorizzate:
   * SS_ALB_ENDPOINT=
-  * SSM_FORWARD_PORT=880
+  * SSM_FORWARD_PORT=
   * SSM_LOCAL_PORT=
   * SS_BASE_URL=
-* File CSV con i documenti da verificare
+
+Se il file .env è assente, lo script utilizza dei valori predefiniti già impostati.
 
 ## Installazione
 
