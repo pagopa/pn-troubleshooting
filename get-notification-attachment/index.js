@@ -203,6 +203,8 @@ async function main() {
     const withoutDeleteMarkersFile = path.join(resultsDir, `restored_without_delete_markers_${timestamp}.txt`);
     let deleteMarkersFound = 0, noDeleteMarkers = 0, dynamoUpdateErrors = 0;
     let current = 0;
+
+    const docKeysToUpdate = [];
     for (const iun of iuns) {
       current++;
       printProgress(current, total);
@@ -218,9 +220,20 @@ async function main() {
         appendFileSync(withoutDeleteMarkersFile, `${iun}\n`);
         noDeleteMarkers++;
       }
+      docKeysToUpdate.push({ iun, documentKey });
+    }
+
+    console.log('\nWaiting 30 seconds before updating DynamoDB document states...');
+    await new Promise(resolve => setTimeout(resolve, 30000));
+
+    current = 0;
+    for (const { iun, documentKey } of docKeysToUpdate) {
+      current++;
+      printProgress(current, docKeysToUpdate.length);
       const updated = await updateDocumentState(confinfoClient, documentKey);
       if (!updated) dynamoUpdateErrors++;
     }
+
     printSummary({
       total,
       deleteMarkersFound,
