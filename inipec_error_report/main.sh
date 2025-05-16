@@ -32,17 +32,18 @@ EOF
     exit 0
 fi
 
+echo -e "\n --> Obtaining 'pn-national_registry_gateway_inputs-DLQ' last redrive date..."
 REDRIVE_DATE=$(_lastRedriveDate)
 
 # Ask if last redrive was executed yesterday
 ANSW=""
-while [ "$ANSW" != "yes" ] && [ "$ANSW" != "no" ]
+while [ "$ANSW" != "y" ] && [ "$ANSW" != "n" ]
 do
     echo ""
     read -sp "IMPORTANT: Last redrive was executed in date \"${REDRIVE_DATE}\". Continue? [y/n]: " ANSW
     if [ "$ANSW" == "n" ]
     then
-        echo -e "\nExit\n"
+        echo -e "\n\nExit.\n"
         exit 0
     fi
 done
@@ -53,7 +54,7 @@ jq -c '.[]' $SQS_DUMP_FILE > INLINE_${SQS_DUMP_FILE}
 echo -e "\n --> Executing check_nr_response script..."
 node ../check_nr_response/index.js \
     --env $ENV \
-    --sqsDumpFile INLINE_${SQS_DUMP_FILE} | tee OUTPUT_${SQS_DUMP_FILE}
+    --sqsDumpFile INLINE_${SQS_DUMP_FILE} > OUTPUT_${SQS_DUMP_FILE}
 
 echo -e "\n --> Cleaning and sorting output file..."
 sed -i '1,4d' OUTPUT_${SQS_DUMP_FILE}
@@ -66,12 +67,13 @@ jq -s '.[] | select(.approxElapsedDaysFromNow >= 5 and .isNrResponsePresent == f
     jq -s '. | sort_by(.approxElapsedDaysFromNow) | reverse' | \
     jq -c '.[]' > SORTED_${SQS_DUMP_FILE}
 
-echo -e "\n --> Obtain last redrive date..."
-
-echo -e "\n --> Obtain report..."
+echo -e "\n --> Obtaining report..."
 node index.js \
       --env $ENV \
       --inputFile SORTED_${SQS_DUMP_FILE} \
       --redriveDate $REDRIVE_DATE
+
+echo -e "\n --> Cleaning temporary files..."
+rm INLINE_${SQS_DUMP_FILE} OUTPUT_${SQS_DUMP_FILE} SORTED_${SQS_DUMP_FILE}
       
-echo -e "\n --> Done.\n"
+echo -e "\n --> Done. Report file is available into the ./results folder.\n"

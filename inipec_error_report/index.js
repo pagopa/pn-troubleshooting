@@ -32,7 +32,7 @@ async function main() {
 
   function _checkingParameters(args, parsedArgs) {
 
-    const usage =  `
+    const usage = `
     Usage: 
     
     node index.js \\
@@ -42,7 +42,7 @@ async function main() {
       --redriveDate <YYYY-MM-DDTHH:MM+02:00>
       
       `
-        
+
     // Verifica se un argomento è stato inserito oppure inserito con valore vuoto
     args.forEach(el => {
       if (el.mandatory && !parsedArgs.values[el.name]) {
@@ -54,10 +54,10 @@ async function main() {
   }
 
   function createOutputFile() {
-      mkdirSync(join(__dirname, "results"), { recursive: true });
-      const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
-      const resultPath = join(__dirname, "results", 'inipec_error_report_' + dateIsoString + '.json');
-      return resultPath
+    mkdirSync(join(__dirname, "results"), { recursive: true });
+    const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
+    const resultPath = join(__dirname, "results", 'inipec_error_report_' + dateIsoString + '.json');
+    return resultPath
   }
 
   async function _createInputFileCIDArray(inputFile) {
@@ -68,8 +68,12 @@ async function main() {
     for await (const line of inputFileHandler.readLines()) {
 
       const parsedLine = JSON.parse(line) // ogni linea è un JSON inline
-      cidArray.push(parsedLine.correlationId)
-
+      const obj = {
+        correlationId: parsedLine.correlationId,
+        approxElapsedDaysFromNow: parsedLine.approxElapsedDaysFromNow,
+        iun: parsedLine.iun
+      }
+      cidArray.push(obj)
     }
     inputFileHandler?.close()
     return cidArray
@@ -104,7 +108,7 @@ async function main() {
   _checkingParameters(args, parsedArgs)
 
   const outputFile = createOutputFile();
-  outputFileHandler = openSync(outputFile,'a'); // Se il file non esiste verrà creato
+  outputFileHandler = openSync(outputFile, 'a'); // Se il file non esiste verrà creato
 
   const dynamoDbClient = new AwsClientsWrapper("core", env)
   dynamoDbClient._initDynamoDB()
@@ -137,22 +141,27 @@ async function main() {
 
       // Se il correlationId impattato è tra quelli estratti da check_nr_response -->
       // stampa in output pollingId e taxId
-     
-      if (inputFileCidArray.includes(correlationId)) {
 
-        const outputObj = {
-          pollingId: _extractPollingId(batchId, statusIndexResult),
-          taxId: cf // Codice Fiscale destinatario notifica
-        }
+      for (const item of inputFileCidArray) {
+        if (item.correlationId.match(correlationId)?.[0]) {
 
-        const output = JSON.stringify(outputObj)
-        appendFileSync(outputFileHandler,output + '\n')
-        
-        if (!printed.includes(output)){
-          printed.push(output)
-          console.log(output)
+          const outputObj = {
+            iun: item.iun,
+            pollingId: _extractPollingId(batchId, statusIndexResult),
+            taxId: cf, // Codice Fiscale destinatario notifica
+            approxElapsedDaysFromNow: item.approxElapsedDaysFromNow
+          }
+
+          const output = JSON.stringify(outputObj)
+          appendFileSync(outputFileHandler, output + '\n')
+
+          if (!printed.includes(output)) {
+            printed.push(output)
+            console.log(output)
+          }
         }
       }
+      // ----------------------------------------------
     }
   }
 
