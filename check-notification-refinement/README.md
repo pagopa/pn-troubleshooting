@@ -30,7 +30,7 @@ Lo script esegue la verifica di una lista di IUN per determinare se la relativa 
 4. Scrive quattro file di output nella cartella `results/`, ciascuno contenente la lista degli IUN per categoria:
    * Non perfezionata
    * Perfezionata da più di 120 giorni
-   * Perfezionata da meno di 120 giorni
+   * Perfezionata da meno di 120 giorni (con scadenza dei 120 giorni esatti dal perfezionamento)
    * Errore
    I file sono nominati con un timestamp dell'esecuzione.
 
@@ -81,5 +81,5 @@ Al termine dell'esecuzione, i risultati saranno disponibili nella cartella `resu
 
 * `unrefined_<timestamp>.txt`
 * `refined_120plus_<timestamp>.txt`
-* `refined_120minus_<timestamp>.txt`
+* `refined_120minus_<timestamp>.csv`
 * `error_<timestamp>.txt`

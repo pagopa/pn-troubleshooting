@@ -5,7 +5,7 @@ Script per la verifica e il ripristino degli allegati delle notifiche tramite IU
 ## Tabella dei Contenuti
 
 * [Descrizione](#descrizione)
-* [Utilizo](#installazione)
+* [Utilizzo](#utilizzo)
   * [Preparazione](#preparazione)
   * [Esecuzione](#esecuzione)
   * [Modalità Ripristino](#modalità-ripristino)
