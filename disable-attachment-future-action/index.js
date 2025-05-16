@@ -48,14 +48,22 @@ Parameters:
     return args;
 }
 
-function printSummary(stats, refinedPath, unrefinedPath) {
+function printSummary(stats, paths) {
     console.log('\n=== Execution Summary ===');
     console.log(`\nTotal IUNs processed: ${stats.total}`);
-    console.log(`Refined IUNs: ${stats.refined}`);
-    console.log(`Unrefined IUNs: ${stats.unrefined}`);
+    console.log(`  - Future actions disabled: ${stats.total_disabled}`);
+    console.log(`  - Future actions NOT disabled: ${stats.total_not_disabled}`);
+    console.log(`\nRefined IUNs: ${stats.refined}`);
+    console.log(`  - Future actions disabled: ${stats.refined_disabled}`);
+    console.log(`  - Future actions NOT disabled: ${stats.refined_not_disabled}`);
+    console.log(`\nUnrefined IUNs: ${stats.unrefined}`);
+    console.log(`  - Future actions disabled: ${stats.unrefined_disabled}`);
+    console.log(`  - Future actions NOT disabled: ${stats.unrefined_not_disabled}`);
     console.log('\nResults written to:');
-    console.log(`- Refined IUNs: ${refinedPath}`);
-    console.log(`- Unrefined IUNs: ${unrefinedPath}`);
+    console.log(`- Refined IUNs (future actions disabled): ${paths.refinedDisabledPath}`);
+    console.log(`- Refined IUNs (future actions NOT disabled): ${paths.refinedNotDisabledPath}`);
+    console.log(`- Unrefined IUNs (future actions disabled): ${paths.unrefinedDisabledPath}`);
+    console.log(`- Unrefined IUNs (future actions NOT disabled): ${paths.unrefinedNotDisabledPath}`);
 }
 
 async function queryTimeline(awsClient, iun) {
@@ -84,17 +92,12 @@ async function disableFutureActions(awsClient, iun, isRefined) {
         for (const action of futureActions.Items) {
             const item = unmarshall(action);
             if (item.actionId?.startsWith('check_attachment_retention_iun')) {
-                await awsClient._dynamoClient.updateItem({
-                    TableName: 'pn-FutureAction',
-                    Key: {
-                        actionId: { S: item.actionId },
-                        timeSlot: { S: item.timeSlot }
-                    },
-                    UpdateExpression: 'SET logicalDeleted = :deleted',
-                    ExpressionAttributeValues: {
-                        ':deleted': { BOOL: true }
-                    }
-                });
+                await awsClient._updateItem(
+                    'pn-FutureAction',
+                    { actionId: item.actionId, timeSlot: item.timeSlot },
+                    { logicalDeleted: { codeAttr: '#logicalDeleted', codeValue: ':deleted', value: true } },
+                    'SET'
+                );
                 updated = true;
             }
         }
@@ -112,22 +115,16 @@ async function disableFutureActions(awsClient, iun, isRefined) {
             const item = unmarshall(action);
             if (item.type === 'CHECK_ATTACHMENT_RETENTION') {
                 try {
-                    await awsClient._dynamoClient.updateItem({
-                        TableName: 'pn-FutureAction',
-                        Key: {
-                            actionId: { S: item.actionId },
-                            timeSlot: { S: item.timeSlot }
+                    await awsClient._updateItem(
+                        'pn-FutureAction',
+                        { actionId: item.actionId, timeSlot: item.timeSlot },
+                        { 
+                            logicalDeleted: { codeAttr: '#logicalDeleted', codeValue: ':deleted', value: true },
+                            type: { codeAttr: '#type', codeValue: ':typeVal', value: 'CHECK_ATTACHMENT_RETENTION' }
                         },
-                        UpdateExpression: 'SET logicalDeleted = :deleted',
-                        ConditionExpression: '#type = :typeVal',
-                        ExpressionAttributeNames: {
-                            '#type': 'type'
-                        },
-                        ExpressionAttributeValues: {
-                            ':deleted': { BOOL: true },
-                            ':typeVal': { S: 'CHECK_ATTACHMENT_RETENTION' }
-                        }
-                    });
+                        'SET',
+                        '#type = :typeVal'
+                    );
                     updated = true;
                 } catch (e) {
                     if (e.name === 'ConditionalCheckFailedException') {
@@ -144,7 +141,17 @@ async function disableFutureActions(awsClient, iun, isRefined) {
 async function main() {
     try {
         const args = validateArgs();
-        const stats = { total: 0, refined: 0, unrefined: 0 };
+        const stats = {
+            total: 0,
+            refined: 0,
+            unrefined: 0,
+            total_disabled: 0,
+            total_not_disabled: 0,
+            refined_disabled: 0,
+            refined_not_disabled: 0,
+            unrefined_disabled: 0,
+            unrefined_not_disabled: 0
+        };
         const awsClient = new AwsClientsWrapper('core', args.values.envName);
         awsClient._initDynamoDB();
 
@@ -159,10 +166,15 @@ async function main() {
         const timestamp = new Date().toISOString().replace(/:/g, '-').replace('.', '-');
         const resultsDir = path.join(__dirname, 'results');
         mkdirSync(resultsDir, { recursive: true });
-        const refinedPath = path.join(resultsDir, `refined_iuns_${timestamp}.txt`);
-        const unrefinedPath = path.join(resultsDir, `unrefined_iuns_${timestamp}.txt`);
-        writeFileSync(refinedPath, '');
-        writeFileSync(unrefinedPath, '');
+
+        const refinedDisabledPath = path.join(resultsDir, `refined_iuns_disabled_${timestamp}.txt`);
+        const refinedNotDisabledPath = path.join(resultsDir, `refined_iuns_not_disabled_${timestamp}.txt`);
+        const unrefinedDisabledPath = path.join(resultsDir, `unrefined_iuns_disabled_${timestamp}.txt`);
+        const unrefinedNotDisabledPath = path.join(resultsDir, `unrefined_iuns_not_disabled_${timestamp}.txt`);
+        writeFileSync(refinedDisabledPath, '');
+        writeFileSync(refinedNotDisabledPath, '');
+        writeFileSync(unrefinedDisabledPath, '');
+        writeFileSync(unrefinedNotDisabledPath, '');
 
         let progress = 0;
         for (const iun of iuns) {
@@ -170,19 +182,43 @@ async function main() {
             process.stdout.write(`\rProcessing IUN ${progress} of ${stats.total}`);
             const timelineItems = await queryTimeline(awsClient, iun);
             const isRefined = hasRelevantCategory(timelineItems);
-            const updated = await disableFutureActions(awsClient, iun, isRefined);
-            if (updated) {
-                if (isRefined) {
-                    writeFileSync(refinedPath, iun + '\n', { flag: 'a' });
-                    stats.refined++;
+            let disabled = false;
+            try {
+                disabled = await disableFutureActions(awsClient, iun, isRefined);
+            } catch (e) {
+                console.error(`\nError disabling future actions for IUN ${iun}:`, e);
+            }
+            if (isRefined) {
+                stats.refined++;
+                if (disabled) {
+                    writeFileSync(refinedDisabledPath, iun + '\n', { flag: 'a' });
+                    stats.refined_disabled++;
+                    stats.total_disabled++;
                 } else {
-                    writeFileSync(unrefinedPath, iun + '\n', { flag: 'a' });
-                    stats.unrefined++;
+                    writeFileSync(refinedNotDisabledPath, iun + '\n', { flag: 'a' });
+                    stats.refined_not_disabled++;
+                    stats.total_not_disabled++;
+                }
+            } else {
+                stats.unrefined++;
+                if (disabled) {
+                    writeFileSync(unrefinedDisabledPath, iun + '\n', { flag: 'a' });
+                    stats.unrefined_disabled++;
+                    stats.total_disabled++;
+                } else {
+                    writeFileSync(unrefinedNotDisabledPath, iun + '\n', { flag: 'a' });
+                    stats.unrefined_not_disabled++;
+                    stats.total_not_disabled++;
                 }
             }
         }
         process.stdout.write('\n');
-        printSummary(stats, refinedPath, unrefinedPath);
+        printSummary(stats, {
+            refinedDisabledPath,
+            refinedNotDisabledPath,
+            unrefinedDisabledPath,
+            unrefinedNotDisabledPath
+        });
     } catch (error) {
         console.error('Error during execution:', error);
         process.exit(1);
