@@ -92,9 +92,12 @@ function daysBetween(date1, date2) {
 async function queryTimelineItems(dynamoDBClient, iun) {
     const command = new QueryCommand({
         TableName: 'pn-Timelines',
-        KeyConditionExpression: 'iun = :iun',
+        KeyConditionExpression: "#k = :k",
+        ExpressionAttributeNames: {
+            "#k": "iun"
+        },
         ExpressionAttributeValues: {
-            ':iun': { S: iun }
+            ":k": { S: iun }
         }
     });
     const result = await dynamoDBClient.send(command);
