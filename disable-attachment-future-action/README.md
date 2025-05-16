@@ -1,6 +1,6 @@
 # Disable Attachment Future Action
 
-Script per la gestione logica delle azioni future relative ad allegati di notifiche perfezionate.
+Script per la disabilitazione delle azioni future relative ad allegati di notifiche perfezionate o non perfezionate.
 
 ## Tabella dei Contenuti
 
@@ -9,18 +9,19 @@ Script per la gestione logica delle azioni future relative ad allegati di notifi
 * [Utilizzo](#utilizzo)
   * [Esecuzione](#esecuzione)
   * [Formato Output](#formato-output)
+  * [Statistiche di Esecuzione](#statistiche-di-esecuzione)
 
 ## Descrizione
 
 Lo script esegue le seguenti operazioni:
 
-1. Legge in input il dump dei messaggi dalla coda DLQ `pn-delivery_push_actions-DLQ` come prelevati dallo script [dump_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/dump_sqs)
-2. Per ogni messaggio di tipo `CHECK_ATTACHMENT_RETENTION`:
-   * Estrae lo IUN dal messaggio
-   * Verifica nella tabella `pn-Timelines` la presenza di eventi con categoria REFINEMENT, NOTIFICATION_VIEWED o NOTIFICATION_CANCELLED
-   * Se trovati, aggiorna le azioni future nella tabella `pn-FutureAction` impostando logicalDeleted a true per quelle che iniziano con "check_attachment_retention_iun"
-
-I messaggi elaborati vengono salvati in un file JSON contenente gli MD5 necessari per la successiva rimozione dalla coda DLQ.
+1. Legge in input un file TXT contenente una lista di IUN (uno per riga).
+2. Per ogni IUN:
+   * Interroga la tabella `pn-Timelines` per verificare la presenza di almeno un evento con categoria `REFINEMENT` o `NOTIFICATION_VIEWED`.
+   * Se presente almeno un evento di queste categorie (IUN perfezionato):
+     * Aggiorna nella tabella `pn-FutureAction` tutte le azioni future con `actionId` che inizia per `check_attachment_retention_iun` impostando l'attributo `logicalDeleted` a `true`.
+   * Se non è presente nessun evento di queste categorie (IUN non perfezionatos):
+     * Aggiorna nella tabella `pn-FutureAction` tutte le azioni future con `type` esattamente uguale a `CHECK_ATTACHMENT_RETENTION` impostando l'attributo `logicalDeleted` a `true`.
 
 ## Installazione
 
@@ -33,40 +34,23 @@ npm install
 ### Esecuzione
 
 ```bash
-node index.js --envName <env> --dumpFile <path> --resultPath <path>
+node index.js --envName <env> --inputFile <path>
 ```
 
 oppure
 
 ```bash
-node index.js -e <env> -f <path> -r <path>
+node index.js -e <env> -f <path>
 ```
 
 Dove:
 
 * `<env>` è l'ambiente di destinazione, deve essere uno tra: dev, uat, test, prod, hotfix
-* `<dumpFile>` è il percorso al file JSON contenente i messaggi DLQ filtrati
-* `<resultPath>` è il percorso dove salvare il file dei risultati
+* `<inputFile>` è il percorso al file TXT contenente gli IUN da processare (uno per riga)
 
 ### Formato Output
 
-Il file di output contiene una riga per ogni messaggio elaborato nel formato:
+Al termine dell'esecuzione, vengono prodotti due file di testo:
 
-```json
-{"MD5OfBody": "abc123", "MD5OfMessageAttributes": "xyz789"} 
-```
-
-oppure, se non sono presenti attributi:
-
-```json
-{"MD5OfBody": "def456"}
-```
-
-### Statistiche di Esecuzione
-
-Al termine dell'elaborazione viene mostrato un riepilogo con:
-
-* Numero totale di messaggi processati
-* Numero di messaggi che hanno richiesto aggiornamenti
-* Numero di messaggi ignorati
-* Percorso del file di output
+* `results/refined_iuns_<timestamp>.txt`: contiene gli IUN di notifiche perfezionate per cui sono state disabilitate azioni future (presente almeno un evento di tipo `REFINEMENT` o `NOTIFICATION_VIEWED`).
+* `results/unrefined_iuns_<timestamp>.txt`: contiene gli IUN di notifiche non perfezionate per cui sono state disabilitate azioni future (nessun evento di tipo `REFINEMENT` o `NOTIFICATION_VIEWED`).
