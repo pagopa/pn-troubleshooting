@@ -125,10 +125,17 @@ async function removeDeleteMarkers(confinfoClient, bucket, documentKey, deleteMa
 
 async function updateDocumentState(confinfoClient, documentKey) {
   try {
+    const values = {
+      documentState: {
+        codeAttr: '#documentState',
+        codeValue: ':newdocumentState',
+        value: 'attached'
+      }
+    };
     await confinfoClient._updateItem(
       'pn-SsDocumenti',
       { documentKey },
-      { documentState: { value: { S: 'attached' } } },
+      values,
       'SET'
     );
     return true;
