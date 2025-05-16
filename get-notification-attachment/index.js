@@ -165,7 +165,7 @@ async function main() {
 
   if (!restore) {
     const csvFile = path.join(resultsDir, `notification_attachments_${timestamp}.csv`);
-    writeFileSync(csvFile, 'IUN,Attachment,DocumentLogicalState,DocumentState\n');
+    writeFileSync(csvFile, 'IUN,Attachment,DocumentLogicalState,DocumentState,hasDeleteMarker\n');
     let foundNotifications = 0, foundDocuments = 0;
     let current = 0;
     for (const iun of iuns) {
@@ -173,22 +173,24 @@ async function main() {
       printProgress(current, total);
       const notifRes = await getNotificationAttachment(coreClient, iun);
       if (!notifRes.found) {
-        appendFileSync(csvFile, `${iun},NOT_FOUND,,\n`);
+        appendFileSync(csvFile, `${iun},NOT_FOUND,,,,\n`);
         continue;
       }
       foundNotifications++;
       const documentKey = notifRes.documentKey || '';
       if (!documentKey) {
-        appendFileSync(csvFile, `${iun},NO_ATTACHMENT,,\n`);
+        appendFileSync(csvFile, `${iun},NO_ATTACHMENT,,,,\n`);
         continue;
       }
+      const deleteMarkers = await listDeleteMarkers(confinfoClient, mainBucket, documentKey);
+      const hasDeleteMarker = deleteMarkers.length > 0 ? 'true' : 'false';
       const docRes = await getDocumentStates(confinfoClient, documentKey);
       if (!docRes.found) {
-        appendFileSync(csvFile, `${iun},${documentKey},NOT_FOUND,NOT_FOUND\n`);
+        appendFileSync(csvFile, `${iun},${documentKey},NOT_FOUND,NOT_FOUND,${hasDeleteMarker}\n`);
         continue;
       }
       foundDocuments++;
-      appendFileSync(csvFile, `${iun},${documentKey},${docRes.documentLogicalState},${docRes.documentState}\n`);
+      appendFileSync(csvFile, `${iun},${documentKey},${docRes.documentLogicalState},${docRes.documentState},${hasDeleteMarker}\n`);
     }
     printSummary({
       total,
