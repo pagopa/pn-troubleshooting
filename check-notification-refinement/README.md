@@ -6,7 +6,6 @@ Script per la verifica dello stato di perfezionamento delle notifiche tramite IU
 
 * [Descrizione](#descrizione)
 * [Installazione](#installazione)
-  * [Prerequisiti](#prerequisiti)
 * [Utilizzo](#utilizzo)
   * [Preparazione](#preparazione)
   * [Esecuzione](#esecuzione)
@@ -35,10 +34,6 @@ Lo script esegue la verifica di una lista di IUN per determinare se la relativa 
    I file sono nominati con un timestamp dell'esecuzione.
 
 ## Installazione
-
-### Prerequisiti
-
-Lo script è stato testato con Node LTS v22.14.0
 
 ```bash
 npm install

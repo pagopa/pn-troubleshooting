@@ -5,7 +5,7 @@
     "description": "Script to analyze DLQ messages from SafeStorage events queue and validate related resources",
     "main": "index.js",
     "engines": {
-        "node": ">=16.0.0"
+        "node": ">=22.0.0"
     },
     "dependencies": {
         "@aws-sdk/client-dynamodb": "^3.0.0",
