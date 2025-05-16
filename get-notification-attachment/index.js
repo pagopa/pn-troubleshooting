@@ -10,13 +10,13 @@ const __dirname = path.dirname(__filename);
 
 function usage() {
   console.log(`
-Usage: node index.js --envName <env> --input <iuns.txt> [--restore]
+Usage: node index.js --envName <env> --inputFile <iuns.txt> [--restore]
 
 Options:
-  --envName, -e   Required. AWS environment (dev|uat|test|prod|hotfix)
-  --input, -i     Required. Path to TXT file with IUNs (one per line)
-  --restore, -r   Optional. If set, will restore S3 objects and update DynamoDB
-  --help, -h      Show this help
+  --envName, -e     Required. AWS environment (dev|uat|test|prod|hotfix)
+  --inputFile, -f   Required. Path to TXT file with IUNs (one per line)
+  --restore, -r     Optional. If set, will restore S3 objects and update DynamoDB
+  --help, -h        Show this help
 `);
 }
 
@@ -24,7 +24,7 @@ function parseInputArgs() {
   const args = parseArgs({
     options: {
       envName: { type: 'string', short: 'e' },
-      input: { type: 'string', short: 'i' },
+      inputFile: { type: 'string', short: 'f' },
       restore: { type: 'boolean', short: 'r' },
       help: { type: 'boolean', short: 'h' }
     },
@@ -34,15 +34,15 @@ function parseInputArgs() {
     usage();
     process.exit(0);
   }
-  if (!args.values.envName || !args.values.input) {
+  if (!args.values.envName || !args.values.inputFile) {
     usage();
     process.exit(1);
   }
   return args.values;
 }
 
-function readIuns(inputPath) {
-  const content = readFileSync(inputPath, 'utf-8');
+function readIuns(inputFilePath) {
+  const content = readFileSync(inputFilePath, 'utf-8');
   return content.split('\n').map(l => l.trim()).filter(Boolean);
 }
 
@@ -146,8 +146,8 @@ async function updateDocumentState(confinfoClient, documentKey) {
 
 async function main() {
   const args = parseInputArgs();
-  const { envName, input, restore } = args;
-  const iuns = readIuns(input);
+  const { envName, inputFile, restore } = args;
+  const iuns = readIuns(inputFile);
   const total = iuns.length;
   const resultsDir = ensureResultsDir();
   const timestamp = new Date().toISOString().replace(/:/g, '-').replace('.', '-');
@@ -165,7 +165,7 @@ async function main() {
 
   if (!restore) {
     const csvFile = path.join(resultsDir, `notification_attachments_${timestamp}.csv`);
-    writeFileSync(csvFile, 'IUN,Attachment,DocumentLogicalState,DocumentState,hasDeleteMarker\n');
+    writeFileSync(csvFile, 'IUN,Attachment,DocumentLogicalState,documentState,hasDeleteMarker\n');
     let foundNotifications = 0, foundDocuments = 0;
     let current = 0;
     for (const iun of iuns) {
