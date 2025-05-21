@@ -1,7 +1,7 @@
-const { AwsClientsWrapper } = require("../redrive_pnPaperError/libs/AwsClientWrapper");
+const { AwsClientsWrapper } = require("./libs/AwsClientWrapper");
 const { parseArgs } = require('util');
 const fs = require('fs');
-const { ApiClient } = require("../redrive_pnPaperError/libs/api");
+const { ApiClient } = require("./libs/api");
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config()
 const { unmarshall } = require("@aws-sdk/util-dynamodb")
@@ -85,7 +85,7 @@ function _prepareAttributes(requestId){
 }
 
 function skipRequestId(requestId, attempt) {
-  if(requestId.indexOf(attempt) < 0){
+  if(requestId.indexOf(attempt) > 0){
     console.log(`${requestId} skipped`)
     return true
   }
@@ -110,21 +110,6 @@ async function _prepareDataAndSendEvents(awsClient, requestId, queueUrl) {
   }
 }
 
-const urls = {
-  uat: {
-    pdv: 'https://api.uat.tokenizer.pdv.pagopa.it',
-    selfcare: 'https://api.uat.selfcare.pagopa.it'
-  },
-  hotfix: {
-    pdv: 'https://api.uat.tokenizer.pdv.pagopa.it',
-    selfcare: 'https://api.uat.selfcare.pagopa.it'
-  },
-  prod: {
-    pdv: 'https://api.tokenizer.pdv.pagopa.it',
-    selfcare: 'https://api.selfcare.pagopa.it'
-  }
-}
-
 const failedRequestIds = []
 
 async function main() {
@@ -144,7 +129,7 @@ async function main() {
       fileName: {
         type: "string", short: "t", default: undefined
       },
-      firstAttempt: {
+      firstAttempt: {  //ATTEMPT 0
         type: "boolean", short: "f", default: false
       },
     },
@@ -155,75 +140,45 @@ async function main() {
   
   console.log('Preparing data...')
   const queueUrl = await awsClient._getQueueUrl('pn-paper_channel_requests');
-  const apiKeys = await awsClient._getSecretKey('pn-PersonalDataVault-Secrets')
-  const baseUrlSelfcare = envName == 'prod' ? urls.prod.selfcare : urls.uat.selfcare
-  const baseUrlPDV = envName == 'prod' ? urls.prod.pdv: urls.uat.pdv
-  const secrets =  {
-    apiKeyPF: apiKeys.TokenizerApiKeyForPF,
-    apiKeyPG: apiKeys.SelfcareApiKeyForPG
-  }
 
   console.log('Reading from file...')
-
-
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   for(let i = 0; i < fileRows.length; i++){
     const requestId = fileRows[i]
     console.log('Handling requestId: ' + requestId)
 
-    if(firstAttempt) {
-      if (skipRequestId(requestId, "ATTEMPT_0")) {
-        continue
-      }
+    let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
+    let isDiscoveredAddress = res.some((e) => {
+      return unmarshall(e).addressType == 'DISCOVERED_ADDRESS'
+    })
+    if(isDiscoveredAddress){
+      console.log("Postal Flow. Preparing data...")
       await _prepareDataAndSendEvents(awsClient, requestId, queueUrl)
     }
     else {
-      if (skipRequestId(requestId, "ATTEMPT_1")) {
+      console.log("Registry Flow. Retrieving taxId..")
+      res = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
+      const paperRequestDeliveryData = unmarshall(res[0])
+      let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
+      data.statusCode != "PC002" ? data.statusCode = "PC002" : null
+      await awsClient._putRequest("pn-PaperRequestDelivery", data)
+      const { taxId } = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode)
+
+      if(!taxId){
+        console.error("TaxId not found for requestId " + requestId+ " and fiscalCode " + paperRequestDeliveryData.fiscalCode + " and receiverType " + paperRequestDeliveryData.receiverType)
+        failedRequestIds.push({ requestId: requestId, error: res })
         continue
       }
-      let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
-      let isDiscoveredAddress = res.some((e) => {
-        return unmarshall(e).addressType == 'DISCOVERED_ADDRESS'
-      })
-      if(isDiscoveredAddress){
-        console.log("Postal Flow. Preparing data...")
-        await _prepareDataAndSendEvents(awsClient, requestId)
+
+      const result = {
+        correlationId: paperRequestDeliveryData.correlationId,
+        taxId: taxId,
+        receiverType: paperRequestDeliveryData.receiverType
       }
-      else {
-        console.log("Registry Flow. Retrieving taxId..")
-        res = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
-        console.log(res)
-        const paperRequestDeliveryData = unmarshall(res[0])
-        let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
-        data.statusCode != "PC002" ? data.statusCode = "PC002" : null
-        await awsClient._putRequest("pn-PaperRequestDelivery", data)
-        let taxId;
-        if(paperRequestDeliveryData.receiverType == 'PF') {
-          res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlPDV, secrets.apiKeyPF)
-          taxId = res.pii
-        }
-        else {
-          res = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode, baseUrlSelfcare, secrets.apiKeyPG)
-          taxId = res.taxCode
-        }
-  
-        if(!taxId){
-          console.error("TaxId not found for requestId " + requestId+ " and fiscalCode " + paperRequestDeliveryData.fiscalCode + " and receiverType " + paperRequestDeliveryData.receiverType)
-          failedRequestIds.push({ requestId: requestId, error: res })
-          continue
-        }
-  
-        const result = {
-          correlationId: paperRequestDeliveryData.correlationId,
-          taxId: taxId,
-          receiverType: paperRequestDeliveryData.receiverType
-        }
-        console.log(result)
-        await ApiClient.sendNationalRegistriesRequest(result.taxId, result.correlationId, result.receiverType)
-      }
+      console.log(result)
+      await ApiClient.sendNationalRegistriesRequest(result.taxId, result.correlationId, result.receiverType)
     }
   }
-
 }
 
 main()
