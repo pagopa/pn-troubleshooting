@@ -158,6 +158,12 @@ async function main() {
         continue
       }
 
+      if(!paperRequestDeliveryData.correlationId){
+        console.error("CorrelationId not found for requestId " + requestId+ " and fiscalCode " + paperRequestDeliveryData.fiscalCode + " and receiverType " + paperRequestDeliveryData.receiverType)
+        failedRequestIds.push({ requestId: requestId, error: res })
+        continue
+      }
+
       const result = {
         correlationId: paperRequestDeliveryData.correlationId,
         taxId: taxId,
