@@ -77,19 +77,11 @@ function _prepareAttributes(requestId){
       "DataType": "String"
     },
     attempt : {
-      "StringValue": "0",
+      "StringValue": requestId.split("ATTEMPT_")[1],
       "DataType": "String"
     }
   }
   return attributes;
-}
-
-function skipRequestId(requestId, attempt) {
-  if(requestId.indexOf(attempt) > 0){
-    console.log(`${requestId} skipped`)
-    return true
-  }
-  return false
 }
 
 async function _prepareDataAndSendEvents(awsClient, requestId, queueUrl) {
@@ -116,8 +108,7 @@ async function main() {
 
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
-    { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "firstAttempt", mandatory: false, subcommand: [] },
+    { name: "fileName", mandatory: true, subcommand: [] }
   ]
   const values = {
     values: { envName, fileName, firstAttempt },
@@ -128,9 +119,6 @@ async function main() {
       },
       fileName: {
         type: "string", short: "t", default: undefined
-      },
-      firstAttempt: {  //ATTEMPT 0
-        type: "boolean", short: "f", default: false
       },
     },
   });  
