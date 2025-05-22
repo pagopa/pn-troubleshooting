@@ -14,6 +14,8 @@ const TAG_KEY = 'storage_freeze';
 const TAG_VALUE = 'PN_PAPER_ATTACHMENT';
 const endpoint = process.env.LOCALSTACK_ENDPOINT || null;
 
+const DRY_RUN = process.argv.includes('--dry-run');
+
 const s3Service = new S3Service(process.env.AWS_PROFILE, process.env.AWS_REGION, endpoint);
 
 const progressBar = new cliProgress.SingleBar({
@@ -62,10 +64,12 @@ async function listAllObjects() {
 
 async function cleanup() {
   console.log(`🟢 Avvio cleanup bucket "${BUCKET_NAME}"`);
+  if (DRY_RUN) {
+    console.log('⚠️ Modalità Dry Run attiva: nessun oggetto sarà eliminato.');
+  }
 
   const allObjects = await listAllObjects();
   const totalObjects = allObjects.length;
-
   let deletedObjects = 0;
 
   progressBar.start(totalObjects, 0);
@@ -75,24 +79,23 @@ async function cleanup() {
     const shouldDelete = (await hasTargetTag(obj.Key)) && (ageDays > RETENTION_DAYS);
 
     if (shouldDelete) {
-      await s3Service.s3Client.send(new DeleteObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: obj.Key,
-      }));
+      if (!DRY_RUN) {
+        await s3Service.s3Client.send(new DeleteObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: obj.Key,
+        }));
+      }
       deletedObjects++;
     }
 
     progressBar.increment();
-
-    // Simula un ritardo
-    // await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
   progressBar.stop();
 
-  console.log(`✅ Cleanup completato.`);
+  console.log(`✅ Cleanup ${DRY_RUN ? '(Dry Run) ' : ''}completato.`);
   console.log(`📌 Oggetti totali scansionati: ${totalObjects}`);
-  console.log(`🗑️ Oggetti eliminati: ${deletedObjects}`);
+  console.log(`🗑️ Oggetti da eliminare: ${deletedObjects}`);
   console.log(`📁 Oggetti mantenuti: ${totalObjects - deletedObjects}`);
 }
 

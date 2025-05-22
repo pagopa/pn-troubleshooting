@@ -80,6 +80,16 @@ Verifica che:
 * Gli oggetti più recenti siano mantenuti.
 
 ---
+## 🚩 Esecuzione Dry Run (simulazione)
+E' possibile eseguire lo script in modalità simulata (senza cancellare alcun oggetto), con il parametro `--dry-run`.
+
+```bash
+node index.js --dry-run
+```
+In questa modalità, lo script mostra lo stesso output della modalità standard, ma non effettua alcuna operazione di cancellazione reale.
+Questo tipo di esecuzione è particolarmente utile in ambiente di produzione.
+
+---
 
 ## Checklist finale
 
