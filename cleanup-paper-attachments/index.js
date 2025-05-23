@@ -1,7 +1,7 @@
 const dotenv = require('dotenv');
 const S3Service = require('./service/S3Service');
 const cliProgress = require('cli-progress');
-const { ListObjectsV2Command, GetObjectTaggingCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { ListObjectsV2Command, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
 dotenv.config();
 
@@ -10,8 +10,8 @@ const RETENTION_DAYS = process.env.RETENTION_DAYS !== undefined
     ? parseInt(process.env.RETENTION_DAYS)
     : 120;
 
-const TAG_KEY = 'storage_freeze';
-const TAG_VALUE = 'PN_PAPER_ATTACHMENT';
+const PREFIX_FILTER = 'ogg';
+const LIMIT = 3;
 const endpoint = process.env.LOCALSTACK_ENDPOINT || null;
 
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -29,26 +29,14 @@ function getObjectAgeDays(lastModified) {
   return Math.floor((today - new Date(lastModified)) / (1000 * 60 * 60 * 24));
 }
 
-async function hasTargetTag(key) {
-  try {
-    const tagging = await s3Service.s3Client.send(new GetObjectTaggingCommand({
-      Bucket: BUCKET_NAME,
-      Key: key,
-    }));
-    return tagging.TagSet.some(tag => tag.Key === TAG_KEY && tag.Value === TAG_VALUE);
-  } catch (e) {
-    console.error(`Errore tag per ${key}:`, e);
-    return false;
-  }
-}
-
-async function listAllObjects() {
+async function listObjectsWithPrefix() {
   let continuationToken = undefined;
   const allObjects = [];
 
   do {
     const response = await s3Service.s3Client.send(new ListObjectsV2Command({
       Bucket: BUCKET_NAME,
+      Prefix: PREFIX_FILTER,
       ContinuationToken: continuationToken,
     }));
 
@@ -63,20 +51,46 @@ async function listAllObjects() {
 }
 
 async function cleanup() {
-  console.log(`🟢 Avvio cleanup bucket "${BUCKET_NAME}"`);
+  console.log(``);
+  console.log(`CONFIGURAZIONE CLEANUP`);
+  console.log(`==================================================================`);
+  console.log(`🟢 Avvio cleanup bucket "${BUCKET_NAME}" per oggetti con prefisso "${PREFIX_FILTER}"`);
+  console.log(`⏱️ Età minima per eliminazione: ${RETENTION_DAYS} giorni`);
+
   if (DRY_RUN) {
-    console.log('⚠️ Modalità Dry Run attiva: nessun oggetto sarà eliminato.');
+    console.log('⚠️ ATTENZIONE: MODALITÀ SIMULAZIONE (DRY RUN) ATTIVATA. Nessun oggetto verrà eliminato.');
   }
 
-  const allObjects = await listAllObjects();
-  const totalObjects = allObjects.length;
+  if (LIMIT != null && LIMIT > -1) {
+    console.log(`⚠️ Limite di eliminazione impostato a ${LIMIT} oggetti.`);
+  } else {
+    console.log('⚠️ Nessun limite di eliminazione impostato.');
+  }
+
+  const filteredObjects = await listObjectsWithPrefix();
+  const totalObjects = filteredObjects.length;
   let deletedObjects = 0;
+
+  console.log(``)
+  console.log(``)
+  console.log(`📋 Trovati ${totalObjects} oggetti con prefisso "${PREFIX_FILTER}"`);
+
+  if (totalObjects === 0) {
+    console.log('✅ Nessun oggetto da processare.');
+    return;
+  }
 
   progressBar.start(totalObjects, 0);
 
-  for (const obj of allObjects) {
+  let scanCount = 0;
+  for (const obj of filteredObjects) {
+    if (LIMIT != null && LIMIT >= 0 && scanCount >= LIMIT) {
+      console.log(`     ⚠️ Limite di eliminazione (${LIMIT}) raggiunto.`);
+      break;
+    }
+
     const ageDays = getObjectAgeDays(obj.LastModified);
-    const shouldDelete = (await hasTargetTag(obj.Key)) && (ageDays > RETENTION_DAYS);
+    const shouldDelete = ageDays > RETENTION_DAYS;
 
     if (shouldDelete) {
       if (!DRY_RUN) {
@@ -89,13 +103,21 @@ async function cleanup() {
     }
 
     progressBar.increment();
+    scanCount++;
+
+    // delay
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   progressBar.stop();
 
-  console.log(`✅ Cleanup ${DRY_RUN ? '(Dry Run) ' : ''}completato.`);
-  console.log(`📌 Oggetti totali scansionati: ${totalObjects}`);
-  console.log(`🗑️ Oggetti da eliminare: ${deletedObjects}`);
+  console.log(`✅ Cleanup ${DRY_RUN ? '(Dry Run) ' : ' '}completato.`);
+  console.log(``);
+  console.log(``);
+  console.log(`RISULTATO ELABORAZIONE`);
+  console.log(`==================================================================`);
+  console.log(`📌 Oggetti con prefisso "${PREFIX_FILTER}": ${totalObjects}`);
+  console.log(`🗑️ Oggetti eliminati: ${deletedObjects}`);
   console.log(`📁 Oggetti mantenuti: ${totalObjects - deletedObjects}`);
 }
 
