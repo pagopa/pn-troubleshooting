@@ -1,6 +1,8 @@
 const S3Service = require('./service/S3Service');
 const cliProgress = require('cli-progress');
 const { ListObjectsV2Command, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const fs = require('fs');
+const path = require('path');
 
 // Parsing degli argomenti da linea di comando
 function parseArguments() {
@@ -14,7 +16,8 @@ function parseArguments() {
     limit: -1,
     localstackEndpoint: null,
     dryRun: false,
-    help: false
+    help: false,
+    logFile: null
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -50,6 +53,10 @@ function parseArguments() {
         config.localstackEndpoint = nextArg;
         i++;
         break;
+      case '--log-file':
+        config.logFile = nextArg;
+        i++;
+        break;
       case '--dry-run':
         config.dryRun = true;
         break;
@@ -79,6 +86,7 @@ OPZIONI FACOLTATIVE:
   --prefix-filter <prefisso>  Prefisso oggetti da filtrare (default: PN_PAPER_ATTACHMENT)
   --limit <numero>            Limite oggetti da eliminare (default: -1, nessun limite)
   --localstack-endpoint <url> Endpoint LocalStack per test locali
+  --log-file <percorso>       File di log per tracciare le eliminazioni (default: cleanup-log-TIMESTAMP.txt)
   --dry-run                   Modalità simulazione (nessuna eliminazione)
   --help                      Mostra questa guida
 
@@ -96,8 +104,8 @@ node index.js --aws-profile mio-profilo --aws-region eu-central-1 --bucket-name 
 # Test con LocalStack
 node index.js --aws-profile localstack --aws-region eu-central-1 --bucket-name test-bucket --localstack-endpoint http://localhost:4566
 
-# Prefisso personalizzato
-node index.js --aws-profile mio-profilo --aws-region eu-central-1 --bucket-name mio-bucket --prefix-filter CUSTOM_PREFIX
+# Prefisso personalizzato con log
+node index.js --aws-profile mio-profilo --aws-region eu-central-1 --bucket-name mio-bucket --prefix-filter CUSTOM_PREFIX --log-file ./my-cleanup.log
 `);
 }
 
@@ -122,6 +130,51 @@ function validateConfig(config) {
   }
 
   return true;
+}
+
+function initializeLog(config) {
+  // Genera nome file di log se non specificato
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+  const defaultLogFile = `cleanup-log-${timestamp}.txt`;
+  const logFile = config.logFile || defaultLogFile;
+  
+  // Crea la cartella logs se non esiste
+  const logDir = path.dirname(logFile);
+  if (logDir !== '.' && !fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+
+  // Scrive l'intestazione del log
+  const header = `CLEANUP PAPER ATTACHMENTS - ESECUZIONE
+========================================================
+Timestamp: ${new Date().toISOString()}
+AWS Profile: ${config.awsProfile}
+AWS Region: ${config.awsRegion}
+Bucket: ${config.bucketName}
+Prefisso: ${config.prefixFilter}
+Retention Days: ${config.retentionDays}
+Limite: ${config.limit === -1 ? 'Nessuno' : config.limit}
+Modalità: ${config.dryRun ? 'DRY RUN' : 'REALE'}
+${config.localstackEndpoint ? `LocalStack: ${config.localstackEndpoint}` : ''}
+========================================================
+
+`;
+
+  fs.writeFileSync(logFile, header);
+  return logFile;
+}
+
+function writeLogSummary(logFile, totalScanned, deletedFiles) {
+  const summary = `
+RIEPILOGO:
+Totale file scansionati: ${totalScanned}
+Totale file eliminati: ${deletedFiles.length}
+
+FILE ELIMINATI:
+${deletedFiles.length > 0 ? deletedFiles.map(file => `- ${file}`).join('\n') : 'Nessun file eliminato'}
+`;
+
+  fs.appendFileSync(logFile, summary);
 }
 
 const progressBar = new cliProgress.SingleBar({
@@ -158,6 +211,7 @@ async function listObjectsWithPrefix(s3Service, bucketName, prefixFilter) {
 
 async function cleanup(config) {
   const s3Service = new S3Service(config.awsProfile, config.awsRegion, config.localstackEndpoint);
+  const logFile = initializeLog(config);
 
   console.log(``);
   console.log(`CONFIGURAZIONE CLEANUP`);
@@ -166,6 +220,7 @@ async function cleanup(config) {
   console.log(`⏱️ Età minima per eliminazione: ${config.retentionDays} giorni`);
   console.log(`🌍 AWS Profile: ${config.awsProfile}`);
   console.log(`🌍 AWS Region: ${config.awsRegion}`);
+  console.log(`📄 File di log: ${logFile}`);
 
   if (config.localstackEndpoint) {
     console.log(`🔧 LocalStack Endpoint: ${config.localstackEndpoint}`);
@@ -184,6 +239,7 @@ async function cleanup(config) {
   const filteredObjects = await listObjectsWithPrefix(s3Service, config.bucketName, config.prefixFilter);
   const totalObjects = filteredObjects.length;
   let deletedObjects = 0;
+  const deletedFiles = [];
 
   console.log(``)
   console.log(``)
@@ -191,6 +247,7 @@ async function cleanup(config) {
 
   if (totalObjects === 0) {
     console.log('✅ Nessun oggetto da processare.');
+    writeLogSummary(logFile, 0, []);
     return;
   }
 
@@ -204,7 +261,7 @@ async function cleanup(config) {
     }
 
     const ageDays = getObjectAgeDays(obj.LastModified);
-    const shouldDelete = ageDays > config.retentionDays;
+    const shouldDelete = ageDays >= config.retentionDays;
 
     if (shouldDelete) {
       if (!config.dryRun) {
@@ -214,6 +271,7 @@ async function cleanup(config) {
         }));
       }
       deletedObjects++;
+      deletedFiles.push(obj.Key);
     }
 
     progressBar.increment();
@@ -224,6 +282,7 @@ async function cleanup(config) {
   }
 
   progressBar.stop();
+  writeLogSummary(logFile, scanCount, deletedFiles);
 
   console.log(`✅ Cleanup ${config.dryRun ? '(Dry Run) ' : ' '}completato.`);
   console.log(``);
@@ -233,6 +292,7 @@ async function cleanup(config) {
   console.log(`📌 Oggetti con prefisso "${config.prefixFilter}": ${totalObjects}`);
   console.log(`🗑️ Oggetti eliminati: ${deletedObjects}`);
   console.log(`📁 Oggetti mantenuti: ${totalObjects - deletedObjects}`);
+  console.log(`📄 Log salvato in: ${logFile}`);
 }
 
 (async () => {
