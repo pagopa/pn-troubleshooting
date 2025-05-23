@@ -135,45 +135,40 @@ async function main() {
     const requestId = fileRows[i]
     console.log('Handling requestId: ' + requestId)
     const isZeroAttempt = requestId.includes("ATTEMPT_0");
-
-    if(isZeroAttempt){
+    let isDiscoveredAddress = false
+    if(!isZeroAttempt) {
+      isDiscoveredAddress = res.some((e) => {
+        return unmarshall(e).addressType == 'DISCOVERED_ADDRESS'
+      })
+    }
+    if(isZeroAttempt || isDiscoveredAddress) {
       console.log("Postal Flow. Preparing data...")
       await _prepareDataAndSendEvents(awsClient, requestId, queueUrl)
     }
     else {
-      let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
-      let isDiscoveredAddress = res.some((e) => {
-        return unmarshall(e).addressType == 'DISCOVERED_ADDRESS'
-      })
-      if(isDiscoveredAddress){
-        console.log("Postal Flow. Preparing data...")
-        await _prepareDataAndSendEvents(awsClient, requestId, queueUrl)
+      console.log("Registry Flow. Retrieving taxId..")
+      res = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
+      const paperRequestDeliveryData = unmarshall(res[0])
+      let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
+      data.statusCode != "PC002" ? data.statusCode = "PC002" : null
+      await awsClient._putRequest("pn-PaperRequestDelivery", data)
+      const { taxId } = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode)
+
+      if(!taxId){
+        console.error("TaxId not found for requestId " + requestId+ " and fiscalCode " + paperRequestDeliveryData.fiscalCode + " and receiverType " + paperRequestDeliveryData.receiverType)
+        failedRequestIds.push({ requestId: requestId, error: res })
+        continue
       }
-      else {
-        console.log("Registry Flow. Retrieving taxId..")
-        res = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
-        const paperRequestDeliveryData = unmarshall(res[0])
-        let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
-        data.statusCode != "PC002" ? data.statusCode = "PC002" : null
-        await awsClient._putRequest("pn-PaperRequestDelivery", data)
-        const { taxId } = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode)
-  
-        if(!taxId){
-          console.error("TaxId not found for requestId " + requestId+ " and fiscalCode " + paperRequestDeliveryData.fiscalCode + " and receiverType " + paperRequestDeliveryData.receiverType)
-          failedRequestIds.push({ requestId: requestId, error: res })
-          continue
-        }
-  
-        let correlationId = paperRequestDeliveryData.correlationId ? paperRequestDeliveryData.correlationId : `NRG_ADDRESS_${requestId}`
-  
-        const result = {
-          correlationId: correlationId,
-          taxId: taxId,
-          receiverType: paperRequestDeliveryData.receiverType
-        }
-        console.log(result)
-        await ApiClient.sendNationalRegistriesRequest(result.taxId, result.correlationId, result.receiverType)
+
+      let correlationId = paperRequestDeliveryData.correlationId ? paperRequestDeliveryData.correlationId : `NRG_ADDRESS_${requestId}`
+
+      const result = {
+        correlationId: correlationId,
+        taxId: taxId,
+        receiverType: paperRequestDeliveryData.receiverType
       }
+      console.log(result)
+      await ApiClient.sendNationalRegistriesRequest(result.taxId, result.correlationId, result.receiverType)
     }
   }
 }
