@@ -137,6 +137,7 @@ async function main() {
     const isZeroAttempt = requestId.includes("ATTEMPT_0");
     let isDiscoveredAddress = false
     if(!isZeroAttempt) {
+      let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
       isDiscoveredAddress = res.some((e) => {
         return unmarshall(e).addressType == 'DISCOVERED_ADDRESS'
       })
