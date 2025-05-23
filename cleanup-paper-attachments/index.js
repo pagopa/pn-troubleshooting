@@ -1,22 +1,128 @@
-const dotenv = require('dotenv');
 const S3Service = require('./service/S3Service');
 const cliProgress = require('cli-progress');
 const { ListObjectsV2Command, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
-dotenv.config();
+// Parsing degli argomenti da linea di comando
+function parseArguments() {
+  const args = process.argv.slice(2);
+  const config = {
+    awsProfile: null,
+    awsRegion: null,
+    bucketName: null,
+    retentionDays: 120,
+    prefixFilter: 'PN_PAPER_ATTACHMENT',
+    limit: -1,
+    localstackEndpoint: null,
+    dryRun: false,
+    help: false
+  };
 
-const BUCKET_NAME = process.env.BUCKET_NAME;
-const RETENTION_DAYS = process.env.RETENTION_DAYS !== undefined
-    ? parseInt(process.env.RETENTION_DAYS)
-    : 120;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    const nextArg = args[i + 1];
 
-const PREFIX_FILTER = 'ogg';
-const LIMIT = 3;
-const endpoint = process.env.LOCALSTACK_ENDPOINT || null;
+    switch (arg) {
+      case '--aws-profile':
+        config.awsProfile = nextArg;
+        i++;
+        break;
+      case '--aws-region':
+        config.awsRegion = nextArg;
+        i++;
+        break;
+      case '--bucket-name':
+        config.bucketName = nextArg;
+        i++;
+        break;
+      case '--retention-days':
+        config.retentionDays = parseInt(nextArg);
+        i++;
+        break;
+      case '--prefix-filter':
+        config.prefixFilter = nextArg;
+        i++;
+        break;
+      case '--limit':
+        config.limit = parseInt(nextArg);
+        i++;
+        break;
+      case '--localstack-endpoint':
+        config.localstackEndpoint = nextArg;
+        i++;
+        break;
+      case '--dry-run':
+        config.dryRun = true;
+        break;
+      case '--help':
+        config.help = true;
+        break;
+    }
+  }
 
-const DRY_RUN = process.argv.includes('--dry-run');
+  return config;
+}
 
-const s3Service = new S3Service(process.env.AWS_PROFILE, process.env.AWS_REGION, endpoint);
+function showHelp() {
+  console.log(`
+📚 CLEANUP PAPER ATTACHMENTS - Guida all'uso
+==================================================================
+
+Uso: node index.js [OPZIONI]
+
+OPZIONI OBBLIGATORIE:
+  --aws-profile <profilo>     Profilo AWS da utilizzare
+  --aws-region <regione>      Regione AWS (es: eu-central-1)
+  --bucket-name <nome>        Nome del bucket S3
+
+OPZIONI FACOLTATIVE:
+  --retention-days <giorni>   Giorni di retention (default: 120)
+  --prefix-filter <prefisso>  Prefisso oggetti da filtrare (default: PN_PAPER_ATTACHMENT)
+  --limit <numero>            Limite oggetti da eliminare (default: -1, nessun limite)
+  --localstack-endpoint <url> Endpoint LocalStack per test locali
+  --dry-run                   Modalità simulazione (nessuna eliminazione)
+  --help                      Mostra questa guida
+
+ESEMPI:
+
+# Esecuzione base (produzione)
+node index.js --aws-profile mio-profilo --aws-region eu-central-1 --bucket-name mio-bucket
+
+# Con retention personalizzata e limite
+node index.js --aws-profile mio-profilo --aws-region eu-central-1 --bucket-name mio-bucket --retention-days 90 --limit 100
+
+# Modalità dry-run per test
+node index.js --aws-profile mio-profilo --aws-region eu-central-1 --bucket-name mio-bucket --dry-run
+
+# Test con LocalStack
+node index.js --aws-profile localstack --aws-region eu-central-1 --bucket-name test-bucket --localstack-endpoint http://localhost:4566
+
+# Prefisso personalizzato
+node index.js --aws-profile mio-profilo --aws-region eu-central-1 --bucket-name mio-bucket --prefix-filter CUSTOM_PREFIX
+`);
+}
+
+function validateConfig(config) {
+  const required = ['awsProfile', 'awsRegion', 'bucketName'];
+  const missing = required.filter(field => !config[field]);
+  
+  if (missing.length > 0) {
+    console.error(`❌ Parametri obbligatori mancanti: ${missing.map(f => '--' + f.replace(/([A-Z])/g, '-$1').toLowerCase()).join(', ')}`);
+    console.error('Usa --help per la guida completa.');
+    return false;
+  }
+
+  if (isNaN(config.retentionDays) || config.retentionDays < 0) {
+    console.error('❌ --retention-days deve essere un numero positivo');
+    return false;
+  }
+
+  if (isNaN(config.limit)) {
+    console.error('❌ --limit deve essere un numero (-1 per nessun limite)');
+    return false;
+  }
+
+  return true;
+}
 
 const progressBar = new cliProgress.SingleBar({
   barCompleteChar: '\u2588',
@@ -29,14 +135,14 @@ function getObjectAgeDays(lastModified) {
   return Math.floor((today - new Date(lastModified)) / (1000 * 60 * 60 * 24));
 }
 
-async function listObjectsWithPrefix() {
+async function listObjectsWithPrefix(s3Service, bucketName, prefixFilter) {
   let continuationToken = undefined;
   const allObjects = [];
 
   do {
     const response = await s3Service.s3Client.send(new ListObjectsV2Command({
-      Bucket: BUCKET_NAME,
-      Prefix: PREFIX_FILTER,
+      Bucket: bucketName,
+      Prefix: prefixFilter,
       ContinuationToken: continuationToken,
     }));
 
@@ -50,30 +156,38 @@ async function listObjectsWithPrefix() {
   return allObjects;
 }
 
-async function cleanup() {
+async function cleanup(config) {
+  const s3Service = new S3Service(config.awsProfile, config.awsRegion, config.localstackEndpoint);
+
   console.log(``);
   console.log(`CONFIGURAZIONE CLEANUP`);
   console.log(`==================================================================`);
-  console.log(`🟢 Avvio cleanup bucket "${BUCKET_NAME}" per oggetti con prefisso "${PREFIX_FILTER}"`);
-  console.log(`⏱️ Età minima per eliminazione: ${RETENTION_DAYS} giorni`);
+  console.log(`🟢 Avvio cleanup bucket "${config.bucketName}" per oggetti con prefisso "${config.prefixFilter}"`);
+  console.log(`⏱️ Età minima per eliminazione: ${config.retentionDays} giorni`);
+  console.log(`🌍 AWS Profile: ${config.awsProfile}`);
+  console.log(`🌍 AWS Region: ${config.awsRegion}`);
 
-  if (DRY_RUN) {
+  if (config.localstackEndpoint) {
+    console.log(`🔧 LocalStack Endpoint: ${config.localstackEndpoint}`);
+  }
+
+  if (config.dryRun) {
     console.log('⚠️ ATTENZIONE: MODALITÀ SIMULAZIONE (DRY RUN) ATTIVATA. Nessun oggetto verrà eliminato.');
   }
 
-  if (LIMIT != null && LIMIT > -1) {
-    console.log(`⚠️ Limite di eliminazione impostato a ${LIMIT} oggetti.`);
+  if (config.limit > -1) {
+    console.log(`⚠️ Limite di eliminazione impostato a ${config.limit} oggetti.`);
   } else {
     console.log('⚠️ Nessun limite di eliminazione impostato.');
   }
 
-  const filteredObjects = await listObjectsWithPrefix();
+  const filteredObjects = await listObjectsWithPrefix(s3Service, config.bucketName, config.prefixFilter);
   const totalObjects = filteredObjects.length;
   let deletedObjects = 0;
 
   console.log(``)
   console.log(``)
-  console.log(`📋 Trovati ${totalObjects} oggetti con prefisso "${PREFIX_FILTER}"`);
+  console.log(`📋 Trovati ${totalObjects} oggetti con prefisso "${config.prefixFilter}"`);
 
   if (totalObjects === 0) {
     console.log('✅ Nessun oggetto da processare.');
@@ -84,18 +198,18 @@ async function cleanup() {
 
   let scanCount = 0;
   for (const obj of filteredObjects) {
-    if (LIMIT != null && LIMIT >= 0 && scanCount >= LIMIT) {
-      console.log(`     ⚠️ Limite di eliminazione (${LIMIT}) raggiunto.`);
+    if (config.limit >= 0 && scanCount >= config.limit) {
+      console.log(`     ⚠️ Limite di eliminazione (${config.limit}) raggiunto.`);
       break;
     }
 
     const ageDays = getObjectAgeDays(obj.LastModified);
-    const shouldDelete = ageDays > RETENTION_DAYS;
+    const shouldDelete = ageDays > config.retentionDays;
 
     if (shouldDelete) {
-      if (!DRY_RUN) {
+      if (!config.dryRun) {
         await s3Service.s3Client.send(new DeleteObjectCommand({
-          Bucket: BUCKET_NAME,
+          Bucket: config.bucketName,
           Key: obj.Key,
         }));
       }
@@ -105,26 +219,38 @@ async function cleanup() {
     progressBar.increment();
     scanCount++;
 
-    // delay
+    // delay per evitare throttling
     await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   progressBar.stop();
 
-  console.log(`✅ Cleanup ${DRY_RUN ? '(Dry Run) ' : ' '}completato.`);
+  console.log(`✅ Cleanup ${config.dryRun ? '(Dry Run) ' : ' '}completato.`);
   console.log(``);
   console.log(``);
   console.log(`RISULTATO ELABORAZIONE`);
   console.log(`==================================================================`);
-  console.log(`📌 Oggetti con prefisso "${PREFIX_FILTER}": ${totalObjects}`);
+  console.log(`📌 Oggetti con prefisso "${config.prefixFilter}": ${totalObjects}`);
   console.log(`🗑️ Oggetti eliminati: ${deletedObjects}`);
   console.log(`📁 Oggetti mantenuti: ${totalObjects - deletedObjects}`);
 }
 
 (async () => {
   try {
-    await cleanup();
+    const config = parseArguments();
+
+    if (config.help) {
+      showHelp();
+      process.exit(0);
+    }
+
+    if (!validateConfig(config)) {
+      process.exit(1);
+    }
+
+    await cleanup(config);
   } catch (error) {
     console.error("❌ Errore fatale durante la bonifica:", error);
+    process.exit(1);
   }
 })();

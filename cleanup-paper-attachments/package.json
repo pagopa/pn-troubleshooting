@@ -1,25 +1,26 @@
 {
-  "name": "ss_upload_file",
+  "name": "cleanup-paper-attachments",
   "version": "1.0.0",
-  "description": "",
+  "description": "Script per la pulizia degli allegati Paper in S3",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "help": "node index.js --help"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.598.0",
-    "@aws-sdk/client-s3": "^3.812.0",
-    "@aws-sdk/credential-provider-sso": "^3.598.0",
-    "@aws-sdk/credential-providers": "^3.812.0",
-    "@aws-sdk/lib-dynamodb": "^3.598.0",
-    "@aws-sdk/lib-storage": "^3.812.0",
+    "@aws-sdk/client-s3": "^3.816.0",
+    "@aws-sdk/credential-providers": "^3.816.0",
+    "@aws-sdk/lib-storage": "^3.816.0",
     "cli-progress": "^3.12.0",
-    "crypto": "^1.0.1",
-    "dotenv": "^16.5.0",
-    "mime-types": "^2.1.35",
-    "readline": "^1.3.0",
-    "util": "^0.12.5"
-  }
+    "dotenv": "^16.5.0"
+  },
+  "keywords": [
+    "aws",
+    "s3",
+    "cleanup",
+    "paper",
+    "attachments"
+  ],
+  "author": "",
+  "license": "ISC"
 }
