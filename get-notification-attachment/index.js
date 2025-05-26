@@ -180,10 +180,10 @@ async function main() {
   if (!restore) {
     const csvFile = path.join(resultsDir, `notification_attachments_${timestamp}.csv`);
     const notFoundNotificationsFile = path.join(resultsDir, `not_found_notifications_${timestamp}.txt`);
-    const notFoundAttachmentsFile = path.join(resultsDir, `not_found_attachments_${timestamp}.txt`);
+    const notFoundAttachmentsFile = path.join(resultsDir, `not_found_attachments_${timestamp}.csv`);
     writeFileSync(csvFile, 'IUN,Attachment,DocumentLogicalState,documentState,hasDeleteMarker\n');
     writeFileSync(notFoundNotificationsFile, '');
-    writeFileSync(notFoundAttachmentsFile, '');
+    writeFileSync(notFoundAttachmentsFile, 'IUN,Attachment\n');
 
     let foundNotifications = 0, foundAttachments = 0;
     let notFoundNotifications = 0, notFoundAttachments = 0;
@@ -200,13 +200,13 @@ async function main() {
       foundNotifications++;
       const documentKey = notifRes.documentKey || '';
       if (!documentKey) {
-        appendFileSync(notFoundAttachmentsFile, `${iun}\n`);
+        appendFileSync(notFoundAttachmentsFile, `${iun},\n`);
         notFoundAttachments++;
         continue;
       }
       const objectExists = await s3ObjectExists(confinfoClient, mainBucket, documentKey);
       if (!objectExists) {
-        appendFileSync(notFoundAttachmentsFile, `${iun}\n`);
+        appendFileSync(notFoundAttachmentsFile, `${iun},${documentKey}\n`);
         notFoundAttachments++;
         continue;
       }
@@ -214,7 +214,7 @@ async function main() {
       const hasDeleteMarker = deleteMarkers.length > 0 ? 'true' : 'false';
       const docRes = await getDocumentStates(confinfoClient, documentKey);
       if (!docRes.found) {
-        appendFileSync(notFoundAttachmentsFile, `${iun}\n`);
+        appendFileSync(notFoundAttachmentsFile, `${iun},${documentKey}\n`);
         notFoundAttachments++;
         continue;
       }
