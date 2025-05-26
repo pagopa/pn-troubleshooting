@@ -153,13 +153,13 @@ echo "Extracted requestIdx values to: $REQUEST_IDS_LIST"
 #############################################################
 node index.js --envName "$ENV_NAME" --fileName "$REQUEST_IDS_LIST" 1>/dev/null
 
-# Assume that the node script produces an error.json file in this folder.
 ERROR_JSON="$WORKDIR/check_status_request/error.json"
 if [[ ! -f "$ERROR_JSON" ]]; then
-  echo "error.json not found. Exiting."
-  cleanup
-  exit 1
+  echo "error.json not found. All events can be removed."
+  # Create an empty error.json so that subsequent steps work as usual
+  touch "$ERROR_JSON"
 fi
+
 ERROR_JSON=$(realpath "$ERROR_JSON")
 cp "$WORKDIR/check_status_request/counter.json" "$WORKDIR/check_status_request/${BASENAME}_counter.json"
 GENERATED_FILES+=("$WORKDIR/check_status_request/${BASENAME}_counter.json")
