@@ -136,7 +136,7 @@ fi
 cd "$WORKDIR/check_feedback_from_requestId_simplified" || { echo "Failed to cd into '$WORKDIR/check_feedback_from_requestId_simplified'"; exit 1; }
 
 BASENAME=$(basename "${ORIGINAL_DUMP%.json}")
-RESULTSDIR="$WORKDIR/check_feedback_from_requestId_simplified/results"
+RESULTSDIR="$WORKDIR/check_feedback_from_requestId_simplified"
 REQUEST_IDS_LIST="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_all_request_ids.txt"
 jq -r '.[] | .Body | fromjson | .analogMail.requestId' "$ORIGINAL_DUMP" | sort -u > "$REQUEST_IDS_LIST"
 REQUEST_IDS_LIST=$(realpath "$REQUEST_IDS_LIST")

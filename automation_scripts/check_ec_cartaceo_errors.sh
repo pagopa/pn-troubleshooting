@@ -141,7 +141,7 @@ for file in counter.json error.json fromconsolidatore.json toconsolidatore.json 
 done
 
 BASENAME=$(basename "${ORIGINAL_DUMP%.json}")
-RESULTSDIR="$WORKDIR/check_status_request/result"
+RESULTSDIR="$WORKDIR/check_status_request"
 REQUEST_IDS_LIST="$WORKDIR/check_status_request/${BASENAME}_all_request_ids.txt"
 jq -r '.[] | .Body | fromjson | .requestIdx' "$ORIGINAL_DUMP" > "$REQUEST_IDS_LIST"
 REQUEST_IDS_LIST=$(realpath "$REQUEST_IDS_LIST")
@@ -153,13 +153,11 @@ echo "Extracted requestIdx values to: $REQUEST_IDS_LIST"
 #############################################################
 node index.js --envName "$ENV_NAME" --fileName "$REQUEST_IDS_LIST" 1>/dev/null
 
-# Assume that the node script produces an error.json file in this folder.
 ERROR_JSON="$WORKDIR/check_status_request/error.json"
 if [[ ! -f "$ERROR_JSON" ]]; then
-  echo "error.json not found. Exiting."
-  cleanup
-  exit 1
+  echo "error.json not found. All events can be removed."
 fi
+
 ERROR_JSON=$(realpath "$ERROR_JSON")
 cp "$WORKDIR/check_status_request/counter.json" "$WORKDIR/check_status_request/${BASENAME}_counter.json"
 GENERATED_FILES+=("$WORKDIR/check_status_request/${BASENAME}_counter.json")
