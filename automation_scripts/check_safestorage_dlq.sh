@@ -190,10 +190,20 @@ process_queue(){
 
     # Get the most recent analysis output file
     SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
+    UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
+
     if [[ -z "$SAFE_TO_DELETE" ]]; then
-      echo "No removable events found for $TARGET_QUEUE. Skipping queue."
+      echo "No removable events found for $TARGET_QUEUE."
       Q_removableEvents["$TARGET_QUEUE"]=0
-      Q_unremovableEvents["$TARGET_QUEUE"]=0
+      if [[ -n "$UNSAFE_TO_DELETE" ]]; then
+        GENERATED_FILES+=("$UNSAFE_TO_DELETE")
+        UNREMOVABLE_EVENTS=$(wc -l < "$UNSAFE_TO_DELETE")
+        echo "Total unremovable events: $UNREMOVABLE_EVENTS"
+        Q_unremovableEvents["$TARGET_QUEUE"]="$UNREMOVABLE_EVENTS"
+      else
+        Q_unremovableEvents["$TARGET_QUEUE"]=0
+        echo "No unremovable events found."
+      fi
       cleanup
       return 0
     fi
@@ -201,7 +211,6 @@ process_queue(){
     REMOVABLE_EVENTS=$(wc -l < "$SAFE_TO_DELETE")
     echo "Total removable events: $REMOVABLE_EVENTS"
     Q_removableEvents["$TARGET_QUEUE"]="$REMOVABLE_EVENTS"
-    UNSAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "need_further_analysis_$TARGET_QUEUE*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
     if [[ "$UNSAFE_TO_DELETE" != "" ]]; then
         echo "Unremovable events found. Further analysis required."
         echo "Unremovable events file: $(realpath "$UNSAFE_TO_DELETE")"
