@@ -492,7 +492,9 @@ async function main() {
     
         console.log(`\nStarting validation checks for ${stats.total} messages...`);
         let progress = 0;
-    
+        
+        const accountId = await getAccountId(confinfoClient);
+        
         for (const message of messages) {
                 progress++;
                 process.stdout.write(`\rChecking fileKey ${progress} of ${stats.total}`);
@@ -521,6 +523,7 @@ async function main() {
                         const s3Check = await checkS3Objects(
                                 confinfoClient,
                                 fileKey,
+                                accountId,
                                 queueName,
                                 eventName
                         );
