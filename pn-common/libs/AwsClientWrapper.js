@@ -11,7 +11,7 @@ const { S3Client, GetObjectCommand, PutObjectCommand, ListBucketsCommand, ListOb
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, SendMessageBatchCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQueryResultsCommand: AthenaGetQueryResultsCommand } = require("@aws-sdk/client-athena");
-const { SSMClient, StartSessionCommand, TerminateSessionCommand } = require("@aws-sdk/client-ssm");
+const { SSMClient, StartSessionCommand, TerminateSessionCommand, PutParameterCommand } = require("@aws-sdk/client-ssm");
 const { EC2Client } = require("@aws-sdk/client-ec2");
 const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const { prepareKeys, prepareExpressionAttributeNames, prepareExpressionAttributeValues, prepareUpdateExpression, prepareKeyConditionExpression } = require("./dynamoUtil");
@@ -107,13 +107,13 @@ class AwsClientsWrapper {
 
   _checkAwsSsoLogin(self) {
     // -----------------------
-    function _osSleep(sec){
+    function _osSleep(sec) {
       const command = "sleep " + sec
       // const { spawnSync, execSync } = require('node:child_process');
       execSync(command);
     };
 
-    function _awsSsoLoginSync(prof,s){
+    function _awsSsoLoginSync(prof, s) {
       const command = 'aws';
       const args = ['sso', 'login', `--profile=${prof}`];
       spawnSync(command, args, { stdio: 'inherit' });
@@ -121,22 +121,22 @@ class AwsClientsWrapper {
       _osSleep(s);
     };
 
-    function _getCallerIdentitySync(prof){
+    function _getCallerIdentitySync(prof) {
       const command = 'aws';
-      const args = ['sts', 'get-caller-identity','--region=eu-south-1',`--profile=${profile}`];
+      const args = ['sts', 'get-caller-identity', '--region=eu-south-1', `--profile=${profile}`];
       return spawnSync(command, args, { stdio: 'ignore' });
     };
 
-  // -----------------------
+    // -----------------------
 
     const profile = self.ssoProfile;
 
     const resultSts = _getCallerIdentitySync(profile);
-    if(resultSts.status) {
+    if (resultSts.status) {
       console.log(`\nUser is not logged or token must be refreshed.\nStarting 'aws sso login --profile=${profile}' command.\n\n`
         + "-------------------------------------------------\n"
-      ); 
-      _awsSsoLoginSync(profile,0);
+      );
+      _awsSsoLoginSync(profile, 0);
       console.log("-------------------------------------------------\n");
     }
     else {
@@ -146,75 +146,75 @@ class AwsClientsWrapper {
 
   // Athena
 
-  async _startQueryExecution(workGroup,db,catalog,sqlQuery) {
-      const input = {
-        QueryExecutionContext: { 
-          Database: db,
-          Catalog: catalog
-        },
-        QueryString: sqlQuery,
-        WorkGroup: workGroup
-      };
-      const command = new StartQueryExecutionCommand(input);
-      const result = await this._athenaClient.send(command);
-      return result;
+  async _startQueryExecution(workGroup, db, catalog, sqlQuery) {
+    const input = {
+      QueryExecutionContext: {
+        Database: db,
+        Catalog: catalog
+      },
+      QueryString: sqlQuery,
+      WorkGroup: workGroup
+    };
+    const command = new StartQueryExecutionCommand(input);
+    const result = await this._athenaClient.send(command);
+    return result;
   };
 
   async _getQueryExecution(execId) {
-      const input = { QueryExecutionId: execId };
-      const command = new GetQueryExecutionCommand(input);
-      const result = await this._athenaClient.send(command);
-      return result;
+    const input = { QueryExecutionId: execId };
+    const command = new GetQueryExecutionCommand(input);
+    const result = await this._athenaClient.send(command);
+    return result;
   };
 
-  async _getQueryResults(execId,nextToken) {
-      const input = { 
-        QueryExecutionId: execId,
-        NextToken: nextToken 
-      };
-      const command = new AthenaGetQueryResultsCommand(input);
-      const result = await this._athenaClient.send(command);
-      return result;
+  async _getQueryResults(execId, nextToken) {
+    const input = {
+      QueryExecutionId: execId,
+      NextToken: nextToken
+    };
+    const command = new AthenaGetQueryResultsCommand(input);
+    const result = await this._athenaClient.send(command);
+    return result;
   };
 
   // ECS
 
   async _listClusters() {
-      const input = {};
-      const command = new ListClustersCommand(input);
-      const result = await this._ecsClient.send(command);
-      return result;
+    const input = {};
+    const command = new ListClustersCommand(input);
+    const result = await this._ecsClient.send(command);
+    return result;
   };
 
-  async _listServices(cluster,maxResults,nextToken) {
+  async _listServices(cluster, maxResults, nextToken) {
 
-      // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/ListServicesCommand/
-      // min(maxResults) = 10 = default;
-      // max(maxResults) = 100.
+    // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/ListServicesCommand/
+    // min(maxResults) = 10 = default;
+    // max(maxResults) = 100.
 
-      const input = {
-          cluster: cluster,
-          maxResults: maxResults || 10,
-          nextToken: nextToken
-      };
-      const command = new ListServicesCommand(input);
-      const result =  await this._ecsClient.send(command);
-      return result;
+    const input = {
+      cluster: cluster,
+      maxResults: maxResults || 10,
+      nextToken: nextToken
+    };
+    const command = new ListServicesCommand(input);
+    const result = await this._ecsClient.send(command);
+    return result;
   };
 
-  async _describeServices(cluster,servicesListArns) {
+  async _describeServices(cluster, servicesListArns) {
 
-      // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/DescribeServicesCommand/
-      // La describe avviene per blocchi di 10 elementi. Questa funzione automatizza il processo.
+    // Ref: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ecs/command/DescribeServicesCommand/
+    // La describe avviene per blocchi di 10 elementi. Questa funzione automatizza il processo.
 
-      const input = {
-          cluster: cluster,
-          services: servicesListArns
-      };
+    const input = {
+      cluster: cluster,
+      services: servicesListArns
+    };
 
-      const command = new DescribeServicesCommand(input);
-      const  describeServices = await this._ecsClient.send(command);
-      return describeServices;
+    const command = new DescribeServicesCommand(input);
+    const describeServices = await this._ecsClient.send(command);
+    return describeServices;
   };
 
   // DynamoDB
@@ -231,10 +231,10 @@ class AwsClientsWrapper {
     };
 
     // Query with Partition and Sort key
-    if(sKey){
-        input.KeyConditionExpression = "#k = :k AND #sk = :sk"
-        input.ExpressionAttributeNames["#sk"] = sKey
-        input.ExpressionAttributeValues[":sk"] = { "S": sValue }
+    if (sKey) {
+      input.KeyConditionExpression = "#k = :k AND #sk = :sk"
+      input.ExpressionAttributeNames["#sk"] = sKey
+      input.ExpressionAttributeValues[":sk"] = { "S": sValue }
     }
 
     const command = new QueryCommand(input);
@@ -268,8 +268,8 @@ class AwsClientsWrapper {
     const command = new QueryCommand(input);
     return await this._dynamoClient.send(command)
   }
-  
-  async _dynamicQueryRequestByIndex(tableName, indexName, keys, logicalOperator ,lastEvaluatedKey) {
+
+  async _dynamicQueryRequestByIndex(tableName, indexName, keys, logicalOperator, lastEvaluatedKey) {
     const input = { // QueryInput
       TableName: tableName, // required
       IndexName: indexName,
@@ -296,7 +296,7 @@ class AwsClientsWrapper {
   }
   */
 
-  async _updateItem(tableName, keys, values, operator,expr) {
+  async _updateItem(tableName, keys, values, operator, expr) {
     const input = {
       TableName: tableName,
       Key: prepareKeys(keys),
@@ -305,7 +305,7 @@ class AwsClientsWrapper {
       UpdateExpression: prepareUpdateExpression(operator, values),
       ReturnValues: 'ALL_NEW'
     };
-    if(expr) input.ConditionExpression = expr; 
+    if (expr) input.ConditionExpression = expr;
     const command = new UpdateItemCommand(input)
     return await this._dynamoClient.send(command)
   }
@@ -512,7 +512,7 @@ class AwsClientsWrapper {
   }
 
   async _PutObject(bucket, fileName, fileBody) {
-    
+
     function createMd5SumHash(data) {
       // Hash necessario a causa dell'Object Lock settato sul bucket
       const hash = createHash('md5').update(data).digest('base64');
@@ -531,7 +531,7 @@ class AwsClientsWrapper {
     return response;
   }
 
-  async _getBucketList(){
+  async _getBucketList() {
     const command = new ListBucketsCommand({});
     const response = await this._s3Client.send(command);
     return response;
@@ -695,17 +695,17 @@ class AwsClientsWrapper {
       EventBusName: 'default',
       Limit: 100
     };
-  
+
     const command = new ListRulesCommand(input);
     const response = await this._eventBridgeClient.send(command);
-    
+
     // Return all rules if no search string
     if (!searchString) {
       return response.Rules || [];
     }
-  
+
     // Case insensitive search in name and description
-    return (response.Rules || []).filter(rule => 
+    return (response.Rules || []).filter(rule =>
       rule.Name.toLowerCase().includes(searchString.toLowerCase()) ||
       (rule.Description && rule.Description.toLowerCase().includes(searchString.toLowerCase()))
     );
@@ -732,6 +732,18 @@ class AwsClientsWrapper {
       SessionId: sessionId
     };
     const command = new TerminateSessionCommand(input);
+    return await this._ssmClient.send(command);
+  }
+
+  // https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ssm/command/PutParameterCommand/
+  async _putParameter(name,value, type = "String", overwrite) {
+    const input = {
+      Name: name,
+      Value: value,
+      Type: type,
+      Overwrite: overwrite
+    };
+    const command = new PutParameterCommand(input);
     return await this._ssmClient.send(command);
   }
 }
