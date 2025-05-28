@@ -65,8 +65,8 @@ async function main() {
         const pk = parsedLine.hashKey
         const sk = parsedLine.sortKey
         if (!pk.match(/DISABLED$/)?.[0] & sk === "CFG") {
-            const domain = parsedLine.JWKSUrl.replace(/^https:\/\//,'').replace(/\/.*$/,'')
-            const iss = pk.replace(/ISS~/,'')
+            const domain = parsedLine.JWKSUrl.replace(/^https:\/\//,'').replace(/\/.*$/,'').trim()
+            const iss = pk.replace(/ISS~/,'').trim()
             if (domain) {
                 const arrayElem = {
                     iss: iss,
