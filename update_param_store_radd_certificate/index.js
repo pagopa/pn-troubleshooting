@@ -32,11 +32,12 @@ function _checkingParameters(args, parsedArgs) {
     const usage = `
     Usage: 
     
-    node index.js \\
-      [--region <region>] \\
-      --env <env> \\
-      --inputFile SORTED_<dump file name> \\
-      --redriveDate <YYYY-MM-DDTHH:MM+02:00>
+    node ./index.js  \\
+        --env=<env> \\
+        --paramStoreName=<paramStoreName> \\ 
+        --inputFile=<output dump_dynamodb 'pn-AuthJwtIssuers'> \\
+        --dryRun=<true|false> \\
+        --overwrite=<true|false>
       
       `
 

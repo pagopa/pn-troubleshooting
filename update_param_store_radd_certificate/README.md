@@ -29,8 +29,20 @@ Dato in input il dump JSONL (vedi [dump_dynamodb](https://github.com/pagopa/pn-t
 
 ## Utilizzo
 
+1. Esecuzione dello script [dump_dynamodb](https://github.com/pagopa/pn-troubleshooting/tree/main/dump_dynamodb) utilizzando il flag `--json`:
+
+```bash
+cd <workdir>/pn-troubleshooting/dump_dynamodb
+node scan_dynamo.js \
+  --awsProfile <aws-profile core> \
+  --tableName pn-AuthJwtIssuers \
+  --json
+
+```
+2. Esecuzione dello script node:
 ```bash
 
+cd <workdir>/pn-troubleshooting/
 node ./index.js  \
   --env=<env> \ # Required
   --paramStoreName=<paramStoreName> \ # Required
