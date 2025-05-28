@@ -162,7 +162,9 @@ FOUND_JSON="${CHECK_FEEDBACK_RESULTS}/found.json"
 if [[ ! -f "$NOT_FOUND" ]]; then
   echo "WARNING: All requestIds received a feedback (not_found.txt not produced)."
 else
-  NOT_FOUND=$(realpath "$NOT_FOUND")
+  NOT_FOUND_RENAMED="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_not_found.txt"
+  mv "$NOT_FOUND" "$NOT_FOUND_RENAMED"
+  NOT_FOUND=$(realpath "$NOT_FOUND_RENAMED")
   GENERATED_FILES+=("$NOT_FOUND")
   echo "Total requestIds that didn't receive a feedback (not to remove): $(wc -l < "$NOT_FOUND")"
 fi
@@ -172,7 +174,9 @@ if [[ ! -f "$FOUND_JSON" ]]; then
   cleanup
   exit 0
 fi
-FOUND_JSON=$(realpath "$FOUND_JSON")
+FOUND_JSON_RENAMED="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_found.json"
+mv "$FOUND_JSON" "$FOUND_JSON_RENAMED"
+FOUND_JSON=$(realpath "$FOUND_JSON_RENAMED")
 GENERATED_FILES+=("$FOUND_JSON")
 echo "Total requestIds that received a feedback (to remove): $(wc -l < "$FOUND_JSON")"
 
