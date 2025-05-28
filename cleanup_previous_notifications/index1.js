@@ -5,7 +5,6 @@ const { dirname } = require('path');
 const { inspect, parseArgs } = require('util');
 const { fs, readFileSync, mkdirSync, existsSync, appendFileSync } = require('fs');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
-const { tmpdir } = require('os');
 
 const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
 
