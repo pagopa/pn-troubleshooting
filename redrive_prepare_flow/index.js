@@ -102,6 +102,16 @@ async function _prepareDataAndSendEvents(awsClient, requestId, queueUrl) {
   }
 }
 
+async function _hasFoundEvents(awsClient, requestId) {
+  const iun = (requestId.split("IUN_")[1]).split('.')[0]
+  const send = requestId.replace("PREPARE", "SEND")
+  const timelines = await awsClient._queryRequest("pn-Timelines", 'iun', iun)
+  const foundSend = timelines.some(x=> {
+    return x.timelineElementId.S == send}
+  )
+  return foundSend
+}
+
 const failedRequestIds = []
 
 async function main() {
@@ -133,11 +143,16 @@ async function main() {
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   for(let i = 0; i < fileRows.length; i++){
     const requestId = fileRows[i]
+    const foundSend = _hasFoundEvents(awsClient, requestId)
+    if(foundSend) {
+      console.log('Skipped requestId: ' + requestId)
+      continue 
+    }
     console.log('Handling requestId: ' + requestId)
     const isZeroAttempt = requestId.includes("ATTEMPT_0");
     let isDiscoveredAddress = false
     if(!isZeroAttempt) {
-      let res = await awsClient._queryRequest("pn-PaperAddress", requestId)
+      let res = await awsClient._queryRequest("pn-PaperAddress", 'requestId', requestId)
       isDiscoveredAddress = res.some((e) => {
         return unmarshall(e).addressType == 'DISCOVERED_ADDRESS'
       })
