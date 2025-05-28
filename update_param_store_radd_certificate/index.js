@@ -65,10 +65,11 @@ async function main() {
         const pk = parsedLine.hashKey
         const sk = parsedLine.sortKey
         if (!pk.match(/DISABLED$/)?.[0] & sk === "CFG") {
-            const domain = parsedLine.JWKSUrl.match(/^https:\/\/[^\/]+/)?.[0]
+            const domain = parsedLine.JWKSUrl.replace(/^https:\/\//,'').replace(/\/.*$/,'')
+            const iss = pk.replace(/ISS~/,'')
             if (domain) {
                 const arrayElem = {
-                    iss: pk,
+                    iss: iss,
                     domain: domain
                 }
                 finalArray.push(arrayElem)
@@ -79,7 +80,6 @@ async function main() {
     inputFileHandler?.close()
 
     console.log(finalArrayJson)
-    console.log(`\n --> Genearating new Parameter Store '${paramStoreName}' (account AWS Core) value...`)
 
     if (dryRun === "false") {
         const operation = overwrite === "true" ? "Updating" : "Creating"

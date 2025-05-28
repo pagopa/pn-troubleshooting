@@ -33,7 +33,7 @@ Dato in input il dump JSONL (vedi [dump_dynamodb](https://github.com/pagopa/pn-t
 
 ```bash
 cd <workdir>/pn-troubleshooting/dump_dynamodb
-node scan_dynamo.js \
+node index.js \
   --awsProfile <aws-profile core> \
   --tableName pn-AuthJwtIssuers \
   --json
@@ -42,7 +42,7 @@ node scan_dynamo.js \
 2. Esecuzione dello script node:
 ```bash
 
-cd <workdir>/pn-troubleshooting/
+cd <workdir>/pn-troubleshooting/update_param_store_radd_certificate
 node ./index.js  \
   --env=<env> \ # Required
   --paramStoreName=<paramStoreName> \ # Required
