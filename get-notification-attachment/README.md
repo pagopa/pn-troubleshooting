@@ -22,7 +22,7 @@ Per ogni IUN fornito:
 
 1. Legge il file di input contenente gli IUN (uno per riga).
 2. Recupera la notifica associata e il relativo allegato (`documentKey`).
-3. Verifica la presenza di delete marker per l'allegato sul main bucket di SafeStorage.
+3. Verifica la presenza dell'allegato sul main bucket di SafeStorage e se presenta deleteMarker.
 4. Recupera lo stato logico e fisico del documento dalla `pn-SsDocumenti`.
 5. Scrive un file CSV riepilogativo con i risultati.
 6. In modalità ripristino (`--restore`), rimuove i delete marker e aggiorna lo stato sulla `pn-SsDocumenti`, producendo file TXT con gli IUN processati.
@@ -76,7 +76,7 @@ node index.js -e <env> -f <percorso_file> -r
 
 Al termine dell'esecuzione:
 
-* In modalità verifica, viene generato un file CSV nella cartella `results/` con il dettaglio di ogni IUN, allegato, stato documento e presenza di delete marker.
+* In modalità verifica, viene generato un file CSV nella cartella `results/` con il dettaglio di ogni IUN, allegato, stato documento e presenza di delete marker, più due file di testo con eventuali IUN per i quali non è stata trovata la notifica o l'allegato.
 * In modalità ripristino, vengono generati due file TXT nella cartella `results/`:
   * Uno con gli IUN per cui sono stati trovati e rimossi delete marker
   * Uno con gli IUN senza delete marker
