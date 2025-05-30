@@ -7,7 +7,7 @@ const { EventBridgeClient, EnableRuleCommand, DisableRuleCommand, ListRulesComma
 const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
 const { KinesisClient, GetRecordsCommand, GetShardIteratorCommand } = require("@aws-sdk/client-kinesis");
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
-const { S3Client, GetObjectCommand, PutObjectCommand, ListBucketsCommand, ListObjectVersionsCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, GetObjectCommand, PutObjectCommand, ListBucketsCommand, ListObjectVersionsCommand, DeleteObjectCommand, ListObjectsCommand} = require("@aws-sdk/client-s3");
 const { SQSClient, GetQueueUrlCommand, ReceiveMessageCommand, DeleteMessageCommand, SendMessageCommand, SendMessageBatchCommand, GetQueueAttributesCommand } = require("@aws-sdk/client-sqs");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { AthenaClient, StartQueryExecutionCommand, GetQueryExecutionCommand, GetQueryResultsCommand: AthenaGetQueryResultsCommand } = require("@aws-sdk/client-athena");
@@ -505,7 +505,6 @@ class AwsClientsWrapper {
       Bucket: bucket,
       Key: fileKey,
     };
-
     const command = new GetObjectCommand(input);
     const response = await this._s3Client.send(command);
     return response;
@@ -554,6 +553,16 @@ class AwsClientsWrapper {
       VersionId: versionId
     };
     const command = new DeleteObjectCommand(input);
+    const response = await this._s3Client.send(command);
+    return response;
+  }
+
+  async _listObjects(bucketName, maxKeys) {
+    const input = { // ListObjectsRequest
+      Bucket: bucketName, // required
+      MaxKeys: maxKeys
+    };
+    const command = new ListObjectsCommand(input);
     const response = await this._s3Client.send(command);
     return response;
   }
