@@ -26,7 +26,7 @@ EOF
 WORKDIR=""
 QUEUE=""
 STARTDIR=$(pwd)
-OUTPUTDIR_BASE="$STARTDIR/output/check_safestorage_dlq"
+OUTPUTDIR_BASE="$STARTDIR/output"
 V_TIMEOUT=30
 PURGE=false
 ENV="prod"

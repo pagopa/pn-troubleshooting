@@ -100,4 +100,6 @@ legal_conservation_error_extractor/result
 *.txt
 
 ### Automation Scripts ###
-automation_scripts/output/**
+automation_scripts/**/output
+automation_scripts/**/*.log
+automation_scripts/**/*.pid
