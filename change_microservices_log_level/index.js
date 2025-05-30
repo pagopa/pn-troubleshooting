@@ -28,6 +28,36 @@ function _initFolder(values){
   });
 }
 
+async function _getMicroserviceFiles(awsClient, bucketName, microservices) {
+  const fileEnvName = "runtime-variable.env"
+  const objects = await awsClient._listObjects(bucketName, 100);
+  let runtimeVariableFiles = []
+  if(!microservices) {
+    runtimeVariableFiles = runtimeVariableFiles.concat(objects.Contents.filter((x) => x.Key.includes(fileEnvName)).map(x => x.Key));
+  }
+  else {
+    const ms = microservices.split(',')
+    runtimeVariableFiles = runtimeVariableFiles.concat(ms.map(x => `${x}/${fileEnvName}`))
+  }
+  return runtimeVariableFiles;
+}
+
+function _prepareLoggingFile(body){
+  const logging = [
+    "LOGGING_LEVEL_IT_PAGOPA_PN=INFO",
+    "LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_FUNCTION_CONTEXT_CONFIG=ERROR"
+  ]
+  let loggingFile = [].concat(logging);
+  console.log(body)
+  for(const line of body) {
+    const k = line.split("=")[0]
+    if(!loggingFile.some(str => str.includes(k))){
+      loggingFile.push(line)
+    }
+  }
+  return loggingFile
+}
+
 function _checkingParameters(args, values){
   const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
   //CHECKING PARAMETER
@@ -74,40 +104,26 @@ async function main() {
   _checkingParameters(args, values)
   const accounts = ['core', 'confinfo']
   const outputFilesFolder = `backup/${envName}`
-  const fileEnvName = "runtime-variable.env"
-  const logging = [
-    "LOGGING_LEVEL_IT_PAGOPA_PN=INFO",
-    "LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_FUNCTION_CONTEXT_CONFIG=ERROR"
-  ]
+  if (envName == 'prod') {
+    console.log("Can't execute this script in prod environment")
+    process.exit(1)
+  }
   _initFolder([outputFilesFolder])
   for (const account of accounts) {
     const awsClient = new AwsClientsWrapper( account, envName );
     awsClient._initS3()
     const bucketList = await awsClient._getBucketList();
     const bucketName = bucketList.Buckets.filter((x) => x.Name.includes("pn-runtime-environment-variables"))[0].Name;
-    const objects = await awsClient._listObjects(bucketName, 100);
-    let runtimeVariableFiles = []
-    if(!microservices) {
-      runtimeVariableFiles = runtimeVariableFiles.concat(objects.Contents.filter((x) => x.Key.includes(fileEnvName)).map(x => x.Key));
-    }
-    else {
-      const ms = microservices.split(',')
-      runtimeVariableFiles = runtimeVariableFiles.concat(ms.map(x => `${x}/${fileEnvName}`))
-    }
+    
+    let runtimeVariableFiles = await _getMicroserviceFiles(awsClient, bucketName, microservices)
+    
     for (const runVFile of runtimeVariableFiles) {
       try {
         const response = await awsClient._getObjectCommand(bucketName, runVFile);
         const fileKey = runVFile.replace("/","_")
         await saveFileFromBuffer(response.Body, `${outputFilesFolder}/${fileKey}`)
         const body = fs.readFileSync(`${outputFilesFolder}/${fileKey}`, { encoding: 'utf8', flag: 'r' }).split('\n');
-        let loggingFile = [].concat(logging);
-        console.log(body)
-        for(const line of body) {
-          const k = line.split("=")[0]
-          if(!loggingFile.some(str => str.includes(k))){
-            loggingFile.push(line)
-          }
-        }
+        const loggingFile = _prepareLoggingFile(body)
         await awsClient._PutObject(bucketName, runVFile, loggingFile.join('\n'))
         console.log(`File ${runVFile} updated in ${account} account`)
       } catch (error) {
