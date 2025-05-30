@@ -18,7 +18,7 @@ EOF
 # Default values
 WORKDIR=""
 STARTDIR=$(pwd)
-OUTPUTDIR="$STARTDIR/output/check_ec_cartaceo_errors"
+OUTPUTDIR="$STARTDIR/output"
 V_TIMEOUT=30
 PURGE=false
 ENV="prod"

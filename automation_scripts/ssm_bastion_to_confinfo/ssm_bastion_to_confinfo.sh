@@ -10,7 +10,7 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
   set +o allexport
 fi
 
-OUTPUTDIR="$SCRIPT_DIR/output/ssm_bastion_to_confinfo"
+OUTPUTDIR="$SCRIPT_DIR"
 mkdir -p "$OUTPUTDIR"
 
 CONFINFO_ALB_ENDPOINT="${CONFINFO_ALB_ENDPOINT:-alb.confidential.pn.internal}"

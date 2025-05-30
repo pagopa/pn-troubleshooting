@@ -21,7 +21,7 @@ EOF
 WORKDIR=""
 CHANNEL_TYPE=""
 STARTDIR=$(pwd)
-OUTPUTDIR_BASE="$STARTDIR/output/check_ec_tracker_errors"
+OUTPUTDIR_BASE="$STARTDIR/output"
 V_TIMEOUT=30
 PURGE=false
 ENV="prod"

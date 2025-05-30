@@ -18,7 +18,7 @@ EOF
 # Default values
 WORKDIR=""
 STARTDIR=$(pwd)
-OUTPUTDIR="$STARTDIR/output/check_ec_to_pc"
+OUTPUTDIR="$STARTDIR/output"
 V_TIMEOUT=300
 PURGE=false
 ENV="prod"

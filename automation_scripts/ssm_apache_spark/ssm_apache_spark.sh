@@ -10,7 +10,7 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
   set +o allexport
 fi
 
-OUTPUTDIR="$SCRIPT_DIR/output/ssm_apache_spark"
+OUTPUTDIR="$SCRIPT_DIR"
 mkdir -p "$OUTPUTDIR"
 
 SSM_PORT1="${SSM_PORT1:-4040}"
@@ -53,7 +53,7 @@ PROFILE="${PROFILE_PREFIX}${ENV_NAME}"
 
 get_spark_instance_id() {
   aws ec2 describe-instances \
-    --filters "Name=tag:usage,Values=spark" "Name=instance-state-name,Values=running" \
+    --filters "Name=tag:usage,Values=spark" \
     --profile "$PROFILE" \
     --query "Reservations[0].Instances[0].InstanceId" \
     --output text
@@ -122,7 +122,7 @@ stop_port_forwarding() {
       fi
     done
   fi
-
+  INSTANCE_ID=$(get_spark_instance_id)
   INSTANCE_STATE=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" --profile "$PROFILE" --query "Reservations[0].Instances[0].State.Name" --output text)
   if [[ "$INSTANCE_STATE" == "running" ]]; then
     echo "Stopping Spark instance: $INSTANCE_ID"
