@@ -334,7 +334,7 @@ Vuoi verificare se ci sono degli eventi con campo timeline duplicati nella tabel
 node index.js --envName <env-name> --hashKey <hash-key> --sortKey <sort-key>
 ```
 
-### check_feedback_from_requestId_simplified
+### check_feedback_from_requestId
 Vuoi verificare se per un evento di prepare abbiamo ricevuto un send analog feedback?
 ```bash
 node index.js --envName <env-name> --fileName <file-name>

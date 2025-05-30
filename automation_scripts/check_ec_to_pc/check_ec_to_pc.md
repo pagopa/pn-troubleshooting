@@ -5,7 +5,7 @@ Lo script esegue le seguenti operazioni:
 
 1. Effettua il dump dei messaggi dalla coda DLQ `pn-external_channel_to_paper_channel-DLQ`.
 2. Converte il dump in formato JSONLine ed estrae i valori `requestId`.
-3. Estrae le richieste per le quali è stato ricevuto *feedback* e quelle per cui non è stato ricevuto mediante il [check_feedback_from_requestId_simplified](https://github.com/pagopa/pn-troubleshooting/tree/main/check_feedback_from_requestId_simplified).
+3. Estrae le richieste per le quali è stato ricevuto *feedback* e quelle per cui non è stato ricevuto mediante il [check_feedback_from_requestId](https://github.com/pagopa/pn-troubleshooting/tree/main/check_feedback_from_requestId).
 4. Filtra gli eventi di richieste che non hanno ricevuto *feedback* dal dump originale lasciando solo gli eventi di richieste che lo hanno ricevuto, i quali possono essere rimossi dalla DLQ.
 5. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
 6. Copia i file generati in una cartella di output relativa allo script (`output/check_ec_to_pc`).
@@ -34,7 +34,7 @@ aws sso login --profile sso_pn-confinfo-prod
 
 Dove:
 
-- `-w, --work-dir`: (Obbligatorio) Directory di lavoro contenente le sottocartelle necessarie (dump_sqs, check_feedback_from_requestId_simplified, remove_from_sqs).
+- `-w, --work-dir`: (Obbligatorio) Directory di lavoro contenente le sottocartelle necessarie (dump_sqs, check_feedback_from_requestId, remove_from_sqs).
 - `-t, --visibility-timeout`: (Opzionale) Timeout di visibilità dei messaggi sulla coda DLQ per gli script di dump e rimozione.
 - `-e, --env`: (Opzionale) Ambiente destinazione (prod, test, uat, hotfix), il predefinito è prod.
 - `--purge`: (Opzionale) Se specificato, rimuove i messaggi in errore dalla coda DLQ dopo il timeout di visibilità.

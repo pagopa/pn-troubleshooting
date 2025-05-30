@@ -128,16 +128,16 @@ echo "Dump file: $ORIGINAL_DUMP"
 #######################################################
 # Step 2: Extract requestId values from the dump     #
 #######################################################
-if [[ ! -d "$WORKDIR/check_feedback_from_requestId_simplified" ]]; then
-    echo "Script directory '$WORKDIR/check_feedback_from_requestId_simplified' does not exist. Exiting."
+if [[ ! -d "$WORKDIR/check_feedback_from_requestId" ]]; then
+    echo "Script directory '$WORKDIR/check_feedback_from_requestId' does not exist. Exiting."
     cleanup
     exit 1
 fi
-cd "$WORKDIR/check_feedback_from_requestId_simplified" || { echo "Failed to cd into '$WORKDIR/check_feedback_from_requestId_simplified'"; exit 1; }
+cd "$WORKDIR/check_feedback_from_requestId" || { echo "Failed to cd into '$WORKDIR/check_feedback_from_requestId'"; exit 1; }
 
 BASENAME=$(basename "${ORIGINAL_DUMP%.json}")
-RESULTSDIR="$WORKDIR/check_feedback_from_requestId_simplified"
-REQUEST_IDS_LIST="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_all_request_ids.txt"
+RESULTSDIR="$WORKDIR/check_feedback_from_requestId"
+REQUEST_IDS_LIST="$WORKDIR/check_feedback_from_requestId/${BASENAME}_all_request_ids.txt"
 jq -r '.[] | .Body | fromjson | .analogMail.requestId' "$ORIGINAL_DUMP" | sort -u > "$REQUEST_IDS_LIST"
 REQUEST_IDS_LIST=$(realpath "$REQUEST_IDS_LIST")
 GENERATED_FILES+=("$REQUEST_IDS_LIST")
@@ -148,7 +148,7 @@ echo "Extracted requestId values to: $REQUEST_IDS_LIST"
 #############################################################
 node index.js --envName "$ENV_NAME" --fileName "$REQUEST_IDS_LIST" 1>/dev/null
 
-CHECK_FEEDBACK_RESULTS=$(find "$WORKDIR/check_feedback_from_requestId_simplified/results" -maxdepth 1 -type d -name "prod_*" -newermt "@$SCRIPT_START_TIME" | sort | tail -n 1)
+CHECK_FEEDBACK_RESULTS=$(find "$WORKDIR/check_feedback_from_requestId/results" -maxdepth 1 -type d -name "prod_*" -newermt "@$SCRIPT_START_TIME" | sort | tail -n 1)
 if [[ ! -d "$CHECK_FEEDBACK_RESULTS" ]]; then
   echo "No feedback check results found. Exiting."
   cleanup
@@ -162,7 +162,7 @@ FOUND_JSON="${CHECK_FEEDBACK_RESULTS}/found.json"
 if [[ ! -f "$NOT_FOUND" ]]; then
   echo "WARNING: All requestIds received a feedback (not_found.txt not produced)."
 else
-  NOT_FOUND_RENAMED="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_not_found.txt"
+  NOT_FOUND_RENAMED="$WORKDIR/check_feedback_from_requestId/${BASENAME}_not_found.txt"
   mv "$NOT_FOUND" "$NOT_FOUND_RENAMED"
   NOT_FOUND=$(realpath "$NOT_FOUND_RENAMED")
   GENERATED_FILES+=("$NOT_FOUND")
@@ -174,7 +174,7 @@ if [[ ! -f "$FOUND_JSON" ]]; then
   cleanup
   exit 0
 fi
-FOUND_JSON_RENAMED="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_found.json"
+FOUND_JSON_RENAMED="$WORKDIR/check_feedback_from_requestId/${BASENAME}_found.json"
 mv "$FOUND_JSON" "$FOUND_JSON_RENAMED"
 FOUND_JSON=$(realpath "$FOUND_JSON_RENAMED")
 GENERATED_FILES+=("$FOUND_JSON")
@@ -183,7 +183,7 @@ echo "Total requestIds that received a feedback (to remove): $(wc -l < "$FOUND_J
 ###########################################################
 # Step 4: Convert the original dump to JSONLine format    #
 ###########################################################
-JSONLINE_DUMP="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}.jsonl"
+JSONLINE_DUMP="$WORKDIR/check_feedback_from_requestId/${BASENAME}.jsonl"
 jq -c '.[]' "$ORIGINAL_DUMP" > "$JSONLINE_DUMP"
 JSONLINE_DUMP=$(realpath "$JSONLINE_DUMP")
 GENERATED_FILES+=("$JSONLINE_DUMP")
@@ -199,7 +199,7 @@ echo "Total events in JSONLine dump: $JSONLINE_COUNT"
 #######################################################
 # Step 5: Filter out events from requests in error    #
 #######################################################
-FILTERED_DUMP="$WORKDIR/check_feedback_from_requestId_simplified/${BASENAME}_filtered.jsonl"
+FILTERED_DUMP="$WORKDIR/check_feedback_from_requestId/${BASENAME}_filtered.jsonl"
 grep -F -v -f "$NOT_FOUND" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
 FILTERED_DUMP=$(realpath "$FILTERED_DUMP")
 GENERATED_FILES+=("$FILTERED_DUMP")
