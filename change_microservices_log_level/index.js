@@ -2,6 +2,10 @@ const { parseArgs } = require('util');
 const fs = require('fs');
 const { AwsClientsWrapper } = require("pn-common");
 
+const STANDARD_LOG = [
+    "LOGGING_LEVEL_IT_PAGOPA_PN=INFO",
+    "LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_FUNCTION_CONTEXT_CONFIG=ERROR"
+  ]
 
 function saveFileFromBuffer(sourceStream, outputPath) {
   
@@ -43,11 +47,7 @@ async function _getMicroserviceFiles(awsClient, bucketName, microservices) {
 }
 
 function _prepareLoggingFile(body){
-  const logging = [
-    "LOGGING_LEVEL_IT_PAGOPA_PN=INFO",
-    "LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_FUNCTION_CONTEXT_CONFIG=ERROR"
-  ]
-  let loggingFile = [].concat(logging);
+  let loggingFile = [].concat(STANDARD_LOG);
   console.log(body)
   for(const line of body) {
     const k = line.split("=")[0]
