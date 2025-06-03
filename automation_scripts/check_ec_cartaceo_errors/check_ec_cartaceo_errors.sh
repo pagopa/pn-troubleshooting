@@ -152,13 +152,6 @@ echo "Extracted requestIdx values to: $REQUEST_IDS_LIST"
 # Step 3: Check request status on pn-EcRichiesteMetadati    #
 #############################################################
 node index.js --envName "$ENV_NAME" --fileName "$REQUEST_IDS_LIST" 1>/dev/null
-
-ERROR_JSON="$WORKDIR/check_status_request/error.json"
-if [[ ! -f "$ERROR_JSON" ]]; then
-  echo "error.json not found. All events can be removed."
-fi
-
-ERROR_JSON=$(realpath "$ERROR_JSON")
 cp "$WORKDIR/check_status_request/counter.json" "$WORKDIR/check_status_request/${BASENAME}_counter.json"
 GENERATED_FILES+=("$WORKDIR/check_status_request/${BASENAME}_counter.json")
 
@@ -181,18 +174,34 @@ echo "Total events in JSONLine dump: $JSONLINE_COUNT"
 ###################################################
 # Step 5: Extract requests in error status        #
 ###################################################
+ERROR_JSON="$WORKDIR/check_status_request/error.json"
 ERROR_REQUEST_IDS_LIST="$WORKDIR/check_status_request/${BASENAME}_error_request_ids.txt"
-jq -r '.requestId | sub("pn-cons-000~"; "")' "$ERROR_JSON" > "$ERROR_REQUEST_IDS_LIST"
-ERROR_REQUEST_IDS_LIST=$(realpath "$ERROR_REQUEST_IDS_LIST")
-GENERATED_FILES+=("$ERROR_REQUEST_IDS_LIST")
-echo "Extracted error requestIds to: $ERROR_REQUEST_IDS_LIST"
-echo "Total requestIds in error status (not to remove): $(wc -l < "$ERROR_REQUEST_IDS_LIST")"
+
+if [[ -f "$ERROR_JSON" ]]; then
+    ERROR_JSON=$(realpath "$ERROR_JSON")
+    jq -r '.requestId | sub("pn-cons-000~"; "")' "$ERROR_JSON" > "$ERROR_REQUEST_IDS_LIST"
+    ERROR_REQUEST_IDS_LIST=$(realpath "$ERROR_REQUEST_IDS_LIST")
+    GENERATED_FILES+=("$ERROR_REQUEST_IDS_LIST")
+    ERROR_COUNT=$(wc -l < "$ERROR_REQUEST_IDS_LIST")
+    echo "Extracted error requestIds to: $ERROR_REQUEST_IDS_LIST"
+    echo "Total requestIds in error status (not to remove): $ERROR_COUNT"
+else
+    : > "$ERROR_REQUEST_IDS_LIST"
+    ERROR_REQUEST_IDS_LIST=$(realpath "$ERROR_REQUEST_IDS_LIST")
+    GENERATED_FILES+=("$ERROR_REQUEST_IDS_LIST")
+    echo "No error.json found. All events can be removed."
+    echo "Total requestIds in error status (not to remove): 0"
+fi
 
 #######################################################
 # Step 6: Filter out events from requests in error    #
 #######################################################
 FILTERED_DUMP="$WORKDIR/check_status_request/${BASENAME}_filtered.jsonl"
-grep -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
+if [[ -s "$ERROR_REQUEST_IDS_LIST" ]]; then
+    grep -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
+else
+    cp "$JSONLINE_DUMP" "$FILTERED_DUMP"
+fi
 FILTERED_DUMP=$(realpath "$FILTERED_DUMP")
 GENERATED_FILES+=("$FILTERED_DUMP")
 FILTERED_COUNT=$(wc -l < "$FILTERED_DUMP")
