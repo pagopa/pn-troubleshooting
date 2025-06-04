@@ -108,11 +108,22 @@ async function main() {
     const attachments = obj.attachments
     let isValid = ''
     for (const fileKey of attachments) {
-      const response = await awsClient._getObjectCommand(bucketName, fileKey);
-      await saveFileFromBuffer(response.Body, `${outputFilesFolder}/${fileKey}`)
-      isValid = await validatePdf(`${outputFilesFolder}/${fileKey}`);
-      if (isValid !== 'ok')
-        break
+      try {
+        const response = await awsClient._getObjectCommand(bucketName, fileKey);
+        await saveFileFromBuffer(response.Body, `${outputFilesFolder}/${fileKey}`)
+        isValid = await validatePdf(`${outputFilesFolder}/${fileKey}`);
+        if (isValid !== 'ok')
+          break
+      } catch (error) {
+        if(error.Code == 'NoSuchKey') {
+          console.log(`FileKey ${error.Key} not found`)
+          isValid = 'notfound'
+          break
+        }
+        else {
+          console.log(`problem found`)
+        }
+      }
     }
     appendDataToFile(outputResultFolder, `${isValid}.csv`, `${iun},${attachments.join("~")}`)
   }
