@@ -1,4 +1,4 @@
-# redrive_prepare_analog
+# redrive_analog_status
 
 Script che risottomette una prepare di un flusso analogico bloccata iun stato RECAG012
 
@@ -28,7 +28,7 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash  
-node index.js --envName <envName> --fileName <fileName> --statudCode [--dryrun] 
+node index.js --envName <envName> --fileName <fileName> --statusCode [--dryrun] 
 ```
 Dove:
 - `<envName>` è l'environment si intende eseguire la procedura;

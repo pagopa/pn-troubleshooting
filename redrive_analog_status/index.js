@@ -18,7 +18,7 @@ function _hasSpecificAttemptAnalogFeedbackEvent(timelineEvents, attempt) {
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <envName> --fileName <fileName> --statusCode <statusCode>[--dryrun]"
+  const usage = "Usage: index.js --envName <envName> --fileName <fileName> --statusCode <statusCode> [--dryrun]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
