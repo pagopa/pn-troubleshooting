@@ -28,11 +28,12 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash  
-node index.js --envName <envName> --fileName <fileName> [--dryrun] 
+node index.js --envName <envName> --fileName <fileName> --statudCode [--dryrun] 
 ```
 Dove:
 - `<envName>` è l'environment si intende eseguire la procedura;
 - `<fileName>` è il file-path del file che riporta la lista dei requestId ;
+- `<statusCode>` è il codice status che si vuole risottomettere;
 
 il file deve essere fornito nel seguente formato
 PREPARE_ANALOG_DOMICILE.IUN_QQQQ-XGDQ-FFFF-202312-Q-1.RECINDEX_0.ATTEMPT_0.PCRETRY_0

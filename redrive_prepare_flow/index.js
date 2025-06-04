@@ -92,7 +92,7 @@ async function _prepareDataAndSendEvents(awsClient, requestId, queueUrl) {
     attributes
   })
   
-  //res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
+  res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
   if ('MD5OfMessageBody' in res) {
     console.log("RequestId " + requestId + " sent successfully!!!")
   }
