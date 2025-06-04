@@ -120,11 +120,11 @@ async function main() {
       const attempt = _getAttemptFromRequestId(requestId)
       let timelineEvents = await awsCoreClient._queryRequest("pn-Timelines", "iun", iun)
       if(!_hasSpecificAttemptAnalogFeedbackEvent(timelineEvents.Items, attempt)) {
-        const metadati = (await awsConfinfoClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId, 'eventsList')).Items[0];
-        const eventsList = unmarshall(metadati).eventsList
+        const metadati = (await awsConfinfoClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId));
+        const eventsList = unmarshall(metadati.Items[0]).eventsList
         const idxResult = eventsList
           .map((e, idx) => ({ e, idx }))
-          .filter(({ e }) => e.paperProgrStatus.statusCode == 'RECAG012')
+          .filter(({ e }) => e.paperProgrStatus.statusCode == 'RECRN005C')
           .map(({ idx }) => idx);
 
         if(idxResult.length > 0) {
@@ -133,13 +133,14 @@ async function main() {
           let skip = false;
           for(let i of idxResult) {
             const message = _prepareMessage(requestId, eventsList[i].paperProgrStatus)
+            console.log(message)
             event == null ? event = message : null
             event.analogMail.clientRequestTimeStamp < message.analogMail.clientRequestTimeStamp ? event = message : null
             messages.push(message)
             skip = messages[0].analogMail.statusDateTime !== eventsList[i].paperProgrStatus.statusDateTime
           }
           if(!dryrun && !skip){
-            await awsCoreClient._sendSQSMessage(queueUrl, event, 0);
+            //await awsCoreClient._sendSQSMessage(queueUrl, event, 0);
           }
           console.log(event)
           const res = {

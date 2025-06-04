@@ -91,8 +91,8 @@ async function _prepareDataAndSendEvents(awsClient, requestId, queueUrl) {
     data,
     attributes
   })
-
-  res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
+  
+  //res = await awsClient._sendEventToSQS(queueUrl, data, attributes)
   if ('MD5OfMessageBody' in res) {
     console.log("RequestId " + requestId + " sent successfully!!!")
   }
@@ -143,7 +143,7 @@ async function main() {
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
   for(let i = 0; i < fileRows.length; i++){
     const requestId = fileRows[i]
-    const foundSend = _hasFoundEvents(awsClient, requestId)
+    const foundSend = await _hasFoundEvents(awsClient, requestId)
     if(foundSend) {
       console.log('Skipped requestId: ' + requestId)
       continue 
@@ -163,11 +163,14 @@ async function main() {
     }
     else {
       console.log("Registry Flow. Retrieving taxId..")
-      res = await awsClient._queryRequest("pn-PaperRequestDelivery", requestId)
+      console.log(requestId)
+      res = await awsClient._queryRequest("pn-PaperRequestDelivery", "requestId", requestId)
       const paperRequestDeliveryData = unmarshall(res[0])
       let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
-      data.statusCode != "PC002" ? data.statusCode = "PC002" : null
-      await awsClient._putRequest("pn-PaperRequestDelivery", data)
+      if(data.statusCode != "PC002") {
+        data.statusCode = "PC002"
+        await awsClient._putRequest("pn-PaperRequestDelivery", data)
+      } 
       const { taxId } = await ApiClient.decodeUID(paperRequestDeliveryData.fiscalCode)
 
       if(!taxId){
