@@ -105,9 +105,10 @@ async function _prepareDataAndSendEvents(awsClient, requestId, queueUrl) {
 async function _hasFoundEvents(awsClient, requestId) {
   const iun = (requestId.split("IUN_")[1]).split('.')[0]
   const send = requestId.replace("PREPARE", "SEND")
+  const failure = (requestId.replace("DOMICILE", "DOMICILE_FAILURE")).split(".ATTEMPT")[0]
   const timelines = await awsClient._queryRequest("pn-Timelines", 'iun', iun)
   const foundSend = timelines.some(x=> {
-    return x.timelineElementId.S == send}
+    return x.timelineElementId.S == send || x.timelineElementId.S == failure}
   )
   return foundSend
 }
