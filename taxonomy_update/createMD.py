@@ -15,33 +15,13 @@ def fn_extract_unique_subset(source, keys_to_extract):
     ]
     return list({frozenset(item.items()): item for item in subset_data}.values())
 
-
-#enti=fn_enti()
-#ambiti=fn_ambiti()
 codici=fn_codici()
 
-## print(enti)
-## print(ambiti)
-#print(codici)
-#keys_to_extract = ['codice_ente', 'ente']
-#subset_data = [
-#    {key: row[key] for key in keys_to_extract if key in row} 
-#    for row in codici
-#]
-#unique_subset_data = list({frozenset(item.items()): item for item in subset_data}.values())
-#enti=unique_subset_data
 enti=fn_extract_unique_subset(codici, ['codice_ente', 'ente'])
-#print(enti)
 
-#keys_to_extract = ['codice_ente', 'codice_ambito', 'ambito']
-#subset_data = [
-#    {key: row[key] for key in keys_to_extract if key in row} 
-#    for row in codici
-#]
-#unique_subset_data = list({frozenset(item.items()): item for item in subset_data}.values())
 ambiti=fn_extract_unique_subset(codici, ['codice_ente', 'codice_ambito', 'ambito'])
-#print(ambiti)
-environment = Environment(loader=FileSystemLoader("templates/"))
+
+environment = Environment(loader=FileSystemLoader("templates/"),autoescape=True)
 template = environment.get_template("tassonomia-send.md.j2")
 content = template.render(enti=enti, ambiti=ambiti, codici=codici)
 print(content)
