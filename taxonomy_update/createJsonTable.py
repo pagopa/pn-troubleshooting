@@ -17,7 +17,7 @@ def fn_extract_unique_subset(source, keys_to_extract):
 
 codici=fn_codici()
 
-environment = Environment(loader=FileSystemLoader("templates/"))
+environment = Environment(loader=FileSystemLoader("templates/"), autoescape=True)
 template = environment.get_template("pn-TaxonomyCode.json.j2")
 content = template.render(codici=codici)
 print(content)
