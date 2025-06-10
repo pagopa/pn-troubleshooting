@@ -85,8 +85,8 @@ async function main() {
         let result = await clientDB._queryRequest('pn-EcRichiesteMetadati', 'requestId', 'pn-cons-000~' + row);
         let info = unmarshall(result.Items[0]);
         let temp = {};
-        for (evnt of info.eventsList) {
-            if (evnt.paperProgrStatus.statusCode == 'RECRN010'){
+        for (evnt of info.eventsList.reverse()) {
+            if (evnt.paperProgrStatus.statusCode === 'RECRN010'){
                 temp = {
                     pk: 'META##' + info.requestId.replace(/pn-cons-000~/g, ''),
                     sk: 'META##' + evnt.paperProgrStatus.statusCode,
@@ -96,6 +96,8 @@ async function main() {
                     ttl: (new Date(evnt.paperProgrStatus.statusDateTime).getTime() / 1000) + 315360000
                 };
                 final.push(temp);
+                console.log(temp.pk)
+                break;
             };
         };
         //console.log(inspect(final, { showHidden: false, depth: null, colors: true }));
