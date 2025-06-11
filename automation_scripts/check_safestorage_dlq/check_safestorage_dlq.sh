@@ -115,6 +115,24 @@ esac
 # Define supported queues array.
 SUPPORTED_QUEUES=("pn-ss-transformation-raster-queue-DLQ" "pn-safestore_to_deliverypush-DLQ" "pn-ss-staging-bucket-events-queue-DLQ" "pn-ss-transformation-sign-and-timemark-queue-DLQ" "pn-ss-main-bucket-events-queue-DLQ")
 
+ensure_node_deps() {
+    local dir="$1"
+    if [[ ! -f "$dir/package.json" ]]; then
+        echo "Error: package.json not found in $dir"
+        cleanup
+        exit 1
+    fi
+    if [[ ! -d "$dir/node_modules" ]]; then
+        echo "node_modules missing in $dir. Installing dependencies..."
+        (cd "$dir" && npm ci)
+    elif [[ -f "$dir/package-lock.json" ]]; then
+        if [[ "$dir/package-lock.json" -nt "$dir/node_modules" ]]; then
+            echo "package-lock.json is newer than node_modules in $dir. Reinstalling dependencies..."
+            (cd "$dir" && npm ci)
+        fi
+    fi
+}
+
 # Function to process a single queue.
 process_queue(){
     local TARGET_QUEUE="$1"
@@ -138,7 +156,7 @@ process_queue(){
         exit 1
     fi
     cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1; }
-    
+    ensure_node_deps "$WORKDIR/dump_sqs"
     if [[ "$TARGET_QUEUE" == "pn-safestore_to_deliverypush-DLQ" ]]; then
         node dump_sqs.js --awsProfile "$AWS_PROFILE_CORE" --queueName pn-safestore_to_deliverypush-DLQ --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
     else
@@ -185,6 +203,7 @@ process_queue(){
         exit 1
     fi
     cd "$ANALYSIS_SCRIPT_DIR" || { echo "Failed to cd into '$ANALYSIS_SCRIPT_DIR'"; exit 1; }
+    ensure_node_deps "$ANALYSIS_SCRIPT_DIR"
     RESULTSDIR="$ANALYSIS_SCRIPT_DIR/results"
     node index.js --envName "$ENV_NAME" --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
 
@@ -235,6 +254,7 @@ process_queue(){
             exit 1
         fi
         cd "$WORKDIR/remove_from_sqs" || { echo "Failed to cd into '$WORKDIR/remove_from_sqs'"; exit 1; }
+        ensure_node_deps "$WORKDIR/remove_from_sqs"
         echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
         sleep "$V_TIMEOUT"
         echo "Purging events from the SQS queue..."

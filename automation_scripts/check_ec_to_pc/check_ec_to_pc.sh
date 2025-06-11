@@ -33,6 +33,24 @@ cleanup() {
     [[ -n "$CHECK_FEEDBACK_RESULTS" && -d "$CHECK_FEEDBACK_RESULTS" ]] && rm -rf "$CHECK_FEEDBACK_RESULTS"
 }
 
+ensure_node_deps() {
+    local dir="$1"
+    if [[ ! -f "$dir/package.json" ]]; then
+        echo "Error: package.json not found in $dir"
+        cleanup
+        exit 1
+    fi
+    if [[ ! -d "$dir/node_modules" ]]; then
+        echo "node_modules missing in $dir. Installing dependencies..."
+        (cd "$dir" && npm ci)
+    elif [[ -f "$dir/package-lock.json" ]]; then
+        if [[ "$dir/package-lock.json" -nt "$dir/node_modules" ]]; then
+            echo "package-lock.json is newer than node_modules in $dir. Reinstalling dependencies..."
+            (cd "$dir" && npm ci)
+        fi
+    fi
+}
+
 # Parse parameters
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -113,6 +131,7 @@ if [[ ! -d "$WORKDIR/dump_sqs" ]]; then
     exit 1
 fi
 cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1; }
+ensure_node_deps "$WORKDIR/dump_sqs"
 node dump_sqs.js --awsProfile "$AWS_PROFILE" --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
 # Get the most recent dump file
@@ -134,6 +153,7 @@ if [[ ! -d "$WORKDIR/check_feedback_from_requestId_simplified" ]]; then
     exit 1
 fi
 cd "$WORKDIR/check_feedback_from_requestId_simplified" || { echo "Failed to cd into '$WORKDIR/check_feedback_from_requestId_simplified'"; exit 1; }
+ensure_node_deps "$WORKDIR/check_feedback_from_requestId_simplified"
 
 BASENAME=$(basename "${ORIGINAL_DUMP%.json}")
 RESULTSDIR="$WORKDIR/check_feedback_from_requestId_simplified"
@@ -217,6 +237,7 @@ if $PURGE; then
         exit 1
     fi
     cd "$WORKDIR/remove_from_sqs" || { echo "Failed to cd into '$WORKDIR/remove_from_sqs'"; exit 1; }
+    ensure_node_deps "$WORKDIR/remove_from_sqs"
     echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."

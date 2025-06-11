@@ -31,6 +31,24 @@ cleanup() {
     done
 }
 
+ensure_node_deps() {
+    local dir="$1"
+    if [[ ! -f "$dir/package.json" ]]; then
+        echo "Error: package.json not found in $dir"
+        cleanup
+        exit 1
+    fi
+    if [[ ! -d "$dir/node_modules" ]]; then
+        echo "node_modules missing in $dir. Installing dependencies..."
+        (cd "$dir" && npm ci)
+    elif [[ -f "$dir/package-lock.json" ]]; then
+        if [[ "$dir/package-lock.json" -nt "$dir/node_modules" ]]; then
+            echo "package-lock.json is newer than node_modules in $dir. Reinstalling dependencies..."
+            (cd "$dir" && npm ci)
+        fi
+    fi
+}
+
 # Parse parameters
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -111,6 +129,7 @@ if [[ ! -d "$WORKDIR/dump_sqs" ]]; then
     exit 1
 fi
 cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1; }
+ensure_node_deps "$WORKDIR/dump_sqs"
 node dump_sqs.js --awsProfile "$AWS_PROFILE" --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
 # Get the most recent dump file
@@ -132,6 +151,7 @@ if [[ ! -d "$WORKDIR/check_status_request" ]]; then
     exit 1
 fi
 cd "$WORKDIR/check_status_request" || { echo "Failed to cd into '$WORKDIR/check_status_request'"; exit 1; }
+ensure_node_deps "$WORKDIR/check_status_request"
 # Remove pre-existing JSON files if they are present
 for file in counter.json error.json fromconsolidatore.json toconsolidatore.json locked.json notfound.json; do
     if [[ -f "$file" ]]; then
@@ -219,11 +239,12 @@ if $PURGE; then
         exit 1
     fi
     cd "$WORKDIR/remove_from_sqs" || { echo "Failed to cd into '$WORKDIR/remove_from_sqs'"; exit 1; }
+    ensure_node_deps "$WORKDIR/remove_from_sqs"
     echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
     node index.js --account confinfo --envName "$ENV_NAME" --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
-    find "$RESULTSDIR" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*.jsonl_result.json" | xargs rm
+    find "$RESULTSDIR" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ*.jsonl_result.json" | xargs rm
     echo "Events purged from the SQS queue."
 fi
 
