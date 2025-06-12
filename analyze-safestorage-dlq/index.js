@@ -287,11 +287,14 @@ async function checkS3Objects(awsClient, fileKey, accountId, queueName, eventNam
                     return { success: false, reason: 'Delete marker exists for ObjectCreated:Put event' };
                 }
                 return { success: true };
-            } else if (eventName === 'ObjectRemoved:DeleteMarkerCreated') {
+            } else if (
+                eventName === 'ObjectRemoved:DeleteMarkerCreated' ||
+                eventName === 'LifecycleExpiration:DeleteMarkerCreated'
+            ) {
                 if (hasDeleteMarker) {
                     return { success: true };
                 }
-                return { success: false, reason: 'Delete marker missing for ObjectRemoved:DeleteMarkerCreated event' };
+                return { success: false, reason: 'Delete marker missing for DeleteMarkerCreated event type' };
             } else {
                 return { success: false, reason: `Unsupported eventName: ${eventName}` };
             }
@@ -351,7 +354,10 @@ async function checkDocumentState(awsClient, fileKey, queueConfig, queueName, ev
             let documentStateOk = false;
             if (eventName === 'ObjectCreated:Put') {
                 documentStateOk = (item.documentState === 'attached' || item.documentState === 'available');
-            } else if (eventName === 'ObjectRemoved:DeleteMarkerCreated') {
+            } else if (
+                eventName === 'ObjectRemoved:DeleteMarkerCreated' ||
+                eventName === 'LifecycleExpiration:DeleteMarkerCreated'
+            ) {
                 documentStateOk = item.documentState === 'deleted';
             } else {
                 documentStateOk = false;
@@ -362,7 +368,11 @@ async function checkDocumentState(awsClient, fileKey, queueConfig, queueName, ev
                 actualState: item.documentLogicalState,
                 expectedLogicalState,
                 actualDocumentState: item.documentState,
-                expectedDocumentState: eventName === 'ObjectCreated:Put' ? ['attached', 'available'] : (eventName === 'ObjectRemoved:DeleteMarkerCreated' ? 'deleted' : undefined)
+                expectedDocumentState: eventName === 'ObjectCreated:Put' ? ['attached', 'available'] : (
+                    (eventName === 'ObjectRemoved:DeleteMarkerCreated' || eventName === 'LifecycleExpiration:DeleteMarkerCreated')
+                        ? 'deleted'
+                        : undefined
+                )
             };
         } else {
             return {
