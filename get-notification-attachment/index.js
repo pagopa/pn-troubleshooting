@@ -149,12 +149,28 @@ async function updateDocumentState(confinfoClient, documentKey) {
   }
 }
 
-async function s3ObjectExists(confinfoClient, bucket, documentKey) {
+async function checkS3ObjectState(confinfoClient, bucket, documentKey) {
   try {
-    await confinfoClient._headObject(bucket, documentKey);
-    return true;
+    const res = await confinfoClient._listObjectVersions(bucket, documentKey);
+    const versions = (res.Versions || []).filter(v => v.Key === documentKey);
+    const deleteMarkers = (res.DeleteMarkers || []).filter(dm => dm.Key === documentKey);
+
+    if (versions.length === 0 && deleteMarkers.length === 0) {
+      return { found: false };
+    }
+
+    let latestVersion = versions.find(v => v.IsLatest);
+    let latestDeleteMarker = deleteMarkers.find(dm => dm.IsLatest);
+
+    if (latestDeleteMarker && latestDeleteMarker.IsLatest) {
+      return { found: true, hasDeleteMarker: true, versions, deleteMarkers };
+    } else if (latestVersion && latestVersion.IsLatest) {
+      return { found: true, hasDeleteMarker: false, versions, deleteMarkers };
+    } else {
+      return { found: false };
+    }
   } catch (e) {
-    return false;
+    return { found: false, error: e.message };
   }
 }
 
@@ -181,7 +197,7 @@ async function main() {
     const csvFile = path.join(resultsDir, `notification_attachments_${timestamp}.csv`);
     const notFoundNotificationsFile = path.join(resultsDir, `not_found_notifications_${timestamp}.txt`);
     const notFoundAttachmentsFile = path.join(resultsDir, `not_found_attachments_${timestamp}.csv`);
-    writeFileSync(csvFile, 'IUN,Attachment,DocumentLogicalState,documentState,hasDeleteMarker\n');
+    writeFileSync(csvFile, 'IUN,Attachment,documentLogicalState,documentState,hasDeleteMarker\n');
     writeFileSync(notFoundNotificationsFile, '');
     writeFileSync(notFoundAttachmentsFile, 'IUN,Attachment\n');
 
@@ -204,14 +220,15 @@ async function main() {
         notFoundAttachments++;
         continue;
       }
-      const objectExists = await s3ObjectExists(confinfoClient, mainBucket, documentKey);
-      if (!objectExists) {
+
+      const s3State = await checkS3ObjectState(confinfoClient, mainBucket, documentKey);
+      if (!s3State.found) {
         appendFileSync(notFoundAttachmentsFile, `${iun},${documentKey}\n`);
         notFoundAttachments++;
         continue;
       }
-      const deleteMarkers = await listDeleteMarkers(confinfoClient, mainBucket, documentKey);
-      const hasDeleteMarker = deleteMarkers.length > 0 ? 'true' : 'false';
+      const hasDeleteMarker = s3State.hasDeleteMarker ? 'true' : 'false';
+
       const docRes = await getDocumentStates(confinfoClient, documentKey);
       if (!docRes.found) {
         appendFileSync(notFoundAttachmentsFile, `${iun},${documentKey}\n`);
@@ -244,10 +261,12 @@ async function main() {
       const notifRes = await getNotificationAttachment(coreClient, iun);
       if (!notifRes.found || !notifRes.documentKey) continue;
       const documentKey = notifRes.documentKey;
-      const objectExists = await s3ObjectExists(confinfoClient, mainBucket, documentKey);
-      if (!objectExists) continue;
-      const deleteMarkers = await listDeleteMarkers(confinfoClient, mainBucket, documentKey);
-      if (deleteMarkers.length > 0) {
+
+      const s3State = await checkS3ObjectState(confinfoClient, mainBucket, documentKey);
+      if (!s3State.found) continue;
+
+      if (s3State.hasDeleteMarker) {
+        const deleteMarkers = (s3State.deleteMarkers || []);
         await removeDeleteMarkers(confinfoClient, mainBucket, documentKey, deleteMarkers);
         appendFileSync(withDeleteMarkersFile, `${iun}\n`);
         deleteMarkersFound++;
