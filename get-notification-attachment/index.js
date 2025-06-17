@@ -109,16 +109,6 @@ async function getDocumentStates(confinfoClient, documentKey) {
   }
 }
 
-async function listDeleteMarkers(confinfoClient, bucket, documentKey) {
-  try {
-    const res = await confinfoClient._listObjectVersions(bucket, documentKey);
-    const deleteMarkers = (res.DeleteMarkers || []).filter(dm => dm.Key === documentKey);
-    return deleteMarkers;
-  } catch (e) {
-    return [];
-  }
-}
-
 async function removeDeleteMarkers(confinfoClient, bucket, documentKey, deleteMarkers) {
   for (const marker of deleteMarkers) {
     try {
