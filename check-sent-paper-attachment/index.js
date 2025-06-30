@@ -73,7 +73,7 @@ async function checkPaperStatus(awsClient, fileKey, message) {
 
         const logs = await awsClient._executeCloudwatchQuery(
             ['/aws/ecs/pn-external-channel'],
-            sentTimestamp - (5 * 60),
+            sentTimestamp - (10 * 60),
             currentTimestamp,
             queryString,
             1
