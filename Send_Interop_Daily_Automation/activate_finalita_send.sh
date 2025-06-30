@@ -17,19 +17,18 @@ rm -rf $OUTPUTDIR/*
 cd $OUTPUTDIR 
 
 # Esecuzione Curl per verificare gli enti con finalita' in attesa di approvazione:
-curl --location 'https://selfcare.interop.pagopa.it/1.0/backend-for-frontend/producer/purposes?states=WAITING_FOR_APPROVAL&limit=50&offset=0&producersIds=4a4149af-172e-4950-9cc8-63ccc9a6d865' \
---header 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:130.0) Gecko/20100101 Firefox/130.0' \
+curl --location 'https://selfcare.interop.pagopa.it/1.0/backend-for-frontend/producers/purposes?states=WAITING_FOR_APPROVAL&limit=50&offset=0&producersIds=4a4149af-172e-4950-9cc8-63ccc9a6d865' \
+--header 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:140.0) Gecko/20100101 Firefox/140.0' \
 --header 'Accept: application/json, text/plain, */*' \
 --header 'Accept-Language: it-IT' \
 --header 'Accept-Encoding: gzip, deflate, br, zstd' \
 --header "Authorization: $TOKEN" \
---header 'X-Correlation-Id: 8fb67437-01a8-4c85-8532-1c50a606fc94' \
+--header 'X-Correlation-Id: 123c30cd-448c-48c4-be8a-aa7265c46484' \
 --header 'Connection: keep-alive' \
+--header 'Cookie: OptanonConsent=isGpcEnabled=0^&datestamp=Mon+Jun+30+2025+20%3A52%3A16+GMT%2B0200+(Central+European+Summer+Time)^&version=202404.1.0^&browserGpcFlag=0^&isIABGlobal=false^&hosts=^&consentId=56c9c355-6c0e-46a7-9dca-d1a7f3a708b5^&interactionCount=2^&isAnonUser=1^&landingPath=NotLandingPage^&groups=C0001%3A1%2CC0002%3A1^&intType=1^&geolocation=%3B^&AwaitingReconsent=false; OptanonAlertBoxClosed=2025-06-04T08:56:46.386Z' \
 --header 'Sec-Fetch-Dest: empty' \
 --header 'Sec-Fetch-Mode: cors' \
 --header 'Sec-Fetch-Site: same-origin' \
---header 'Pragma: no-cache' \
---header 'Cache-Control: no-cache' \
 --header 'TE: trailers' \
 -o pending_finalita.json
 
