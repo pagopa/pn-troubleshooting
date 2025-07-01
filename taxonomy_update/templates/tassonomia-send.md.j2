@@ -1,0 +1,64 @@
+---
+description: Codice tassonomia delle notifiche su SEND
+---
+
+# 🏷️ Tassonomia SEND
+
+I codici tassonomici delle notifiche servono per classificare gli atti notificati contenuti nelle richieste inviate a SEND dalla PA mittenti.
+
+Se non trovi il codice tassonomico relativo all’atto da notificare compila il questionario tramite il seguente [link](https://tassonomia-send.limesurvey.net/638616?newtest=Y\&lang=it).
+
+Il codice tassonomico è formato dalla concatenazione di tre parti: \
+_`<tipologia ente> <ambito> <tipologia atto>`_\
+seguita dalla lettera **P** se la notifica prevede un pagamento o dalla lettera **N** se la notifica non prevede un pagamento.
+
+La tipologia ente è suddivisa in:
+
+<table>
+<thead><tr><th>Tipologia Ente</th><th>Codice</th></tr></thead>
+<tbody>
+{%- for ente in enti %}
+<tr><td><strong>{{ ente['ente'] }}</strong></td><td>{{ ente['codice_ente'] }}</td></tr>
+{%- endfor %}
+</tbody>
+</table>
+
+Per ogni tipologia di ente sono individuati gli **ambiti** e all'interno dell'ambito la **tipologia  di notifica**.
+{% for ente in enti %}
+##  {{ ente['codice_ente'] }} - {{ ente['ente'] }}
+
+I codici tassonomici delle notifiche dell'ente di tipo "{{ ente['ente'] }}" hanno prefisso `{{ ente['codice_ente'] }}` (es: **{{ ente['codice_ente'] }}**0101P)
+
+Ambiti e tipologia notifica:
+
+{% for ambito in ambiti %}
+{%- if ambito['codice_ente'] == ente['codice_ente'] %}
+### {{ ambito['codice_ente']  | replace("\r", "") | replace("\n", "") | trim }}{{ ambito['codice_ambito']  | replace("\r", "") | replace("\n", "") | trim}} - **{{ ambito['ambito']  | replace("\r", "") | replace("\n", "") | trim}}** 
+{% for codice in codici %}
+{%- if (codice['codice_ente'] == ente['codice_ente']) and (codice['codice_ambito'] == ambito['codice_ambito']) %}
+* Codice`{{ codice['codice_tassonomico'] | replace("\r", "") | replace("\n", "") | trim }}` - **{{ codice['tipologia_atto'] | replace("\r", "") | replace("\n", "") | trim}}** 
+{{ codice['descrizione'] | replace("\r", "") | replace("\n", "") }}
+{% endif -%}
+{% endfor %}
+{%- endif -%}
+
+{% endfor %}
+{% endfor %}
+
+
+<table>
+<thead><tr><th>Codice</th><th>Ente</th><th>Ambito</th><th>Descrizione</th></tr></thead>
+<tbody>
+{% for codice in codici %}
+<tr>
+    <td rowspan="2"><strong>{{ codice['codice_tassonomico'] | replace("\r", "") | replace("\n", "") | trim}}</strong></td>
+    <td>{{ codice['codice_ente'] }} - {{ codice['ente'] | replace("\r", "") | replace("\n", "") | trim}}</td>
+    <td>{{ codice['codice_ambito'] }} - {{ codice['ambito'] }}</td>
+    <td>{{ codice['tipologia_atto'] }}</td>
+</tr>
+<tr>
+    <td colspan="4">{{ codice['descrizione'] | replace("\r", "") | replace("\n", "") | trim}}</td>
+</tr>
+{%- endfor %}
+</tbody>
+</table>
