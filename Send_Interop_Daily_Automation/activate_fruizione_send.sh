@@ -128,7 +128,7 @@ jq -c '.results[]' pending_fruizione_filtered.json | while read -r item; do
   SELFCARE_ID=$(echo "$item" | jq -r '.selfcareId')
 
   echo "Eseguendo richiesta per selfcareId: $SELFCARE_ID..."
-  RESPONSE=$(curl -s --location "https://api.selfcare.pagopa.it/external/v2/institutions/$SELFCARE_ID" \
+  RESPONSE=$(curl -s --location "https://api.selfcare.pagopa.it/external/internal/v1/institutions/$SELFCARE_ID" \
     --header "Ocp-Apim-Subscription-Key: $SUBSCRIPTION_KEY")
 
   if ! echo "$RESPONSE" | jq empty > /dev/null 2>&1; then
