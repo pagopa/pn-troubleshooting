@@ -45,7 +45,7 @@ Per `pn-ss-main-bucket-events-queue-DLQ`:
           * PN_LOGS_ARCHIVE_AUDIT10Y
    * Solo per PN_AAR e PN_LEGAL_FACTS, la richiesta creazione del documento non deve essere l'ultimo evento in timeline
 
-Per `pn-ss-staging-bucket-events-queue-DLQ` e `pn-ss-transformation-sign-and-timemark-queue-DLQ`:
+Per `pn-ss-staging-bucket-events-queue-DLQ`, `pn-ss-transformation-sign-and-timemark-queue-DLQ` e `pn-ss-transformation-sign-queue-DLQ`:
 
 1. Legge in input il dump dei messaggi dalla coda DLQ
 2. Per ogni messaggio:
@@ -102,6 +102,7 @@ Dove:
   * `pn-ss-staging-bucket-events-queue-DLQ`
   * `pn-ss-transformation-sign-and-timemark-queue-DLQ`
   * `pn-safestore_to_deliverypush-DLQ`
+  * `pn-ss-transformation-sign-queue-DLQ`
 
 Esempi:
 
@@ -128,3 +129,8 @@ Per analizzare messaggi dalla `pn-safestore_to_deliverypush-DLQ`:
 ```bash
 node index.js -e dev -f ./dump.json -q pn-safestore_to_deliverypush-DLQ
 ```
+
+Per analizzare messaggi dalla `pn-ss-transformation-sign-queue-DLQ`:
+
+```bash
+node index.js -e dev -f ./dump.json -q pn-ss-transformation-sign-queue-DLQ
