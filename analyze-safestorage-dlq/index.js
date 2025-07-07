@@ -64,6 +64,7 @@ const QUEUE_CONFIGS = {
     'pn-ss-main-bucket-events-queue-DLQ': BASE_CONFIGS.safestorageMain,
     'pn-ss-staging-bucket-events-queue-DLQ': BASE_CONFIGS.safestorageStaging,
     'pn-ss-transformation-sign-and-timemark-queue-DLQ': BASE_CONFIGS.safestorageStaging,
+    'pn-ss-transformation-sign-queue-DLQ': BASE_CONFIGS.safestorageStaging,
     'pn-safestore_to_deliverypush-DLQ': BASE_CONFIGS.safestorageToDeliveryPush
 };
 
@@ -209,6 +210,9 @@ function processSQSDump(dumpFilePath, queueName) {
                         fileKey = body.key;
                         break;
                     case 'pn-ss-transformation-sign-and-timemark-queue-DLQ':
+                        fileKey = body.fileKey;
+                        break;
+                    case 'pn-ss-transformation-sign-queue-DLQ':
                         fileKey = body.fileKey;
                         break;
                     case 'pn-ss-staging-bucket-events-queue-DLQ':

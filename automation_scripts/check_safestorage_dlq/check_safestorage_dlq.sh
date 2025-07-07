@@ -113,7 +113,7 @@ case "$ENV" in
 esac
 
 # Define supported queues array.
-SUPPORTED_QUEUES=("pn-ss-transformation-raster-queue-DLQ" "pn-safestore_to_deliverypush-DLQ" "pn-ss-staging-bucket-events-queue-DLQ" "pn-ss-transformation-sign-and-timemark-queue-DLQ" "pn-ss-main-bucket-events-queue-DLQ")
+SUPPORTED_QUEUES=("pn-ss-transformation-raster-queue-DLQ" "pn-safestore_to_deliverypush-DLQ" "pn-ss-staging-bucket-events-queue-DLQ" "pn-ss-transformation-sign-and-timemark-queue-DLQ" "pn-ss-main-bucket-events-queue-DLQ" "pn-ss-transformation-sign-queue-DLQ")
 
 ensure_node_deps() {
     local dir="$1"
