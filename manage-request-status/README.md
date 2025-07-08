@@ -19,6 +19,7 @@ node index.js save_request_status -i requestIds.txt [-e ambiente]
 ```
 
 Il comando genera un file `saved.csv` nella cartella `results/` con due colonne:
+
 - `requestId`: ID della richiesta
 - `statusRequest`: Stato attuale della richiesta
 
@@ -48,6 +49,7 @@ node index.js restore_request_status -i saved.csv [-e ambiente]
 ## Output
 
 Tutti i comandi che modificano i dati producono un riepilogo dell'esecuzione con:
+
 - Numero totale di elementi processati
 - Numero di elementi aggiornati con successo
 - Numero di aggiornamenti falliti

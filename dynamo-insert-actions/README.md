@@ -11,10 +11,12 @@ Questo script permette di inserire elementi nella tabella DynamoDB pn-Action pre
 ## Struttura del File CSV
 
 Il file CSV deve contenere le seguenti colonne:
+
 - `actionId`: ID dell'azione da aggiornare (stringa)
 - `ttl`: Valore TTL attuale (numero intero, opzionale)
 
-Note: 
+Note:
+
 - Se il TTL non è presente o non è valido, verrà utilizzato il timestamp corrente
 - Le righe vuote verranno ignorate durante l'elaborazione
 
@@ -49,6 +51,7 @@ node index.js -e dev -f ./actions.csv -d 30 --dryRun
 ## Processo di Elaborazione
 
 Lo script:
+
 1. Valida i parametri di input e le credenziali SSO
 2. Elabora il file CSV in streaming
 3. Raggruppa le operazioni in batch da 25 elementi
@@ -64,6 +67,7 @@ Lo script:
 ## Output
 
 ### Console
+
 - Progresso in tempo reale
 - Riepilogo finale con:
   - Totale elementi processati
@@ -73,6 +77,7 @@ Lo script:
   - In caso di errore: actionId da cui riprendere
 
 ### Output
+
 - `failure.json`: Log dettagliato degli errori
 - `failure.csv`: Elenco degli actionId falliti con relativi TTL
 
