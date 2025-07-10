@@ -68,13 +68,13 @@ aws sso login --profile sso_pn-confinfo-<env>
 ### Esecuzione
 
 ```bash
-node index.js --envName <env> --dumpFile <path> --queueName <queue>
+node index.js --envName <env> --dumpFile <path> --channel <channel>
 ```
 
 oppure
 
 ```bash
-node index.js -e <env> -f <path> -q <queue>
+node index.js -e <env> -f <path> -q <channel>
 ```
 
 Dove:
