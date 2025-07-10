@@ -17,7 +17,7 @@ EOF
 
 # Default values
 WORKDIR=""
-STARTDIR=$(pwd)
+STARTDIR=$(dirname "$0")
 OUTPUTDIR="$STARTDIR/output"
 V_TIMEOUT=30
 PURGE=false
