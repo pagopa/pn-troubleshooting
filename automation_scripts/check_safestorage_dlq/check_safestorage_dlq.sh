@@ -25,7 +25,7 @@ EOF
 # Default values
 WORKDIR=""
 QUEUE=""
-STARTDIR=$(pwd)
+STARTDIR=$(dirname "$0")
 OUTPUTDIR_BASE="$STARTDIR/output"
 V_TIMEOUT=30
 PURGE=false

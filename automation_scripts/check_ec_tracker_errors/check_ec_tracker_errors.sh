@@ -20,7 +20,7 @@ EOF
 # Default values
 WORKDIR=""
 CHANNEL_TYPE=""
-STARTDIR=$(pwd)
+STARTDIR=$(dirname "$0")
 OUTPUTDIR_BASE="$STARTDIR/output"
 V_TIMEOUT=30
 PURGE=false
