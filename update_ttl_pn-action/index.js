@@ -6,7 +6,7 @@ import { parse } from 'csv-parse';
 import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
 import { performance } from 'perf_hooks';
-import { stringify } from 'csv-stringify';
+import { TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
 
 const accountType = "core";
 const tableName = "pn-Action";
@@ -148,13 +148,11 @@ async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun)
     let failedItems = [];
     while (attempt < maxRetries) {
         try {
-            await dynDbClient._dynamoClient.send({
-                input: {
+            await dynDbClient._dynamoClient.send(
+                new TransactWriteItemsCommand({
                     TransactItems: batch
-                },
-                ...require("@aws-sdk/client-dynamodb"),
-                __type: "TransactWriteItemsCommand"
-            });
+                })
+            );
             return { success: batch.length, failed: 0, failedItems: [] };
         } catch (e) {
             if (e.name === "TransactionCanceledException" && e.CancellationReasons) {
