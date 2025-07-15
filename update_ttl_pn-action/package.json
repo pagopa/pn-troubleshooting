@@ -2,6 +2,7 @@
   "name": "update_ttl_pn-action",
   "version": "1.0.0",
   "description": "Increases the TTL associated with an actionId in pn-Actions by N days",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
