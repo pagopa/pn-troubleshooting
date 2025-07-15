@@ -16,11 +16,10 @@ let outputPath;
 
 function validateArgs() {
     const usage = `
-Usage: node index.js [--region <region>] --env <env> --days <number> --fileName <csv file> [--startActionId <actionId value>] [--batchSize <num>] [--concurrency <num>] [--maxRetries <num>] [--dryRun]
+Usage: node index.js --days <number> --fileName <csv file> [--env <env>] [--startActionId <actionId value>] [--batchSize <num>] [--concurrency <num>] [--maxRetries <num>] [--dryRun]
 
 Parameters:
-    --region         Optional. AWS region (default: eu-south-1)
-    --env            Required. Environment (dev|uat|test|prod|hotfix)
+    --env            Optional. Environment (dev|uat|test|prod|hotfix)
     --days           Required. Number of days to add to TTL
     --fileName       Required. Path to CSV file (columns: actionId,ttl)
     --startActionId  Optional. Resume from this actionId
@@ -32,7 +31,6 @@ Parameters:
 `;
     const args = parseArgs({
         options: {
-            region: { type: "string", short: "r", default: "eu-south-1" },
             env: { type: "string", short: "e" },
             days: { type: "string", short: "d" },
             fileName: { type: "string", short: "f" },
@@ -49,12 +47,12 @@ Parameters:
         console.log(usage);
         process.exit(0);
     }
-    if (!args.values.env || !args.values.days || !args.values.fileName) {
+    if (!args.values.days || !args.values.fileName) {
         console.error("Error: Missing required parameters");
         console.log(usage);
         process.exit(1);
     }
-    if (!VALID_ENVIRONMENTS.includes(args.values.env)) {
+    if (args.values.env && !VALID_ENVIRONMENTS.includes(args.values.env)) {
         console.error(`Error: Invalid environment. Must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
         process.exit(1);
     }
