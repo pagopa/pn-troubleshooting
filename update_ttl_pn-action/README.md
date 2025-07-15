@@ -17,7 +17,6 @@ Lo script:
 
 NB: Gli actionId che generano un'eccezione "ConditionalCheckFailed" (elemento non presente) vengono loggati come scartati ma non interrompono l'esecuzione. Errori diversi vengono gestiti con retry automatici; se persistono dopo i tentativi configurati, vengono loggati come falliti.
 
-
 ## Installazione
 
 ```bash
@@ -30,7 +29,10 @@ npm install
 node index.js \
  --days <num> \
  --fileName <csv file> \
+<<<<<<< HEAD
  [--env <dev|test|uat|hotfix>] \
+=======
+>>>>>>> dfc6621 (feat: idempotency and parallel transactions)
  [--startActionId <value>] \
  [--batchSize <num>] \
  [--concurrency <num>] \
@@ -40,7 +42,8 @@ node index.js \
 
 Dove:
 
-- env: ambiente target (opzionale);
+- region: regione AWS (default: "eu-south-1");
+- env: ambiente target;
 - days: numero di giorni da aggiungere all'attuale TTL;
 - fileName: file CSV con colonne actionId e ttl;
 - startActionId: actionId di partenza (opzionale, per ripresa);
@@ -61,5 +64,3 @@ I file vengono scritti in:
 ### Ripresa
 
 Per riprendere da un punto specifico, utilizzare il parametro `--startActionId` con l'actionId fornito nel riepilogo finale.
-
----
