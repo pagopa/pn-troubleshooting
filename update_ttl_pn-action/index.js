@@ -1,155 +1,232 @@
 const { AwsClientsWrapper } = require("pn-common");
-const { _parseCSV } = require("../pn-common/libs/utils.js");
 const { parseArgs } = require('node:util');
-const { openSync, closeSync, mkdirSync, appendFileSync } = require('node:fs');
+const { existsSync, mkdirSync, appendFileSync } = require('node:fs');
 const { join } = require('node:path');
+const { parse } = require('csv-parse');
+const { pipeline } = require('stream/promises');
+const { Transform } = require('stream');
+const { performance } = require('perf_hooks');
 
-// ------------ Parametri input ---------------------
-
-// --- Fissi ---
 const accountType = "core";
 const tableName = "pn-Action";
+const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
 
-// --- Variabili ---
-const args = [
-    // { name: "account_type", mandatory: true}, // core
-    { name: "region", mandatory: false},
-    { name: "env", mandatory: false},
-    { name: "days", mandatory: true},
-    { name: "fileName", mandatory: true},
-    { name: "startActionId", mandatory: false}
-  ];
+let outputPath;
 
-  const parsedArgs = { values: { region, env, days, fileName, startActionId }} = parseArgs(
-      { options: {
-            // account_type: {type: "string",short: "a"},
-            region: {type: "string", short: "r", default: "eu-south-1"},
-            env: {type: "string",short: "e"},
-            days: {type: "string",short: "d"},
-            fileName: {type: "string",short: "f"},
-            startActionId: {type: "string",short: "a"}
+function validateArgs() {
+    const usage = `
+Usage: node index.js [--region <region>] --env <env> --days <number> --fileName <csv file> [--startActionId <actionId value>]
+
+Parameters:
+    --region         Optional. AWS region (default: eu-south-1)
+    --env            Required. Environment (dev|uat|test|prod|hotfix)
+    --days           Required. Number of days to add to TTL
+    --fileName       Required. Path to CSV file (columns: actionId,ttl)
+    --startActionId  Optional. Resume from this actionId
+    --help           Show this help message
+`;
+    const args = parseArgs({
+        options: {
+            region: { type: "string", short: "r", default: "eu-south-1" },
+            env: { type: "string", short: "e" },
+            days: { type: "string", short: "d" },
+            fileName: { type: "string", short: "f" },
+            startActionId: { type: "string", short: "a" },
+            help: { type: "boolean", short: "h" }
         }
-  });  
+    });
 
-// --------------------------------------------------
+    if (args.values.help) {
+        console.log(usage);
+        process.exit(0);
+    }
+    if (!args.values.env || !args.values.days || !args.values.fileName) {
+        console.error("Error: Missing required parameters");
+        console.log(usage);
+        process.exit(1);
+    }
+    if (!VALID_ENVIRONMENTS.includes(args.values.env)) {
+        console.error(`Error: Invalid environment. Must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
+        process.exit(1);
+    }
+    const days = parseInt(args.values.days);
+    if (isNaN(days)) {
+        console.error("Error: days must be a valid number");
+        process.exit(1);
+    }
+    args.values.days = days;
+    return args.values;
+}
 
-function _checkingParameters(args, parsedArgs){
+function getTimestampFolderName() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
+}
 
-    const usage = "Usage: node index.js [--region <region>]" +
-        " --env <env> --days <number> --fileName <csv file> [--startActionId <actionId value>]\n";
+function initializeResultsFiles(env) {
+    if (!existsSync('results')) mkdirSync('results');
+    const timestampDir = getTimestampFolderName();
+    const timestampPath = join('results', timestampDir);
+    if (!existsSync(timestampPath)) mkdirSync(timestampPath);
+    outputPath = env ? join(timestampPath, env) : timestampPath;
+    if (env && !existsSync(outputPath)) mkdirSync(outputPath);
+    appendFileSync(join(outputPath, 'failures.json'), '', { flag: 'w' });
+    appendFileSync(join(outputPath, 'failures.csv'), 'actionId,error\n', { flag: 'w' });
+}
 
-	// Verifica dei valori degli argomenti passati allo script
-	 function isOkValue(argName,value,ok_values){
-	     if(!ok_values.includes(value)) {
-	     	console.log("Error: \"" + value + "\" value for \"--" + argName +
-	        	"\" argument is not available, it must be in " + ok_values + "\n");
-	     	process.exit(1);
-	     }
-	 };
+function logFailure(data) {
+    appendFileSync(join(outputPath, 'failures.json'), JSON.stringify(data) + "\n");
+    appendFileSync(join(outputPath, 'failures.csv'), `${data.actionId},"${data.error.name}: ${data.error.message}"\n`);
+}
 
-    // Verifica se un argomento è stato inserito oppure inserito con valore vuoto
-	args.forEach(el => {
-	    if(el.mandatory && !parsedArgs.values[el.name]){
-	        console.log("\nParam \"" + el.name + "\" is not defined or empty.")
-	        console.log(usage)
-	        process.exit(1)
-	    }
-	 });
-};
+function printSummary(stats, executionTimeMs) {
+    const usedMemory = process.memoryUsage();
+    const cpuUsage = process.cpuUsage();
+    console.log('\n=== Execution Summary ===');
+    console.log(`Total records in CSV: ${stats.totalRecords}`);
+    console.log(`Successfully updated: ${stats.successCount}`);
+    console.log(`Failed updates: ${stats.failureCount}`);
+    if (stats.lastFailedActionId) {
+        console.log(`\nTo resume from the last failed item, use:`);
+        console.log(`--startActionId "${stats.lastFailedActionId}"`);
+    }
+    console.log('\n=== Performance Metrics ===');
+    console.log(`Execution time: ${(executionTimeMs / 1000).toFixed(2)} seconds`);
+    console.log(`Heap Used: ${(usedMemory.heapUsed / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`Heap Total: ${(usedMemory.heapTotal / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`RSS: ${(usedMemory.rss / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`User CPU time: ${(cpuUsage.user / 1000000).toFixed(2)} seconds`);
+    console.log(`System CPU time: ${(cpuUsage.system / 1000000).toFixed(2)} seconds`);
+}
 
-function increaseFtuInput(val,pk,ftu,csvRow){ //ftu = fieldToUpdate
-    const input = {};
-    input.keys = { 
-        [pk]: csvRow[pk] // valore della pk da csv 
-     // [sk]: csvRow[sk] // valore della sk da csv
-    }; 
-    input.values = {
-        [ftu]: {
-          codeAttr: '#' + [ftu], // Alias del campo da aggiornare
-          codeValue: ':new' + [ftu], // Nome del nuovo valore da associare ad ftu
-          // Devo parsare csvRow[ftu] in quanto valore numerico ottenuto dal file csv --> nasce come stringa 
-            // e ottengo errori di calcolo
-          value: parseInt(csvRow[ftu]) + ( val * 86400 ) // Nuovo valore da associare al campo ftu
-          /*
-          keys                  --> { actionId: { S: 'valore actionId' } }
-          Alias per ttl         --> { '#ttl': 'newttl' }
-          Nuovo valore di TTL   -->{ ':newttl': { N: '<numero>' } }
-          Espressione nuovo ttl --> SET  #ttl = :newttl
-          */
+function computeNewTtl(days, csvTtl) {
+    return parseInt(csvTtl) + (days * 86400);
+}
+
+function buildUpdateInput(pk, ttlAttr, row, newTtl) {
+    return {
+        keys: { [pk]: row[pk] },
+        values: {
+            [ttlAttr]: {
+                codeAttr: '#' + ttlAttr,
+                codeValue: ':new' + ttlAttr,
+                value: newTtl
+            }
         }
-      };
-    return input;
-};
+    };
+}
 
-function createOutputFile(folder) {
-    mkdirSync(join(__dirname, "results", folder), { recursive: true });
-    const dateIsoString = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
-    const resultPath = join(__dirname, "results", folder, 'updateItems_from_csv_' + dateIsoString + '.json');
-    return resultPath;
-};
+async function processBatchWithRetries(batch, dynDbClient, stats) {
+    let retries = 0;
+    let failedItems = [];
+    while (batch.length > 0 && retries < 3) {
+        const promises = batch.map(async ({ row, input }) => {
+            try {
+                await dynDbClient._updateItem(
+                    tableName,
+                    input.keys,
+                    input.values,
+                    'SET',
+                    `attribute_exists(#ttl)`
+                );
+                stats.successCount++;
+                return null;
+            } catch (e) {
+                if (e.name === "ConditionalCheckFailedException") {
+                    stats.failureCount++;
+                    logFailure({ actionId: row.actionId, error: { name: e.name, message: e.message } });
+                    stats.lastFailedActionId = row.actionId;
+                    return null;
+                } else {
+                    return { row, input, error: e };
+                }
+            }
+        });
+        const results = await Promise.all(promises);
+        failedItems = results.filter(x => x !== null);
+        if (failedItems.length > 0 && retries < 2) {
+            await new Promise(res => setTimeout(res, 100));
+            batch = failedItems;
+            retries++;
+        } else {
+            for (const fail of failedItems) {
+                stats.failureCount++;
+                logFailure({ actionId: fail.row.actionId, error: { name: fail.error.name, message: fail.error.message } });
+                stats.lastFailedActionId = fail.row.actionId;
+            }
+            break;
+        }
+    }
+}
 
 async function main() {
+    const startTime = performance.now();
+    const args = validateArgs();
+    const { env, days, fileName, startActionId } = args;
 
-    // Check dei parametri di input
-    _checkingParameters(args,parsedArgs);
+    initializeResultsFiles(env);
 
-    // Inizializzazione client DynamoDB
-    let dynDbClient;
-    if(env) {
-        dynDbClient = new AwsClientsWrapper(accountType, env );
-    } else {
-        dynDbClient = new AwsClientsWrapper();
-    }
+    let dynDbClient = env
+        ? new AwsClientsWrapper(accountType, env)
+        : new AwsClientsWrapper();
     dynDbClient._initDynamoDB();
 
-    // _parseCSV Scarta automaticamente gli header ed elimina gli ""
-    const parsedCsv = await _parseCSV(fileName,","); // array di oggetti
-       
-    const outputFile = createOutputFile("failed");
-    failedFileHandler = openSync(outputFile,'a'); // Se il file non esiste verrà creato
-
-    let keepSkip = 0;
-    for(const row of parsedCsv) {
-
-        // Skippa le righe del csv fino a quando non incontra quella con row.actionId === actionId
-        if(startActionId !== undefined & row.actionId !== startActionId & keepSkip == 0){
-            continue;
-        } 
-        else{
-            keepSkip = 1;
-        };
-
-        // ftu = fieldToUpdate
-        // Attributo da incrementare -----------------|
-        // PK --------------------------------|       |
-        // gg da aggiungere ---------|        |       |     
-        let input = increaseFtuInput(days,"actionId","ttl",row);
-        try {
-            await dynDbClient._updateItem(tableName, input.keys, input.values,'SET',`attribute_exists(#ttl)`);
-            let objectPassed = JSON.stringify({
-                actionId: row.actionId
-           });
-           console.log(objectPassed);
-        } catch(e) {
-            let objectFailed = JSON.stringify({
-                actionId: row.actionId,
-                error: {
-                    name: e.name,
-                    message: e.message
-                }
-            });
-            console.log(objectFailed);
-            appendFileSync(failedFileHandler,objectFailed);
-            switch(e.name) {   
-                case "ConditionalCheckFailedException":
-                    break;
-                default:
-                    closeSync(failedFileHandler);
-                    process.exit(1);
-            };
-        };
+    let batch = [];
+    const BATCH_SIZE = 25;
+    let stats = {
+        totalRecords: 0,
+        successCount: 0,
+        failureCount: 0,
+        lastFailedActionId: null
     };
-    closeSync(failedFileHandler);
-};
+    let foundStartId = !startActionId;
+
+    const processor = new Transform({
+        objectMode: true,
+        transform: async function (row, encoding, callback) {
+            stats.totalRecords++;
+            if (!foundStartId) {
+                foundStartId = row.actionId === startActionId;
+                if (!foundStartId) return callback();
+            }
+            if (!row.actionId || isNaN(parseInt(row.ttl))) {
+                stats.failureCount++;
+                logFailure({ actionId: row.actionId || '', error: { name: 'InvalidRow', message: 'Missing actionId or invalid ttl' } });
+                stats.lastFailedActionId = row.actionId || '';
+                return callback();
+            }
+            const newTtl = computeNewTtl(days, row.ttl);
+            const input = buildUpdateInput("actionId", "ttl", row, newTtl);
+            batch.push({ row, input });
+            if (batch.length >= BATCH_SIZE) {
+                await processBatchWithRetries(batch, dynDbClient, stats);
+                process.stdout.write(`\rProcessed: ${stats.successCount + stats.failureCount}`);
+                batch = [];
+            }
+            callback();
+        },
+        flush: async function (callback) {
+            if (batch.length > 0) {
+                await processBatchWithRetries(batch, dynDbClient, stats);
+                process.stdout.write(`\rProcessed: ${stats.successCount + stats.failureCount}`);
+            }
+            callback();
+        }
+    });
+
+    try {
+        await pipeline(
+            require('fs').createReadStream(fileName),
+            parse({ columns: true, skip_empty_lines: true }),
+            processor
+        );
+    } catch (err) {
+        console.error('Fatal error:', err);
+        process.exit(1);
+    }
+
+    process.stdout.write('\n');
+    printSummary(stats, performance.now() - startTime);
+}
 
 main();
