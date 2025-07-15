@@ -8,6 +8,8 @@
   },
   "author": "",
   "dependencies": {
-    "pn-common": "file:../pn-common"
+    "csv-parse": "^5.5.0",
+    "csv-stringify": "^6.4.4",
+    "pn-common": "file:../pn-common/"
   }
 }
