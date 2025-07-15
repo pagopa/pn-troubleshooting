@@ -1,12 +1,12 @@
-const { AwsClientsWrapper } = require("pn-common");
-const { parseArgs } = require('node:util');
-const { existsSync, mkdirSync, appendFileSync, createWriteStream } = require('node:fs');
-const { join } = require('node:path');
-const { parse } = require('csv-parse');
-const { pipeline } = require('stream/promises');
-const { Transform } = require('stream');
-const { performance } = require('perf_hooks');
-const { stringify } = require('csv-stringify');
+import { AwsClientsWrapper } from "pn-common";
+import { parseArgs } from 'node:util';
+import { existsSync, mkdirSync, appendFileSync, createReadStream } from 'node:fs';
+import { join } from 'node:path';
+import { parse } from 'csv-parse';
+import { pipeline } from 'stream/promises';
+import { Transform } from 'stream';
+import { performance } from 'perf_hooks';
+import { stringify } from 'csv-stringify';
 
 const accountType = "core";
 const tableName = "pn-Action";
@@ -141,7 +141,6 @@ function buildTransactUpdate(row, newTtl) {
 
 async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun) {
     if (dryRun) {
-        // Simulate all success
         return { success: batch.length, failed: 0, failedItems: [] };
     }
     let attempt = 0;
@@ -153,16 +152,11 @@ async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun)
                 input: {
                     TransactItems: batch
                 },
-                // The command class is UpdateItemCommand for single, but for transact:
-                // Use TransactWriteItemsCommand
-                // We'll use the client directly for flexibility
-                // See below for workaround
                 ...require("@aws-sdk/client-dynamodb"),
                 __type: "TransactWriteItemsCommand"
             });
             return { success: batch.length, failed: 0, failedItems: [] };
         } catch (e) {
-            // If it's a transaction cancellation, parse cancellation reasons
             if (e.name === "TransactionCanceledException" && e.CancellationReasons) {
                 failedItems = [];
                 for (let i = 0; i < e.CancellationReasons.length; i++) {
@@ -173,13 +167,11 @@ async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun)
                         });
                     }
                 }
-                // If only ConditionalCheckFailed, treat as handled, else retry for transient
                 const onlyConditional = failedItems.every(f => f.error.name === "ConditionalCheckFailed");
                 if (onlyConditional) {
                     return { success: batch.length - failedItems.length, failed: failedItems.length, failedItems };
                 }
             }
-            // Retry on ProvisionedThroughputExceeded, Throttling, InternalServerError, etc.
             if (
                 e.name === "ProvisionedThroughputExceededException" ||
                 e.name === "ThrottlingException" ||
@@ -192,11 +184,9 @@ async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun)
                 attempt++;
                 continue;
             }
-            // Fatal error, do not retry
             throw e;
         }
     }
-    // If still failed after retries, log all as failed
     failedItems = batch.map(item => ({
         actionId: item.Update.Key.actionId.S,
         error: { name: "MaxRetriesExceeded", message: "Batch failed after max retries" }
@@ -214,7 +204,6 @@ async function processBatchesParallel(batches, dynDbClient, concurrency, maxRetr
     async function worker() {
         while (true) {
             let batchIdx;
-            // Lockless index increment
             batchIdx = idx++;
             if (batchIdx >= batches.length) break;
             const { batch, firstActionId } = batches[batchIdx];
@@ -228,7 +217,6 @@ async function processBatchesParallel(batches, dynDbClient, concurrency, maxRetr
                     lastFailedActionId = result.failedItems[0].actionId;
                 }
             } catch (e) {
-                // Fatal error, log all as failed
                 for (const item of batch) {
                     failedItemsBuffer.push({
                         actionId: item.Update.Key.actionId.S,
@@ -238,20 +226,17 @@ async function processBatchesParallel(batches, dynDbClient, concurrency, maxRetr
                 failureCount += batch.length;
                 lastFailedActionId = batch[0].Update.Key.actionId.S;
             }
-            // Log failures in batches of 100
             if (failedItemsBuffer.length >= 100) {
                 batchLogFailures(failedItemsBuffer.splice(0, 100));
             }
             process.stdout.write(`\rProcessed: ${successCount + failureCount}`);
         }
     }
-    // Launch workers
     const workers = [];
     for (let i = 0; i < concurrency; i++) {
         workers.push(worker());
     }
     await Promise.all(workers);
-    // Log any remaining failures
     if (failedItemsBuffer.length) {
         batchLogFailures(failedItemsBuffer);
     }
@@ -273,7 +258,6 @@ async function main() {
         : new AwsClientsWrapper();
     dynDbClient._initDynamoDB();
 
-    // Read CSV and build batches
     let batches = [];
     let currentBatch = [];
     let foundStartId = !startActionId;
@@ -286,7 +270,7 @@ async function main() {
     };
 
     await pipeline(
-        require('fs').createReadStream(fileName),
+        createReadStream(fileName),
         parse({ columns: true, skip_empty_lines: true }),
         new Transform({
             objectMode: true,
@@ -297,7 +281,6 @@ async function main() {
                     if (!foundStartId) return cb();
                 }
                 if (!row.actionId || isNaN(parseInt(row.ttl))) {
-                    // Log invalid row as failed
                     batchLogFailures([{
                         actionId: row.actionId || '',
                         error: { name: 'InvalidRow', message: 'Missing actionId or invalid ttl' }
