@@ -10,7 +10,7 @@
   "author": "",
   "dependencies": {
     "csv-parse": "^5.5.6",
-    "csv-stringify": "^6.4.4",
+    "@aws-sdk/client-dynamodb": "^3.602.0",
     "pn-common": "file:../pn-common/"
   }
 }
