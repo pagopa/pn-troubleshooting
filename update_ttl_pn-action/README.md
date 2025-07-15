@@ -29,10 +29,7 @@ npm install
 node index.js \
  --days <num> \
  --fileName <csv file> \
-<<<<<<< HEAD
  [--env <dev|test|uat|hotfix>] \
-=======
->>>>>>> dfc6621 (feat: idempotency and parallel transactions)
  [--startActionId <value>] \
  [--batchSize <num>] \
  [--concurrency <num>] \
@@ -42,8 +39,7 @@ node index.js \
 
 Dove:
 
-- region: regione AWS (default: "eu-south-1");
-- env: ambiente target;
+- env: ambiente target (opzionale);
 - days: numero di giorni da aggiungere all'attuale TTL;
 - fileName: file CSV con colonne actionId e ttl;
 - startActionId: actionId di partenza (opzionale, per ripresa);
@@ -64,3 +60,5 @@ I file vengono scritti in:
 ### Ripresa
 
 Per riprendere da un punto specifico, utilizzare il parametro `--startActionId` con l'actionId fornito nel riepilogo finale.
+
+---
