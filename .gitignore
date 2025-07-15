@@ -31,8 +31,17 @@ check_status_request/*.json
 !check_status_request/package.json
 !check_status_request/package-lock.json
 false_negative_ec_tracker/*.json
+false_negative_ec_tracker/*.jsonl
 !false_negative_ec_tracker/package.json
 !false_negative_ec_tracker/package-lock.json
+manage-request-status/*.json
+manage-request-status/*.jsonl
+!manage-request-status/package.json
+!manage-request-status/package-lock.json
+check_feedback_from_requestId/*.json
+check_feedback_from_requestId/*.jsonl
+!check_feedback_from_requestId/package.json
+!check_feedback_from_requestId/package-lock.json
 ss-manage-retention/.env
 
 ### Rstudio ###
