@@ -1,4 +1,5 @@
 import { AwsClientsWrapper } from "pn-common";
+import { sleep } from "pn-common/libs/utils.js";
 import { parseArgs } from 'node:util';
 import { existsSync, mkdirSync, appendFileSync, createReadStream } from 'node:fs';
 import { join } from 'node:path';
@@ -208,6 +209,7 @@ async function processBatchesParallel(batches, dynDbClient, concurrency, maxRetr
             totalRecords += batch.length;
             try {
                 const result = await processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun);
+                await sleep(30);
                 successCount += result.success;
                 failureCount += result.failed;
                 if (result.failedItems.length) {
@@ -227,7 +229,7 @@ async function processBatchesParallel(batches, dynDbClient, concurrency, maxRetr
             if (failedItemsBuffer.length >= 100) {
                 batchLogFailures(failedItemsBuffer.splice(0, 100));
             }
-            process.stdout.write(`\rProcessed: ${successCount + failureCount}`);
+            process.stdout.write(`Processed: ${successCount + failureCount}`);
         }
     }
     const workers = [];
