@@ -25,7 +25,7 @@ npm install
 Oppure manualmente:
 
 ```bash
-npm install @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb @aws-sdk/credential-provider-sso @js-temporal/polyfill cli-progress
+npm install @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb @aws-sdk/credential-provider @aws-sdk/credential-provider-sso @js-temporal/polyfill cli-progress
 ```
 
 ---
@@ -83,6 +83,10 @@ node index.js \
   --aws-region eu-south-1 \
   --limit 50 
 ```
+
+### STEP PRELIMINARI all' Esecuzione in ambiente produzione 
+
+**SEMPRE consigliato prima dell'esecuzione reale in produzione, assicurarsi di aver eseguito una copia di backup della tabella pn-AuditStorage di DynamoDB**
 
 ### 🚩 Esecuzione Dry Run (simulazione)
 

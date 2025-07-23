@@ -3,13 +3,14 @@ const require = createRequire(import.meta.url);
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { fromSSO } = require("@aws-sdk/credential-provider-sso");
+const { fromIni } = require('@aws-sdk/credential-providers');
 
 export class DynamoDBService {
 
     constructor(awsProfile, region, localstackEndpoint) {
         var confinfoCredentials;
         if (awsProfile != null && localstackEndpoint == undefined) {
-            confinfoCredentials = fromSSO({ profile: awsProfile })();
+            confinfoCredentials = fromIni({ profile: awsProfile })(); //fromSSO({ profile: awsProfile })();
             this.dynamoDbClient = new DynamoDBClient({
                 region: region,
                 credentials: confinfoCredentials
@@ -110,6 +111,7 @@ export class DynamoDBService {
             //console.log("Numero totale di elementi trovati:", allItems.length);
         } catch (err) {
             console.error("Errore durante la Scan:", JSON.stringify(err, null, 2));
+            console.error("Messaggio: ", err.message);
         }
         return allItems;
     }
