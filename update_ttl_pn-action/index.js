@@ -230,7 +230,7 @@ async function processBatchesParallel(batches, dynDbClient, concurrency, maxRetr
             if (failedItemsBuffer.length >= 100) {
                 batchLogFailures(failedItemsBuffer.splice(0, 100));
             }
-            process.stdout.write(`Processed: ${successCount + failureCount}`);
+            process.stdout.write(`Processed: ${successCount + failureCount} \n`);
         }
     }
     const workers = [];
