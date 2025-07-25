@@ -67,7 +67,10 @@ async function main() {
     if(result.Items.length > 0) {
       let timelineEvents = result.Items;
       let feedbackString = "SEND_ANALOG_FEEDBACK.IUN_" + iun + requestId.split(iun)[1].split('.PCRETRY')[0]
-      let feedbackEvent = timelineEvents.find(x => x.timelineElementId.S == feedbackString)
+      let completelyUnreachebleString = "COMPLETELY_UNREACHABLE.IUN_" + iun + requestId.split(iun)[1].split('.ATTEMPT')[0]
+      let feedbackEvent = timelineEvents.find(x => {
+        return x.timelineElementId.S == feedbackString || x.timelineElementId.S == completelyUnreachebleString
+      })
       if(feedbackEvent) {
         console.log(`found ${requestId}`)
         appendJsonToFile(`results/${envName}_${date}`, "found.json", JSON.stringify({[requestId]: unmarshall(feedbackEvent)}))

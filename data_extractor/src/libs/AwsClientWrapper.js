@@ -371,8 +371,10 @@ x
   
   async _getLogsByTraceIdsMultipleAccount(logGroupNames, fromEpochMs, toEpochMs, traceIds) {
     let queryString = "fields @timestamp, @log, @message | filter "
+    //let queryString = "fields @timestamp, @log, @message | filter (" AUDIT ROW
     traceIds.map( el => queryString = queryString + "@message like \"" + el.replace("Root=", "") +"\" or " );
     queryString = queryString.substring(0, queryString.length - 3) + " | sort @timestamp desc | limit 10000"
+    //queryString = "" + queryString.substring(0, queryString.length - 3) + ") and @message like \"[AUD\" | sort @timestamp desc | limit 10000" AUDIT ROW
     console.log(queryString)
     var profile = "core"
     if(logGroupNames[0].includes("ecs")){
