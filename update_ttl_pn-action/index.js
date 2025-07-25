@@ -94,7 +94,7 @@ function batchLogFailures(failedItems) {
     let csvLines = '';
     for (const item of failedItems) {
         jsonLines += JSON.stringify(item) + "\n";
-        csvLines += `${item.actionId},"${item.error.name}: ${item.error.message}"\n`;
+        csvLines += `${item.actionId},${item.ttl},"${item.error.name}: ${item.error.message}"\n`;
     }
     appendFileSync(jsonPath, jsonLines);
     appendFileSync(csvPath, csvLines);
