@@ -3,6 +3,7 @@ import { sleep } from "pn-common/libs/utils.js";
 import { parseArgs } from 'node:util';
 import { existsSync, mkdirSync, appendFileSync, createReadStream } from 'node:fs';
 import { join } from 'node:path';
+import { sleep } from "pn-common/libs/utils.js";
 import { parse } from 'csv-parse';
 import { pipeline } from 'stream/promises';
 import { Transform } from 'stream';
@@ -152,7 +153,8 @@ async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun)
             await dynDbClient._dynamoClient.send(
                 new TransactWriteItemsCommand({
                     TransactItems: batch
-                })
+                }),
+                await sleep(5)
             );
             return { success: batch.length, failed: 0, failedItems: [] };
         } catch (e) {
