@@ -30,22 +30,31 @@ function _checkingParameters(args, values){
   })
 }
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function _prepareData(statusCode){
+function _checkingAllowedStatusCode(statusCode){
   const statusStopCode = {
     "PN998" : "Blocco tecnico Consolidatore-recapitista",
     "PN999" : "Blocco tecnico SEND"
   }
+
+  if(!statusStopCode[statusCode]) {
+    console.log(`StatusCode ${statusCode} is not allowed`)
+  }
+  return statusStopCode[statusCode]
+}
+
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function _prepareData(statusCode, statusDescription){
   const data = { 
     "event": {
       "paperProgrStatus": {
         "registeredLetterCode": "",
         "status": statusCode,
         "statusCode": statusCode,
-        "statusDescription": statusStopCode[statusCode],
+        "statusDescription": statusDescription,
         "statusDateTime": new Date().toISOString(),
         "deliveryFailureCause": "",
         "attachments": []
@@ -81,6 +90,7 @@ async function main() {
   });  
 
   _checkingParameters(args, values)
+  const statusDescription = _checkingAllowedStatusCode(statusCode) 
   const awsClient = new AwsClientsWrapper( envName );
 
   console.log('Reading from file...')
@@ -89,7 +99,7 @@ async function main() {
   console.log(fileRows)
   for(let i = 0; i < fileRows.length; i++){
     const requestId = fileRows[i]
-    const data = _prepareData(statusCode)
+    const data = _prepareData(statusCode, statusDescription)
     await ApiClient.requestToExternalChannel(requestId, data)
     await sleep(1000)
     let res = await awsClient._queryRequest("pn-EcRichiesteMetadati", "pn-cons-000~" + requestId)
