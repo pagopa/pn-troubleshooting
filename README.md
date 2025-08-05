@@ -239,9 +239,9 @@ node index.js --envName <envName> --fileName <fileName>
 ```
 
 ### tech_stop_analog_notification
-Vuoi bloccare una notifica in stato PN999 nel flusso cartaceo?
+Vuoi bloccare una notifica in stato PN998/PN999 nel flusso cartaceo?
 ```bash  
-node index.js --envName <envName> --fileName <fileName> 
+node index.js --envName <envName> --fileName <fileName> --statusCode <statusCode>
 ```
 
 ### tech_stop_analog_notification_unlock

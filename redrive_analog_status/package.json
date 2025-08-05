@@ -1,5 +1,5 @@
 {
-  "name": "redrive_prepare_analog",
+  "name": "redrive_analog_status",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

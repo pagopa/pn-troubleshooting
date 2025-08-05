@@ -3,10 +3,10 @@ const { parseArgs } = require('util');
 const fs = require('fs');
 const { ApiClient } = require("./libs/api");
 require('dotenv').config()
-const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb")
+const { unmarshall } = require("@aws-sdk/util-dynamodb")
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
+  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name> --statusCode <status-code>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -30,18 +30,31 @@ function _checkingParameters(args, values){
   })
 }
 
+function _checkingAllowedStatusCode(statusCode){
+  const statusStopCode = {
+    "PN998" : "Blocco tecnico Consolidatore-recapitista",
+    "PN999" : "Blocco tecnico SEND"
+  }
+
+  if(!statusStopCode[statusCode]) {
+    console.log(`StatusCode ${statusCode} is not allowed`)
+  }
+  return statusStopCode[statusCode]
+}
+
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function _prepareData(){
+function _prepareData(statusCode, statusDescription){
   const data = { 
     "event": {
       "paperProgrStatus": {
         "registeredLetterCode": "",
-        "status": "PN999",
-        "statusCode": "PN999",
-        "statusDescription": "Intervento tecnico SEND",
+        "status": statusCode,
+        "statusCode": statusCode,
+        "statusDescription": statusDescription,
         "statusDateTime": new Date().toISOString(),
         "deliveryFailureCause": "",
         "attachments": []
@@ -58,9 +71,10 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
+    { name: "statusCode", mandatory: true, subcommand: [] },
   ]
   const values = {
-    values: { envName, fileName },
+    values: { envName, fileName, statusCode },
   } = parseArgs({
     options: {
       envName: {
@@ -69,10 +83,14 @@ async function main() {
       fileName: {
         type: "string", short: "f", default: undefined
       },
+      statusCode: {
+        type: "string", short: "s", default: undefined
+      },
     },
   });  
 
   _checkingParameters(args, values)
+  const statusDescription = _checkingAllowedStatusCode(statusCode) 
   const awsClient = new AwsClientsWrapper( envName );
 
   console.log('Reading from file...')
@@ -81,12 +99,12 @@ async function main() {
   console.log(fileRows)
   for(let i = 0; i < fileRows.length; i++){
     const requestId = fileRows[i]
-    const data = _prepareData()
+    const data = _prepareData(statusCode, statusDescription)
     await ApiClient.requestToExternalChannel(requestId, data)
     await sleep(1000)
     let res = await awsClient._queryRequest("pn-EcRichiesteMetadati", "pn-cons-000~" + requestId)
     const requestIdMetadata = unmarshall(res[0])
-    if(requestIdMetadata.statusRequest === "PN999") {
+    if(requestIdMetadata.statusRequest === statusCode) {
       console.log("OK for RequestId=" + requestId)
     }
     else {

@@ -18,7 +18,7 @@ function _hasSpecificAttemptAnalogFeedbackEvent(timelineEvents, attempt) {
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <envName> --fileName <fileName> [--dryrun]"
+  const usage = "Usage: index.js --envName <envName> --fileName <fileName> --statusCode <statusCode> [--dryrun]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -79,10 +79,11 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
+    { name: "statusCode", mandatory: true, subcommand: [] },
     { name: "dryrun", mandatory: false, subcommand: [] }
   ]
   const values = {
-    values: { envName, fileName, dryrun },
+    values: { envName, fileName, statusCode, dryrun },
   } = parseArgs({
     options: {
       envName: {
@@ -90,6 +91,9 @@ async function main() {
       },
       fileName: {
         type: "string", short: "f", default: undefined
+      },
+      statusCode: {
+        type: "string", short: "s", default: undefined
       },
       dryrun: {
         type: "boolean", short: "d", default: false
@@ -120,11 +124,11 @@ async function main() {
       const attempt = _getAttemptFromRequestId(requestId)
       let timelineEvents = await awsCoreClient._queryRequest("pn-Timelines", "iun", iun)
       if(!_hasSpecificAttemptAnalogFeedbackEvent(timelineEvents.Items, attempt)) {
-        const metadati = (await awsConfinfoClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId, 'eventsList')).Items[0];
-        const eventsList = unmarshall(metadati).eventsList
+        const metadati = (await awsConfinfoClient._queryRequest("pn-EcRichiesteMetadati", 'requestId', "pn-cons-000~" + requestId));
+        const eventsList = unmarshall(metadati.Items[0]).eventsList
         const idxResult = eventsList
           .map((e, idx) => ({ e, idx }))
-          .filter(({ e }) => e.paperProgrStatus.statusCode == 'RECAG012')
+          .filter(({ e }) => e.paperProgrStatus.statusCode == statusCode)
           .map(({ idx }) => idx);
 
         if(idxResult.length > 0) {
@@ -133,6 +137,7 @@ async function main() {
           let skip = false;
           for(let i of idxResult) {
             const message = _prepareMessage(requestId, eventsList[i].paperProgrStatus)
+            console.log(message)
             event == null ? event = message : null
             event.analogMail.clientRequestTimeStamp < message.analogMail.clientRequestTimeStamp ? event = message : null
             messages.push(message)
@@ -149,12 +154,12 @@ async function main() {
             appendJsonToFile(`${envName}_${date}`, `sentToSQS.json`, JSON.stringify(res))
           }
           else {
-            console.log(`RequestId ${requestId} contains different RECAG012 statusDateTime`)
+            console.log(`RequestId ${requestId} contains different ${statusCode} statusDateTime`)
             appendJsonToFile(`${envName}_${date}`, `skipped.json`, JSON.stringify(res))
           }
         }
         else {
-          console.log("No RECAG012 found for requestID: " + requestId)
+          console.log(`No ${statusCode} found for requestID: " + ${requestId}`)
         }
       }
       else {
