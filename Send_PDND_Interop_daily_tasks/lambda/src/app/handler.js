@@ -111,8 +111,10 @@ async function activateWaitingPurposes(baseUrl, voucher, serviceId, maxDailyCall
             console.log(`purposesCheckStatus: ${purposesCheckStatus}`);
             if (purposesCheckStatus) {
                 const approveResult = await approvePurpose(baseUrl, voucher, purpose.id);
+                console.log(`Finalità attivata ${purpose.id} - ${purpose.description} [${purpose.title}]`);
+            } else {
                 console.log(`Finalità ${purpose.id} - ${purpose.description} [${purpose.title}] dailyCalls supera il massimo ${maxDailyCalls}`);
-            } 
+            }
 
         }
         console.log("\nElaborazione di tutte le finalità completata.");
