@@ -120,7 +120,7 @@ async function main() {
   for(const listPars of parser ) {
     for(const row of listPars ) {
       const requestId = row.split(',')[0]
-      const statusDateTime = row.split(',')[1]
+      const statusDateTime = row.split(',')[1].split('\n')[0]
       console.log("elaborating request id: " + requestId)
       const iun = _getIunFromRequestId(requestId);
       const attempt = _getAttemptFromRequestId(requestId)
@@ -141,7 +141,7 @@ async function main() {
             messages.push(event)
           }
           if(!dryrun){
-            //await awsCoreClient._sendSQSMessage(queueUrl, event, 0);
+            await awsCoreClient._sendSQSMessage(queueUrl, event, 0);
             appendJsonToFile(`${envName}_${date}`, `sentToSQS.json`, JSON.stringify({
               [requestId]: messages,
             }))
