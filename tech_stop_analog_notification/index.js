@@ -116,7 +116,5 @@ async function main() {
 
 main()
 .then(function(){
-  if(failedRequestIds.length > 0) {
-    console.log(JSON.stringify(failedRequestIds))
-  }
+  console.log("End script")
 })
