@@ -111,9 +111,17 @@ async function main() {
     }
 
     async function _getItemFromPnFutureAction(iunValue) {
-
-        const tableName = "pn-FutureAction"
-        return await awsClientCore._queryRequestByIndex(tableName, 'iun-index', 'iun', iunValue)
+        const tableName = "pn-FutureAction";
+        let lastEvaluatedKey = null;
+        let items = [];
+        do {
+            const results = await awsClientCore._queryRequestByIndex(tableName, 'iun-index', 'iun', iunValue, lastEvaluatedKey);
+            if (results.Items && results.Items.length > 0) {
+                items.push(...results.Items);
+            }
+            lastEvaluatedKey = results.LastEvaluatedKey;
+        } while (lastEvaluatedKey);
+        return { Items: items, Count: items.length };
     }
 
     // try/catch with exit code 1; no return value
