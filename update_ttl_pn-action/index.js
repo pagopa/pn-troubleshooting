@@ -197,28 +197,49 @@ async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun)
     return { success: 0, failed: batch.length, failedItems };
 }
 
-async function processBatchesParallel(batches, dynDbClient, concurrency, maxRetries, dryRun, stats) {
-    let idx = 0;
-    let lastFailedActionId = null;
-    let failureCount = 0;
-    let successCount = 0;
-    let totalRecords = 0;
+async function processFileStream(args, dynDbClient) {
+    const { fileName, days, startActionId, batchSize, concurrency, maxRetries, dryRun } = args;
+    const stats = {
+        totalRecords: 0,
+        successCount: 0,
+        failureCount: 0,
+        lastFailedActionId: null
+    };
+    const batchQueue = [];
+    const maxQueueSize = concurrency * 2;
+    let readingPaused = false;
+    let streamFinished = false;
+    let resolveQueueSpace;
+
     const failedItemsBuffer = [];
+
+    function logFailures() {
+        if (failedItemsBuffer.length > 0) {
+            batchLogFailures(failedItemsBuffer.splice(0));
+        }
+    }
+
     async function worker() {
         while (true) {
-            let batchIdx;
-            batchIdx = idx++;
-            if (batchIdx >= batches.length) break;
-            const { batch, firstActionId } = batches[batchIdx];
-            totalRecords += batch.length;
+            if (batchQueue.length === 0) {
+                if (streamFinished) break;
+                await sleep(50);
+                continue;
+            }
+
+            const { batch, firstActionId } = batchQueue.shift();
+            if (readingPaused && batchQueue.length < maxQueueSize / 2) {
+                readingPaused = false;
+                if (resolveQueueSpace) resolveQueueSpace();
+            }
+
             try {
                 const result = await processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun);
-                await sleep(30);
-                successCount += result.success;
-                failureCount += result.failed;
+                stats.successCount += result.success;
+                stats.failureCount += result.failed;
                 if (result.failedItems.length) {
                     failedItemsBuffer.push(...result.failedItems);
-                    lastFailedActionId = result.failedItems[0].actionId;
+                    stats.lastFailedActionId = result.failedItems[0].actionId;
                 }
             } catch (e) {
                 for (const item of batch) {
@@ -228,98 +249,92 @@ async function processBatchesParallel(batches, dynDbClient, concurrency, maxRetr
                         error: { name: e.name, message: e.message }
                     });
                 }
-                failureCount += batch.length;
-                lastFailedActionId = batch[0].transaction.Update.Key.actionId.S;
+                stats.failureCount += batch.length;
+                stats.lastFailedActionId = batch[0].transaction.Update.Key.actionId.S;
             }
+            
             if (failedItemsBuffer.length >= 100) {
-                batchLogFailures(failedItemsBuffer.splice(0, 100));
+                logFailures();
             }
-            process.stdout.write(`Processed: ${successCount + failureCount} \n`);
+            process.stdout.write(`Total processed: ${stats.successCount + stats.failureCount} `);
         }
     }
-    const workers = [];
-    for (let i = 0; i < concurrency; i++) {
-        workers.push(worker());
-    }
-    await Promise.all(workers);
-    if (failedItemsBuffer.length) {
-        batchLogFailures(failedItemsBuffer);
-    }
-    stats.successCount = successCount;
-    stats.failureCount = failureCount;
-    stats.lastFailedActionId = lastFailedActionId;
-    stats.totalRecords = totalRecords;
-}
 
-async function main() {
-    const startTime = performance.now();
-    const args = validateArgs();
-    const { env, days, fileName, startActionId, batchSize, concurrency, maxRetries, dryRun } = args;
+    const workers = Array.from({ length: concurrency }, () => worker());
 
-    initializeResultsFiles(env);
-
-    let dynDbClient = env
-        ? new AwsClientsWrapper(accountType, env)
-        : new AwsClientsWrapper();
-    dynDbClient._initDynamoDB();
-
-    let batches = [];
     let currentBatch = [];
     let foundStartId = !startActionId;
-    let totalRecords = 0;
-    let stats = {
-        totalRecords: 0,
-        successCount: 0,
-        failureCount: 0,
-        lastFailedActionId: null
-    };
 
     await pipeline(
         createReadStream(fileName),
         parse({ columns: true, skip_empty_lines: true }),
         new Transform({
             objectMode: true,
-            transform(row, _, cb) {
-                totalRecords++;
+            async transform(row, _, cb) {
+                stats.totalRecords++;
                 if (!foundStartId) {
                     foundStartId = row.actionId === startActionId;
                     if (!foundStartId) return cb();
                 }
+
                 if (!row.actionId || isNaN(parseInt(row.ttl))) {
-                    batchLogFailures([{
+                    failedItemsBuffer.push({
                         actionId: row.actionId || '',
                         ttl: row.ttl || '',
                         error: { name: 'InvalidRow', message: 'Missing actionId or invalid ttl' }
-                    }]);
+                    });
                     stats.failureCount++;
                     stats.lastFailedActionId = row.actionId || '';
                     return cb();
                 }
+
                 const newTtl = computeNewTtl(days, row.ttl);
                 currentBatch.push({
                     transaction: buildTransactUpdate(row, newTtl),
                     originalTtl: row.ttl
                 });
+
                 if (currentBatch.length >= batchSize) {
-                    batches.push({ batch: currentBatch, firstActionId: row.actionId });
+                    batchQueue.push({ batch: currentBatch, firstActionId: row.actionId });
                     currentBatch = [];
+                    if (batchQueue.length >= maxQueueSize) {
+                        readingPaused = true;
+                        await new Promise(res => { resolveQueueSpace = res; });
+                    }
                 }
                 cb();
             },
             flush(cb) {
-                if (currentBatch.length) {
-                    batches.push({ batch: currentBatch, firstActionId: currentBatch[0].transaction.Update.Key.actionId.S });
+                if (currentBatch.length > 0) {
+                    batchQueue.push({ batch: currentBatch, firstActionId: currentBatch[0].transaction.Update.Key.actionId.S });
                 }
+                streamFinished = true;
                 cb();
             }
         })
     );
 
-    stats.totalRecords = totalRecords;
-    await processBatchesParallel(batches, dynDbClient, concurrency, maxRetries, dryRun, stats);
+    await Promise.all(workers);
+    logFailures(); // Log any remaining failures
+    return stats;
+}
+
+
+async function main() {
+    const startTime = performance.now();
+    const args = validateArgs();
+    
+    initializeResultsFiles(args.env);
+
+    const dynDbClient = args.env
+        ? new AwsClientsWrapper(accountType, args.env)
+        : new AwsClientsWrapper();
+    dynDbClient._initDynamoDB();
+
+    const stats = await processFileStream(args, dynDbClient);
 
     process.stdout.write('\n');
-    printSummary(stats, performance.now() - startTime, dryRun);
+    printSummary(stats, performance.now() - startTime, args.dryRun);
 }
 
 main();
