@@ -121,7 +121,7 @@ async function main() {
             }
             lastEvaluatedKey = results.LastEvaluatedKey;
         } while (lastEvaluatedKey);
-        return { Items: items, Count: items.length };
+        return items;
     }
 
     // try/catch with exit code 1; no return value
@@ -262,10 +262,10 @@ async function main() {
                 
                 await _setDocumentStateAttached(fk)
 
-                const result = await _getItemFromPnFutureAction(iun)
+                const futureActions = await _getItemFromPnFutureAction(iun)
 
-                if (result.Count !== 0) {
-                    for (const item of result.Items) {
+                if (futureActions.length !== 0) {
+                    for (const item of futureActions) {
 
                         const pk = item.timeSlot.S // 2025-06-10T21:06
                         const sk = item.actionId.S // check_attachment_retention_iun_KNDA-NPAG-VANA-202502-J-1_scheduling-date_2025-06-10T21:06:01.182068834Z
