@@ -7,6 +7,15 @@
 - [Utilizzo](#utilizzo)
 
 ## Descrizione
+Lo script:
+- prende in input un file CSV con due colonne, actionId e TTL (valori attuali);
+- aggiorna il TTL nella tabella 'pn-Action' tramite chiamate batch parallele a [TransactWriteItems](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html), fino a 25 elementi per batch, con condizione di esistenza (`attribute_exists(actionId)`);
+- elabora più batch in parallelo (concorrenza configurabile) per massimizzare la velocità, gestendo automaticamente i retry con backoff esponenziale in caso di errori transitori (es. throttling);
+- fornisce una modalità `dryRun` per simulare l'esecuzione senza modificare DynamoDB;
+- logga solo gli elementi falliti, in modo efficiente e batch, nei file di output;
+- permette di riprendere l'elaborazione da uno specifico actionId in caso di interruzione.
+
+NB: Gli actionId che generano un'eccezione "ConditionalCheckFailed" (elemento non presente) vengono loggati come scartati ma non interrompono l'esecuzione. Errori diversi vengono gestiti con retry automatici; se persistono dopo i tentativi configurati, vengono loggati come falliti.
 
 Lo script:
 

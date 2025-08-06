@@ -1,0 +1,15 @@
+{
+  "name": "extract_check_stock",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/util-dynamodb": "^3.602.0",
+    "pn-common": "file:../pn-common"
+  }
+}

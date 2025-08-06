@@ -38,7 +38,9 @@ function _checkingAllowedStatusCode(statusCode){
 
   if(!statusStopCode[statusCode]) {
     console.log(`StatusCode ${statusCode} is not allowed`)
+    process.exit(1)
   }
+  
   return statusStopCode[statusCode]
 }
 
@@ -96,12 +98,10 @@ async function main() {
   console.log('Reading from file...')
 
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
-  console.log(fileRows)
   for(let i = 0; i < fileRows.length; i++){
     const requestId = fileRows[i]
     const data = _prepareData(statusCode, statusDescription)
     await ApiClient.requestToExternalChannel(requestId, data)
-    await sleep(1000)
     let res = await awsClient._queryRequest("pn-EcRichiesteMetadati", "pn-cons-000~" + requestId)
     const requestIdMetadata = unmarshall(res[0])
     if(requestIdMetadata.statusRequest === statusCode) {
@@ -116,5 +116,5 @@ async function main() {
 
 main()
 .then(function(){
-  console.log(JSON.stringify(failedRequestIds))
+  console.log("End script")
 })

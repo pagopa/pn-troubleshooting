@@ -111,9 +111,17 @@ async function main() {
     }
 
     async function _getItemFromPnFutureAction(iunValue) {
-
-        const tableName = "pn-FutureAction"
-        return await awsClientCore._queryRequestByIndex(tableName, 'iun-index', 'iun', iunValue)
+        const tableName = "pn-FutureAction";
+        let lastEvaluatedKey = null;
+        let items = [];
+        do {
+            const results = await awsClientCore._queryRequestByIndex(tableName, 'iun-index', 'iun', iunValue, lastEvaluatedKey);
+            if (results.Items && results.Items.length > 0) {
+                items.push(...results.Items);
+            }
+            lastEvaluatedKey = results.LastEvaluatedKey;
+        } while (lastEvaluatedKey);
+        return items;
     }
 
     // try/catch with exit code 1; no return value
@@ -254,10 +262,10 @@ async function main() {
                 
                 await _setDocumentStateAttached(fk)
 
-                const result = await _getItemFromPnFutureAction(iun)
+                const futureActions = await _getItemFromPnFutureAction(iun)
 
-                if (result.Count !== 0) {
-                    for (const item of result.Items) {
+                if (futureActions.length !== 0) {
+                    for (const item of futureActions) {
 
                         const pk = item.timeSlot.S // 2025-06-10T21:06
                         const sk = item.actionId.S // check_attachment_retention_iun_KNDA-NPAG-VANA-202502-J-1_scheduling-date_2025-06-10T21:06:01.182068834Z
