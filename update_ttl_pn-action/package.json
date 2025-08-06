@@ -2,12 +2,15 @@
   "name": "update_ttl_pn-action",
   "version": "1.0.0",
   "description": "Increases the TTL associated with an actionId in pn-Actions by N days",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "dependencies": {
-    "pn-common": "file:../pn-common"
+    "csv-parse": "^5.5.6",
+    "@aws-sdk/client-dynamodb": "^3.602.0",
+    "pn-common": "file:../pn-common/"
   }
 }
