@@ -83,7 +83,7 @@ function initializeResultsFiles(env) {
     outputPath = env ? join(timestampPath, env) : timestampPath;
     if (env && !existsSync(outputPath)) mkdirSync(outputPath);
     appendFileSync(join(outputPath, 'failures.json'), '', { flag: 'w' });
-    appendFileSync(join(outputPath, 'failures.csv'), 'actionId,error\n', { flag: 'w' });
+    appendFileSync(join(outputPath, 'failures.csv'), 'actionId,ttl,error\n', { flag: 'w' });
 }
 
 function batchLogFailures(failedItems) {
@@ -147,11 +147,12 @@ async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun)
     let attempt = 0;
     let backoff = 100;
     let failedItems = [];
+    const transactItems = batch.map(item => item.transaction);
     while (attempt < maxRetries) {
         try {
             await dynDbClient._dynamoClient.send(
                 new TransactWriteItemsCommand({
-                    TransactItems: batch
+                    TransactItems: transactItems
                 }),
                 await sleep(5)
             );
@@ -162,7 +163,8 @@ async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun)
                 for (let i = 0; i < e.CancellationReasons.length; i++) {
                     if (e.CancellationReasons[i]?.Code !== undefined && e.CancellationReasons[i].Code !== "None") {
                         failedItems.push({
-                            actionId: batch[i].Update.Key.actionId.S,
+                            actionId: batch[i].transaction.Update.Key.actionId.S,
+                            ttl: batch[i].originalTtl,
                             error: { name: e.CancellationReasons[i].Code, message: e.CancellationReasons[i].Message || "" }
                         });
                     }
@@ -188,7 +190,8 @@ async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun)
         }
     }
     failedItems = batch.map(item => ({
-        actionId: item.Update.Key.actionId.S,
+        actionId: item.transaction.Update.Key.actionId.S,
+        ttl: item.originalTtl,
         error: { name: "MaxRetriesExceeded", message: "Batch failed after max retries" }
     }));
     return { success: 0, failed: batch.length, failedItems };
@@ -220,12 +223,13 @@ async function processBatchesParallel(batches, dynDbClient, concurrency, maxRetr
             } catch (e) {
                 for (const item of batch) {
                     failedItemsBuffer.push({
-                        actionId: item.Update.Key.actionId.S,
+                        actionId: item.transaction.Update.Key.actionId.S,
+                        ttl: item.originalTtl,
                         error: { name: e.name, message: e.message }
                     });
                 }
                 failureCount += batch.length;
-                lastFailedActionId = batch[0].Update.Key.actionId.S;
+                lastFailedActionId = batch[0].transaction.Update.Key.actionId.S;
             }
             if (failedItemsBuffer.length >= 100) {
                 batchLogFailures(failedItemsBuffer.splice(0, 100));
@@ -284,6 +288,7 @@ async function main() {
                 if (!row.actionId || isNaN(parseInt(row.ttl))) {
                     batchLogFailures([{
                         actionId: row.actionId || '',
+                        ttl: row.ttl || '',
                         error: { name: 'InvalidRow', message: 'Missing actionId or invalid ttl' }
                     }]);
                     stats.failureCount++;
@@ -291,7 +296,10 @@ async function main() {
                     return cb();
                 }
                 const newTtl = computeNewTtl(days, row.ttl);
-                currentBatch.push(buildTransactUpdate(row, newTtl));
+                currentBatch.push({
+                    transaction: buildTransactUpdate(row, newTtl),
+                    originalTtl: row.ttl
+                });
                 if (currentBatch.length >= batchSize) {
                     batches.push({ batch: currentBatch, firstActionId: row.actionId });
                     currentBatch = [];
@@ -300,7 +308,7 @@ async function main() {
             },
             flush(cb) {
                 if (currentBatch.length) {
-                    batches.push({ batch: currentBatch, firstActionId: currentBatch[0].Update.Key.actionId.S });
+                    batches.push({ batch: currentBatch, firstActionId: currentBatch[0].transaction.Update.Key.actionId.S });
                 }
                 cb();
             }
