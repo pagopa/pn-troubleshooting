@@ -26,6 +26,8 @@ usage() {
     --core-bucket-name                         : core bucket name
     --confinfo-bucket-name                     : confinfo bucket name
     --timestamp-utc <timestamp-utc>            : Optional timestamp in UTC format (e.g., 2025-01-31T12:00:00Z)
+    --memory <memory>                          : heap memory size for JVM (default: 64g)
+
 EOF
   exit 1
 }
@@ -40,6 +42,7 @@ parse_params() {
   core_bucket_name=""
   confinfo_bucket_name=""
   timestamp_utc=""
+  memory="64g" # default
   
   while :; do
     case "${1-}" in
@@ -74,6 +77,10 @@ parse_params() {
       ;;
     --timestamp-utc)
       timestamp_utc="${2-}"
+      shift
+      ;;
+    --memory)
+      memory="${2-}"
       shift
       ;;
     -?*) die "Unknown option: $1" ;;
@@ -263,7 +270,7 @@ elif ([ $account_type == "core" ]); then
       "
   fi
 
-  export MAVEN_OPTS="-Xmx32g \
+  export MAVEN_OPTS="-Xmx${memory} \
     --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
     --add-opens java.base/sun.security.action=ALL-UNNAMED \
     --add-opens java.base/sun.util.calendar=ALL-UNNAMED"
