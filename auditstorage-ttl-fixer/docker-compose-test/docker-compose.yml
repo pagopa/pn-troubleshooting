@@ -1,0 +1,21 @@
+version: '3.8' # Specifica la versione di Docker Compose
+
+services:
+  localstack:
+    container_name: localstack-dynamodb # Un nome facile da riconoscere per il tuo container
+    image: localstack/localstack        # L'immagine ufficiale di LocalStack
+    ports:
+      - "4566:4566"                     # Porta principale di LocalStack
+    environment:
+      # Questa variabile dice a LocalStack di avviare SOLO il servizio DynamoDB
+      - SERVICES=dynamodb
+      # Credenziali fittizie, necessarie per gli SDK e la CLI anche localmente
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=eu-south-1 # Una regione di default, utile per il tuo codice
+    networks:
+      - localstack-net # Definiamo una rete personalizzata per l'isolamento
+
+networks:
+  localstack-net:
+    driver: bridge # Tipo di rete standard
