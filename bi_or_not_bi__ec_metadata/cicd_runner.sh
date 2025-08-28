@@ -26,7 +26,7 @@ usage() {
     --core-bucket-name                         : core bucket name
     --confinfo-bucket-name                     : confinfo bucket name
     --timestamp-utc <timestamp-utc>            : Optional timestamp in UTC format (e.g., 2025-01-31T12:00:00Z)
-    --memory <memory>                          : heap memory size for JVM (default: 64g)
+    --memory <memory>                          : heap memory size for JVM (default: 48g)
 
 EOF
   exit 1
@@ -42,7 +42,7 @@ parse_params() {
   core_bucket_name=""
   confinfo_bucket_name=""
   timestamp_utc=""
-  memory="64g" # default
+  memory="48g" # default
   
   while :; do
     case "${1-}" in
@@ -114,6 +114,7 @@ dump_params(){
   echo "Core Bucket Name:            ${core_bucket_name}"
   echo "Confinfo Bucket Name:        ${confinfo_bucket_name}"
   echo "Timestamp UTC Now:           ${timestamp_utc}"
+  echo "Heap memory size:            ${memory}"
 }
 
 
