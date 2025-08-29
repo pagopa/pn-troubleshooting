@@ -1,4 +1,4 @@
-FROM rocker/rstudio
+FROM rocker/rstudio@sha256:779353d18b7064ed8320f0e9d764ad69249bdcd40258e37b7d1db6e0ce082425
 
 
 RUN apt-get update \
