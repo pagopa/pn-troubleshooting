@@ -8,6 +8,9 @@
   },
   "author": "",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.879.0",
+    "@aws-sdk/client-sqs": "^3.879.0",
+    "@aws-sdk/client-sts": "^3.879.0",
     "@aws-sdk/credential-providers": "^3.879.0",
     "@aws-sdk/util-dynamodb": "^3.879.0"
   }
