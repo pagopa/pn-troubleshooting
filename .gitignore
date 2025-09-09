@@ -19,6 +19,7 @@ extract_log_from_s3/output
 CostSavingScript/output
 Send_Interop_Daily_Automation/output
 export_for_va/output
+CheckRepoRules/output
 remove_from_sqs/to_remove_*
 remove_from_sqs/safe_to_delete_*
 check-sent-paper-attachment/*.json
