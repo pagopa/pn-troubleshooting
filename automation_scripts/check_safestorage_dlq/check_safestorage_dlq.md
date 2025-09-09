@@ -6,6 +6,7 @@ Script Bash per la pulizia delle DLQ di SafeStorage:
 - `pn-ss-main-bucket-events-queue-DLQ`
 - `pn-ss-staging-bucket-events-queue-DLQ`
 - `pn-ss-transformation-sign-and-timemark-queue-DLQ`
+- `pn-ss-transformation-sign-queue-DLQ`
 - `pn-safestore_to_deliverypush-DLQ`
   
 Lo script esegue le seguenti operazioni:
@@ -14,7 +15,7 @@ Lo script esegue le seguenti operazioni:
 2. A seconda della DLQ da pulire:
     - `pn-ss-transformation-raster-queue-DLQ`: verifica se esiste un evento `sent` relativo agli allegati cartacei ([check-sent-paper-attachment](https://github.com/pagopa/pn-troubleshooting/tree/main/check-sent-paper-attachment)).
     - `pn-safestore_to_deliverypush-DLQ`: verifica che la `fileKey` non sia presente sulla tabella `pn-DocumentCreationRequestTable` ([analyze-safestorage-dlq](https://github.com/pagopa/pn-troubleshooting/tree/main/analyze-safestorage-dlq)).
-    - `pn-ss-staging-bucket-events-queue-DLQ` e `pn-ss-transformation-sign-and-timemark-queue-DLQ`: verifica la presenza della `fileKey` nel solo bucket principale di SS e che lo stato del documento sulla tabella `pn-SsDocumenti`, in base al suo prefisso, sia quello atteso ([analyze-safestorage-dlq](https://github.com/pagopa/pn-troubleshooting/tree/main/analyze-safestorage-dlq)).
+    - `pn-ss-staging-bucket-events-queue-DLQ`, `pn-ss-transformation-sign-queue-DLQ` e `pn-ss-transformation-sign-and-timemark-queue-DLQ`: verifica la presenza della `fileKey` nel solo bucket principale di SS e che lo stato del documento sulla tabella `pn-SsDocumenti`, in base al suo prefisso, sia quello atteso ([analyze-safestorage-dlq](https://github.com/pagopa/pn-troubleshooting/tree/main/analyze-safestorage-dlq)).
     - `pn-ss-main-bucket-events-queue-DLQ`: stesse verifiche della `pn-ss-staging-bucket-events-queue-DLQ`, ma con il controllo aggiuntivo su documenti di tipo `PN_AAR` e `PN_LEGAL_FACTS` per accertare che la richiesta della loro creazione non sia l'ultimo evento in timeline ([analyze-safestorage-dlq](https://github.com/pagopa/pn-troubleshooting/tree/main/analyze-safestorage-dlq)).
 3. In tutti i casi stampa un conteggio degli eventi totali, rimuovibili e non.
 4. (Opzionale) Se attivato il parametro `--purge`, rimuove i messaggi elaborati dalla coda DLQ mediante il [remove_from_sqs](https://github.com/pagopa/pn-troubleshooting/tree/main/remove_from_sqs).
