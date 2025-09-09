@@ -23,7 +23,6 @@ async function sendNationalRegistriesRequest(taxId, correlationId, receiverType)
 // with PF or PG prefix
 async function decodeUID(uid){
     let url = `${process.env.ALB_CONFIDENTIAL_URL}/datavault-private/v1/recipients/internal?internalId=${uid}`;
-    console.log(url)
     let headers = {
         'Content-Type': 'application/json'
     };
