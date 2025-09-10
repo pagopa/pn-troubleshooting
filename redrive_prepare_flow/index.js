@@ -113,6 +113,13 @@ async function _hasFoundEvents(awsClient, requestId) {
   return foundSend
 }
 
+async function _checkReceiverAddress(paperAddressEvents) {
+  let hasReceiverAddress = res.some((e) => {
+    return unmarshall(e).addressType == 'RECEIVER_ADDRESS'
+  })
+  return hasReceiverAddress
+}
+
 const failedRequestIds = []
 
 async function main() {
@@ -154,8 +161,8 @@ async function main() {
     const isRS = requestId.includes("PREPARE_SIMPLE_REGISTERED");
     let isDiscoveredAddress = false
     let res = await awsClient._queryRequest("pn-PaperAddress", 'requestId', requestId)
-    if (res.length == 0) {
-      console.log(`PaperAddres not found for requestId: ${requestId}`)
+    if (res.length == 0 || !_checkReceiverAddress(res)) {
+      console.log(`PaperAddress or ReceiverAddress not found for requestId: ${requestId}`)
       continue
     }
     if(!isZeroAttempt && !isRS) {
@@ -172,8 +179,8 @@ async function main() {
       let res = await awsClient._queryRequest("pn-PaperRequestDelivery", "requestId", requestId)
       const paperRequestDeliveryData = unmarshall(res[0])
       res = await awsClient._queryRequest("pn-PaperAddress", 'requestId', paperRequestDeliveryData.relatedRequestId)
-      if (res.length == 0) {
-        console.log(`PaperAddress for ATTEMPT 1 not found for requestId: ${paperRequestDeliveryData.relatedRequestId}`)
+      if (res.length == 0 || !_checkReceiverAddress(res)) {
+        console.log(`PaperAddress or ReceiverAddress for ATTEMPT 1 not found for requestId: ${paperRequestDeliveryData.relatedRequestId}`)
         continue
       }
       let data = JSON.parse(JSON.stringify(paperRequestDeliveryData));
