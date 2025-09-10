@@ -114,7 +114,7 @@ async function _hasFoundEvents(awsClient, requestId) {
 }
 
 async function _checkReceiverAddress(paperAddressEvents) {
-  let hasReceiverAddress = res.some((e) => {
+  let hasReceiverAddress = paperAddressEvents.some((e) => {
     return unmarshall(e).addressType == 'RECEIVER_ADDRESS'
   })
   return hasReceiverAddress
