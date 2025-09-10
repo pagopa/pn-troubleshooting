@@ -42,7 +42,7 @@ parse_params() {
   core_bucket_name=""
   confinfo_bucket_name=""
   timestamp_utc=""
-  memory="48g" # default
+  memory="32g" # default
   
   while :; do
     case "${1-}" in
@@ -198,13 +198,6 @@ elif ([ $account_type == "core" ]); then
       \
       \
       taskDagExecutor \
-        --report-fleet ${resource_root}/analog-delivery-monitoring/reports/ReportFleet.json \
-        --source-path ${resource_root} \
-        --export-bucket ${export_bucket_name}
-      \
-      \
-      \
-      taskDagExecutor \
         --report-fleet ${resource_root}/analog-delivery-monitoring/reports/export_celonis_s3.json \
         --source-path ${resource_root} \
         --export-bucket ${export_bucket_name}
@@ -254,13 +247,6 @@ elif ([ $account_type == "core" ]); then
         --aws-dynexport-folder-prefix %s/incremental2024/ \
         --result-upload-url s3://${export_bucket_name}/parquet/ \
         pn-PaperRequestError 2024-1-1 3035-1-1 \
-      \
-      \
-      \
-      taskDagExecutor \
-        --report-fleet ${resource_root}/analog-delivery-monitoring/reports/ReportFleet.json \
-        --source-path ${resource_root} \
-        --export-bucket ${export_bucket_name}
       \
       \
       \
