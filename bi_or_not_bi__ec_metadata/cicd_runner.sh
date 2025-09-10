@@ -42,7 +42,7 @@ parse_params() {
   core_bucket_name=""
   confinfo_bucket_name=""
   timestamp_utc=""
-  memory="48g" # default
+  memory="32g" # default
   
   while :; do
     case "${1-}" in
