@@ -154,7 +154,7 @@ async function processBatchTransactWrite(batch, dynDbClient, maxRetries, dryRun)
                 new TransactWriteItemsCommand({
                     TransactItems: transactItems
                 }),
-                await sleep(5)
+                await sleep(10)
             );
             return { success: batch.length, failed: 0, failedItems: [] };
         } catch (e) {
