@@ -64,6 +64,7 @@ const QUEUE_CONFIGS = {
     'pn-ss-main-bucket-events-queue-DLQ': BASE_CONFIGS.safestorageMain,
     'pn-ss-staging-bucket-events-queue-DLQ': BASE_CONFIGS.safestorageStaging,
     'pn-ss-transformation-sign-and-timemark-queue-DLQ': BASE_CONFIGS.safestorageStaging,
+    'pn-ss-transformation-sign-queue-DLQ': BASE_CONFIGS.safestorageStaging,
     'pn-safestore_to_deliverypush-DLQ': BASE_CONFIGS.safestorageToDeliveryPush
 };
 
@@ -211,6 +212,9 @@ function processSQSDump(dumpFilePath, queueName) {
                     case 'pn-ss-transformation-sign-and-timemark-queue-DLQ':
                         fileKey = body.fileKey;
                         break;
+                    case 'pn-ss-transformation-sign-queue-DLQ':
+                        fileKey = body.fileKey;
+                        break;
                     case 'pn-ss-staging-bucket-events-queue-DLQ':
                         fileKey = body?.Records?.[0]?.s3?.object?.key ||
                                   body?.detail?.object?.key;
@@ -287,11 +291,14 @@ async function checkS3Objects(awsClient, fileKey, accountId, queueName, eventNam
                     return { success: false, reason: 'Delete marker exists for ObjectCreated:Put event' };
                 }
                 return { success: true };
-            } else if (eventName === 'ObjectRemoved:DeleteMarkerCreated') {
+            } else if (
+                eventName === 'ObjectRemoved:DeleteMarkerCreated' ||
+                eventName === 'LifecycleExpiration:DeleteMarkerCreated'
+            ) {
                 if (hasDeleteMarker) {
                     return { success: true };
                 }
-                return { success: false, reason: 'Delete marker missing for ObjectRemoved:DeleteMarkerCreated event' };
+                return { success: false, reason: 'Delete marker missing for DeleteMarkerCreated event type' };
             } else {
                 return { success: false, reason: `Unsupported eventName: ${eventName}` };
             }
@@ -351,7 +358,10 @@ async function checkDocumentState(awsClient, fileKey, queueConfig, queueName, ev
             let documentStateOk = false;
             if (eventName === 'ObjectCreated:Put') {
                 documentStateOk = (item.documentState === 'attached' || item.documentState === 'available');
-            } else if (eventName === 'ObjectRemoved:DeleteMarkerCreated') {
+            } else if (
+                eventName === 'ObjectRemoved:DeleteMarkerCreated' ||
+                eventName === 'LifecycleExpiration:DeleteMarkerCreated'
+            ) {
                 documentStateOk = item.documentState === 'deleted';
             } else {
                 documentStateOk = false;
@@ -362,7 +372,11 @@ async function checkDocumentState(awsClient, fileKey, queueConfig, queueName, ev
                 actualState: item.documentLogicalState,
                 expectedLogicalState,
                 actualDocumentState: item.documentState,
-                expectedDocumentState: eventName === 'ObjectCreated:Put' ? ['attached', 'available'] : (eventName === 'ObjectRemoved:DeleteMarkerCreated' ? 'deleted' : undefined)
+                expectedDocumentState: eventName === 'ObjectCreated:Put' ? ['attached', 'available'] : (
+                    (eventName === 'ObjectRemoved:DeleteMarkerCreated' || eventName === 'LifecycleExpiration:DeleteMarkerCreated')
+                        ? 'deleted'
+                        : undefined
+                )
             };
         } else {
             return {
@@ -492,7 +506,9 @@ async function main() {
     
         console.log(`\nStarting validation checks for ${stats.total} messages...`);
         let progress = 0;
-    
+        
+        const accountId = await getAccountId(confinfoClient);
+        
         for (const message of messages) {
                 progress++;
                 process.stdout.write(`\rChecking fileKey ${progress} of ${stats.total}`);
@@ -521,6 +537,7 @@ async function main() {
                         const s3Check = await checkS3Objects(
                                 confinfoClient,
                                 fileKey,
+                                accountId,
                                 queueName,
                                 eventName
                         );

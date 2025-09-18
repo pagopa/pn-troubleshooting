@@ -17,7 +17,6 @@ Lo script:
 
 NB: Gli actionId che generano un'eccezione "ConditionalCheckFailed" (elemento non presente) vengono loggati come scartati ma non interrompono l'esecuzione. Errori diversi vengono gestiti con retry automatici; se persistono dopo i tentativi configurati, vengono loggati come falliti.
 
-
 ## Installazione
 
 ```bash

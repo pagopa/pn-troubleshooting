@@ -17,8 +17,8 @@ EOF
 
 # Default values
 WORKDIR=""
-STARTDIR=$(pwd)
-OUTPUTDIR="$STARTDIR/output/check_ec_cartaceo_errors"
+STARTDIR=$(dirname "$0")
+OUTPUTDIR="$STARTDIR/output"
 V_TIMEOUT=30
 PURGE=false
 ENV="prod"
@@ -29,6 +29,24 @@ cleanup() {
     for f in "${GENERATED_FILES[@]}"; do
         [[ -f "$f" ]] && rm -f "$f"
     done
+}
+
+ensure_node_deps() {
+    local dir="$1"
+    if [[ ! -f "$dir/package.json" ]]; then
+        echo "Error: package.json not found in $dir"
+        cleanup
+        exit 1
+    fi
+    if [[ ! -d "$dir/node_modules" ]]; then
+        echo "node_modules missing in $dir. Installing dependencies..."
+        (cd "$dir" && npm ci)
+    elif [[ -f "$dir/package-lock.json" ]]; then
+        if [[ "$dir/package-lock.json" -nt "$dir/node_modules" ]]; then
+            echo "package-lock.json is newer than node_modules in $dir. Reinstalling dependencies..."
+            (cd "$dir" && npm ci)
+        fi
+    fi
 }
 
 # Parse parameters
@@ -111,6 +129,7 @@ if [[ ! -d "$WORKDIR/dump_sqs" ]]; then
     exit 1
 fi
 cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1; }
+ensure_node_deps "$WORKDIR/dump_sqs"
 node dump_sqs.js --awsProfile "$AWS_PROFILE" --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
 # Get the most recent dump file
@@ -132,6 +151,7 @@ if [[ ! -d "$WORKDIR/check_status_request" ]]; then
     exit 1
 fi
 cd "$WORKDIR/check_status_request" || { echo "Failed to cd into '$WORKDIR/check_status_request'"; exit 1; }
+ensure_node_deps "$WORKDIR/check_status_request"
 # Remove pre-existing JSON files if they are present
 for file in counter.json error.json fromconsolidatore.json toconsolidatore.json locked.json notfound.json; do
     if [[ -f "$file" ]]; then
@@ -152,13 +172,6 @@ echo "Extracted requestIdx values to: $REQUEST_IDS_LIST"
 # Step 3: Check request status on pn-EcRichiesteMetadati    #
 #############################################################
 node index.js --envName "$ENV_NAME" --fileName "$REQUEST_IDS_LIST" 1>/dev/null
-
-ERROR_JSON="$WORKDIR/check_status_request/error.json"
-if [[ ! -f "$ERROR_JSON" ]]; then
-  echo "error.json not found. All events can be removed."
-fi
-
-ERROR_JSON=$(realpath "$ERROR_JSON")
 cp "$WORKDIR/check_status_request/counter.json" "$WORKDIR/check_status_request/${BASENAME}_counter.json"
 GENERATED_FILES+=("$WORKDIR/check_status_request/${BASENAME}_counter.json")
 
@@ -181,18 +194,34 @@ echo "Total events in JSONLine dump: $JSONLINE_COUNT"
 ###################################################
 # Step 5: Extract requests in error status        #
 ###################################################
+ERROR_JSON="$WORKDIR/check_status_request/error.json"
 ERROR_REQUEST_IDS_LIST="$WORKDIR/check_status_request/${BASENAME}_error_request_ids.txt"
-jq -r '.requestId | sub("pn-cons-000~"; "")' "$ERROR_JSON" > "$ERROR_REQUEST_IDS_LIST"
-ERROR_REQUEST_IDS_LIST=$(realpath "$ERROR_REQUEST_IDS_LIST")
-GENERATED_FILES+=("$ERROR_REQUEST_IDS_LIST")
-echo "Extracted error requestIds to: $ERROR_REQUEST_IDS_LIST"
-echo "Total requestIds in error status (not to remove): $(wc -l < "$ERROR_REQUEST_IDS_LIST")"
+
+if [[ -f "$ERROR_JSON" ]]; then
+    ERROR_JSON=$(realpath "$ERROR_JSON")
+    jq -r '.requestId | sub("pn-cons-000~"; "")' "$ERROR_JSON" > "$ERROR_REQUEST_IDS_LIST"
+    ERROR_REQUEST_IDS_LIST=$(realpath "$ERROR_REQUEST_IDS_LIST")
+    GENERATED_FILES+=("$ERROR_REQUEST_IDS_LIST")
+    ERROR_COUNT=$(wc -l < "$ERROR_REQUEST_IDS_LIST")
+    echo "Extracted error requestIds to: $ERROR_REQUEST_IDS_LIST"
+    echo "Total requestIds in error status (not to remove): $ERROR_COUNT"
+else
+    : > "$ERROR_REQUEST_IDS_LIST"
+    ERROR_REQUEST_IDS_LIST=$(realpath "$ERROR_REQUEST_IDS_LIST")
+    GENERATED_FILES+=("$ERROR_REQUEST_IDS_LIST")
+    echo "No error.json found. All events can be removed."
+    echo "Total requestIds in error status (not to remove): 0"
+fi
 
 #######################################################
 # Step 6: Filter out events from requests in error    #
 #######################################################
 FILTERED_DUMP="$WORKDIR/check_status_request/${BASENAME}_filtered.jsonl"
-grep -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
+if [[ -s "$ERROR_REQUEST_IDS_LIST" ]]; then
+    grep -F -v -f "$ERROR_REQUEST_IDS_LIST" "$JSONLINE_DUMP" > "$FILTERED_DUMP"
+else
+    cp "$JSONLINE_DUMP" "$FILTERED_DUMP"
+fi
 FILTERED_DUMP=$(realpath "$FILTERED_DUMP")
 GENERATED_FILES+=("$FILTERED_DUMP")
 FILTERED_COUNT=$(wc -l < "$FILTERED_DUMP")
@@ -210,11 +239,12 @@ if $PURGE; then
         exit 1
     fi
     cd "$WORKDIR/remove_from_sqs" || { echo "Failed to cd into '$WORKDIR/remove_from_sqs'"; exit 1; }
+    ensure_node_deps "$WORKDIR/remove_from_sqs"
     echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
     node index.js --account confinfo --envName "$ENV_NAME" --queueName pn-ec-cartaceo-errori-queue-DLQ.fifo --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
-    find "$RESULTSDIR" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ.fifo*.jsonl_result.json" | xargs rm
+    find "$RESULTSDIR" -type f -name "dump_pn-ec-cartaceo-errori-queue-DLQ*.jsonl_result.json" | xargs rm
     echo "Events purged from the SQS queue."
 fi
 
