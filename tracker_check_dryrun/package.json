@@ -1,0 +1,14 @@
+{
+  "name": "paper-tracker-check-dryrun",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.895.0",
+    "@aws-sdk/credential-provider-sso": "^3.895.0",
+    "@aws-sdk/util-dynamodb": "^3.895.0"
+  }
+}
