@@ -23,7 +23,7 @@ La tipologia ente è suddivisa in:
 </tbody>
 </table>
 
-Per ogni tipologia di ente sono individuati gli **ambiti** e all'interno dell'ambito la **tipologia  di notifica**.
+Per ogni tipologia di ente sono individuati gli **ambiti** e all'interno dell'ambito la **tipologia di notifica**.
 {% for ente in enti %}
 ##  {{ ente['codice_ente'] }} - {{ ente['ente'] }}
 
@@ -33,7 +33,7 @@ Ambiti e tipologia notifica:
 
 {% for ambito in ambiti %}
 {%- if ambito['codice_ente'] == ente['codice_ente'] %}
-### {{ ambito['codice_ente']  | replace("\r", "") | replace("\n", "") | trim }}{{ ambito['codice_ambito']  | replace("\r", "") | replace("\n", "") | trim}} - **{{ ambito['ambito']  | replace("\r", "") | replace("\n", "") | trim}}** 
+### {{ ambito['codice_ente'] | replace("\r", "") | replace("\n", "") | trim }}{{ ambito['codice_ambito'] | replace("\r", "") | replace("\n", "") | trim}} - **{{ ambito['ambito'] | replace("\r", "") | replace("\n", "") | trim}}**
 {% for codice in codici %}
 {%- if (codice['codice_ente'] == ente['codice_ente']) and (codice['codice_ambito'] == ambito['codice_ambito']) %}
 * Codice`{{ codice['codice_tassonomico'] | replace("\r", "") | replace("\n", "") | trim }}` - **{{ codice['tipologia_atto'] | replace("\r", "") | replace("\n", "") | trim}}** 
