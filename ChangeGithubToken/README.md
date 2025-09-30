@@ -16,5 +16,3 @@ The secret must already exist.
 * `-e` → Environment (e.g., `dev`, `test`)
 * `-s` → Secret name
 
-```
-
