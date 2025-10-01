@@ -4,19 +4,20 @@ set -euo pipefail
 
 usage() {
   echo "Error: missing required parameters."
-  echo "Usage: $0 -t <token> -r <region> -e <environment> -s <secret_name>"
+  echo "Usage: $0 -r <region> -e <environment> -s <secret_name>"
   exit 1
 }
 
-# Input variables
+
+# Variables
 TOKEN=""
 REGION=""
 ENV=""
 SECRET_NAME=""
 
-while getopts "t:r:e:s:" opt; do
+
+while getopts "r:e:s:" opt; do
   case ${opt} in
-    t) TOKEN="$OPTARG" ;;
     r) REGION="$OPTARG" ;;
     e) ENV="$OPTARG" ;;
     s) SECRET_NAME="$OPTARG" ;;
@@ -24,9 +25,16 @@ while getopts "t:r:e:s:" opt; do
   esac
 done
 
-if [[ -z "$TOKEN" || -z "$REGION" || -z "$ENV" || -z "$SECRET_NAME" ]]; then
+if [ -z "$REGION" ] || [ -z "$ENV" ] || [ -z "$SECRET_NAME" ]; then
   usage
 fi
+
+if [ -z "$TOKEN" ]; then
+  echo -n "Enter GitHub token (input hidden): "
+  read -r -s TOKEN
+  echo
+fi
+
 
 PROFILES=("sso_pn-core-${ENV}" "sso_pn-confinfo-${ENV}")
 
