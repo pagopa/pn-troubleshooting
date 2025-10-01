@@ -54,7 +54,7 @@ const dynamoConfinfo = new DynamoDBClient({
 });
 
 // Directory output
-const outDir = path.join("out", "3_createTracking");
+const outDir = path.join("out", "3_prepareTrackingEvents");
 if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
@@ -76,7 +76,7 @@ const outputFiles = {
     intermediate: path.join(outDir, `PCRETRY0_${timestamp}_intermediate_events.jsonl`),
     final: path.join(outDir, `PCRETRY0_${timestamp}_final_events.jsonl`),
   },
-  pcretryN: {} // Verrà popolato dinamicamente per PCRETRY1, PCRETRY2, etc.
+  pcretryN: {}
 };
 
 /**
@@ -488,7 +488,6 @@ function chunk(array, size) {
       });
     }
     
-    // Mostra completamento
     showProgress(batches.length, batches.length, 'Progresso: ');
 
     console.log(`\n=== RISULTATI FINALI ===`);

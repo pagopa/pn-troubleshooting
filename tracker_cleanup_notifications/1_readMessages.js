@@ -72,14 +72,14 @@ const errorFile = path.join(outDir, `ERROR_${timestamp}.jsonl`);
 /**
  * Mostra una barra di progresso in console
  */
-function showProgress(current, total) {
+function showProgress(current, total, prefix = '') {
   const barLength = 40;
   const percentage = Math.min(100, Math.floor((current / total) * 100));
   const filledLength = Math.floor((barLength * current) / total);
   const emptyLength = barLength - filledLength;
   
   const bar = '█'.repeat(filledLength) + '░'.repeat(emptyLength);
-  const line = `\r[${bar}] ${percentage}% (${current}/${total})`;
+  const line = `\r${prefix}[${bar}] ${percentage}% (${current}/${total})`;
   
   process.stdout.write(line);
   
@@ -184,7 +184,7 @@ async function readBatch(sqs, queueUrl, maxMessages = 10, deleteAfterRead = fals
     allFailedDeletes.push(...failedDeletes);
 
     totalCollected += messages.length;
-    showProgress(totalCollected, limitNumber);
+    showProgress(totalCollected, limitNumber, 'Progresso: ');
 
     // Controllo se abbiamo raggiunto il limite
     if (totalCollected >= limitNumber) {
