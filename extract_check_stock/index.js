@@ -47,7 +47,7 @@ function calculateStockDate(requestId, data, statusCode, days){
       statusCode: preesito.statusCode,
       statusDateTime: preesito.statusDateTime
     },
-    days: days
+    days: diff
   })
   if(diff < 0) {
     appendJsonToFile("to_check.json", d)

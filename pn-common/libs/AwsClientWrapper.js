@@ -1,7 +1,7 @@
 const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
 const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
 const { CloudWatchLogsClient, StartQueryCommand, GetQueryResultsCommand, GetLogEventsCommand } = require("@aws-sdk/client-cloudwatch-logs");
-const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, BatchWriteItemCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, QueryCommand, UpdateItemCommand, DescribeTableCommand, BatchWriteItemCommand, DeleteItemCommand } = require("@aws-sdk/client-dynamodb");
 const { ECSClient, DescribeServicesCommand, ListClustersCommand, ListServicesCommand } = require("@aws-sdk/client-ecs");
 const { EventBridgeClient, EnableRuleCommand, DisableRuleCommand, ListRulesCommand } = require("@aws-sdk/client-eventbridge");
 const { KMSClient, DecryptCommand, EncryptCommand, ListKeysCommand, GetKeyRotationStatusCommand, ListResourceTagsCommand, DescribeKeyCommand, RotateKeyOnDemandCommand } = require("@aws-sdk/client-kms");
@@ -332,6 +332,17 @@ class AwsClientsWrapper {
     const tableInfo = await this._describeTable(tableName)
     return tableInfo.Table.KeySchema
   }
+
+  async _deleteItem(tableName, keys){
+    const input = { // DeleteItemInput
+      TableName: tableName, // required
+      Key: keys
+    };
+    const command = new DeleteItemCommand(input);
+    const response = await this._dynamoClient.send(command);
+    return response;
+  }
+  
 
   // SQS
   async _getQueueUrl(queueName) {

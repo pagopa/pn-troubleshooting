@@ -1,4 +1,4 @@
-const { marshall } = require("@aws-sdk/util-dynamodb");
+const { marshall, convertToAttr} = require("@aws-sdk/util-dynamodb");
 
 function prepareKeys(data) {
     let keys = {};
@@ -20,11 +20,11 @@ function prepareExpressionAttributeValues(data) {
   let expressionAttributeValues = {};
   Object.keys(data).forEach(k => {
     if(data[k]['codeValue']){
-      expressionAttributeValues[data[k]['codeValue']] = marshall(data[k]['value'])
+      expressionAttributeValues[data[k]['codeValue']] = convertToAttr(data[k]['value'])
     }
    
     if(data[k]['condCodeValue']){
-      expressionAttributeValues[data[k]['condCodeValue']] = marshall(data[k]['condValue'])
+      expressionAttributeValues[data[k]['condCodeValue']] = convertToAttr(data[k]['condValue'])
     }
   });
   return expressionAttributeValues;
