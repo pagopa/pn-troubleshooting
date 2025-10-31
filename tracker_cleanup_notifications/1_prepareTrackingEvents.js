@@ -5,7 +5,7 @@ Per pcretry0 crea il tracking e eventi da inviare, per pcretryN (N>0) crea solo 
 Variabili d'ambiente:
 - CORE_AWS_PROFILE: profilo AWS SSO core
 - CONFINFO_AWS_PROFILE: profilo AWS SSO confinfo
-- INPUT_FILE: file dei requestId da processare (es. out/2_checkRequestId/NOT_FOUND_20250929102022.txt)
+- INPUT_FILE: file dei requestId da processare (es. input.csv)
 - REGION: default eu-south-1
 - BATCH_SIZE: dimensione batch per DynamoDB (default 25, max DynamoDB limit)
 
@@ -21,6 +21,7 @@ Output:
 import { fromSSO } from "@aws-sdk/credential-providers";
 import { DynamoDBClient, BatchGetItemCommand, ScanCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { parse } from "csv-parse";
 import fs from "fs";
 import path from "path";
 
@@ -28,7 +29,7 @@ const coreAwsProfile = process.env.CORE_AWS_PROFILE;
 const confinfoAwsProfile = process.env.CONFINFO_AWS_PROFILE;
 const region = process.env.REGION || "eu-south-1";
 const inputFile = process.env.INPUT_FILE;
-const batchSize = parseInt(process.env.BATCH_SIZE || "50", 10);
+const batchSize = parseInt(process.env.BATCH_SIZE || "25", 10);
 
 if (!coreAwsProfile || !confinfoAwsProfile || !inputFile) {
   console.error("Errore: devi definire CORE_AWS_PROFILE, CONFINFO_AWS_PROFILE e INPUT_FILE");
@@ -54,7 +55,7 @@ const dynamoConfinfo = new DynamoDBClient({
 });
 
 // Directory output
-const outDir = path.join("out", "3_prepareTrackingEvents");
+const outDir = path.join("out", "1_prepareTrackingEvents");
 if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
@@ -312,8 +313,7 @@ function processRequestId(requestId, metadatiItem, paperRequestDeliveryItem, uni
 
   // Filtra e ordina gli eventi (decrescente per timestamp)
   const eventsToProcess = metadatiItem.eventsList
-    .filter((event) => event.paperProgrStatus.statusCode && 
-                        event.paperProgrStatus.statusCode !== "P000")
+    .filter((event) => event.paperProgrStatus.statusCode)
     .sort((a, b) => new Date(b.clientRequestTimeStamp) - new Date(a.clientRequestTimeStamp));
 
   // Processa ogni evento
@@ -445,11 +445,11 @@ function chunk(array, size) {
 
 (async () => {
   try {
-    // Leggi input file
-    const requestIds = fs.readFileSync(inputFile, 'utf-8')
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line);
+    // Leggi csv input
+    const requestIds = fs
+      .createReadStream(inputFile)
+      .pipe(parse({ columns: true, trim: true }))
+      .map(line => line.requestId);
 
     console.log(`\nProcessando ${requestIds.length} requestIds in batch da ${batchSize}...\n`);
 

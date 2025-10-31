@@ -3,7 +3,7 @@ Inizializza il tracking delle spedizioni dato il file di input
 
 Variabili d'ambiente:
 - HOST: hostname del microservizio (es. http://localhost:3000)
-- INPUT_FILE: file JSONL con i body delle richieste (es. out/3_createTracking/PCRETRY0_<timestamp>_init_tracking.jsonl)
+- INPUT_FILE: file JSONL con i body delle richieste (es. out/1_createTracking/PCRETRY0_<timestamp>_init_tracking.jsonl)
 - BATCH_SIZE: numero di richieste concorrenti (default 10)
 - DELAY_MS: delay tra batch in millisecondi (default 0)
 
@@ -34,7 +34,7 @@ console.log("DELAY_MS:", delayMs);
 console.log("======================\n");
 
 // Directory output
-const outDir = path.join("out", "4_initTrackings");
+const outDir = path.join("out", "2_initTrackings");
 if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }

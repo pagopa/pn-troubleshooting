@@ -4,7 +4,7 @@ Invia eventi letti da file JSONL alla coda SQS di pn-external_channel_to_paper_t
 Variabili d'ambiente:
 - AWS_PROFILE: profilo AWS SSO (es. core)
 - REGION: default eu-south-1
-- INPUT_FILE: file JSONL da inviare (es. out/3_createTracking/PCRETRY0_<timestamp>_intermediate_events.jsonl)
+- INPUT_FILE: file JSONL da inviare (es. out/2_createTracking/PCRETRY0_<timestamp>_intermediate_events.jsonl)
 - BATCH_SIZE: dimensione batch locale (default 10, max 10 per SQS)
 - DELAY_MS: delay tra batch in millisecondi (default 0)
 - ACCOUNT_ID: ID account AWS (opzionale, se assente viene ricavato via STS)
