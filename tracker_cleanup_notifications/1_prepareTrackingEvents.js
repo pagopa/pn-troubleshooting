@@ -21,7 +21,7 @@ Output:
 import { fromSSO } from "@aws-sdk/credential-providers";
 import { DynamoDBClient, BatchGetItemCommand, ScanCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { parse } from "csv-parse";
+import { parse } from "csv-parse/sync";
 import fs from "fs";
 import path from "path";
 
@@ -446,10 +446,12 @@ function chunk(array, size) {
 (async () => {
   try {
     // Leggi csv input
-    const requestIds = fs
-      .createReadStream(inputFile)
-      .pipe(parse({ columns: true, trim: true }))
-      .map(line => line.requestId);
+    const csvContent = fs.readFileSync(inputFile, "utf-8");
+    const records = parse(csvContent, {
+      columns: true,
+      trim: true,
+    });
+    const requestIds = records.map(r => r.requestId).filter(Boolean);
 
     console.log(`\nProcessando ${requestIds.length} requestIds in batch da ${batchSize}...\n`);
 

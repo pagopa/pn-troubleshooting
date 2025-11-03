@@ -54,7 +54,7 @@ Output:
 - ERROR_<timestamp>.jsonl (oggetti con errore dettagliato)
 - UNPROCESSED_<timestamp>.jsonl (solo i body non processati, rilanciabili)
 
-$ HOST=http://localhost:8886 INPUT_FILE=./out/3_prepareTrackingEvents/PCRETRY0_20251001100335_init_tracking.jsonl node 2_initTrackings.js
+$ HOST=http://localhost:8886 INPUT_FILE=./out/1_prepareTrackingEvents/PCRETRY0_20251103181426_init_tracking.jsonl node 2_initTrackings.js
 ```
 
 ## Step 3: Send To Queue
@@ -68,12 +68,13 @@ Variabili d'ambiente:
 - BATCH_SIZE: dimensione batch locale (default 10, max 10 per SQS)
 - DELAY_MS: delay tra batch in millisecondi (default 0)
 - ACCOUNT_ID: ID account AWS (opzionale, se assente viene ricavato via STS)
+- DRY_RUN: se 'true' invia i messaggi in modalità dry run (default 'true')
 
 Output:
 - ERROR_<timestamp>.jsonl (dettagli errori SQS)
 - UNPROCESSED_<timestamp>.jsonl (messaggi non inviati)
 
-$ CORE_AWS_PROFILE=sso_pn-core-dev INPUT_FILE=./out/3_prepareTrackingEvents/PCRETRY0_20251001100335_intermediate_events.jsonl node 5_sendToQueue.js
+$ CORE_AWS_PROFILE=sso_pn-core-dev INPUT_FILE=./out/1_prepareTrackingEvents/PCRETRY0_20251103181426_intermediate_events.jsonl node 3_sendToQueue.js
 ```
 
 > [!IMPORTANT]

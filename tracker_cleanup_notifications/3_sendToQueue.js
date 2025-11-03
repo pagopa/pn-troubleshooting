@@ -8,6 +8,7 @@ Variabili d'ambiente:
 - BATCH_SIZE: dimensione batch locale (default 10, max 10 per SQS)
 - DELAY_MS: delay tra batch in millisecondi (default 0)
 - ACCOUNT_ID: ID account AWS (opzionale, se assente viene ricavato via STS)
+- DRY_RUN: se 'true' invia i messaggi in modalità dry run (default 'true')
 
 Output:
 - ERROR_<timestamp>.jsonl (dettagli errori SQS)
@@ -26,6 +27,7 @@ const region = process.env.REGION || "eu-south-1";
 const inputFile = process.env.INPUT_FILE;
 const batchSize = Math.min(parseInt(process.env.BATCH_SIZE || "10", 10), 10);
 const delayMs = parseInt(process.env.DELAY_MS || "0", 10);
+const dryRun = (process.env.DRY_RUN || "true") === "true";
 let accountId = process.env.ACCOUNT_ID;
 const queueName = "pn-external_channel_to_paper_tracker";
 
@@ -41,6 +43,7 @@ console.log("INPUT_FILE:", inputFile);
 console.log("BATCH_SIZE:", batchSize);
 console.log("DELAY_MS:", delayMs);
 console.log("ACCOUNT_ID:", accountId);
+console.log("DRY_RUN:", dryRun);
 console.log("======================\n");
 
 const credentialsProvider = fromSSO({ profile: awsProfile });
@@ -84,10 +87,16 @@ function showProgress(current, total, prefix = '') {
 /**
  * Invia un batch a SQS
  */
-async function sendBatch(messages, queueUrl) {
+async function sendBatch(messages, queueUrl, dryRun = true) {
   const entries = messages.map((msg, i) => ({
     Id: String(i),
     MessageBody: JSON.stringify(msg),
+    MessageAttributes: {
+      dryRun: {
+        DataType: 'String',
+        StringValue: dryRun ? 'true' : 'false',
+      },
+    },
   }));
 
   try {
@@ -163,7 +172,7 @@ function writeErrors(errors) {
 
     for (let i = 0; i < batches.length; i++) {
       showProgress(i, batches.length, "Invio: ");
-      const errors = await sendBatch(batches[i], queueUrl);
+      const errors = await sendBatch(batches[i], queueUrl, dryRun);
       totalSent += batches[i].length - errors.length;
       totalErrors += errors.length;
       if (errors.length > 0) writeErrors(errors);
