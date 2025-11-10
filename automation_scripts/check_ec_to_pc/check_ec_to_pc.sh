@@ -6,10 +6,11 @@ SCRIPT_START_TIME=$(date +%s)
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") -w <work-dir> [-e <env>] [-t <visibility-timeout>] [--purge]
+Usage: $(basename "$0") -w <work-dir> [-e <env>] [-t <visibility-timeout>] [-q <queue-name>] [--purge]
   -w, --work-dir           Working directory
   -e, --env                Environment (prod, test, uat, hotfix). Default: prod
   -t, --visibility-timeout Visibility timeout in seconds (default: 300)
+  -q, --queue              SQS queue name. Default: pn-external_channel_to_paper_channel-DLQ
   --purge                  Purge events from the SQS queue
 EOF
     exit 1
@@ -22,6 +23,7 @@ OUTPUTDIR="$STARTDIR/output"
 V_TIMEOUT=300
 PURGE=false
 ENV="prod"
+QUEUE_NAME="pn-external_channel_to_paper_channel-DLQ"
 
 GENERATED_FILES=()
 CHECK_FEEDBACK_RESULTS=""
@@ -64,6 +66,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         -t|--visibility-timeout)
             V_TIMEOUT="$2"
+            shift 2
+            ;;
+        -q|--queue)
+            QUEUE_NAME="$2"
             shift 2
             ;;
         --purge)
@@ -119,6 +125,7 @@ echo "Working directory: $(realpath "$WORKDIR")"
 echo "Starting directory: $STARTDIR"
 echo "Output directory: $(realpath "$OUTPUTDIR")"
 echo "Environment: $ENV"
+echo "Queue: $QUEUE_NAME"
 echo "Visibility Timeout: $V_TIMEOUT seconds"
 
 #############################################
@@ -132,10 +139,10 @@ if [[ ! -d "$WORKDIR/dump_sqs" ]]; then
 fi
 cd "$WORKDIR/dump_sqs" || { echo "Failed to cd into '$WORKDIR/dump_sqs'"; exit 1; }
 ensure_node_deps "$WORKDIR/dump_sqs"
-node dump_sqs.js --awsProfile "$AWS_PROFILE" --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
+node dump_sqs.js --awsProfile "$AWS_PROFILE" --queueName "$QUEUE_NAME" --visibilityTimeout "$V_TIMEOUT" 1>/dev/null
 
 # Get the most recent dump file
-ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_pn-external_channel_to_paper_channel-DLQ*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
+ORIGINAL_DUMP=$(find "$WORKDIR/dump_sqs/result" -type f -name "dump_${QUEUE_NAME}*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
 if [[ -z "$ORIGINAL_DUMP" ]]; then
   echo "No dump file found. Exiting."
   exit 1
@@ -241,8 +248,8 @@ if $PURGE; then
     echo "Waiting for the visibility timeout ($V_TIMEOUT seconds) to expire..."
     sleep "$V_TIMEOUT"
     echo "Purging events from the SQS queue..."
-    node index.js --account core --envName "$ENV_NAME" --queueName pn-external_channel_to_paper_channel-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
-    find "$RESULTSDIR" -type f -name "dump_pn-external_channel_to_paper_channel-DLQ*.jsonl_result.json" | xargs rm
+    node index.js --account core --envName "$ENV_NAME" --queueName "$QUEUE_NAME" --visibilityTimeout "$V_TIMEOUT" --fileName "$FILTERED_DUMP" 1>/dev/null
+    find "$RESULTSDIR" -type f -name "dump_${QUEUE_NAME}*.jsonl_result.json" | xargs rm
     echo "Events purged from the SQS queue."
 fi
 
