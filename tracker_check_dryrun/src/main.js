@@ -380,6 +380,7 @@ export async function main() {
     "attemptId",
     "requestId",
     "iun",
+    "registeredLetterCode",
     "match",
     "errorCategory",
     "errorCause",
@@ -404,7 +405,9 @@ export async function main() {
         requestId: te.trackingId,
         attemptId: record.attemptId,
         iun: record.iun,
+        registeredLetterCode: record.registeredLetterCode,
         match:
+          comparisonReport.summary.timelineCount !== 0 &&
           comparisonReport.summary.mismatches === 0 &&
           comparisonReport.summary.onlyInTimeline === 0 &&
           comparisonReport.summary.onlyInDryRun === 0
@@ -420,9 +423,12 @@ export async function main() {
     }
     if (trackingErrors.length === 0) {
       appendCSVRow(reportFilePath, header, {
+        requestId: record.attemptId + ".PCRETRY_" + record.numPcRetry,
         attemptId: record.attemptId,
         iun: record.iun,
+        registeredLetterCode: record.registeredLetterCode,
         match:
+          comparisonReport.summary.timelineCount !== 0 &&
           comparisonReport.summary.mismatches === 0 &&
           comparisonReport.summary.onlyInTimeline === 0 &&
           comparisonReport.summary.onlyInDryRun === 0

@@ -22,6 +22,7 @@ export async function readCSVFile(filePath) {
     records.push({
       iun: record.IUN,
       attemptId: record.attemptId,
+      registeredLetterCode: record.registeredLetterCode,
       numPcRetry,
     });
   }
