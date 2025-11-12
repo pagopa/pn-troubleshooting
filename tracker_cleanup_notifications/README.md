@@ -19,7 +19,7 @@ iun,requestId,fine_recapito_stato,perfezionamento_stato
 ## Step 1: Prepare tracking events
 ```
 Crea tracking ed eventi da inviare sulla coda di pn-external_channel_to_paper_tracker
-Per pcretry0 crea il tracking e eventi da inviare, per pcretryN (N>0) crea solo gli eventi
+Crea il tracking e eventi da inviare per tutti i pcretry (0, 1, 2)
 
 Variabili d'ambiente:
 - CORE_AWS_PROFILE: profilo AWS SSO core
@@ -29,9 +29,7 @@ Variabili d'ambiente:
 - BATCH_SIZE: dimensione batch per DynamoDB (default 25, max DynamoDB limit)
 
 Output:
-- PCRETRY0_<timestamp>_init_tracking.jsonl (body chiamate a API init tracking)
-- PCRETRY0_<timestamp>_intermediate_events.jsonl
-- PCRETRY0_<timestamp>_final_events.jsonl
+- PCRETRY<N>_<timestamp>_init_tracking.jsonl (body chiamate a API init tracking)
 - PCRETRY<N>_<timestamp>_intermediate_events.jsonl
 - PCRETRY<N>_<timestamp>_final_events.jsonl
 - ERROR_<timestamp>.txt (requestId non processati in caso di errori)
