@@ -34,7 +34,7 @@ console.log("DELAY_MS:", delayMs);
 console.log("======================\n");
 
 // Directory output
-const outDir = path.join("out", "2_initTrackings");
+const outDir = path.join("out", path.basename(import.meta.url).replace(".js", ""));
 if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }

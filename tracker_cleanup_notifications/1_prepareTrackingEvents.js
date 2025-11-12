@@ -19,7 +19,11 @@ Output:
 */
 
 import { fromSSO } from "@aws-sdk/credential-providers";
-import { DynamoDBClient, BatchGetItemCommand, ScanCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  BatchGetItemCommand,
+  ScanCommand,
+} from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { parse } from "csv-parse/sync";
 import fs from "fs";
@@ -32,7 +36,9 @@ const inputFile = process.env.INPUT_FILE;
 const batchSize = parseInt(process.env.BATCH_SIZE || "25", 10);
 
 if (!coreAwsProfile || !confinfoAwsProfile || !inputFile) {
-  console.error("Errore: devi definire CORE_AWS_PROFILE, CONFINFO_AWS_PROFILE e INPUT_FILE");
+  console.error(
+    "Errore: devi definire CORE_AWS_PROFILE, CONFINFO_AWS_PROFILE e INPUT_FILE"
+  );
   process.exit(1);
 }
 
@@ -55,12 +61,16 @@ const dynamoConfinfo = new DynamoDBClient({
 });
 
 // Directory output
-const outDir = path.join("out", "1_prepareTrackingEvents");
+const outDir = path.join(
+  "out",
+  path.basename(import.meta.url).replace(".js", "")
+);
 if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
 
-const timestamp = new Date().toISOString()
+const timestamp = new Date()
+  .toISOString()
   .replace(/[-:TZ.]/g, "")
   .slice(0, 14);
 
@@ -73,29 +83,35 @@ let deliveryDriverCache = null;
 // File output per retry level
 const outputFiles = {
   pcretry0: {
-    initTracking: path.join(outDir, `PCRETRY0_${timestamp}_init_tracking.jsonl`),
-    intermediate: path.join(outDir, `PCRETRY0_${timestamp}_intermediate_events.jsonl`),
+    initTracking: path.join(
+      outDir,
+      `PCRETRY0_${timestamp}_init_tracking.jsonl`
+    ),
+    intermediate: path.join(
+      outDir,
+      `PCRETRY0_${timestamp}_intermediate_events.jsonl`
+    ),
     final: path.join(outDir, `PCRETRY0_${timestamp}_final_events.jsonl`),
   },
-  pcretryN: {}
+  pcretryN: {},
 };
 
 /**
  * Mostra una barra di progresso in console
  */
-function showProgress(current, total, prefix = '') {
+function showProgress(current, total, prefix = "") {
   const barLength = 40;
   const percentage = Math.min(100, Math.floor((current / total) * 100));
   const filledLength = Math.floor((barLength * current) / total);
   const emptyLength = barLength - filledLength;
-  
-  const bar = '█'.repeat(filledLength) + '░'.repeat(emptyLength);
+
+  const bar = "█".repeat(filledLength) + "░".repeat(emptyLength);
   const line = `\r${prefix}[${bar}] ${percentage}% (${current}/${total})`;
-  
+
   process.stdout.write(line);
-  
+
   if (current >= total) {
-    process.stdout.write('\n');
+    process.stdout.write("\n");
   }
 }
 
@@ -103,8 +119,8 @@ function showProgress(current, total, prefix = '') {
  * Batch get per EcRichiesteMetadati
  */
 async function batchGetEcRichiesteMetadati(requestIds) {
-  const keys = requestIds.map(requestId => ({
-    requestId: { S: "pn-cons-000~" + requestId }
+  const keys = requestIds.map((requestId) => ({
+    requestId: { S: "pn-cons-000~" + requestId },
   }));
 
   try {
@@ -112,18 +128,21 @@ async function batchGetEcRichiesteMetadati(requestIds) {
       new BatchGetItemCommand({
         RequestItems: {
           "pn-EcRichiesteMetadati": {
-            Keys: keys
-          }
-        }
+            Keys: keys,
+          },
+        },
       })
     );
 
     const items = result.Responses?.["pn-EcRichiesteMetadati"] || [];
     const itemMap = new Map();
-    
-    items.forEach(item => {
+
+    items.forEach((item) => {
       const unmarshalled = unmarshall(item);
-      const originalRequestId = unmarshalled.requestId.replace("pn-cons-000~", "");
+      const originalRequestId = unmarshalled.requestId.replace(
+        "pn-cons-000~",
+        ""
+      );
       itemMap.set(originalRequestId, unmarshalled);
     });
 
@@ -138,14 +157,15 @@ async function batchGetEcRichiesteMetadati(requestIds) {
  * Batch get per PaperRequestDelivery
  */
 async function batchGetPaperRequestDelivery(requestIds) {
-  const keys = requestIds.map(requestId => {
+  const keys = requestIds.map((requestId) => {
     const pk = requestId.split(".PCRETRY_")[0];
     return { requestId: { S: pk } };
   });
 
   // Rimuovi duplicati
-  const uniqueKeys = keys.filter((key, index, self) => 
-    index === self.findIndex(k => k.requestId.S === key.requestId.S)
+  const uniqueKeys = keys.filter(
+    (key, index, self) =>
+      index === self.findIndex((k) => k.requestId.S === key.requestId.S)
   );
 
   try {
@@ -153,16 +173,16 @@ async function batchGetPaperRequestDelivery(requestIds) {
       new BatchGetItemCommand({
         RequestItems: {
           "pn-PaperRequestDelivery": {
-            Keys: uniqueKeys
-          }
-        }
+            Keys: uniqueKeys,
+          },
+        },
       })
     );
 
     const items = result.Responses?.["pn-PaperRequestDelivery"] || [];
     const itemMap = new Map();
-    
-    items.forEach(item => {
+
+    items.forEach((item) => {
       const unmarshalled = unmarshall(item);
       itemMap.set(unmarshalled.requestId, unmarshalled);
     });
@@ -183,20 +203,23 @@ async function scanAllDeliveryDrivers() {
   }
 
   console.log("Caricamento DeliveryDrivers (scan completa)...");
-  
+
   try {
     const result = await dynamoCore.send(
       new ScanCommand({
-        TableName: "pn-PaperChannelDeliveryDriver"
+        TableName: "pn-PaperChannelDeliveryDriver",
       })
     );
 
     const items = result.Items || [];
     deliveryDriverCache = new Map();
-    
-    items.forEach(item => {
+
+    items.forEach((item) => {
       const unmarshalled = unmarshall(item);
-      deliveryDriverCache.set(unmarshalled.deliveryDriverId, unmarshalled.unifiedDeliveryDriver);
+      deliveryDriverCache.set(
+        unmarshalled.deliveryDriverId,
+        unmarshalled.unifiedDeliveryDriver
+      );
     });
 
     console.log(`Caricati ${deliveryDriverCache.size} DeliveryDrivers\n`);
@@ -220,14 +243,32 @@ function getRetryNumber(requestId) {
  */
 function isFinalStatus(statusCode) {
   if (!statusCode) return false;
+  if (
+    [
+      "CON996",
+      "RECRN006",
+      "RECRN013",
+      "RECRS006",
+      "RECRS013",
+      "RECAG004",
+      "RECAG013",
+      "RECRSI005",
+      "RECRI005",
+    ].includes(statusCode)
+  ) return true;
+
   const lastChar = statusCode.slice(-1).toUpperCase();
-  return lastChar === 'C' || lastChar === 'F';
+  return lastChar === "C" || lastChar === "F";
 }
 
 /**
  * Crea il body della richiesta di init tracking
  */
-function createTrackingBody(requestId, paperRequestDeliveryItem, unifiedDeliveryDriver) {
+function createTrackingBody(
+  requestId,
+  paperRequestDeliveryItem,
+  unifiedDeliveryDriver
+) {
   const attemptId = requestId.split(".PCRETRY_")[0];
   const pcRetry = "PCRETRY_" + requestId.split(".PCRETRY_")[1];
 
@@ -270,62 +311,81 @@ function createSqsMessage(requestId, event) {
  */
 function getOutputFilePath(retryNumber, isFinal) {
   if (retryNumber === 0) {
-    return isFinal ? outputFiles.pcretry0.final : outputFiles.pcretry0.intermediate;
+    return isFinal
+      ? outputFiles.pcretry0.final
+      : outputFiles.pcretry0.intermediate;
   }
-  
+
   // Per PCRETRY_N (N > 0)
   if (!outputFiles.pcretryN[retryNumber]) {
     outputFiles.pcretryN[retryNumber] = {
-      intermediate: path.join(outDir, `PCRETRY${retryNumber}_${timestamp}_intermediate_events.jsonl`),
-      final: path.join(outDir, `PCRETRY${retryNumber}_${timestamp}_final_events.jsonl`),
+      intermediate: path.join(
+        outDir,
+        `PCRETRY${retryNumber}_${timestamp}_intermediate_events.jsonl`
+      ),
+      final: path.join(
+        outDir,
+        `PCRETRY${retryNumber}_${timestamp}_final_events.jsonl`
+      ),
     };
   }
-  
-  return isFinal 
-    ? outputFiles.pcretryN[retryNumber].final 
+
+  return isFinal
+    ? outputFiles.pcretryN[retryNumber].final
     : outputFiles.pcretryN[retryNumber].intermediate;
 }
-
 
 /**
  * Processa un singolo requestId
  */
-function processRequestId(requestId, metadatiItem, paperRequestDeliveryItem, unifiedDeliveryDriver) {
+function processRequestId(
+  requestId,
+  metadatiItem,
+  paperRequestDeliveryItem,
+  unifiedDeliveryDriver
+) {
   const retryNumber = getRetryNumber(requestId);
-  
+
   if (retryNumber === null) {
     throw new Error(`Invalid requestId format: ${requestId}`);
   }
 
   const results = {
     trackings: [],
-    events: []
+    events: [],
   };
 
   // Se è PCRETRY_0, crea il tracking
   if (retryNumber === 0) {
-    const trackingBody = createTrackingBody(requestId, paperRequestDeliveryItem, unifiedDeliveryDriver);
+    const trackingBody = createTrackingBody(
+      requestId,
+      paperRequestDeliveryItem,
+      unifiedDeliveryDriver
+    );
     results.trackings.push({
       file: outputFiles.pcretry0.initTracking,
-      data: trackingBody
+      data: trackingBody,
     });
   }
 
   // Filtra e ordina gli eventi (decrescente per timestamp)
   const eventsToProcess = metadatiItem.eventsList
     .filter((event) => event.paperProgrStatus.statusCode)
-    .sort((a, b) => new Date(b.clientRequestTimeStamp) - new Date(a.clientRequestTimeStamp));
+    .sort(
+      (a, b) =>
+        new Date(b.clientRequestTimeStamp) - new Date(a.clientRequestTimeStamp)
+    );
 
   // Processa ogni evento
   for (const event of eventsToProcess) {
     const sqsMessage = createSqsMessage(requestId, event);
     const isFinal = isFinalStatus(event.paperProgrStatus.statusCode);
     const outputFile = getOutputFilePath(retryNumber, isFinal);
-    
+
     results.events.push({
       file: outputFile,
       data: sqsMessage,
-      timestamp: event.clientRequestTimeStamp
+      timestamp: event.clientRequestTimeStamp,
     });
   }
 
@@ -347,13 +407,14 @@ function writeBatchOutputs(outputs) {
 
   // Scrivi trackings in batch
   for (const [file, trackings] of trackingsByFile) {
-    const content = trackings.map(data => JSON.stringify(data)).join('\n') + '\n';
-    fs.appendFileSync(file, content, 'utf-8');
+    const content =
+      trackings.map((data) => JSON.stringify(data)).join("\n") + "\n";
+    fs.appendFileSync(file, content, "utf-8");
   }
 
   // Ordina gli eventi per timestamp (crescente)
-  const sortedEvents = outputs.events.sort((a, b) => 
-    new Date(a.timestamp) - new Date(b.timestamp)
+  const sortedEvents = outputs.events.sort(
+    (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
   );
 
   // Raggruppa eventi per file
@@ -367,8 +428,9 @@ function writeBatchOutputs(outputs) {
 
   // Scrivi eventi in batch
   for (const [file, events] of eventsByFile) {
-    const content = events.map(data => JSON.stringify(data)).join('\n') + '\n';
-    fs.appendFileSync(file, content, 'utf-8');
+    const content =
+      events.map((data) => JSON.stringify(data)).join("\n") + "\n";
+    fs.appendFileSync(file, content, "utf-8");
   }
 }
 
@@ -408,22 +470,27 @@ async function processBatch(requestIds) {
           continue;
         }
 
-        const unifiedDeliveryDriver = deliveryDriverMap.get(paperRequestDeliveryItem.driverCode);
+        const unifiedDeliveryDriver = deliveryDriverMap.get(
+          paperRequestDeliveryItem.driverCode
+        );
         if (!unifiedDeliveryDriver) {
           errors.push(requestId);
           continue;
         }
 
-        const results = processRequestId(requestId, metadatiItem, paperRequestDeliveryItem, unifiedDeliveryDriver);
-        
+        const results = processRequestId(
+          requestId,
+          metadatiItem,
+          paperRequestDeliveryItem,
+          unifiedDeliveryDriver
+        );
+
         batchOutputs.trackings.push(...results.trackings);
         batchOutputs.events.push(...results.events);
-
       } catch (err) {
         errors.push(requestId);
       }
     }
-
   } catch (err) {
     console.error("\nErrore nel batch:", err);
     errors.push(...requestIds);
@@ -451,9 +518,11 @@ function chunk(array, size) {
       columns: true,
       trim: true,
     });
-    const requestIds = records.map(r => r.requestId).filter(Boolean);
+    const requestIds = records.map((r) => r.requestId).filter(Boolean);
 
-    console.log(`\nProcessando ${requestIds.length} requestIds in batch da ${batchSize}...\n`);
+    console.log(
+      `\nProcessando ${requestIds.length} requestIds in batch da ${batchSize}...\n`
+    );
 
     // Carica i DeliveryDrivers una volta sola
     await scanAllDeliveryDrivers();
@@ -464,36 +533,42 @@ function chunk(array, size) {
 
     // Processa in batch
     const batches = chunk(requestIds, batchSize);
-    
+
     for (let i = 0; i < batches.length; i++) {
-      showProgress(i, batches.length, 'Progresso: ');
-      
+      showProgress(i, batches.length, "Progresso: ");
+
       const { outputs, errors } = await processBatch(batches[i]);
-      
+
       // Scrivi immediatamente il batch su file
       writeBatchOutputs(outputs);
-      
+
       totalTrackings += outputs.trackings.length;
       totalEvents += outputs.events.length;
       allErrors.push(...errors);
 
       // Scrivi errori se presenti
       if (errors.length > 0) {
-        fs.appendFileSync(errorFile, errors.join('\n') + '\n', 'utf-8');
+        fs.appendFileSync(errorFile, errors.join("\n") + "\n", "utf-8");
       }
 
       // Salva i CON996 se presenti
-      outputs.events.forEach(event => {
-        if (event.data.analogMail.statusCode === 'CON996') {
-          fs.appendFileSync(CON996File, event.data.analogMail.requestId + '\n', 'utf-8');
+      outputs.events.forEach((event) => {
+        if (event.data.analogMail.statusCode === "CON996") {
+          fs.appendFileSync(
+            CON996File,
+            event.data.analogMail.requestId + "\n",
+            "utf-8"
+          );
         }
       });
     }
-    
-    showProgress(batches.length, batches.length, 'Progresso: ');
+
+    showProgress(batches.length, batches.length, "Progresso: ");
 
     console.log(`\n=== RISULTATI FINALI ===`);
-    console.log(`Processati con successo: ${requestIds.length - allErrors.length}`);
+    console.log(
+      `Processati con successo: ${requestIds.length - allErrors.length}`
+    );
     console.log(`Trackings creati: ${totalTrackings}`);
     console.log(`Eventi processati: ${totalEvents}`);
     console.log(`Errori totali: ${allErrors.length}`);
@@ -509,7 +584,6 @@ function chunk(array, size) {
     if (allErrors.length > 0) {
       console.log(`- ${errorFile}`);
     }
-
   } catch (err) {
     console.error("\nErrore generale:", err);
     process.exit(1);

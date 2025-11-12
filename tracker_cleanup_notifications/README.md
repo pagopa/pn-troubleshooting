@@ -71,8 +71,9 @@ Variabili d'ambiente:
 - DRY_RUN: se 'true' invia i messaggi in modalità dry run (default 'true')
 
 Output:
-- ERROR_<timestamp>.jsonl (dettagli errori SQS)
-- UNPROCESSED_<timestamp>.jsonl (messaggi non inviati)
+- PROCESSED_<input_file>.jsonl (messaggi inviati con eventId)
+- ERROR_<input_file>.jsonl (dettagli errori SQS)
+- UNPROCESSED_<input_file>.jsonl (messaggi non inviati)
 
 $ CORE_AWS_PROFILE=sso_pn-core-dev INPUT_FILE=./out/1_prepareTrackingEvents/PCRETRY0_20251103181426_intermediate_events.jsonl node 3_sendToQueue.js
 ```
@@ -80,29 +81,23 @@ $ CORE_AWS_PROFILE=sso_pn-core-dev INPUT_FILE=./out/1_prepareTrackingEvents/PCRE
 > [!IMPORTANT]
 > Lo script deve essere prima eseguito per gli eventi intermedi e poi per gli eventi finali.
 
-## 🔎 Recupero eventi pn-paper-tracker (`/paper-tracker-private/v1/trackings`)
-
-```bash
-curl -X POST "https://<base-url>/paper-tracker-private/v1/trackings" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "trackingIds": [
-      "PREPARE_ANALOG_DOMICILE.IUN_LNKN-UHAM-KEZH-202508-X-1.RECINDEX_0.ATTEMPT_0.PCRETRY_0",
-      "PREPARE_ANALOG_DOMICILE.IUN_LNKN-UHAM-KEZH-202508-X-2.RECINDEX_0.ATTEMPT_0.PCRETRY_1"
-    ]
-  }'
+## Step 4: Check tracking events
 ```
+Controlla se pn-paper-tracker ha ricevuto correttamente gli eventi.
 
+Per ogni evento nel file di input:
+- Verifica che il relativo tracking esista in DynamoDB
+- Controlla che l'evento (messageId) sia presente in tracking.events.id
 
-## 🔎 Recupero errori pn-paper-tracker(/paper-tracker-private/v1/errors)
+Variabili d'ambiente:
+- CORE_AWS_PROFILE: profilo AWS SSO core
+- INPUT_FILE: file dei requestId da processare (es. input.csv)
+- REGION: default eu-south-1
+- BATCH_SIZE: dimensione batch per DynamoDB (default 25, max DynamoDB limit)
 
-```bash
-curl -X POST "https://<base-url>/paper-tracker-private/v1/errors" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "trackingIds": [
-      "PREPARE_ANALOG_DOMICILE.IUN_LNKN-UHAM-KEZH-202508-X-1.RECINDEX_0.ATTEMPT_0.PCRETRY_0",
-      "PREPARE_ANALOG_DOMICILE.IUN_LNKN-UHAM-KEZH-202508-X-2.RECINDEX_0.ATTEMPT_0.PCRETRY_1"
-    ]
-  }'
+Output:
+- ERROR_<timestamp>.jsonl (eventi mancanti o inconsistenze)
+- UNPROCESSED_<timestamp>.jsonl (chiavi non processate da DynamoDB)
+
+$ CORE_AWS_PROFILE=sso_pn-core-dev INPUT_FILE=./out/3_sendToQueue/PROCESSED_PCRETRY0_20251103181426_intermediate_events.jsonl node 4_checkTrackingEvents.js
 ```

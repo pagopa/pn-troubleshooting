@@ -11,8 +11,9 @@ Variabili d'ambiente:
 - DRY_RUN: se 'true' invia i messaggi in modalità dry run (default 'true')
 
 Output:
-- ERROR_<timestamp>.jsonl (dettagli errori SQS)
-- UNPROCESSED_<timestamp>.jsonl (messaggi non inviati)
+- PROCESSED_<input_file>.jsonl (messaggi inviati con eventId)
+- ERROR_<input_file>.jsonl (dettagli errori SQS)
+- UNPROCESSED_<input_file>.jsonl (messaggi non inviati)
 */
 
 import fs from "fs";
@@ -59,17 +60,15 @@ const stsClient = new STSClient({
 });
 
 // Directory output
-const outDir = path.join("out", "5_sendToQueue");
+const outDir = path.join("out", path.basename(import.meta.url).replace(".js", ""));
 if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
 
-const timestamp = new Date().toISOString()
-  .replace(/[-:TZ.]/g, "")
-  .slice(0, 14);
-
-const errorFile = path.join(outDir, `ERROR_${timestamp}.jsonl`);
-const unprocessedFile = path.join(outDir, `UNPROCESSED_${timestamp}.jsonl`);
+const inputFileName = path.basename(inputFile).replace(".jsonl", "")
+const errorFile = path.join(outDir, `ERROR_${inputFileName}.jsonl`);
+const unprocessedFile = path.join(outDir, `UNPROCESSED_${inputFileName}.jsonl`);
+const processedFile = path.join(outDir, `PROCESSED_${inputFileName}.jsonl`);
 
 /**
  * Mostra una barra di progresso
@@ -107,19 +106,40 @@ async function sendBatch(messages, queueUrl, dryRun = true) {
       })
     );
 
-    const errors = [];
+    const results = {
+      success: [],
+      errors: [],
+    };
+
+    // Messaggi inviati con successo
+    if (res.Successful && res.Successful.length > 0) {
+      res.Successful.forEach(s => {
+        const idx = parseInt(s.Id, 10);
+        results.success.push({
+          body: messages[idx],
+          messageId: s.MessageId,
+          md5: s.MD5OfMessageBody,
+        });
+      });
+    }
+
+    // Messaggi falliti
     if (res.Failed && res.Failed.length > 0) {
       res.Failed.forEach(f => {
         const idx = parseInt(f.Id, 10);
-        errors.push({
+        results.errors.push({
           body: messages[idx],
           error: f,
         });
       });
     }
-    return errors;
+
+    return results;
   } catch (err) {
-    return messages.map(m => ({ body: m, error: err.message }));
+    return {
+      success: [],
+      errors: messages.map(m => ({ body: m, error: err.message })),
+    };
   }
 }
 
@@ -141,6 +161,14 @@ function writeErrors(errors) {
   if (errors.length === 0) return;
   fs.appendFileSync(errorFile, errors.map(e => JSON.stringify(e)).join("\n") + "\n");
   fs.appendFileSync(unprocessedFile, errors.map(e => JSON.stringify(e.body)).join("\n") + "\n");
+}
+
+/**
+ * Scrive processati
+ */
+function writeProcessed(processed) {
+  if (processed.length === 0) return;
+  fs.appendFileSync(processedFile, processed.map(e => JSON.stringify(e)).join("\n") + "\n");
 }
 
 (async () => {
@@ -172,10 +200,11 @@ function writeErrors(errors) {
 
     for (let i = 0; i < batches.length; i++) {
       showProgress(i, batches.length, "Invio: ");
-      const errors = await sendBatch(batches[i], queueUrl, dryRun);
-      totalSent += batches[i].length - errors.length;
+      const {success, errors} = await sendBatch(batches[i], queueUrl, dryRun);
+      totalSent += success.length;
       totalErrors += errors.length;
       if (errors.length > 0) writeErrors(errors);
+      if (success.length > 0) writeProcessed(success);
       if (i < batches.length - 1 && delayMs > 0) await setTimeout(delayMs);
     }
 
