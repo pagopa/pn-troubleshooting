@@ -440,7 +440,7 @@ async function main() {
   }
 
   const outputDir = args.values.outputDir || './results';
-  const profile = args.values.profile || 'confinfo';
+  const profile = args.values.profile;
   const dryRun = args.values.dryRun || false;
 
   // Create timestamped output directory
