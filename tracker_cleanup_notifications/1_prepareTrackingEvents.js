@@ -1,6 +1,6 @@
 /*
 Crea tracking ed eventi da inviare sulla coda di pn-external_channel_to_paper_tracker
-Per pcretry0 crea il tracking e eventi da inviare, per pcretryN (N>0) crea solo gli eventi
+Crea il tracking e eventi da inviare per tutti i pcretry (0, 1, 2)
 
 Variabili d'ambiente:
 - CORE_AWS_PROFILE: profilo AWS SSO core
@@ -10,9 +10,7 @@ Variabili d'ambiente:
 - BATCH_SIZE: dimensione batch per DynamoDB (default 25, max DynamoDB limit)
 
 Output:
-- PCRETRY0_<timestamp>_init_tracking.jsonl (body chiamate a API init tracking)
-- PCRETRY0_<timestamp>_intermediate_events.jsonl
-- PCRETRY0_<timestamp>_final_events.jsonl
+- PCRETRY<N>_<timestamp>_init_tracking.jsonl (body chiamate a API init tracking)
 - PCRETRY<N>_<timestamp>_intermediate_events.jsonl
 - PCRETRY<N>_<timestamp>_final_events.jsonl
 - ERROR_<timestamp>.txt (requestId non processati in caso di errori)
@@ -81,20 +79,30 @@ const CON996File = path.join(outDir, `CON996_${timestamp}.txt`);
 let deliveryDriverCache = null;
 
 // File output per retry level
-const outputFiles = {
-  pcretry0: {
-    initTracking: path.join(
-      outDir,
-      `PCRETRY0_${timestamp}_init_tracking.jsonl`
-    ),
-    intermediate: path.join(
-      outDir,
-      `PCRETRY0_${timestamp}_intermediate_events.jsonl`
-    ),
-    final: path.join(outDir, `PCRETRY0_${timestamp}_final_events.jsonl`),
-  },
-  pcretryN: {},
-};
+const outputFiles = {};
+
+/**
+ * Ottiene o crea i path dei file per un dato retry number
+ */
+function getOrCreateOutputFiles(retryNumber) {
+  if (!outputFiles[retryNumber]) {
+    outputFiles[retryNumber] = {
+      initTracking: path.join(
+        outDir,
+        `PCRETRY${retryNumber}_${timestamp}_init_tracking.jsonl`
+      ),
+      intermediate: path.join(
+        outDir,
+        `PCRETRY${retryNumber}_${timestamp}_intermediate_events.jsonl`
+      ),
+      final: path.join(
+        outDir,
+        `PCRETRY${retryNumber}_${timestamp}_final_events.jsonl`
+      ),
+    };
+  }
+  return outputFiles[retryNumber];
+}
 
 /**
  * Mostra una barra di progresso in console
@@ -310,29 +318,8 @@ function createSqsMessage(requestId, event) {
  * Ottiene il path del file di output in base al retry e al tipo di evento
  */
 function getOutputFilePath(retryNumber, isFinal) {
-  if (retryNumber === 0) {
-    return isFinal
-      ? outputFiles.pcretry0.final
-      : outputFiles.pcretry0.intermediate;
-  }
-
-  // Per PCRETRY_N (N > 0)
-  if (!outputFiles.pcretryN[retryNumber]) {
-    outputFiles.pcretryN[retryNumber] = {
-      intermediate: path.join(
-        outDir,
-        `PCRETRY${retryNumber}_${timestamp}_intermediate_events.jsonl`
-      ),
-      final: path.join(
-        outDir,
-        `PCRETRY${retryNumber}_${timestamp}_final_events.jsonl`
-      ),
-    };
-  }
-
-  return isFinal
-    ? outputFiles.pcretryN[retryNumber].final
-    : outputFiles.pcretryN[retryNumber].intermediate;
+  const files = getOrCreateOutputFiles(retryNumber);
+  return isFinal ? files.final : files.intermediate;
 }
 
 /**
@@ -355,18 +342,17 @@ function processRequestId(
     events: [],
   };
 
-  // Se è PCRETRY_0, crea il tracking
-  if (retryNumber === 0) {
-    const trackingBody = createTrackingBody(
-      requestId,
-      paperRequestDeliveryItem,
-      unifiedDeliveryDriver
-    );
-    results.trackings.push({
-      file: outputFiles.pcretry0.initTracking,
-      data: trackingBody,
-    });
-  }
+  // Crea SEMPRE il tracking per qualsiasi PCRETRY
+  const files = getOrCreateOutputFiles(retryNumber);
+  const trackingBody = createTrackingBody(
+    requestId,
+    paperRequestDeliveryItem,
+    unifiedDeliveryDriver
+  );
+  results.trackings.push({
+    file: files.initTracking,
+    data: trackingBody,
+  });
 
   // Filtra e ordina gli eventi (decrescente per timestamp)
   const eventsToProcess = metadatiItem.eventsList
@@ -574,10 +560,11 @@ function chunk(array, size) {
     console.log(`Errori totali: ${allErrors.length}`);
 
     console.log("\nFile generati:");
-    console.log(`- ${outputFiles.pcretry0.initTracking}`);
-    console.log(`- ${outputFiles.pcretry0.intermediate}`);
-    console.log(`- ${outputFiles.pcretry0.final}`);
-    for (const [retryNum, files] of Object.entries(outputFiles.pcretryN)) {
+    // Ordina i file per numero di retry
+    const retryNumbers = Object.keys(outputFiles).map(Number).sort((a, b) => a - b);
+    for (const retryNum of retryNumbers) {
+      const files = outputFiles[retryNum];
+      console.log(`- ${files.initTracking}`);
       console.log(`- ${files.intermediate}`);
       console.log(`- ${files.final}`);
     }
