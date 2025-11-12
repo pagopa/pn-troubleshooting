@@ -302,7 +302,7 @@ async function processFileStream(inputFile, s3Client, bucket, config, stats, pro
         }
       }
 
-      const fileKey = cleanFileKey(line.trim());
+      const fileKey = cleanFileKey(line[0].trim());
       if (!fileKey) {
         return cb();
       }
