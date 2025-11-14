@@ -53,13 +53,13 @@ async function validatePDFMagicBytes(s3Client, bucket, fileKey) {
     const buffer = await streamToBuffer(response.Body, 5);
 
     // Check if first 4 bytes match %PDF signature
-    const isValid = buffer.length >= 4 &&
+    const isPdf = buffer.length >= 4 &&
                     buffer[0] === PDF_MAGIC_BYTES[0] &&
                     buffer[1] === PDF_MAGIC_BYTES[1] &&
                     buffer[2] === PDF_MAGIC_BYTES[2] &&
                     buffer[3] === PDF_MAGIC_BYTES[3];
 
-    return { fileKey, isValid: true, valid: isValid, error: null };
+    return { fileKey, isValid: true, valid: isPdf, error: isPdf ? null : 'InvalidMagicBytes' };
   } catch (error) {
     // Map AWS SDK error names to simple categories for reporting
     let errorType = 'Unknown';
@@ -69,7 +69,7 @@ async function validatePDFMagicBytes(s3Client, bucket, fileKey) {
     else if (error.name === 'ThrottlingException') errorType = 'ThrottlingException';
     else if (error.name === 'RequestTimeout') errorType = 'RequestTimeout';
 
-    return { fileKey, isValid: false, valid: false, error: errorType };
+    return { fileKey, isValid: false, valid: null, error: errorType };
   }
 }
 
@@ -258,7 +258,11 @@ async function processFileStream(inputFile, s3Client, bucket, config, stats, pro
         }
 
         // Write to main results CSV
-        outputStream.write({ fileKey: result.fileKey, valid: result.valid, error: result.error || '' });
+        outputStream.write({
+          fileKey: result.fileKey,
+          valid: String(result.valid),
+          error: result.error || ''
+        });
 
         // Write failed items to separate file for easy retry
         if (result.error && result.error !== '') {
@@ -384,6 +388,25 @@ Example:
   node index.js --inputFile filekeys.txt --bucket pn-safestorage-bucket --envName dev
 `;
 
+
+// Count lines in a file to set total for progress bar.
+// Reads file stream line-by-line to handle large files without high memory use.
+async function countLines(filePath) {
+  return new Promise((resolve, reject) => {
+    let lineCount = 0;
+    const stream = createReadStream(filePath);
+    stream.on('data', (chunk) => {
+      for (let i = 0; i < chunk.length; i++) {
+        if (chunk[i] === 10) { // ASCII code for newline
+          lineCount++;
+        }
+      }
+    });
+    stream.on('end', () => resolve(lineCount));
+    stream.on('error', reject);
+  });
+}
+
 async function main() {
   // Parse arguments
   const args = parseArgs({
@@ -502,6 +525,9 @@ async function main() {
     failedCount: resuming ? (checkpoint.failedCount || 0) : 0
   };
 
+  // Count total files for progress bar
+  const totalFiles = await countLines(args.values.inputFile);
+
   // Setup CLI progress bar
   const progressBar = new cliProgress.SingleBar({
     format: 'Progress |{bar}| {percentage}% | {value}/{total} files | Valid: {valid} | Invalid: {invalid} | NotFound: {notfound}',
@@ -511,7 +537,7 @@ async function main() {
     noTTYOutput: true
   });
 
-  progressBar.start(100, stats.processedCount, {
+  progressBar.start(totalFiles, stats.processedCount, {
     valid: stats.validCount,
     invalid: stats.invalidCount,
     notfound: stats.notFoundCount
