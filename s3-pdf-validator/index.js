@@ -41,7 +41,7 @@ async function streamToBuffer(stream, maxBytes = 5) {
 // Check if S3 object is a valid PDF by reading first 4 bytes.
 // All valid PDFs start with the magic bytes %PDF (hex: 25 50 44 46).
 // We only fetch 5 bytes instead of the entire file (saves 99.99% bandwidth).
-async function validatePDFMagicBytes(s3Client, bucket, fileKey) {
+async function validatePDFMagicBytes(s3Client, bucket, fileKey, debug = false) {
   try {
     // S3 Range request: fetch only bytes 0-4 (first 5 bytes)
     const response = await s3Client.send(new GetObjectCommand({
@@ -61,6 +61,9 @@ async function validatePDFMagicBytes(s3Client, bucket, fileKey) {
 
     return { fileKey, isValid: true, valid: isPdf, error: isPdf ? null : 'InvalidMagicBytes' };
   } catch (error) {
+    if (debug) {
+      console.error(`[DEBUG] AWS SDK Error for fileKey ${fileKey}:`, error);
+    }
     // Map AWS SDK error names to simple categories for reporting
     let errorType = 'Unknown';
     if (error.name === 'NoSuchKey') errorType = 'NoSuchKey';
@@ -69,14 +72,15 @@ async function validatePDFMagicBytes(s3Client, bucket, fileKey) {
     else if (error.name === 'ThrottlingException') errorType = 'ThrottlingException';
     else if (error.name === 'RequestTimeout') errorType = 'RequestTimeout';
 
-    return { fileKey, isValid: false, valid: null, error: errorType };
+    const errorMessage = debug ? `${errorType}: ${error.message}` : errorType;
+    return { fileKey, isValid: false, valid: null, error: errorMessage };
   }
 }
 
 // Process batch of files with automatic retry for transient errors.
 // Uses exponential backoff: wait 100ms, then 200ms, then 400ms between retries.
 // This gives AWS time to recover from temporary throttling or network issues.
-async function processBatchWithRetries(batch, s3Client, bucket, maxRetries = 3) {
+async function processBatchWithRetries(batch, s3Client, bucket, maxRetries = 3, debug = false) {
   const results = [];
 
   for (const fileKey of batch) {
@@ -85,7 +89,7 @@ async function processBatchWithRetries(batch, s3Client, bucket, maxRetries = 3) 
     let result = null;
 
     while (attempt < maxRetries) {
-      result = await validatePDFMagicBytes(s3Client, bucket, fileKey);
+      result = await validatePDFMagicBytes(s3Client, bucket, fileKey, debug);
 
       // Only retry errors that might succeed later (throttling, timeouts)
       // Don't retry permanent errors like NoSuchKey or AccessDenied
@@ -152,7 +156,7 @@ function cleanFileKey(key) {
 
 // Main processing: reads input file and validates PDFs concurrently
 async function processFileStream(inputFile, s3Client, bucket, config, stats, progressBar, outputStream, errorStream, checkpointPath) {
-  const { concurrency, batchSize, startFromLine } = config;
+  const { concurrency, batchSize, startFromLine, debug } = config;
 
   // Queue holds batches for workers to process.
   // Size is limited to prevent loading millions of lines into memory.
@@ -243,7 +247,7 @@ async function processFileStream(inputFile, s3Client, bucket, config, stats, pro
         if (resolveQueueSpace) resolveQueueSpace();
       }
 
-      const results = await processBatchWithRetries(batch, s3Client, bucket);
+      const results = await processBatchWithRetries(batch, s3Client, bucket, 3, debug);
 
       // Update counters and write results
       for (const result of results) {
@@ -420,7 +424,8 @@ async function main() {
       startFromLine: { type: 'string', short: 'l' },
       outputDir: { type: 'string', short: 'o' },
       dryRun: { type: 'boolean', short: 'r' },
-      help: { type: 'boolean', short: 'h' }
+      help: { type: 'boolean', short: 'h' },
+      debug: { type: 'boolean', short: 'd' }
     }
   });
 
@@ -465,6 +470,7 @@ async function main() {
   const outputDir = args.values.outputDir || './results';
   const profile = args.values.profile;
   const dryRun = args.values.dryRun || false;
+  const debug = args.values.debug || false;
 
   // Create timestamped output directory
   if (!existsSync(outputDir)) mkdirSync(outputDir);
@@ -488,6 +494,9 @@ async function main() {
   }
   if (dryRun) {
     console.log('⚠️  DRY RUN MODE: No actual validation will be performed');
+  }
+  if (debug) {
+    console.log('🐛 DEBUG MODE: Detailed error logging enabled');
   }
   console.log('='.repeat(60));
 
@@ -563,7 +572,8 @@ async function main() {
       {
         concurrency,
         batchSize,
-        startFromLine: resuming ? checkpoint.lastProcessedLine + 1 : startFromLine
+        startFromLine: resuming ? checkpoint.lastProcessedLine + 1 : startFromLine,
+        debug
       },
       stats,
       progressBar,
