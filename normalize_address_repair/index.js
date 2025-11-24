@@ -76,7 +76,7 @@ function prepareAddressForConf(address) {
 }
 
 //format method to update confidential object
-async function updateConfidential(awsClient, keySchema, unmarshalledItem, address) {
+async function updateConfidential(awsClient, keySchema, unmarshalledItem, address, addressRow2, nameRow2, cap) {
   let data = {}
   let keys = {};
   keySchema.forEach(keyAttribute => {
@@ -84,6 +84,9 @@ async function updateConfidential(awsClient, keySchema, unmarshalledItem, addres
   })
   if (unmarshalledItem.sortKey.startsWith("NORMALIZED_ADDRESS")) {
     unmarshalledItem.newPhysicalAddress["address"] = address
+    if (addressRow2) unmarshalledItem.newPhysicalAddress["addressDetails"] = addressRow2
+    if (nameRow2) unmarshalledItem.newPhysicalAddress["at"] = nameRow2
+    if (cap) unmarshalledItem.newPhysicalAddress["cap"] = cap
     data = {
       newPhysicalAddress: {
         codeAttr: '#T',
@@ -93,7 +96,16 @@ async function updateConfidential(awsClient, keySchema, unmarshalledItem, addres
     }
   }
   else {
-    unmarshalledItem.physicalAddress["address"] = address
+    if (unmarshalledItem.sortKey.startsWith("SEND_ANALOG_DOMICILE")) {
+      addressRow2 ? unmarshalledItem.physicalAddress["addressDetails"] = addressRow2 : unmarshalledItem.physicalAddress["addressDetails"] = null
+      cap ? unmarshalledItem.physicalAddress["cap"] = cap : unmarshalledItem.physicalAddress["cap"] = null
+      nameRow2 ? unmarshalledItem.physicalAddress["at"] = nameRow2 : unmarshalledItem.physicalAddress["at"] = null
+    }
+    else {
+      unmarshalledItem.physicalAddress["addressDetails"] = addressRow2
+      cap ? unmarshalledItem.physicalAddress["cap"] = cap : unmarshalledItem.physicalAddress["cap"] = null
+      nameRow2 ? unmarshalledItem.physicalAddress["at"] = nameRow2 : unmarshalledItem.physicalAddress["at"] = null
+    }
     data = {
       physicalAddress: {
         codeAttr: '#T',
@@ -193,59 +205,86 @@ async function main() {
   const kmsKey = kmsArnKey.OutputValue
   //UPDATE CONFIDENTIAL OBJECT
   for(const reqId of fileRows) {
+    console.log(reqId)
     let address;
+    let addressRow2;
+    let nameRow2;
     const iun = _getIunFromRequestId(reqId)
     const requestId = reqId.split(".PCRETRY")[0]
     const notifyConf = await retrieveConfidentialAddress(clients['confinfo'], "NOTIFY#" + iun)
+
     if(!notifyConf || notifyConf.length==0) {
       console.log(`No address found for requestId ${reqId} iun ${iun}`)
       continue
     }
     for(const item of notifyConf) {
-      const unmarshalled = unmarshall(item)
-      const res = await ApiClient.callAddressManager(process.env.BASE_URL, reqId, prepareAddressForNorm(unmarshalled.physicalAddress))
+      const unmarshalledPhysicalAddress = unmarshall(item).physicalAddress
+      const res = await ApiClient.callAddressManager(process.env.BASE_URL, reqId, prepareAddressForNorm(unmarshalledPhysicalAddress))
       //check cap from calladdressmanager response and notifyConf
+      console.log(res)
       if(res.normalizedAddress !== null) {
         const cap = res.normalizedAddress.cap
-        const notifyCap = notifyConf[0].cap
+        const notifyCap = unmarshalledPhysicalAddress.cap
         if(cap !== notifyCap) {
-          console.log(`CAP mismatch for requestId ${reqId} iun ${iun} address ${JSON.stringify(unmarshalled.physicalAddress)}`)
+          console.log(`CAP mismatch ${notifyCap}-${cap} for requestId ${reqId} iun ${iun} address ${JSON.stringify(unmarshalledPhysicalAddress)}`)
           continue
         }
       }
-      continue
       if(res.normalizedAddress === null) {
-        console.log(`No normalized address found for requestId ${reqId} iun ${iun} address ${JSON.stringify(unmarshalled.physicalAddress)}`)
+        console.log(`No normalized address found for requestId ${reqId} iun ${iun} address ${JSON.stringify(unmarshalledPhysicalAddress)}`)
         continue
       }
-      const addressToConfObj = prepareAddressForConf(res.normalizedAddress)
-      address = addressToConfObj.address
-      const timelineConf = await retrieveConfidentialAddress(clients['confinfo'], "TIMELINE#" + iun)
+      //const addressToConfObj = prepareAddressForConf(res.normalizedAddress)
+      address = res.normalizedAddress['addressRow']
+      addressRow2 = res.normalizedAddress['addressRow2']
+      nameRow2 = res.normalizedAddress['nameRow2']
+      const timelineConf = (await retrieveConfidentialAddress(clients['confinfo'], "TIMELINE#" + iun)).filter(x => {
+        const unmarshalledItem = unmarshall(x)
+        return unmarshalledItem.sortKey.startsWith("NORMALIZED_ADDRESS") || 
+        ((unmarshalledItem.sortKey.startsWith("SEND_ANALOG_DOMICILE") || unmarshalledItem.sortKey.startsWith("PREPARE_ANALOG_DOMICILE")) && unmarshalledItem.sortKey.endsWith("ATTEMPT_0"))
+      })
       if(timelineConf && timelineConf.length>0) {
         for(const timelineItem of timelineConf) {
           const unmarshalledItem = unmarshall(timelineItem)
-          await updateConfidential(clients['confinfo'], keySchemaConfidential, unmarshalledItem, address)
+          await updateConfidential(clients['confinfo'], keySchemaConfidential, unmarshalledItem, address, addressRow2, nameRow2, cap)
         }
       }
-    }
-    let paperAddressResponse = await clients.core._queryRequest('pn-PaperAddress', "requestId", requestId)
-    let paperRequestDeliveryResponse = await clients.core._queryRequest('pn-PaperRequestDelivery', "requestId", requestId)
+      let paperAddressResponse = await clients.core._queryRequest('pn-PaperAddress', "requestId", requestId)
+      let paperRequestDeliveryResponse = await clients.core._queryRequest('pn-PaperRequestDelivery', "requestId", requestId)
 
-    const receiverAddresses = paperAddressResponse.Items.filter(x => {
-      const addressUnmarshalled = unmarshall(x)
-      return addressUnmarshalled.addressType === 'RECEIVER_ADDRESS'
-    })
-    if(receiverAddresses.length > 0){ 
-      for(const rec of receiverAddresses) {
-        const receiverAddressUnmarshalled = unmarshall(rec)
-        const decodedAddress = await getDecodedAddressData(clients.core, receiverAddressUnmarshalled, kmsKey)
-        const encryptedValueResponse = await clients.core._getEncryptedValue(address, kmsKey)
-        const addressEncoded = Buffer.from(encryptedValueResponse.CiphertextBlob).toString('base64');
-        decodedAddress.address = addressEncoded 
-        _updatePaperTable(clients.core, 'pn-PaperAddress', keySchemaPaper, receiverAddressUnmarshalled, 'address', addressEncoded)
-        const hashedAddress = getAddressHash(decodedAddress)
-        console.log(unmarshall(paperRequestDeliveryResponse.Items[0]))
-        _updatePaperTable(clients.core, 'pn-PaperRequestDelivery', keySchemaRequestDelivery, unmarshall(paperRequestDeliveryResponse.Items[0]), 'addressHash', hashedAddress)
+      const receiverAddresses = paperAddressResponse.Items.filter(x => {
+        const addressUnmarshalled = unmarshall(x)
+        return addressUnmarshalled.addressType === 'RECEIVER_ADDRESS'
+      })
+      if(receiverAddresses.length > 0){ 
+        for(const rec of receiverAddresses) {
+          const receiverAddressUnmarshalled = unmarshall(rec)
+          const decodedAddress = await getDecodedAddressData(clients.core, receiverAddressUnmarshalled, kmsKey)
+          //encode address
+          const encryptedValueResponse = await clients.core._getEncryptedValue(address, kmsKey)
+          const addressEncoded = Buffer.from(encryptedValueResponse.CiphertextBlob).toString('base64');
+          decodedAddress.address = addressEncoded 
+          _updatePaperTable(clients.core, 'pn-PaperAddress', keySchemaPaper, receiverAddressUnmarshalled, 'address', addressEncoded)
+          if (addressRow2) {
+            const encryptedValueResponseRow2 = await clients.core._getEncryptedValue(addressRow2, kmsKey)
+            const addressRow2Encoded = Buffer.from(encryptedValueResponseRow2.CiphertextBlob).toString('base64');
+            decodedAddress.addressRow2 = addressRow2Encoded
+            _updatePaperTable(clients.core, 'pn-PaperAddress', keySchemaPaper, receiverAddressUnmarshalled, 'addressRow2', addressRow2Encoded)
+          } else {
+            delete decodedAddress.addressRow2
+          }
+          if (nameRow2) {
+            const encryptedValueResponseNameRow2 = await clients.core._getEncryptedValue(nameRow2, kmsKey)
+            const nameRow2Encoded = Buffer.from(encryptedValueResponseNameRow2.CiphertextBlob).toString('base64');
+            decodedAddress.nameRow2 = nameRow2Encoded
+            _updatePaperTable(clients.core, 'pn-PaperAddress', keySchemaPaper, receiverAddressUnmarshalled, 'nameRow2', nameRow2Encoded)
+          } else {
+            delete decodedAddress.nameRow2
+          }
+          const hashedAddress = getAddressHash(decodedAddress)
+          console.log(unmarshall(paperRequestDeliveryResponse.Items[0]))
+          _updatePaperTable(clients.core, 'pn-PaperRequestDelivery', keySchemaRequestDelivery, unmarshall(paperRequestDeliveryResponse.Items[0]), 'addressHash', hashedAddress)
+        }
       }
     }
   }

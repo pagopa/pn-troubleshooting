@@ -67,7 +67,7 @@ async function main() {
   
   console.log('Reading from file...')
   let counter = 0
-  const requestIdx = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
+  const requestIdx = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter(x=> x != '');
   for( let i = 0; i < requestIdx.length; i++ ){
     const requestId = requestIdx[i]
     const res = await awsClient._queryRequest("pn-PaperRequestError", requestId, condition)

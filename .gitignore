@@ -44,6 +44,7 @@ check_feedback_from_requestId/*.jsonl
 !check_feedback_from_requestId/package.json
 !check_feedback_from_requestId/package-lock.json
 ss-manage-retention/.env
+**/.env
 
 ### Rstudio ###
 .Rproj.user
