@@ -62,7 +62,7 @@ async function main() {
   const listBuckets = await awsClient._getBucketLists();
   const bucketName = listBuckets.Buckets.filter((x) => x.Name.indexOf("safestorage")>0 && x.Name.indexOf("staging")<0)[0].Name;
   const keys = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' });
-  const value = keys.split("\n")
+  const value = keys.split("\n").filter( x => x != "" )
   for (element of value) {
     var splitted = element.split(",")
     const iun = splitted[0];
@@ -70,14 +70,17 @@ async function main() {
     var res = await awsClient._retrieveFromGlacier(bucketName, file, expiration, tier)
     var statusCode = res['$metadata'].httpStatusCode
     if(statusCode == 409){
-        console.log("Object restore is already in progress for IUN " + iun)
+        console.log("IUN "+ iun +": Object restore is already in progress")
     }
-    else if(statusCode == 202){
-        console.log("Done " + iun)
+    else if(statusCode == 202 || statusCode == 200){
+        console.log("IUN "+ iun +": Retrieve completed")
+    }
+    else if(statusCode == 403){
+        console.log("IUN "+ iun +": Object already available") 
     }
     else {
-        console.log("An errore not handled occurred for " + iun)
-        console.log(res)
+        console.log("IUN "+ iun +": An error not handled occurred")
+        console.log("Exception: " + res)
     }
   }
 }
