@@ -203,6 +203,7 @@ async function main() {
     }
     console.log(`Retracking paper address for requestId: ${requestId}`)
     await handleRequest(awsClients['core'], requestId, kmsKey, confidentialItem)
+    console.log(`Retracked paper address for requestId: ${requestId}`)
   }
 }
 
