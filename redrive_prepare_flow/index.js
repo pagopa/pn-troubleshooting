@@ -148,7 +148,7 @@ async function main() {
   const queueUrl = await awsClient._getQueueUrl('pn-paper_channel_requests');
 
   console.log('Reading from file...')
-  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter( x => x != "")
   for(let i = 0; i < fileRows.length; i++){
     const requestId = fileRows[i]
     const foundSend = await _hasFoundEvents(awsClient, requestId)
@@ -161,7 +161,7 @@ async function main() {
     const isRS = requestId.includes("PREPARE_SIMPLE_REGISTERED");
     let isDiscoveredAddress = false
     let res = await awsClient._queryRequest("pn-PaperAddress", 'requestId', requestId)
-    if (res.length == 0 || !_checkReceiverAddress(res)) {
+    if (isZeroAttempt && (res.length == 0 || !_checkReceiverAddress(res))) {
       console.log(`PaperAddress or ReceiverAddress not found for requestId: ${requestId}`)
       continue
     }
