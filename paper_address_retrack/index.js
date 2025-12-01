@@ -27,7 +27,7 @@ const BASIC_ADDRESS = {
   state: "Italia",
   fullName: "PagoPA S.p.A.",
 }
-const ADDRESS_TYPES = ["SENDER_ADDRESS", "AR_ADDRESS"]
+const ADDRESS_TYPES = ["SENDER_ADDRES", "AR_ADDRESS"]
 
 
 async function encryptValues(awsClient, item, kmsKey) {
