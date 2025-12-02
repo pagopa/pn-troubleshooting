@@ -80,7 +80,7 @@ async function validatePDFMagicBytes(s3Client, bucket, fileKey, debug = false) {
 // Process batch of files with automatic retry for transient errors.
 // Uses exponential backoff: wait 100ms, then 200ms, then 400ms between retries.
 // This gives AWS time to recover from temporary throttling or network issues.
-async function processBatchWithRetries(batch, s3Client, bucket, maxRetries = 3, debug = false) {
+async function processBatchWithRetries(batch, s3Client, bucket, maxRetries = 3, debug = false, onItemProcessed = null) {
   const results = [];
 
   for (const fileKey of batch) {
@@ -106,6 +106,9 @@ async function processBatchWithRetries(batch, s3Client, bucket, maxRetries = 3, 
       break;
     }
 
+    if (onItemProcessed) {
+      onItemProcessed(result);
+    }
     results.push(result);
   }
 
@@ -247,10 +250,7 @@ async function processFileStream(inputFile, s3Client, bucket, config, stats, pro
         if (resolveQueueSpace) resolveQueueSpace();
       }
 
-      const results = await processBatchWithRetries(batch, s3Client, bucket, 3, debug);
-
-      // Update counters and write results
-      for (const result of results) {
+      await processBatchWithRetries(batch, s3Client, bucket, 3, debug, (result) => {
         stats.processedCount++;
 
         if (result.isValid && result.valid) {
@@ -274,8 +274,14 @@ async function processFileStream(inputFile, s3Client, bucket, config, stats, pro
           errorStream.write({ fileKey: result.fileKey, error: result.error });
         }
 
-        progressBar.update(stats.processedCount);
-      }
+        const pct = progressBar.total > 0 ? ((stats.processedCount / progressBar.total) * 100).toFixed(1) : '0.0';
+        progressBar.update(stats.processedCount, {
+          valid: stats.validCount,
+          invalid: stats.invalidCount,
+          notfound: stats.notFoundCount,
+          percentageFormatted: pct
+        });
+      });
 
       // Save checkpoint after each batch completes (instead of every N files).
       // With default batchSize=1000, max re-validation on crash is 1000 files.
@@ -539,17 +545,19 @@ async function main() {
 
   // Setup CLI progress bar
   const progressBar = new cliProgress.SingleBar({
-    format: 'Progress |{bar}| {percentage}% | {value}/{total} files | Valid: {valid} | Invalid: {invalid} | NotFound: {notfound}',
+    format: 'Progress |{bar}| {percentageFormatted}% | {value}/{total} files | Valid: {valid} | Invalid: {invalid} | NotFound: {notfound}',
     barCompleteChar: '\u2588',
     barIncompleteChar: '\u2591',
     hideCursor: true,
     noTTYOutput: true
   });
 
+  const initialPct = totalFiles > 0 ? ((stats.processedCount / totalFiles) * 100).toFixed(1) : '0.0';
   progressBar.start(totalFiles, stats.processedCount, {
     valid: stats.validCount,
     invalid: stats.invalidCount,
-    notfound: stats.notFoundCount
+    notfound: stats.notFoundCount,
+    percentageFormatted: initialPct
   });
 
   // Setup CSV output (append if resuming, otherwise create new)
