@@ -18,6 +18,7 @@ console.log("======= Config =======");
 console.log("CORE_AWS_PROFILE:", awsProfile);
 console.log("REGION:", region);
 console.log("INPUT_FILE:", inputFile);
+console.log("SAVE_JSON:", saveJson);
 console.log("======================");
 
 const timestamp = new Date().toISOString()
@@ -26,6 +27,15 @@ const timestamp = new Date().toISOString()
 
 const outDir = "./out";
 const reportFilePath = `${outDir}/report_${timestamp}.csv`;
+
+// Fix for https://pagopa.atlassian.net/browse/PN-17419
+const excludedStatusCodesDryRun = [
+  "CON09A", "CON010", "CON011", "CON012", "CON016", "CON020"
+]
+
+const excludedStatusCodesTimeline = [
+  "CON020"
+]
 
 const dynamoClient = new DynamoDBClient({
   region,
@@ -122,7 +132,7 @@ async function fetchDryRunOutputs(attemptId, numPcRetry = null) {
       console.error("❌ Errore nella query:", err);
     }
     index++;
-  } while (numPcRetry !== null ? index < numPcRetry : response.Count > 0);
+  } while (numPcRetry !== null ? index <= numPcRetry : response.Count > 0);
 
   return outItems;
 }
@@ -184,180 +194,222 @@ function compareAttachments(tlAttachments, drAttachments) {
   return true;
 }
 
+function compareSingleEvent(tl, dr) {
+  const dateMatch =
+    new Date(tl.details?.notificationDate).getTime() ===
+    new Date(dr.statusDateTime).getTime();
+
+  const attachMatch = compareAttachments(
+    tl.details?.attachments,
+    dr.attachments
+  );
+
+  let statusMatch = false;
+  let discoveredAddressMatch = true;
+
+  if (tl.category === "SEND_ANALOG_FEEDBACK") {
+    const expectedStatus = tl.details?.responseStatus === "OK" ? "OK" : "KO";
+    statusMatch = dr.statusCode === expectedStatus;
+
+    discoveredAddressMatch =
+      (tl.details?.newAddress == null && dr.discoveredAddress == null) ||
+      (tl.details?.newAddress != null && dr.discoveredAddress != null);
+  } else {
+    statusMatch = dr.statusCode === "PROGRESS";
+  }
+
+  const deliveryFailureMatch =
+    (tl.details?.deliveryFailureCause || null) ===
+    (dr.deliveryFailureCause || null);
+
+  const detailCodeMatch =
+    tl.details?.deliveryDetailCode === dr.statusDetail;
+
+  const allMatch =
+    dateMatch &&
+    attachMatch &&
+    statusMatch &&
+    deliveryFailureMatch &&
+    detailCodeMatch &&
+    discoveredAddressMatch;
+
+  if (allMatch) {
+    return { status: "MATCH" };
+  }
+
+  const differences = {};
+
+  if (!dateMatch) {
+    differences.date = `Timeline: ${tl.details?.notificationDate} vs DryRun: ${dr.statusDateTime}`;
+  }
+  if (!attachMatch) {
+    differences.attachments = `Timeline: ${JSON.stringify(
+      tl.details?.attachments
+    )} vs DryRun: ${JSON.stringify(dr.attachments)}`;
+  }
+  if (!statusMatch) {
+    differences.status = `Timeline: ${tl.category}/${tl.details?.responseStatus} vs DryRun: ${dr.statusCode}`;
+  }
+  if (!deliveryFailureMatch) {
+    differences.deliveryFailureCause = `Timeline: ${tl.details?.deliveryFailureCause} vs DryRun: ${dr.deliveryFailureCause}`;
+  }
+  if (!detailCodeMatch) {
+    differences.deliveryDetailCode = `Timeline: ${tl.details?.deliveryDetailCode} vs DryRun: ${dr.statusDetail}`;
+  }
+  if (!discoveredAddressMatch) {
+    differences.discoveredAddress = `Timeline: ${tl.details?.newAddress} vs DryRun: ${dr.discoveredAddress}`;
+  }
+
+  return { status: "MISMATCH", differences };
+}
+
 function compareEvents(timelineElements, dryRunElements) {
+  const timeline = [...timelineElements]; // copia array
+  const dryrun = [...dryRunElements];
+
   const report = {
     summary: {
-      timelineCount: timelineElements.length,
-      dryRunCount: dryRunElements.length,
+      timelineCount: timeline.length,
+      dryRunCount: dryrun.length,
       matched: 0,
-      mismatches: 0,
       onlyInTimeline: 0,
       onlyInDryRun: 0,
+      allMatched: false,
     },
     details: [],
   };
 
-  // Mappa gli eventi dry run per deliveryDetailCode
-  const dryRunMap = new Map();
-  dryRunElements.forEach((dr) => {
-    const key = `${dr.statusDetail}#${
-      dr.attachments?.map((a) => a.id)[0] || ""
-    }`;
-    if (!dryRunMap.has(key)) {
-      dryRunMap.set(key, []);
+  let indexCounter = 1;
+
+  for (let i = 0; i < timeline.length; i++) {
+    const tl = timeline[i];
+    let bestMatchIndex = -1;
+    let bestResult = null;
+    let bestDryRun = null;
+
+    // Scorri TUTTI i dryRun sempre
+    for (let j = 0; j < dryrun.length; j++) {
+      const dr = dryrun[j];
+      const result = compareSingleEvent(tl, dr);
+
+      // Se non comparabile → skip
+      if (result.status !== "MATCH" && result.status !== "MISMATCH") {
+        continue;
+      }
+
+      // Se MATCH → massima priorità, lo prendiamo e ci fermiamo
+      if (result.status === "MATCH") {
+        bestMatchIndex = j;
+        bestResult = result;
+        bestDryRun = dr;
+        break;
+      }
+
+      // Se MISMATCH → lo prendiamo SOLO se non abbiamo nulla di meglio
+      if (bestResult == null) {
+        bestMatchIndex = j;
+        bestResult = result;
+        bestDryRun = dr;
+      }
     }
-    dryRunMap.get(key).push(dr);
-  });
 
-  // Confronta ogni elemento della timeline
-  timelineElements.forEach((tl, idx) => {
-    const detailCode = tl.details?.deliveryDetailCode;
-    const sendRequestId = tl.details?.sendRequestId;
-    const key = `${detailCode}#${
-      tl.details?.attachments?.map((a) => a.id)[0] || ""
-    }`;
-    const dryRunMatches = dryRunMap.get(key) || [];
-
-    const comparison = {
-      index: idx + 1,
-      timelineElement: {
-        category: tl.category,
-        deliveryDetailCode: detailCode,
-        timestamp: tl.timestamp,
-        businessTimestamp: tl.businessTimestamp,
-        notificationDate: tl.details?.notificationDate,
-        responseStatus: tl.details?.responseStatus,
-        deliveryFailureCause: tl.details?.deliveryFailureCause,
-        newAddress: tl.details?.newAddress,
-        sendRequestId: sendRequestId,
-        attachments: tl.details?.attachments?.map((a) => ({
-          documentType: a.documentType,
-          url: a.url,
-        })),
-      },
-      dryRunElement: null,
-      status: "NOT_FOUND",
+    const baseTimelineElement = {
+      category: tl.category,
+      deliveryDetailCode: tl.details?.deliveryDetailCode,
+      timestamp: tl.timestamp,
+      businessTimestamp: tl.businessTimestamp,
+      notificationDate: tl.details?.notificationDate,
+      responseStatus: tl.details?.responseStatus,
+      deliveryFailureCause: tl.details?.deliveryFailureCause,
+      newAddress: tl.details?.newAddress,
+      sendRequestId: tl.details?.sendRequestId,
+      attachments: tl.details?.attachments?.map((a) => ({
+        documentType: a.documentType,
+        url: a.url,
+      })),
     };
 
-    if (dryRunMatches.length > 0) {
-      const dryRun = dryRunMatches[0];
-      comparison.dryRunElement = {
-        statusDetail: dryRun.statusDetail,
-        statusCode: dryRun.statusCode,
-        created: dryRun.created,
-        statusDateTime: dryRun.statusDateTime,
-        deliveryFailureCause: dryRun.deliveryFailureCause,
-        discoveredAddress: dryRun.discoveredAddress,
-        attachments: dryRun.attachments?.map((a) => ({
+    // Nessun risultato → NOT_FOUND
+    if (bestResult == null || bestResult.status !== "MATCH") {
+      report.details.push({
+        index: indexCounter++,
+        timelineElement: baseTimelineElement,
+        dryRunElement: null,
+        status: "NOT_FOUND",
+      });
+
+      report.summary.onlyInTimeline++;
+      continue;
+    }
+
+    // MATCH → aggiungi MATCH al report
+    const dr = bestDryRun;
+
+    const dryRunElement = {
+      statusDetail: dr.statusDetail,
+      statusCode: dr.statusCode,
+      created: dr.created,
+      statusDateTime: dr.statusDateTime,
+      deliveryFailureCause: dr.deliveryFailureCause,
+      discoveredAddress: dr.discoveredAddress,
+      attachments: dr.attachments?.map((a) => ({
+        documentType: a.documentType,
+        uri: a.uri,
+      })),
+    };
+
+    report.details.push({
+      index: indexCounter++,
+      timelineElement: baseTimelineElement,
+      dryRunElement,
+      status: "MATCH",
+    });
+
+    report.summary.matched++;
+
+    // Rimuovi dryRun usato SOLO per MATCH
+    dryrun.splice(bestMatchIndex, 1);
+  }
+
+  // Elementi rimasti in dryrun → solo NOT_FOUND
+  for (const dr of dryrun) {
+    report.details.push({
+      index: indexCounter++,
+      timelineElement: null,
+      dryRunElement: {
+        statusDetail: dr.statusDetail,
+        statusCode: dr.statusCode,
+        created: dr.created,
+        statusDateTime: dr.statusDateTime,
+        deliveryFailureCause: dr.deliveryFailureCause,
+        discoveredAddress: dr.discoveredAddress,
+        attachments: dr.attachments?.map((a) => ({
           documentType: a.documentType,
           uri: a.uri,
         })),
-      };
-
-      // Verifica corrispondenza completa
-      const dateMatch = tl.details?.notificationDate === dryRun.statusDateTime;
-      const attachMatch = compareAttachments(
-        tl.details?.attachments,
-        dryRun.attachments
-      );
-
-      let statusMatch = false;
-      let discoveredAddressMatch = true;
-      if (tl.category === "SEND_ANALOG_FEEDBACK") {
-        const expectedStatus =
-          tl.details?.responseStatus === "OK" ? "OK" : "KO";
-        statusMatch = dryRun.statusCode === expectedStatus;
-
-        discoveredAddressMatch =
-          (tl.details?.newAddress == null &&
-            dryRun.discoveredAddress == null) ||
-          (tl.details?.newAddress != null && dryRun.discoveredAddress != null);
-      } else {
-        statusMatch = dryRun.statusCode === "PROGRESS";
-      }
-
-      const deliveryFailureMatch =
-        (tl.details?.deliveryFailureCause || null) ===
-        (dryRun.deliveryFailureCause || null);
-      const detailCodeMatch =
-        tl.details?.deliveryDetailCode === dryRun.statusDetail;
-
-      if (
-        dateMatch &&
-        attachMatch &&
-        statusMatch &&
-        deliveryFailureMatch &&
-        detailCodeMatch &&
-        discoveredAddressMatch
-      ) {
-        comparison.status = "MATCH";
-        report.summary.matched++;
-      } else {
-        comparison.status = "MISMATCH";
-        comparison.differences = {};
-
-        if (!dateMatch) {
-          comparison.differences.date = `Timeline: ${tl.details?.notificationDate} vs DryRun: ${dryRun.statusDateTime}`;
-        }
-        if (!attachMatch) {
-          comparison.differences.attachments = `Timeline: ${JSON.stringify(
-            tl.details?.attachments
-          )} vs DryRun: ${JSON.stringify(dryRun.attachments)}`;
-        }
-        if (!statusMatch) {
-          comparison.differences.status = `Timeline: ${tl.category}/${tl.details?.responseStatus} vs DryRun: ${dryRun.statusCode}`;
-        }
-        if (!deliveryFailureMatch) {
-          comparison.differences.deliveryFailureCause = `Timeline: ${tl.details?.deliveryFailureCause} vs DryRun: ${dryRun.deliveryFailureCause}`;
-        }
-        if (!detailCodeMatch) {
-          comparison.differences.deliveryDetailCode = `Timeline: ${tl.details?.deliveryDetailCode} vs DryRun: ${dryRun.statusDetail}`;
-        }
-        if (!discoveredAddressMatch) {
-          comparison.differences.discoveredAddress = `Timeline: ${tl.details?.newAddress} vs DryRun: ${dryRun.discoveredAddress}`;
-        }
-        report.summary.mismatches++;
-      }
-
-      // Rimuovi l'elemento matchato
-      dryRunMatches.shift();
-    } else {
-      report.summary.onlyInTimeline++;
-    }
-
-    report.details.push(comparison);
-  });
-
-  // Aggiungi gli elementi rimasti solo in dry run
-  dryRunMap.forEach((matches) => {
-    matches.forEach((dr) => {
-      report.details.push({
-        index: report.details.length + 1,
-        timelineElement: null,
-        dryRunElement: {
-          statusDetail: dr.statusDetail,
-          statusCode: dr.statusCode,
-          created: dr.created,
-          statusDateTime: dr.statusDateTime,
-          deliveryFailureCause: dr.deliveryFailureCause,
-          discoveredAddress: dr.discoveredAddress,
-          attachments: dr.attachments?.map((a) => ({
-            documentType: a.documentType,
-            uri: a.uri,
-          })),
-        },
-        status: "NOT_FOUND",
-      });
-      report.summary.onlyInDryRun++;
+      },
+      status: "NOT_FOUND",
     });
-  });
+
+    report.summary.onlyInDryRun++;
+  }
+
+  report.summary.allMatched =
+    report.summary.timelineCount > 0 &&
+    report.summary.onlyInTimeline === 0 &&
+    report.summary.onlyInDryRun === 0;
 
   return report;
 }
 
 async function processAttemptId(iun, attemptId, numPcRetry = null) {
-  const timelineElements = await fetchTimeline(iun, attemptId);
-  const dryRunElements = await fetchDryRunOutputs(attemptId, numPcRetry);
+  const timelineElements = (await fetchTimeline(iun, attemptId)).filter(
+    (el) => excludedStatusCodesTimeline.includes(el.details?.deliveryDetailCode) === false
+  );
+  const dryRunElements = (await fetchDryRunOutputs(attemptId, numPcRetry)).filter(
+    (el) => excludedStatusCodesDryRun.includes(el.statusDetail) === false
+  );
+
   const trackingErrors = await fetchTrackingsErrors(attemptId, numPcRetry);
   const comparisonReport = compareEvents(timelineElements, dryRunElements);
 
@@ -406,13 +458,7 @@ export async function main() {
         attemptId: record.attemptId,
         iun: record.iun,
         registeredLetterCode: record.registeredLetterCode,
-        match:
-          comparisonReport.summary.timelineCount !== 0 &&
-          comparisonReport.summary.mismatches === 0 &&
-          comparisonReport.summary.onlyInTimeline === 0 &&
-          comparisonReport.summary.onlyInDryRun === 0
-            ? "YES"
-            : "NO",
+        match: comparisonReport.summary.allMatched ? "YES" : "NO",
         errorCategory: te.category || "",
         errorCause: te.errorCause || "",
         errorDescription: te.details.message || "",
@@ -427,31 +473,29 @@ export async function main() {
         attemptId: record.attemptId,
         iun: record.iun,
         registeredLetterCode: record.registeredLetterCode,
-        match:
-          comparisonReport.summary.timelineCount !== 0 &&
-          comparisonReport.summary.mismatches === 0 &&
-          comparisonReport.summary.onlyInTimeline === 0 &&
-          comparisonReport.summary.onlyInDryRun === 0
-            ? "YES"
-            : "NO",
+        match: comparisonReport.summary.allMatched ? "YES" : "NO",
       });
     }
 
     if (saveJson) {
+      if (!fs.existsSync(`${outDir}/${record.iun}`)) {
+        fs.mkdirSync(`${outDir}/${record.iun}`);
+      }
+
       writeFileSync(
-        `${outDir}/timeline_${record.attemptId}.json`,
+        `${outDir}/${record.iun}/timeline_${record.attemptId}.json`,
         timelineElements
       );
       writeFileSync(
-        `${outDir}/dryrun_${record.attemptId}.json`,
+        `${outDir}/${record.iun}/dryrun_${record.attemptId}.json`,
         dryRunElements
       );
       writeFileSync(
-        `${outDir}/trackingErrors_${record.attemptId}.json`,
+        `${outDir}/${record.iun}/trackingErrors_${record.attemptId}.json`,
         trackingErrors
       );
       writeFileSync(
-        `${outDir}/comparison_${record.attemptId}.json`,
+        `${outDir}/${record.iun}/comparison_${record.attemptId}.json`,
         comparisonReport
       );
     }
