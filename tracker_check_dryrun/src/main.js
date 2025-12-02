@@ -37,10 +37,11 @@ const excludedStatusCodesTimeline = [
   "CON020"
 ]
 
-const dynamoClient = new DynamoDBClient({
-  region,
-  credentials: fromSSO({ profile: awsProfile }),
-});
+const credentials = awsProfile
+  ? fromSSO({ profile: awsProfile })
+  : undefined;
+
+const dynamoClient = new DynamoDBClient({ region, credentials });
 
 async function fetchTimeline(iun, attemptId) {
   const skProgress = attemptId.replaceAll(
