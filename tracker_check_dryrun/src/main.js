@@ -9,11 +9,6 @@ const region = process.env.REGION || "eu-south-1";
 const inputFile = process.env.INPUT_FILE || "./input.csv";
 const saveJson = (process.env.SAVE_JSON || "false") === "true";
 
-if (!awsProfile) {
-  console.error("Errore: devi definire la variabile CORE_AWS_PROFILE");
-  process.exit(1);
-}
-
 console.log("======= Config =======");
 console.log("CORE_AWS_PROFILE:", awsProfile);
 console.log("REGION:", region);
@@ -265,7 +260,7 @@ function compareSingleEvent(tl, dr) {
 }
 
 function compareEvents(timelineElements, dryRunElements) {
-  const timeline = [...timelineElements]; // copia array
+  const timeline = [...timelineElements];
   const dryrun = [...dryRunElements];
 
   const report = {
@@ -293,12 +288,12 @@ function compareEvents(timelineElements, dryRunElements) {
       const dr = dryrun[j];
       const result = compareSingleEvent(tl, dr);
 
-      // Se non comparabile → skip
+      // Se non comparabile -> skip
       if (result.status !== "MATCH" && result.status !== "MISMATCH") {
         continue;
       }
 
-      // Se MATCH → massima priorità, lo prendiamo e ci fermiamo
+      // Se MATCH -> massima priorità, lo prendiamo e ci fermiamo
       if (result.status === "MATCH") {
         bestMatchIndex = j;
         bestResult = result;
@@ -306,7 +301,7 @@ function compareEvents(timelineElements, dryRunElements) {
         break;
       }
 
-      // Se MISMATCH → lo prendiamo SOLO se non abbiamo nulla di meglio
+      // Se MISMATCH -> lo prendiamo SOLO se non abbiamo nulla di meglio
       if (bestResult == null) {
         bestMatchIndex = j;
         bestResult = result;
@@ -330,7 +325,7 @@ function compareEvents(timelineElements, dryRunElements) {
       })),
     };
 
-    // Nessun risultato → NOT_FOUND
+    // Nessun risultato -> NOT_FOUND
     if (bestResult == null || bestResult.status !== "MATCH") {
       report.details.push({
         index: indexCounter++,
@@ -343,7 +338,7 @@ function compareEvents(timelineElements, dryRunElements) {
       continue;
     }
 
-    // MATCH → aggiungi MATCH al report
+    // MATCH -> aggiungi MATCH al report
     const dr = bestDryRun;
 
     const dryRunElement = {
@@ -372,7 +367,7 @@ function compareEvents(timelineElements, dryRunElements) {
     dryrun.splice(bestMatchIndex, 1);
   }
 
-  // Elementi rimasti in dryrun → solo NOT_FOUND
+  // Elementi rimasti in dryrun -> solo NOT_FOUND
   for (const dr of dryrun) {
     report.details.push({
       index: indexCounter++,
@@ -421,8 +416,6 @@ async function processAttemptId(iun, attemptId, numPcRetry = null) {
     comparisonReport,
   };
 }
-
-// reportSummaryFilePath
 
 export async function main() {
   const records = await readCSVFile(inputFile);
