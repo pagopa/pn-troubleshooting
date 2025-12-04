@@ -148,7 +148,7 @@ run_tracker_check() {
 
     cd "$TRACKER_CHECK_DIR"
 
-    CORE_AWS_PROFILE=sso_pn-core-prod-ro
+    CORE_AWS_PROFILE=""
     REGION=eu-south-1 
     INPUT_FILE="$ATHENA_RESULT"
     export CORE_AWS_PROFILE REGION INPUT_FILE
