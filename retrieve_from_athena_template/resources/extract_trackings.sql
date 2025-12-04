@@ -22,5 +22,4 @@ trackings_with_iuns AS (
 )
 SELECT DISTINCT IUN, attemptId, COUNT(*) AS nPcRetry, paperStatus_registeredLetterCode AS registeredLetterCode
 FROM trackings_with_iuns
-GROUP BY IUN, attemptId, paperStatus_registeredLetterCode
-LIMIT 1;
+GROUP BY IUN, attemptId, paperStatus_registeredLetterCode;

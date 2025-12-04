@@ -14,8 +14,14 @@ async function retrieveAndSaveCsv(executionId, awsClient, outputFilePath) {
   while (true) {
     const result = await awsClient._getQueryResults(executionId, nextToken);
     //convert result to csv format and save to file the first contains headers
-    const headers = result.ResultSet.ResultSetMetadata.ColumnInfo.map(col => col.Name).join(",");
-    fs.appendFileSync(outputFilePath, headers + "\n");
+    //append headers only the first time
+    if (!nextToken) {
+      const headers = result.ResultSet.ResultSetMetadata.ColumnInfo.map(col => col.Name).join(",");
+      fs.appendFileSync(outputFilePath, headers + "\n");
+    } 
+    else {
+      fs.appendFileSync(outputFilePath, "\n");
+    }
     const rows = result.ResultSet.Rows.slice(nextToken ? 0 : 1).map(row => {
       return row.Data.map(data => data.VarCharValue || "").join(",");
     });
