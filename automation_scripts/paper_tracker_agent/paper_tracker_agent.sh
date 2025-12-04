@@ -79,7 +79,7 @@ while [[ "$#" -gt 0 ]]; do
             SNS_TOPIC="$2"
             shift 2
             ;;
-        -p|--profile)
+        -e|--envName)
             PROFILE="$2"
             shift 2
             ;;
@@ -148,7 +148,11 @@ run_tracker_check() {
 
     cd "$TRACKER_CHECK_DIR"
 
-    CORE_AWS_PROFILE=""
+    if [[ -z "$PROFILE" ]]; then
+        CORE_AWS_PROFILE=""
+    else
+        CORE_AWS_PROFILE="sso_pn-core-${PROFILE}"
+    fi
     REGION=eu-south-1 
     INPUT_FILE="$ATHENA_RESULT"
     export CORE_AWS_PROFILE REGION INPUT_FILE
