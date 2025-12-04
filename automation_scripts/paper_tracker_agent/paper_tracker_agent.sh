@@ -216,7 +216,7 @@ publish_sns() {
     echo "Pubblicazione su SNS topic: $SNS_TOPIC"
 
     MESSAGE="Il report di controllo delle spedizioni cartacee è disponibile al seguente link (valido per 72 ore): $PRESIGNED_URL"
-    aws --profile sso_pn-core-dev sns publish --topic-arn "$SNS_TOPIC" --message "$MESSAGE" --subject "Report Controllo Spedizioni Cartacee"
+    $AWS_CLI_COMMAND sns publish --topic-arn "$SNS_TOPIC" --message "$MESSAGE" --subject "Report Controllo Spedizioni Cartacee"
     echo "Pubblicato con successo."
 }
 
