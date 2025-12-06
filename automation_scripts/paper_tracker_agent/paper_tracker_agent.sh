@@ -79,6 +79,7 @@ while [[ "$#" -gt 0 ]]; do
             SNS_TOPIC="$2"
             shift 2
             ;;
+        #not mandatory
         -e|--envName)
             PROFILE="$2"
             shift 2
@@ -114,12 +115,10 @@ run_athena() {
 
     cd "$ATHENA_DIR"
     if [[ -z "$PROFILE" ]]; then
-        CORE_AWS_PROFILE=""
+         node index.js --query ${QUERY_NAME}
     else
-        CORE_AWS_PROFILE=$PROFILE
+         node index.js --envName ${PROFILE} --query ${QUERY_NAME}
     fi
-    echo "Using AWS Profile: ${CORE_AWS_PROFILE}"
-    node index.js --envName ${CORE_AWS_PROFILE} --query ${QUERY_NAME}
     cd "$STARTDIR"
 
     ATHENA_DIR_RESULTS="$ATHENA_DIR/results/"
