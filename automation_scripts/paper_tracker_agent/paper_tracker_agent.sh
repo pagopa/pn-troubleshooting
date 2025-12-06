@@ -45,7 +45,7 @@ cleanup() {
 prepare_cli_command() {
     local cmd="aws"
     if [[ -n "$PROFILE" ]]; then
-        cmd+=" --profile $PROFILE"
+        cmd+=" --profile sso_pn-core-$PROFILE"
     fi
     echo "$cmd"
     export AWS_CLI_COMMAND="$cmd"
@@ -96,9 +96,9 @@ done
 #############################################
 # Validate PARAMETERS
 #############################################
-#if [[ -z "$BUCKET" || -z "$SNS_TOPIC" ]]; then
-#    usage
-#fi
+if [[ -z "$BUCKET" || -z "$SNS_TOPIC" ]]; then
+    usage
+fi
 
 #############################################
 # STEP 1: RUN ATHENA QUERY
@@ -113,7 +113,13 @@ run_athena() {
     QUERY_NAME="extract_trackings"
 
     cd "$ATHENA_DIR"
-    node index.js --envName prod --query ${QUERY_NAME}
+    if [[ -z "$PROFILE" ]]; then
+        CORE_AWS_PROFILE=""
+    else
+        CORE_AWS_PROFILE=$PROFILE
+    fi
+    echo "Using AWS Profile: ${CORE_AWS_PROFILE}"
+    node index.js --envName ${CORE_AWS_PROFILE} --query ${QUERY_NAME}
     cd "$STARTDIR"
 
     ATHENA_DIR_RESULTS="$ATHENA_DIR/results/"
@@ -151,8 +157,9 @@ run_tracker_check() {
     if [[ -z "$PROFILE" ]]; then
         CORE_AWS_PROFILE=""
     else
-        CORE_AWS_PROFILE="sso_pn-core-${PROFILE}"
+        CORE_AWS_PROFILE=sso_pn-core-$PROFILE
     fi
+    echo "Using AWS Profile: ${CORE_AWS_PROFILE}"
     REGION=eu-south-1 
     INPUT_FILE="$ATHENA_RESULT"
     export CORE_AWS_PROFILE REGION INPUT_FILE

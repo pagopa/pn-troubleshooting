@@ -190,7 +190,7 @@ async function main() {
   _checkingParameters(args, values)
   const outputResultFolder = "results"
   _initFolder([outputResultFolder])
-  const awsClient = envName ? new AwsClientsWrapper() : new AwsClientsWrapper( 'core', envName );
+  const awsClient = envName ? new AwsClientsWrapper( 'core', envName ) : new AwsClientsWrapper();
   awsClient._initAthena();
   switch(true){
     case query === "extract_trackings":
