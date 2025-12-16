@@ -3,7 +3,7 @@ const { parseArgs } = require('util');
 
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <env-name>"
+  const usage = "Usage: index.js --envName <env-name> [--json]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -31,13 +31,17 @@ async function main() {
 
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
+    { name: "json", mandatory: false, subcommand: [] },
   ]
   const values = {
-    values: { envName },
+    values: { envName, json },
   } = parseArgs({
     options: {
       envName: {
         type: "string", short: "e", default: undefined
+      },
+      json: {
+        type: "boolean", short: "j", default: undefined
       },
     },
   });  
@@ -46,8 +50,11 @@ async function main() {
   const awsClient = new AwsClientsWrapper( envName );
   
   const res = await awsClient._fetchAllDLQ();
-  console.log(res);
-
+  if(json) {
+      console.log(JSON.stringify(res,null,2))
+  } else {
+      console.log(res);
+  }
 }
 
 main();
