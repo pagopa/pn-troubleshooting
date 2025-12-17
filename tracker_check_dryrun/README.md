@@ -22,40 +22,105 @@ Output:
 
 ## Struttura file CSV
 ```CSV
-"IUN","attemptId","nPcRetry","registeredLetterCode"
-"LRNM-ZNDM-JYLN-202510-U-1","PREPARE_ANALOG_DOMICILE.IUN_LRNM-ZNDM-JYLN-202510-U-1.RECINDEX_0.ATTEMPT_0","1","230eeb8ab5fc4dc59eaaab87ab23a3e4"
-"ZYDQ-VEKN-WZDW-202510-V-1","PREPARE_ANALOG_DOMICILE.IUN_ZYDQ-VEKN-WZDW-202510-V-1.RECINDEX_0.ATTEMPT_0","2","230eeb8ab5fc4dc59eaaab87ab23a3e4"
+"IUN","attemptId","trackingId","registeredLetterCode","lastStatusCode","finalStatusCode","productType","finalEventBuilderTimestamp","state","deliveryFailureCause","unifiedDeliveryDriver","ocrEnabled","errorCategory","errorMessage","errorCause","errorEventId","errorEventStatusCode","errorflowThrow","errorType","errorCreatedTimestamp"
 ```
 
 ## Query Athena
 ```SQL
 WITH trackings AS (
-    SELECT *
-    FROM "pn_paper_trackings_json_view"
-    WHERE p_year = '2025'
-      AND (
-            (p_month = '10' AND CAST(p_day AS INT) BETWEEN 27 AND 31)
-         OR (p_month = '11' AND CAST(p_day AS INT) BETWEEN 1 AND 2)
-          )
+	SELECT *,
+		ROW_NUMBER() OVER (
+			PARTITION BY trackingId
+			ORDER BY updatedAt DESC
+		) AS rn,
+		regexp_extract(trackingId, 'IUN_([^.]+)', 1) AS IUN,
+		element_at(events, cardinality(events)).statusCode AS lastStatusCode
+	FROM "pn_paper_trackings_json_view"
+	WHERE p_year = '2025'
+		AND (
+			(
+				p_month = '12'
+				AND CAST(p_day AS INT) BETWEEN 9 AND 9
+			)
+		)
+),
+errors AS (
+	SELECT *
+	FROM "pn_paper_trackings_errors_json_view"
+	WHERE p_year = '2025'
+		AND (
+			(
+				p_month = '12'
+				AND CAST(p_day AS INT) BETWEEN 9 AND 9
+			)
+		)
 ),
 latest_trackings AS (
-    SELECT
-        t.*,
-        ROW_NUMBER() OVER (PARTITION BY trackingId ORDER BY updatedAt DESC) AS rn
-    FROM trackings t
+	SELECT *
+	FROM trackings
+	WHERE rn = 1
+		AND lastStatusCode IN (
+			'RECRN006',
+			'RECRN013',
+			'RECRN001C',
+			'RECRN002C',
+			'RECRN002F',
+			'RECRN003C',
+			'RECRN004C',
+			'RECRN005C',
+			'RECRI005',
+			'RECRI003C',
+			'RECRI004C',
+			'RECAG002C',
+			'RECAG003C',
+			'RECAG001C',
+			'RECAG003F',
+			'RECAG004',
+			'RECAG013',
+			'RECAG005C',
+			'RECAG006C',
+			'RECAG007C',
+			'RECAG008C',
+      'CON996'
+		)
+		AND (
+			state = 'KO'
+			OR state = 'DONE'
+		)
 ),
-end_state_trackings AS (
-    SELECT lt.*
-    FROM latest_trackings lt
-    WHERE rn = 1 AND (state = 'KO' OR state = 'DONE')
-),
-trackings_with_iuns AS (
-    SELECT
-        *,
-        regexp_extract(trackingId, 'IUN_([^.]+)', 1) AS IUN
-    FROM end_state_trackings
+trackings_with_errors AS (
+	SELECT latest_trackings.*,
+		errors.category AS errorCategory,
+		errors.details_message AS errorMessage,
+		errors.details_cause AS errorCause,
+		errors.eventIdThrow AS errorEventId,
+		errors.eventThrow AS errorEventStatusCode,
+		errors.flowThrow AS errorflowThrow,
+		errors.type AS errorType,
+		errors.created AS errorCreatedTimestamp
+	FROM latest_trackings
+		LEFT JOIN errors ON latest_trackings.trackingId = errors.trackingId
 )
-SELECT DISTINCT IUN, attemptId, COUNT(*) AS nPcRetry, paperStatus_registeredLetterCode AS registeredLetterCode
-FROM trackings_with_iuns
-GROUP BY IUN, attemptId, paperStatus_registeredLetterCode;
+SELECT IUN,
+	attemptId,
+	trackingId,
+	createdAt AS trackingCreatedTimestamp,
+	paperStatus_registeredLetterCode AS registeredLetterCode,
+	lastStatusCode,
+	paperStatus_finalStatusCode AS finalStatusCode,
+	productType,
+	validationFlow_finalEventBuilderTimestamp AS finalEventBuilderTimestamp,
+	state,
+	paperStatus_deliveryFailureCause AS deliveryFailureCause,
+	unifiedDeliveryDriver,
+	validationConfig_ocrEnabled AS ocrEnabled,
+	errorCategory,
+	errorMessage,
+	errorCause,
+	errorEventId,
+	errorEventStatusCode,
+	errorflowThrow,
+	errorType,
+	errorCreatedTimestamp
+FROM trackings_with_errors;
 ```
