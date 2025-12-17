@@ -1,6 +1,7 @@
 # Query PREPARE_ANALOG_DOMICILE su Athena
 
-Script Python per interrogare Athena ed analizzare tutte le `PREPARE_ANALOG_DOMICILE` in un intervallo temporale specifico. L'intervallo e' automatizzato in base al valore last_update nel file statistics.json, se non presente analizza le ultime 24 ore. (volendo si puo' forzare cambiando l'orario nel file json delle statistiche)
+Script Python per interrogare Athena ed analizzare tutte le `PREPARE_ANALOG_DOMICILE` in un intervallo temporale specifico. L'intervallo e' automatizzato in base al valore last_update nel file statistics.json, se non presente analizza le ultime 24 ore. (volendo si puo' forzare cambiando l'orario nel file json delle statistiche).
+Lo script cerca tutte PREPARE in un intervallo (es. -24 ore, -1 ora) e SEND_ANALOG/COMPLETELY_UNREACHABLE  (es. -24 ore, 0 ore), se a seguito di una PREPARE non e' presente alcun evento SEND_ANALOG/COMPLETELY_UNREACHABLE allora cerca la requestID nella tabella pn-PaperReqeust-error. Se anche questa ricerca fallisce marca il requestID/IUN come da attenzionare.
 
 ## Requisiti
 
@@ -23,7 +24,7 @@ python query_prepare_analog_domicile.py \
 ```
 
 Questo comando eseguirà un'analisi incrementale:
-- **Prima esecuzione**: Cerca PREPARE nell'intervallo **[-24 ore, -1 ora]**
+- **Prima esecuzione**: Cerca PREPARE nell'intervallo **[-24 ore, -1 ora]** e SEND_ANALOG/COMPLETELY_UNREACHABLE  **[-24 ore, -0 ora]**
 - **Esecuzioni successive**: Riprende da dove si era fermato (usa `last_update` da statistics.json)
 
 ### Utilizzo con intervallo temporale personalizzato 
