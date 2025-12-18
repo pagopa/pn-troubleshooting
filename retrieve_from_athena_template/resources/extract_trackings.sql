@@ -14,37 +14,48 @@ errors AS (
 	FROM "pn_paper_trackings_errors_json_view"
 	WHERE <QUERY_CONDITION_Q1>
 ),
+final_status_codes AS (
+  SELECT ARRAY[
+    'RECRN006',
+    'RECRN013',
+    'RECRN001C',
+    'RECRN002C',
+    'RECRN002F',
+    'RECRN003C',
+    'RECRN004C',
+    'RECRN005C',
+    'RECRI005',
+    'RECRI003C',
+    'RECRI004C',
+    'RECAG002C',
+    'RECAG003C',
+    'RECAG001C',
+    'RECAG003F',
+    'RECAG004',
+    'RECAG013',
+    'RECAG005C',
+    'RECAG006C',
+    'RECAG007C',
+    'RECAG008C'
+  ] AS codes
+),
 latest_trackings AS (
-	SELECT *
-	FROM trackings
-	WHERE rn = 1
-		AND lastStatusCode IN (
-			'RECRN006',
-			'RECRN013',
-			'RECRN001C',
-			'RECRN002C',
-			'RECRN002F',
-			'RECRN003C',
-			'RECRN004C',
-			'RECRN005C',
-			'RECRI005',
-			'RECRI003C',
-			'RECRI004C',
-			'RECAG002C',
-			'RECAG003C',
-			'RECAG001C',
-			'RECAG003F',
-			'RECAG004',
-			'RECAG013',
-			'RECAG005C',
-			'RECAG006C',
-			'RECAG007C',
-			'RECAG008C'
-		)
-		AND (
-			state = 'KO'
-			OR state = 'DONE'
-		)
+  SELECT *,
+    cardinality(
+      array_distinct(
+        transform(
+          filter(
+            events,
+            e -> contains(codes, e.statusCode)
+          ),
+          e -> e.id
+        )
+      )
+    ) AS multipleFinalEvents
+  FROM trackings, final_status_codes
+  WHERE rn = 1
+    AND contains(codes, lastStatusCode)
+    AND state IN ('KO', 'DONE')
 ),
 trackings_with_errors AS (
 	SELECT latest_trackings.*,
@@ -72,6 +83,7 @@ SELECT IUN,
 	paperStatus_deliveryFailureCause AS deliveryFailureCause,
 	unifiedDeliveryDriver,
 	validationConfig_ocrEnabled AS ocrEnabled,
+	multipleFinalEvents,
 	errorCategory,
 	errorMessage,
 	errorCause,
