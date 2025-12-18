@@ -22,17 +22,13 @@ npm install
 ### Step preliminare
 
 ```bash
-aws sso login --profile sso_pn-confinfo-<env>
+aws sso login --profile sso_pn-core-<env>
 ```
 
 ### Esecuzione
 ```bash  
-node index.js --envName <envName> --fileName <fileName> 
+node index.js --envName <envName> --query <query> 
 ```
 Dove:
 - `<envName>` è l'environment si intende eseguire la procedura;
-- `<fileName>` è il file-path del file che riporta la lista degli iun;
-
-il file deve essere fornito nel seguente formato
-PREPARE_ANALOG_DOMICILE.IUN_AAAA-BBBB-CCCC-202307-M-1.RECINDEX_0.ATTEMPT_1.PCRETRY_0
-PREPARE_ANALOG_DOMICILE.IUN_AAAA-BBBB-CCCC-202307-M-1.RECINDEX_0.ATTEMPT_1.PCRETRY_0
+- `<query>` è il nome della query da eseguire;

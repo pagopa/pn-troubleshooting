@@ -23,7 +23,7 @@ async function retrieveAndSaveCsv(executionId, awsClient, outputFilePath) {
       fs.appendFileSync(outputFilePath, "\n");
     }
     const rows = result.ResultSet.Rows.slice(nextToken ? 0 : 1).map(row => {
-      return row.Data.map(data => data.VarCharValue || "").join(",");
+      return row.Data.map(data => `"${data.VarCharValue}"` || "").join(",");
     });
     fs.appendFileSync(outputFilePath, rows.join("\n"));
     nextToken = result.NextToken;
@@ -145,7 +145,7 @@ function _initFolder(values){
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --fileName <file-name>"
+  const usage = "Usage: node index.js --envName <env-name> --query <query>"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){

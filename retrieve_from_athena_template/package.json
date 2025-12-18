@@ -1,5 +1,5 @@
 {
-  "name": "pdf-validator",
+  "name": "retrieve_from_athena_template",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
