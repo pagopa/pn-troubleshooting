@@ -3,43 +3,30 @@ import { parse } from "csv-parse";
 import { stringify } from "csv-stringify/sync";
 
 export async function readCSVFile(filePath) {
-  const records = [];
-  const parser = fs
+  return  fs
     .createReadStream(filePath)
     .pipe(parse({ columns: true, trim: true }));
-
-  for await (const record of parser) {
-    // record = { IUN: '...', attemptId: '...', nPcRetry: '...' }
-    if (!record.IUN || !record.attemptId) {
-      console.warn(`⚠️ Riga incompleta:`, record);
-      continue;
-    }
-    let numPcRetry = parseInt(record.nPcRetry);
-    if (isNaN(numPcRetry)) {
-      numPcRetry = null;
-    }
-
-    records.push({
-      iun: record.IUN,
-      attemptId: record.attemptId,
-      registeredLetterCode: record.registeredLetterCode,
-      numPcRetry,
-    });
-  }
-
-  return records;
 }
 
-export function appendCSVRow(filePath, header, rowData) {
-  const fileExists = fs.existsSync(filePath);
+export async function readAllCSVFile(filePath) {
+  return new Promise((resolve, reject) => {
+    const results = [];
 
-  // Se il file non esiste, scriviamo anche l'header
-  const csv = stringify([rowData], {
-    header: !fileExists,
+    fs.createReadStream(filePath)
+      .pipe(parse({ columns: true, trim: true }))
+      .on("data", (row) => results.push(row))
+      .on("end", () => resolve(results))
+      .on("error", (err) => reject(err));
+  });
+}
+
+export function writeCSVFile(filePath, header, rows) {
+  const csv = stringify(rows, {
+    header: true,
     columns: header,
   });
 
-  fs.appendFileSync(filePath, csv, "utf-8");
+  fs.writeFileSync(filePath, csv, "utf-8");
 }
 
 export function showProgress(current, total, prefix = '') {

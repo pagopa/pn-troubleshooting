@@ -1,7 +1,12 @@
 import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { fromSSO } from "@aws-sdk/credential-provider-sso";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { readCSVFile, appendCSVRow, showProgress, writeFileSync } from "./utils.js";
+import {
+  writeCSVFile,
+  showProgress,
+  writeFileSync,
+  readAllCSVFile,
+} from "./utils.js";
 import fs from "fs";
 
 const awsProfile = process.env.CORE_AWS_PROFILE;
@@ -16,97 +21,84 @@ console.log("INPUT_FILE:", inputFile);
 console.log("SAVE_JSON:", saveJson);
 console.log("======================");
 
-const timestamp = new Date().toISOString()
+const timestamp = new Date()
+  .toISOString()
   .replace(/[-:TZ.]/g, "")
   .slice(0, 14);
 
 const outDir = "./out";
-const reportFilePath = `${outDir}/report_${timestamp}.csv`;
+const reportFilePath = `${outDir}/enriched_${inputFile.split("/").pop()}`;
 
 // Fix for https://pagopa.atlassian.net/browse/PN-17419
 const excludedStatusCodesDryRun = [
-  "CON09A", "CON010", "CON011", "CON012", "CON016", "CON020"
-]
+  "CON09A",
+  "CON010",
+  "CON011",
+  "CON012",
+  "CON016",
+  "CON020",
+];
 
-const excludedStatusCodesTimeline = [
-  "CON020"
-]
+const excludedStatusCodesTimeline = ["CON020"];
 
-const credentials = awsProfile
-  ? fromSSO({ profile: awsProfile })
-  : undefined;
+const finalStatusCodes = [
+  "RECRN006",
+  "RECRN013",
+  "RECRN001C",
+  "RECRN002C",
+  "RECRN002F",
+  "RECRN003C",
+  "RECRN004C",
+  "RECRN005C",
+  "RECRI005",
+  "RECRI003C",
+  "RECRI004C",
+  "RECAG002C",
+  "RECAG003C",
+  "RECAG001C",
+  "RECAG003F",
+  "RECAG004",
+  "RECAG013",
+  "RECAG005C",
+  "RECAG006C",
+  "RECAG007C",
+  "RECAG008C",
+];
+
+const credentials = awsProfile ? fromSSO({ profile: awsProfile }) : undefined;
 
 const dynamoClient = new DynamoDBClient({ region, credentials });
 
-async function fetchTimeline(iun, attemptId) {
-  const skProgress = attemptId.replaceAll(
-    "PREPARE_ANALOG_DOMICILE",
-    "SEND_ANALOG_PROGRESS"
-  );
-  const skFeedback = attemptId.replaceAll(
-    "PREPARE_ANALOG_DOMICILE",
-    "SEND_ANALOG_FEEDBACK"
-  );
-  const skRSProgress = attemptId.replaceAll(
-    "PREPARE_ANALOG_DOMICILE",
-    "SEND_SIMPLE_REGISTERED_LETTER_PROGRESS"
-  );
+async function fetchTimeline(iun) {
   try {
-    const baseParams = {
+    const command = new QueryCommand({
       TableName: "pn-Timelines",
       KeyConditionExpression:
         "iun = :iun AND begins_with(timelineElementId, :prefix)",
       ExpressionAttributeValues: {
         ":iun": { S: iun },
-      },
-    };
-
-    // Query per SEND_ANALOG_PROGRESS
-    const progressCommand = new QueryCommand({
-      ...baseParams,
-      ExpressionAttributeValues: {
-        ...baseParams.ExpressionAttributeValues,
-        ":prefix": { S: skProgress },
+        ":prefix": { S: "SEND_" },
       },
     });
 
-    // Query per SEND_ANALOG_FEEDBACK
-    const feedbackCommand = new QueryCommand({
-      ...baseParams,
-      ExpressionAttributeValues: {
-        ...baseParams.ExpressionAttributeValues,
-        ":prefix": { S: skFeedback },
-      },
-    });
-
-    // Query per SEND_SIMPLE_REGISTERED_LETTER_PROGRESS
-    const rSprogressCommand = new QueryCommand({
-      ...baseParams,
-      ExpressionAttributeValues: {
-        ...baseParams.ExpressionAttributeValues,
-        ":prefix": { S: skRSProgress },
-      },
-    });
-
-    const [progressRes, feedbackRes, rSprogressRes] = await Promise.all([
-      dynamoClient.send(progressCommand),
-      dynamoClient.send(feedbackCommand),
-      dynamoClient.send(rSprogressCommand),
-    ]);
-
-    return [
-      ...(progressRes.Items ?? []),
-      ...(feedbackRes.Items ?? []),
-      ...(rSprogressRes.Items ?? []),
-    ]
+    const response = await dynamoClient.send(command);
+    return (response.Items ?? [])
       .map((item) => unmarshall(item))
+      .filter(
+        (el) =>
+          el.timelineElementId.startsWith("SEND_ANALOG_PROGRESS") ||
+          el.timelineElementId.startsWith("SEND_ANALOG_FEEDBACK") ||
+          el.timelineElementId.startsWith(
+            "SEND_SIMPLE_REGISTERED_LETTER_PROGRESS"
+          )
+      )
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   } catch (err) {
     console.error("❌ Errore nella query:", err);
   }
 }
 
-async function fetchDryRunOutputs(attemptId, numPcRetry = null) {
+async function fetchDryRunOutputs(attemptId) {
   let response = {};
   let outItems = [];
   let index = 0;
@@ -123,41 +115,49 @@ async function fetchDryRunOutputs(attemptId, numPcRetry = null) {
 
       response = await dynamoClient.send(command);
 
-      outItems.push(...(response.Items || []).map((item) => unmarshall(item)));
+      outItems.push(...(response.Items ?? []).map((item) => unmarshall(item)));
     } catch (err) {
       console.error("❌ Errore nella query:", err);
     }
     index++;
-  } while (numPcRetry !== null ? index <= numPcRetry : response.Count > 0);
+  } while (response.Count > 0);
 
-  return outItems;
+  return outItems.sort((a, b) => new Date(a.created) - new Date(b.created));
 }
 
-async function fetchTrackingsErrors(attemptId, numPcRetry = null) {
-  let response = {};
-  let outItems = [];
-  let index = 0;
-  do {
-    try {
-      const trackingId = `${attemptId}.PCRETRY_${index}`;
-      const command = new QueryCommand({
-        TableName: "pn-PaperTrackingsErrors",
-        KeyConditionExpression: "trackingId = :trackingId",
-        ExpressionAttributeValues: {
-          ":trackingId": { S: trackingId },
-        },
-      });
+async function fetchTrackingsError(trackingId, created) {
+  try {
+    const command = new QueryCommand({
+      TableName: "pn-PaperTrackingsErrors",
+      KeyConditionExpression: "trackingId = :trackingId AND created = :created",
+      ExpressionAttributeValues: {
+        ":trackingId": { S: trackingId },
+        ":created": { S: created },
+      },
+    });
 
-      response = await dynamoClient.send(command);
+    const response = await dynamoClient.send(command);
+    return response.Count === 0 ? null : unmarshall(response.Items[0]);
+  } catch (err) {
+    console.error("❌ Errore nella query:", err);
+  }
+}
 
-      outItems.push(...(response.Items || []).map((item) => unmarshall(item)));
-    } catch (err) {
-      console.error("❌ Errore nella query:", err);
-    }
-    index++;
-  } while (numPcRetry !== null ? index < numPcRetry : response.Count > 0);
+async function fetchTracking(trackingId) {
+  try {
+    const command = new QueryCommand({
+      TableName: "pn-PaperTrackings",
+      KeyConditionExpression: "trackingId = :trackingId",
+      ExpressionAttributeValues: {
+        ":trackingId": { S: trackingId },
+      },
+    });
 
-  return outItems;
+    const response = await dynamoClient.send(command);
+    return response.Count === 0 ? null : unmarshall(response.Items[0]);
+  } catch (err) {
+    console.error("❌ Errore nella query:", err);
+  }
 }
 
 function compareAttachments(tlAttachments, drAttachments) {
@@ -218,8 +218,7 @@ function compareSingleEvent(tl, dr) {
     (tl.details?.deliveryFailureCause || null) ===
     (dr.deliveryFailureCause || null);
 
-  const detailCodeMatch =
-    tl.details?.deliveryDetailCode === dr.statusDetail;
+  const detailCodeMatch = tl.details?.deliveryDetailCode === dr.statusDetail;
 
   const allMatch =
     dateMatch &&
@@ -271,6 +270,8 @@ function compareEvents(timelineElements, dryRunElements) {
       onlyInTimeline: 0,
       onlyInDryRun: 0,
       allMatched: false,
+      paperChannelRefined: false,
+      paperTrackerRefined: false,
     },
     details: [],
   };
@@ -398,101 +399,158 @@ function compareEvents(timelineElements, dryRunElements) {
   return report;
 }
 
-async function processAttemptId(iun, attemptId, numPcRetry = null) {
-  const timelineElements = (await fetchTimeline(iun, attemptId)).filter(
-    (el) => excludedStatusCodesTimeline.includes(el.details?.deliveryDetailCode) === false
+async function processAttemptId(iun, attemptId) {
+  const timelineElements = (await fetchTimeline(iun)).filter(
+    (el) =>
+      excludedStatusCodesTimeline.includes(el.details?.deliveryDetailCode) ===
+        false &&
+      el.details?.sendRequestId ===
+        attemptId.replaceAll("PREPARE_ANALOG_DOMICILE", "SEND_ANALOG_DOMICILE")
   );
-  const dryRunElements = (await fetchDryRunOutputs(attemptId, numPcRetry)).filter(
+  const dryRunElements = (await fetchDryRunOutputs(attemptId)).filter(
     (el) => excludedStatusCodesDryRun.includes(el.statusDetail) === false
   );
 
-  const trackingErrors = await fetchTrackingsErrors(attemptId, numPcRetry);
   const comparisonReport = compareEvents(timelineElements, dryRunElements);
 
   return {
     timelineElements,
     dryRunElements,
-    trackingErrors,
     comparisonReport,
   };
 }
 
+const header = [
+  "IUN",
+  "attemptId",
+  "trackingId",
+  "registeredLetterCode",
+  "lastStatusCode",
+  "finalStatusCode",
+  "productType",
+  "finalEventBuilderTimestamp",
+  "state",
+  "deliveryFailureCause",
+  "unifiedDeliveryDriver",
+  "ocrEnabled",
+  "errorCategory",
+  "errorMessage",
+  "errorCause",
+  "errorEventId",
+  "errorEventStatusCode",
+  "errorflowThrow",
+  "errorType",
+  "errorCreatedTimestamp",
+  "multipleFinalEvents",
+  "matchDryRunTimeline",
+  "timelineFeedback",
+  "dryRunFeedback",
+  "timelineElements",
+  "dryRunElements",
+];
+
 export async function main() {
-  const records = await readCSVFile(inputFile);
+  const processedAttempts = {};
+  const records = await readAllCSVFile(inputFile);
+
+  // Rimuovo il file di report precedente
+  if (fs.existsSync(reportFilePath)) {
+    fs.unlinkSync(reportFilePath);
+  }
+  // Creo la cartella di output se non esiste
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir);
   }
-  const header = [
-    "attemptId",
-    "requestId",
-    "iun",
-    "registeredLetterCode",
-    "match",
-    "errorCategory",
-    "errorCause",
-    "errorDescription",
-    "errorEventFlowThrow",
-    "errorFlowThrow",
-    "errorType",
-  ];
 
-  for (let i=0; i < records.length; i++) {
-    showProgress(i+1, records.length, 'Elaborazione CSV ');
-    const record = records[i];
-    const {
-      timelineElements,
-      dryRunElements,
-      trackingErrors,
-      comparisonReport,
-    } = await processAttemptId(record.iun, record.attemptId, record.numPcRetry);
+  console.log(records.length, "records to process");
+  for (let i = 0; i < records.length; i++) {
+    showProgress(i + 1, records.length, "Elaborazione CSV ");
 
-    for (const te of trackingErrors) {
-      appendCSVRow(reportFilePath, header, {
-        requestId: te.trackingId,
-        attemptId: record.attemptId,
-        iun: record.iun,
-        registeredLetterCode: record.registeredLetterCode,
-        match: comparisonReport.summary.allMatched ? "YES" : "NO",
-        errorCategory: te.category || "",
-        errorCause: te.errorCause || "",
-        errorDescription: te.details.message || "",
-        errorEventFlowThrow: te.eventThrow || "",
-        errorFlowThrow: te.flowThrow || "",
-        errorType: te.type || "",
-      });
+    const row = records[i];
+    const attemptId = row.attemptId;
+
+    if (!processedAttempts[attemptId]) {
+      processedAttempts[attemptId] = await processAttemptId(row.IUN, attemptId);
     }
-    if (trackingErrors.length === 0) {
-      appendCSVRow(reportFilePath, header, {
-        requestId: record.attemptId + ".PCRETRY_" + record.numPcRetry,
-        attemptId: record.attemptId,
-        iun: record.iun,
-        registeredLetterCode: record.registeredLetterCode,
-        match: comparisonReport.summary.allMatched ? "YES" : "NO",
-      });
+    const { timelineElements, dryRunElements, comparisonReport } =
+      processedAttempts[attemptId];
+
+    if (comparisonReport.summary.allMatched) {
+      row.matchDryRunTimeline = "YES";
+    } else {
+      if (dryRunElements.length === 0) {
+        row.matchDryRunTimeline = "NO_DRYRUN_EVENTS";
+      } else if (timelineElements.length === 0) {
+        row.matchDryRunTimeline = "NO_TIMELINE_EVENTS";
+      } else {
+        row.matchDryRunTimeline = "NO";
+      }
+    }
+
+    row.timelineFeedback = timelineElements
+      .filter((el) => el.category === "SEND_ANALOG_FEEDBACK")
+      .map((el) => el.details?.deliveryDetailCode)[0] || "NO";
+    row.dryRunFeedback = dryRunElements
+      .filter((el) => el.statusCode === "OK" || el.statusCode === "KO")
+      .map((el) => el.statusDetail)[0]  || "NO";
+    row.timelineElements = timelineElements.length;
+    row.dryRunElements = dryRunElements.length;
+
+    // Controllo quanti eventi ho ricevuto con stato finale
+    if ((!row.multipleFinalEvents || row.multipleFinalEvents === "") && row.errorType !== "") {
+      const tracking = await fetchTracking(row.trackingId);
+      const finalEvents = tracking.events
+        .filter((ev) => finalStatusCodes.includes(ev.statusCode))
+        .filter((ev, index, self) => 
+          index === self.findIndex((e) => e.id === ev.id)
+        );
+      row.multipleFinalEvents = finalEvents.length;
+    }
+
+    // Aggiorno la errorCategory se mancante
+    if (row.errorType !== "" && row.errorCategory === "") {
+      const trackingError = await fetchTrackingsError(
+        row.trackingId,
+        row.errorCreatedTimestamp
+      );
+      if (!trackingError) {
+        console.error(
+          "Unable to find tracking error for ",
+          row.trackingId,
+          row.errorCreatedTimestamp
+        );
+      } else {
+        row.errorCategory = trackingError.category;
+        row.errorMessage = trackingError.details?.message;
+        row.errorCause = trackingError.details?.cause;
+      }
+    }
+
+    // Aggiorno la registeredLetterCode se mancante
+    if (row.registeredLetterCode === "") {
+      row.registeredLetterCode =
+        dryRunElements[dryRunElements.length - 1]?.registeredLetterCode || "";
     }
 
     if (saveJson) {
-      if (!fs.existsSync(`${outDir}/${record.iun}`)) {
-        fs.mkdirSync(`${outDir}/${record.iun}`);
+      if (!fs.existsSync(`${outDir}/${row.IUN}`)) {
+        fs.mkdirSync(`${outDir}/${row.IUN}`);
       }
 
       writeFileSync(
-        `${outDir}/${record.iun}/timeline_${record.attemptId}.json`,
+        `${outDir}/${row.IUN}/timeline_${row.attemptId}.json`,
         timelineElements
       );
       writeFileSync(
-        `${outDir}/${record.iun}/dryrun_${record.attemptId}.json`,
+        `${outDir}/${row.IUN}/dryrun_${row.attemptId}.json`,
         dryRunElements
       );
       writeFileSync(
-        `${outDir}/${record.iun}/trackingErrors_${record.attemptId}.json`,
-        trackingErrors
-      );
-      writeFileSync(
-        `${outDir}/${record.iun}/comparison_${record.attemptId}.json`,
+        `${outDir}/${row.IUN}/comparison_${row.attemptId}.json`,
         comparisonReport
       );
     }
   }
-  console.log(`\nFiles salvati in ${outDir}/`);
+  writeCSVFile(reportFilePath, header, records);
+  console.log(`\nFile di report salvato in ${reportFilePath}`);
 }
