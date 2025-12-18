@@ -24,6 +24,7 @@ export function writeCSVFile(filePath, header, rows) {
   const csv = stringify(rows, {
     header: true,
     columns: header,
+    quoted: true,
   });
 
   fs.writeFileSync(filePath, csv, "utf-8");
