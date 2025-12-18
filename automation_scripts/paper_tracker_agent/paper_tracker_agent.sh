@@ -240,7 +240,8 @@ cleanup() {
         fi
     done
 
-    echo "Cleanup completato."}
+    echo "Cleanup completato."
+}
 #############################################
 # MAIN EXECUTION
 #############################################
