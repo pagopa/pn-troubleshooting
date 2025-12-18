@@ -230,6 +230,17 @@ publish_sns() {
     echo "Pubblicato con successo."
 }
 
+cleanup() {
+    echo "----------------------------------------------"
+    echo "Eseguendo cleanup..."
+    for f in "$ATHENA_RESULT" "$TRACKER_CHECK_RESULT"; do
+        if [[ -f "$f" ]]; then
+            rm -f "$f"
+            echo "Rimosso file temporaneo: $f"
+        fi
+    done
+
+    echo "Cleanup completato."}
 #############################################
 # MAIN EXECUTION
 #############################################
@@ -239,6 +250,7 @@ run_tracker_check
 upload_to_s3
 generate_url
 publish_sns
+cleanup
 
 echo "----------------------------------------------"
 echo "Processo completato con successo."
