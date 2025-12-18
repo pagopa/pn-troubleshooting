@@ -224,9 +224,15 @@ generate_url() {
 publish_sns() {
     echo "----------------------------------------------"
     echo "Pubblicazione su SNS topic: $SNS_TOPIC"
-
-    MESSAGE="Il report di controllo delle spedizioni cartacee è disponibile al seguente link (valido per 72 ore): $PRESIGNED_URL"
-    $AWS_CLI_COMMAND sns publish --topic-arn "$SNS_TOPIC" --message "$MESSAGE" --subject "Report Controllo Spedizioni Cartacee"
+    # range latest week from monday to monday
+    local now=$(date +%s)
+    local day_of_week=$(date +%u)
+    local last_monday=$((now - (day_of_week - 1) * 86400))
+    local previous_monday=$((last_monday - 7 * 86400))
+    local start_date=$(date -d "@$previous_monday" +%Y-%m-%d)
+    local end_date=$(date -d "@$last_monday" +%Y-%m-%d)
+    MESSAGE="Il report di controllo delle spedizioni cartacee per il periodo dal $start_date al $end_date è disponibile al seguente link (valido per 72 ore): $PRESIGNED_URL"
+    $AWS_CLI_COMMAND sns publish --topic-arn "$SNS_TOPIC" --message "$MESSAGE" --subject "Report Controllo Spedizioni Cartacee - $start_date to $end_date"
     echo "Pubblicato con successo."
 }
 
