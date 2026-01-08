@@ -761,8 +761,9 @@ def main():
     parser.add_argument(
         '--profile',
         type=str,
-        help='Profilo AWS da utilizzare',
-        required=True
+        help='Profilo AWS da utilizzare (opzionale, usa credenziali IAM se non specificato)',
+        required=False,
+        default=None
     )
     parser.add_argument(
         '--database',
@@ -779,8 +780,9 @@ def main():
     parser.add_argument(
         '--output-location',
         type=str,
-        help='Percorso S3 per i risultati (es: s3://bucket-name/athena-results/)',
-        required=True
+        help='Percorso S3 per i risultati (es: s3://bucket-name/athena-results/). Se non specificato, viene ricavato dal workgroup Athena',
+        required=False,
+        default=None
     )
     parser.add_argument(
         '--workgroup',
@@ -899,10 +901,18 @@ def main():
         start_time_str = start_time.strftime('%Y-%m-%d %H:%M:%S')
         end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
         
+        # Se output_location non è specificato, lo ricava dal workgroup
         output_location = args.output_location
+        if not output_location:
+            print(f"Output location non specificato, recupero dal workgroup '{args.workgroup}'...")
+            output_location = get_workgroup_output_location(args.workgroup, args.profile)
+            if not output_location:
+                print("ERRORE: Impossibile ricavare output location dal workgroup")
+                sys.exit(1)
+            print(f"Output location ricavato dal workgroup: {output_location}")
         
         print(f"\n=== Parametri Query ===")
-        print(f"Profilo AWS: {args.profile}")
+        print(f"Profilo AWS: {args.profile if args.profile else 'credenziali IAM'}")
         print(f"Ricerca PREPARE_ANALOG_DOMICILE tra {start_time_str} e {end_time_str}")
         print(f"Database: {args.database}")
         print(f"Workgroup: {args.workgroup}")
