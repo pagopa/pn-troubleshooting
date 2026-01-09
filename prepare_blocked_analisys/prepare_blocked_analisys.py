@@ -761,8 +761,9 @@ def main():
     parser.add_argument(
         '--profile',
         type=str,
-        help='Profilo AWS da utilizzare',
-        required=True
+        help='Profilo AWS da utilizzare (opzionale, se non specificato usa le credenziali IAM di default)',
+        required=False,
+        default=None
     )
     parser.add_argument(
         '--database',
