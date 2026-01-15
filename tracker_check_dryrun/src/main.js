@@ -2,10 +2,11 @@ import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { fromSSO } from "@aws-sdk/credential-provider-sso";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import {
-  writeCSVFile,
   showProgress,
   writeFileSync,
   readAllCSVFile,
+  initCSVFile,
+  appendCSVRow,
 } from "./utils.js";
 import fs from "fs";
 
@@ -452,6 +453,7 @@ const header = [
 export async function main() {
   const processedAttempts = {};
   const records = await readAllCSVFile(inputFile);
+  initCSVFile(reportFilePath, header);
 
   // Rimuovo il file di report precedente
   if (fs.existsSync(reportFilePath)) {
@@ -550,7 +552,7 @@ export async function main() {
         comparisonReport
       );
     }
+    appendCSVRow(reportFilePath, header, records[i]);
   }
-  writeCSVFile(reportFilePath, header, records);
   console.log(`\nFile di report salvato in ${reportFilePath}`);
 }

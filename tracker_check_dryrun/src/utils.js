@@ -30,6 +30,26 @@ export function writeCSVFile(filePath, header, rows) {
   fs.writeFileSync(filePath, csv, "utf-8");
 }
 
+export function initCSVFile(filePath, header) {
+  const headerCsv = stringify([], {
+    header: true,
+    columns: header,
+    quoted: true,
+  });
+
+  fs.writeFileSync(filePath, headerCsv, "utf-8");
+}
+
+export function appendCSVRow(filePath, header, row) {
+  const rowCsv = stringify([row], {
+    header: false,
+    columns: header,
+    quoted: true,
+  });
+
+  fs.appendFileSync(filePath, rowCsv, "utf-8");
+}
+
 export function showProgress(current, total, prefix = '') {
   const barLength = 40;
   const percentage = Math.min(100, Math.floor((current / total) * 100));
