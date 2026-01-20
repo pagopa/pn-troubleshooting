@@ -451,7 +451,8 @@ const header = [
 ];
 
 export async function main() {
-  const processedAttempts = {};
+  let lastAttemptId = null;
+  let lastProcessedData = null;
   const records = await readAllCSVFile(inputFile);
   initCSVFile(reportFilePath, header);
 
@@ -471,11 +472,12 @@ export async function main() {
     const row = records[i];
     const attemptId = row.attemptId;
 
-    if (!processedAttempts[attemptId]) {
-      processedAttempts[attemptId] = await processAttemptId(row.IUN, attemptId);
+    // Mantieni in memoria solo l'ultimo attemptId processato
+    if (attemptId !== lastAttemptId) {
+      lastAttemptId = attemptId;
+      lastProcessedData = await processAttemptId(row.IUN, attemptId);
     }
-    const { timelineElements, dryRunElements, comparisonReport } =
-      processedAttempts[attemptId];
+    const { timelineElements, dryRunElements, comparisonReport } = lastProcessedData;
 
     if (comparisonReport.summary.allMatched) {
       row.matchDryRunTimeline = "YES";
