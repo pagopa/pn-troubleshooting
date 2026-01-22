@@ -143,10 +143,10 @@ async function main() {
     // GetQueueUrlRequest
     const queueUrl = await clientSQS._getQueueUrl(queueName);
     // Process input file
-    const msgsList = formatFile(inputFile,singleMessage);
+    const msgsList = formatFile(inputFile);
     const totMsgs = msgsList.length;
     // Group msgs into blocks of 10 elements and store these blocks in an overall object
-    const allBlocksOfMsgs = formatInput(msgsList);
+    const allBlocksOfMsgs = formatInput(msgsList,singleMessage);
     let run = 0;
     let msgsOK = 0;
     let msgsKO = 0;
