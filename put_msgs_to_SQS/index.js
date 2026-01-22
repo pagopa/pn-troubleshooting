@@ -15,7 +15,7 @@ const VALID_ACCOUNT = ['core', 'confinfo'];
  */
 function validateArgs() {
     const usage = `
-Usage: node index.js --accountType|-a <AWSAccount> --envName|-e <environment> --queueName|-q <queueName> --inputFile|-f <path>
+Usage: node index.js --accountType|-a <AWSAccount> --envName|-e <environment> --queueName|-q <queueName> --inputFile|-f <path> --singleMessage|s
 
 Description:
     The script allows you to submit events to SQS from an input file
@@ -25,10 +25,15 @@ Parameters:
     --envName, -e     Required. Environment to check (dev|uat|test|prod|hotfix)
     --queueName, -q    Required. SQS where put the messages
     --inputFile, -f   Required. Path and name of the input file with the messages to put in SQS
+    --singleMessage, -s Enable single message insert. Default value is 'false'
     --help, -h        Display this help message
 
 Example:
-    node index.js --accountType core --envName hotfix --queueName pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json`;
+    1. Insert 10 messages at time
+    node index.js --accountType core --envName hotfix --queueName pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json;
+
+    2. Insert 1 message at time
+    node index.js --accountType core --envName hotfix --queueName pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json  --single`;
 
     const args = parseArgs({
         options: {
@@ -36,6 +41,7 @@ Example:
             envName: { type: 'string', short: 'e' },
             queueName: { type: 'string', short: 'q' },
             inputFile: { type: 'string', short: 'f' },
+            singleMessage: { type: 'boolean', short: 's', default: false },
             help: { type: 'boolean', short: 'h' }
         },
         strict: true
@@ -85,11 +91,12 @@ function formatFile(inputFile) {
  * @param {string} msgsToRepublish - Json list of msgs
  * @returns {Array} Array of blocks of 10 msgs
  */
-function formatInput(msgsToRepublish) {
+function formatInput(msgsToRepublish,singleMsg) {
     let allBlocksOfMsgs = [];
+    const sliceSize = singleMsg ? 1 : 10
     while (msgsToRepublish.length > 0) {
         let singleBlockOfMsgs = [];
-        msgsToRepublish.slice(0, 10).forEach(json => {
+        msgsToRepublish.slice(0, sliceSize).forEach(json => {
             let msg = {
                 Id: randomUUID(),
                 MessageBody: json.Body
@@ -102,7 +109,7 @@ function formatInput(msgsToRepublish) {
             singleBlockOfMsgs.push(msg);
         });
         allBlocksOfMsgs.push(singleBlockOfMsgs);
-        msgsToRepublish.splice(0, 10);
+        msgsToRepublish.splice(0, sliceSize);
     };
     return (allBlocksOfMsgs);
 };
@@ -127,7 +134,7 @@ function writeInFile(folderName, fileName, data) {
 async function main() {
     // Parse and validate arguments
     const args = validateArgs();
-    const { accountType, envName, queueName, inputFile } = args.values;
+    const { accountType, envName, queueName, inputFile, singleMessage } = args.values;
     // Initialize AWS client
     const clientSQS = new AwsClientsWrapper(accountType, envName);
     clientSQS._initSQS();
@@ -139,7 +146,7 @@ async function main() {
     const msgsList = formatFile(inputFile);
     const totMsgs = msgsList.length;
     // Group msgs into blocks of 10 elements and store these blocks in an overall object
-    const allBlocksOfMsgs = formatInput(msgsList);
+    const allBlocksOfMsgs = formatInput(msgsList,singleMessage);
     let run = 0;
     let msgsOK = 0;
     let msgsKO = 0;
