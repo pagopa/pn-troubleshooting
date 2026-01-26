@@ -2,10 +2,11 @@ import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { fromSSO } from "@aws-sdk/credential-provider-sso";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import {
-  writeCSVFile,
   showProgress,
   writeFileSync,
   readAllCSVFile,
+  initCSVFile,
+  appendCSVRow,
 } from "./utils.js";
 import fs from "fs";
 
@@ -450,8 +451,10 @@ const header = [
 ];
 
 export async function main() {
-  const processedAttempts = {};
+  let lastAttemptId = null;
+  let lastProcessedData = null;
   const records = await readAllCSVFile(inputFile);
+  initCSVFile(reportFilePath, header);
 
   // Rimuovo il file di report precedente
   if (fs.existsSync(reportFilePath)) {
@@ -469,11 +472,12 @@ export async function main() {
     const row = records[i];
     const attemptId = row.attemptId;
 
-    if (!processedAttempts[attemptId]) {
-      processedAttempts[attemptId] = await processAttemptId(row.IUN, attemptId);
+    // Mantieni in memoria solo l'ultimo attemptId processato
+    if (attemptId !== lastAttemptId) {
+      lastAttemptId = attemptId;
+      lastProcessedData = await processAttemptId(row.IUN, attemptId);
     }
-    const { timelineElements, dryRunElements, comparisonReport } =
-      processedAttempts[attemptId];
+    const { timelineElements, dryRunElements, comparisonReport } = lastProcessedData;
 
     if (comparisonReport.summary.allMatched) {
       row.matchDryRunTimeline = "YES";
@@ -550,7 +554,7 @@ export async function main() {
         comparisonReport
       );
     }
+    appendCSVRow(reportFilePath, header, records[i]);
   }
-  writeCSVFile(reportFilePath, header, records);
   console.log(`\nFile di report salvato in ${reportFilePath}`);
 }

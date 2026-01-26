@@ -92,4 +92,5 @@ SELECT IUN,
 	errorflowThrow,
 	errorType,
 	errorCreatedTimestamp
-FROM trackings_with_errors;
+FROM trackings_with_errors
+ORDER BY attemptId;
