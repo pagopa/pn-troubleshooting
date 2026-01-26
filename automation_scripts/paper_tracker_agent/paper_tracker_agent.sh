@@ -115,9 +115,9 @@ run_athena() {
 
     cd "$ATHENA_DIR"
     if [[ -z "$PROFILE" ]]; then
-         node index.js --query ${QUERY_NAME}
+        $node index.js --query ${QUERY_NAME}
     else
-         node index.js --envName ${PROFILE} --query ${QUERY_NAME}
+        $node index.js --envName ${PROFILE} --query ${QUERY_NAME}
     fi
     cd "$STARTDIR"
 
@@ -162,7 +162,7 @@ run_tracker_check() {
     REGION=eu-south-1 
     INPUT_FILE="$ATHENA_RESULT"
     export CORE_AWS_PROFILE REGION INPUT_FILE
-    node index.js
+    $node index.js
     #get latest file generated in output folder
     cd "$STARTDIR"
     TRACKER_CHECK_DIR_RESULTS="$TRACKER_CHECK_DIR/out/"
