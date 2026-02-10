@@ -64,7 +64,8 @@ async function validatePdf(pdfPath) {
   try {
     const pdfBuffer = await fspdf.readFile(pdfPath);
     const pdfDoc = await PDFDocument.load(pdfBuffer);
-    pdfDoc.getPageCount()
+    const pages = pdfDoc.getPageCount()
+    console.log("n° page " + pages)
     console.log(`Documento ${pdfPath.split('/')[1]} valido.`);
     return 'ok'
   } catch (error) {
