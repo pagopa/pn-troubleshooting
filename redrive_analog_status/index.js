@@ -108,7 +108,7 @@ async function main() {
   awsCoreClient._initDynamoDB();
   awsCoreClient._initSQS();
   awsConfinfoClient._initDynamoDB();
-  const requestIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n');
+  const requestIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter(x=> x !== '');
   const queueUrl = await awsCoreClient._getQueueUrl("pn-external_channel_to_paper_channel");
   const date = new Date().toISOString();
   const chunkSize = 2500;
