@@ -171,6 +171,28 @@ function _checkingParameters(args, values){
   })
 }
 
+async function executeQueryAndSave(awsClient, queryFile, placeholders, outputFilePath, database, workgroup, catalog) {
+  console.log(`\nExecuting query: ${queryFile}`);
+  const modifiedQuery = applyPlaceholders(`resources/${queryFile}`, placeholders);
+  const queryExecutionId = await executeQuery(awsClient, modifiedQuery, database, workgroup, catalog);
+  if (!queryExecutionId) {
+    console.warn(`No result for query ${queryFile}, skipping.`);
+    return null;
+  }
+  await retrieveAndSaveCsv(queryExecutionId, awsClient, outputFilePath);
+  return queryExecutionId;
+}
+
+async function parseDeliveryDriversFromCsv(csvFilePath) {
+  const content = fs.readFileSync(csvFilePath, 'utf8');
+  const lines = content.split('\n').filter(line => line.trim());
+  // Skip header and extract delivery drivers
+  const drivers = lines.slice(1)
+    .map(line => line.replace(/"/g, '').trim())
+    .filter(driver => driver);
+  return drivers;
+}
+
 async function main() {
 
   const args = [
@@ -194,26 +216,54 @@ async function main() {
   _initFolder([outputResultFolder])
   const awsClient = envName ? new AwsClientsWrapper( 'core', envName ) : new AwsClientsWrapper();
   awsClient._initAthena();
+  
+  const database = "cdc_analytics_database";
+  const workgroup = "cdc_analytics_workgroup";
+  const catalog = "AwsDataCatalog";
+  const range = getRangeTime();
+  const queryCondition = generatePartitionConditionWithBetween(range.startDate, range.endDate);
+
   switch(true){
     case query === "extract_trackings":
-      const database = "cdc_analytics_database";
-      const workgroup = "cdc_analytics_workgroup";
-      const catalog = "AwsDataCatalog";
-      const range = getRangeTime();
-      const queryCondition = generatePartitionConditionWithBetween(range.startDate, range.endDate);
-      const modifiedQuery = applyPlaceholders(`resources/${query}.sql`, queryCondition);
-      const outputFilePath = `${outputResultFolder}/${query}_result_${range.startDate}_to_${range.endDate}.csv`;
+      console.log(`=== Starting extraction for range: ${range.startDate} to ${range.endDate} ===\n`);
       
-      console.log("Executing query:", query);
-      const queryExecutionId = await executeQuery(awsClient, modifiedQuery, database, workgroup, catalog);
-      if (!queryExecutionId) {
-        console.warn(`No result for query ${query}, skipping.`);
-        return;
+      // Execute DRY queries
+      const dryQueries = [
+        'extract_trackings_OK_890_DRY.sql',
+        'extract_trackings_OK_AR_DRY.sql',
+        'extract_trackings_errors_DRY.sql'
+      ];
+      
+      for (const queryFile of dryQueries) {
+        const queryName = queryFile.replace('.sql', '');
+        const outputPath = `${outputResultFolder}/${queryName}_${range.startDate}_to_${range.endDate}.csv`;
+        await executeQueryAndSave(awsClient, queryFile, queryCondition, outputPath, database, workgroup, catalog);
       }
-      await retrieveAndSaveCsv(queryExecutionId, awsClient, outputFilePath);
-      break
+      
+      // Execute extract_unifiedDeliveryDriver query
+      console.log(`\n=== Extracting unified delivery drivers ===`);
+      const driversOutputPath = `${outputResultFolder}/extract_unifiedDeliveryDriver_${range.startDate}_to_${range.endDate}.csv`;
+      await executeQueryAndSave(awsClient, 'extract_unifiedDeliveryDriver.sql', queryCondition, driversOutputPath, database, workgroup, catalog);
+      
+      // Parse delivery drivers from CSV
+      const deliveryDrivers = await parseDeliveryDriversFromCsv(driversOutputPath);
+      console.log(`\nFound ${deliveryDrivers.length} delivery drivers:`, deliveryDrivers);
+      
+      // Execute extract_trackings_errors_RUN for each delivery driver
+      console.log(`\n=== Executing RUN queries for each delivery driver ===`);
+      for (const driver of deliveryDrivers) {
+        console.log(`\n--- Processing delivery driver: ${driver} ---`);
+        const placeholders = {
+          ...queryCondition,
+          "<QUERY_CONDITION_Q2>": `'${driver}'`
+        };
+        const runOutputPath = `${outputResultFolder}/extract_trackings_errors_RUN_${driver}_${range.startDate}_to_${range.endDate}.csv`;
+        await executeQueryAndSave(awsClient, 'extract_trackings_errors_RUN.sql', placeholders, runOutputPath, database, workgroup, catalog);
+      }
+      
+      console.log(`\n=== Extraction completed! ===`);
+      break;
   }
-
     
 }
 
