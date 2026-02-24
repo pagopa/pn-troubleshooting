@@ -227,14 +227,14 @@ async function main() {
     case query === "extract_trackings":
       console.log(`=== Starting extraction for range: ${range.startDate} to ${range.endDate} ===\n`);
       
-      // Execute DRY queries
-      const dryQueries = [
+      const queries = [
         'extract_trackings_OK_890_DRY.sql',
         'extract_trackings_OK_AR_DRY.sql',
-        'extract_trackings_errors_DRY.sql'
+        'extract_trackings_errors_DRY.sql',
+        'extract_trackings_errors_RUN.sql'
       ];
       
-      for (const queryFile of dryQueries) {
+      for (const queryFile of queries) {
         const queryName = queryFile.replace('.sql', '');
         const outputPath = `${outputResultFolder}/${queryName}_${range.startDate}_to_${range.endDate}.csv`;
         await executeQueryAndSave(awsClient, queryFile, queryCondition, outputPath, database, workgroup, catalog);
@@ -249,7 +249,7 @@ async function main() {
       const deliveryDrivers = await parseDeliveryDriversFromCsv(driversOutputPath);
       console.log(`\nFound ${deliveryDrivers.length} delivery drivers:`, deliveryDrivers);
       
-      // Execute extract_trackings_errors_RUN for each delivery driver
+      // Execute extract_trackings_errors_view_recapitisti.sql for each delivery driver
       console.log(`\n=== Executing RUN queries for each delivery driver ===`);
       for (const driver of deliveryDrivers) {
         console.log(`\n--- Processing delivery driver: ${driver} ---`);
@@ -257,8 +257,8 @@ async function main() {
           ...queryCondition,
           "<QUERY_CONDITION_Q2>": `'${driver}'`
         };
-        const runOutputPath = `${outputResultFolder}/extract_trackings_errors_RUN_${driver}_${range.startDate}_to_${range.endDate}.csv`;
-        await executeQueryAndSave(awsClient, 'extract_trackings_errors_RUN.sql', placeholders, runOutputPath, database, workgroup, catalog);
+        const runOutputPath = `${outputResultFolder}/extract_trackings_errors_view_recapitisti_${driver}_${range.startDate}_to_${range.endDate}.csv`;
+        await executeQueryAndSave(awsClient, 'extract_trackings_errors_view_recapitisti.sql', placeholders, runOutputPath, database, workgroup, catalog);
       }
       
       console.log(`\n=== Extraction completed! ===`);
