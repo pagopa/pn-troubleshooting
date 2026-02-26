@@ -94,7 +94,7 @@ case "$ENV" in
     prod-interop)
         AWS_PROFILE_CONFINFO="sso_interop-safe-storage-prod"
         AWS_PROFILE_CORE="sso_interop-safe-storage-prod"
-        ENV_NAME="interop"
+        ENV_NAME="prod"
         ;;
     prod)
         AWS_PROFILE_CONFINFO="sso_pn-confinfo-prod"
@@ -214,7 +214,8 @@ process_queue(){
     ensure_node_deps "$ANALYSIS_SCRIPT_DIR"
     RESULTSDIR="$ANALYSIS_SCRIPT_DIR/results"
 
-    node index.js --envName "$ENV_NAME" --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
+    [ "$ENV" == "prod-interop" ] && ACCOUNT_VALUE="interop" || ACCOUNT_VALUE="send"
+    node index.js --account $ACCOUNT_VALUE --envName "$ENV_NAME" --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
 
     # Get the most recent analysis output file
     SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
@@ -271,8 +272,7 @@ process_queue(){
             node index.js --account core --envName "$ENV_NAME" --queueName pn-safestore_to_deliverypush-DLQ --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
         else
             [ "$ENV" == "prod-interop" ] && ACCOUNT_VALUE="interop" || ACCOUNT_VALUE="confinfo"
-            [ "$ENV" == "prod-interop" ] && ENV_VALUE="prod" || ENV_VALUE=$ENV_NAME
-            node index.js --account $ACCOUNT_VALUE --envName "$ENV_VALUE" --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
+            node index.js --account $ACCOUNT_VALUE --envName "$ENV_NAME" --queueName "$TARGET_QUEUE" --visibilityTimeout "$V_TIMEOUT" --fileName "$SAFE_TO_DELETE" 1>/dev/null
         fi
         find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*.json_result.json" | xargs rm
         echo "Events purged from the SQS queue."
