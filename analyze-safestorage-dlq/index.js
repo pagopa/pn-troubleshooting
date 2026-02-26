@@ -4,7 +4,7 @@ import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { parseArgs } from 'util';
 import { HeadObjectCommand, ListObjectVersionsCommand } from '@aws-sdk/client-s3';
-const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
+const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix', 'interop'];
 
 const DOCUMENT_TYPES = {
     ATTACHED: [
@@ -23,6 +23,7 @@ const DOCUMENT_TYPES = {
             'PN_ADDRESSES_NORMALIZED',
             'PN_LOGS_ARCHIVE_AUDIT2Y',
             'PN_LOGS_ARCHIVE_AUDIT5Y',
+            'INTEROP_LEGAL_FACTS',
             'PN_LOGS_ARCHIVE_AUDIT10Y'
     ],
     TIMELINE_CHECK: ['PN_AAR', 'PN_LEGAL_FACTS']
@@ -76,7 +77,7 @@ Description:
         Analyzes SS DLQ events queue and checks related documents for events that can be safely removed.
 
 Parameters:
-        --envName, -e     Required. Environment to check (dev|uat|test|prod|hotfix)
+        --envName, -e     Required. Environment to check (dev|uat|test|prod|hotfix|interop)
         --dumpFile, -f    Required. Path to the SQS dump file
         --queueName, -q   Required. Name of the DLQ to analyze (${Object.keys(QUEUE_CONFIGS).join('|')})
         --help, -h        Display this help message
@@ -484,9 +485,11 @@ async function main() {
         if (queueName === 'pn-safestore_to_deliverypush-DLQ') {
                 stats.docCreationRequestFailed = 0;
         }
-    
-        const confinfoClient = new AwsClientsWrapper('confinfo', envName);
-        const coreClient = new AwsClientsWrapper('core', envName);
+   
+        const confinfoProfile = envName == 'interop' ? 'interop' : 'confinfo' 
+        const coreProfile = envName == 'interop' ? 'interop' : 'core' 
+        const confinfoClient = new AwsClientsWrapper(confinfoProfile, envName);
+        const coreClient = new AwsClientsWrapper(coreProfile, envName);
        
         await Promise.all([
                 initializeAwsClients(confinfoClient),

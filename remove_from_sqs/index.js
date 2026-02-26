@@ -45,7 +45,12 @@ function prepareData(data){
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --account <account> --envName <envName> --queueName <queueName> --visibilityTimeout <visibilityTimeout> --fileName <fileName> "
+const usage = `
+Usage: node index.js --account <account> --envName <envName> --queueName <queueName> --visibilityTimeout <visibilityTimeout> --fileName <fileName> 
+
+Where:
+--account = core, confinfo, interop
+` 
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
