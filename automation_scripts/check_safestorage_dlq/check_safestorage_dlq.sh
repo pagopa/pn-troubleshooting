@@ -214,7 +214,7 @@ process_queue(){
     ensure_node_deps "$ANALYSIS_SCRIPT_DIR"
     RESULTSDIR="$ANALYSIS_SCRIPT_DIR/results"
 
-    node index.js --envName "$ENV_VALUE" --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
+    node index.js --envName "$ENV_NAME" --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
 
     # Get the most recent analysis output file
     SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
