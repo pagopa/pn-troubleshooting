@@ -40,6 +40,7 @@ errors_with_trackings AS (
 		errors.flowThrow AS errorflowThrow,
 		errors.type AS errorType,
 		errors.created AS errorCreatedTimestamp,
+		errors.productType AS errorProductType,
 		-- TODO: errors.details_additionalDetails AS errorAdditionalDetails,
 		if(
             element_at(filter(latest_trackings.events, e -> e.statusCode = 'P000'), 1).dryRun,
@@ -53,15 +54,40 @@ errors_with_trackings AS (
 filtered_errors AS (
     SELECT *
     FROM errors_with_trackings
-    WHERE ( state = 'KO' OR businessState = 'KO')
+    WHERE ( state = 'KO' OR businessState = 'KO') -- Prendo tutte le spedizioni in KO
         AND unifiedDeliveryDriver = <QUERY_CONDITION_Q2>
         -- AND unifiedDeliveryDriver = 'Fulmine'
         AND processingMode = 'RUN'
+        -- AND (
+        --     (errorCategory = 'INCONSISTENT_STATE' AND errorCause = 'VALUES_NOT_FOUND') OR
+        --     (errorCategory = 'INCONSISTENT_STATE' AND errorCause = 'STOCK_890_REFINEMENT_ERROR') OR
+        --     (errorCategory = 'INCONSISTENT_STATE' AND errorCause = 'STOCK_890_REFINEMENT_MISSING') OR
+        --     (errorCategory = 'RENDICONTAZIONE_SCARTATA' AND errorCause = 'GIACENZA_DATE_ERROR') OR
+        --     (errorCategory = 'DATE_ERROR' AND errorCause = 'VALUES_NOT_MATCHING') OR
+        --     (errorCategory = 'DATE_ERROR' AND errorCause = 'INVALID_VALUES') OR
+        --     (errorCategory = 'REGISTERED_LETTER_CODE_ERROR' AND errorCause = 'VALUES_NOT_MATCHING') OR
+        --     (errorCategory = 'REGISTERED_LETTER_CODE_ERROR' AND errorCause = 'INVALID_VALUES') OR
+        --     (errorCategory = 'DELIVERY_FAILURE_CAUSE_ERROR' AND errorCause = 'VALUES_NOT_MATCHING') OR
+        --     (errorCategory = 'ATTACHMENTS_ERROR' AND errorCause = 'VALUES_NOT_MATCHING') OR
+        --     (errorCategory = 'ATTACHMENTS_ERROR' AND errorCause = 'INVALID_VALUES') OR
+        --     (errorCategory = 'OCR_VALIDATION' AND errorCause = 'OCR_KO')
+        -- )
+        AND (
+            errorCategory = 'STATUS_CODE_ERROR' OR
+            errorCategory = 'DATE_ERROR' OR
+            errorCategory = 'INCONSISTENT_STATE'OR
+            errorCategory = 'RENDICONTAZIONE_SCARTATA' OR
+            errorCategory = 'REGISTERED_LETTER_CODE_ERROR' OR
+            errorCategory = 'REGISTERED_LETTER_CODE_NOT_FOUND' OR
+            errorCategory = 'DELIVERY_FAILURE_CAUSE_ERROR' OR
+            errorCategory = 'ATTACHMENTS_ERROR' OR
+            errorCategory = 'INVALID_STATE_FOR_STOCK_890'
+        )
 )
 SELECT
 	errorTrackingId AS requestId,
 	element_at(filter(events, e -> e.statusCode = 'P000'), 1).statusTimestamp AS requestTimestamp,
-	productType AS prodotto,
+	errorProductType AS prodotto,
 	unifiedDeliveryDriver AS recapitista_unif,
 	element_at(filter(events, e -> starts_with(e.statusCode, 'CON')), 1).registeredLetterCode AS codice_oggetto,
 	concat('''', element_at(filter(events, e -> starts_with(e.statusCode, 'CON')), 1).registeredLetterCode) AS codiceOggetto,
@@ -77,4 +103,4 @@ SELECT
 	errorCreatedTimestamp
 	-- TODO: errorAdditionalDetails,
 FROM filtered_errors
-ORDER BY errorTrackingId;
+ORDER BY errorCreatedTimestamp;

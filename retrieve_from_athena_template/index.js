@@ -231,7 +231,9 @@ async function main() {
         'extract_trackings_OK_890_DRY.sql',
         'extract_trackings_OK_AR_DRY.sql',
         'extract_trackings_errors_DRY.sql',
-        'extract_trackings_errors_RUN.sql'
+        'extract_trackings_errors_DRY_aggregated.sql',
+        'extract_trackings_errors_RUN.sql',
+        'extract_trackings_errors_RUN_aggregated.sql',
       ];
       
       for (const queryFile of queries) {

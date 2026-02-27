@@ -40,12 +40,16 @@ errors_with_trackings AS (
 		errors.flowThrow AS errorflowThrow,
 		errors.type AS errorType,
 		errors.created AS errorCreatedTimestamp,
+		errors.productType AS errorProductType,
 		-- TODO: errors.details_additionalDetails AS errorAdditionalDetails,
 		if(
             element_at(filter(latest_trackings.events, e -> e.statusCode = 'P000'), 1).dryRun,
             'DRY',
             'RUN'
-        ) AS processingMode
+        ) AS processingMode,
+        -- Scarta eventi dovuti a retry automatici
+        transform(events, e -> e.statusCode) AS status_codes,
+        reverse(transform(events, e -> e.statusCode)) AS reversed_status_codes
     FROM errors
     LEFT JOIN latest_trackings 
       ON latest_trackings.trackingId = errors.trackingId
@@ -53,16 +57,13 @@ errors_with_trackings AS (
 filtered_errors AS (
     SELECT *
     FROM errors_with_trackings
-    WHERE ( state = 'KO' OR businessState = 'KO')
-        AND unifiedDeliveryDriver = <QUERY_CONDITION_Q2>
-        -- AND unifiedDeliveryDriver = 'Fulmine'
-        AND processingMode = 'RUN'
+    WHERE processingMode = 'RUN'
 )
 SELECT
 	errorTrackingId AS requestId,
 	element_at(filter(events, e -> e.statusCode = 'P000'), 1).statusTimestamp AS requestTimestamp,
-	productType AS prodotto,
-	unifiedDeliveryDriver AS recapitista_unif,
+	errorProductType AS productType,
+	unifiedDeliveryDriver,
 	element_at(filter(events, e -> starts_with(e.statusCode, 'CON')), 1).registeredLetterCode AS codice_oggetto,
 	concat('''', element_at(filter(events, e -> starts_with(e.statusCode, 'CON')), 1).registeredLetterCode) AS codiceOggetto,
 	coalesce(
@@ -70,11 +71,47 @@ SELECT
         element_at(filter(events, e -> e.statusCode = 'CON016'), 1).statusTimestamp,
         element_at(filter(events, e -> e.statusCode = 'P000'), 1).statusTimestamp
     ) AS affido_accettazione_rec_data,
+	processingMode,
+	element_at(events, cardinality(events)).statusCode AS lastStatusCode,
+	state as refinementState,
+	businessState,
+	paperStatus_deliveryFailureCause AS deliveryFailureCause,
+	validationConfig_ocrEnabled AS ocrEnabled,
 	errorCategory,
 	errorMessage,
 	errorCause,
+	-- TODO: errorAdditionalDetails
+	errorEventId,
+	errorEventStatusCode,
+	errorflowThrow,
 	errorType,
-	errorCreatedTimestamp
-	-- TODO: errorAdditionalDetails,
+	errorCreatedTimestamp,
+	-- Recupera se il RECAG012 è arrivato dopo il RECAG00xC o se non è mai arrivato
+    CASE
+        WHEN cardinality(
+                    filter(reversed_status_codes, sc -> sc IN ('RECAG005C', 'RECAG006C', 'RECAG007C', 'RECAG008C'))
+                 ) > 0
+        THEN
+            -- Se RECAG012 non esiste -> TRUE
+            IF(
+                array_position(reversed_status_codes, 'RECAG012') IS NULL,
+                TRUE,
+                -- Se esiste, confronto le posizioni
+                array_position(reversed_status_codes, 'RECAG012')
+                <
+                array_position(
+                    reversed_status_codes,
+                    element_at(
+                        filter(
+                            reversed_status_codes,
+                            sc -> sc LIKE 'RECAG00%C'
+                        ),
+                        1
+                    )
+                )
+            )
+        ELSE NULL
+    END AS RECAG012_after_final_or_null,
+    filter(array_distinct(status_codes), sc -> sc LIKE 'REC%') AS rec_events
 FROM filtered_errors
-ORDER BY errorTrackingId;
+ORDER BY errorCreatedTimestamp ASC;

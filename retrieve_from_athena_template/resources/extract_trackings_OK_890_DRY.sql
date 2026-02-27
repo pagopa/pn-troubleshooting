@@ -29,7 +29,7 @@ latest_trackings AS (
   FROM trackings
   WHERE rn = 1
 ),
-trackings_with_erros AS (
+trackings_with_errors AS (
 	SELECT latest_trackings.*,
 	    errors.trackingId AS errorTrackingId,
 		errors.category AS errorCategory,
@@ -99,7 +99,7 @@ filtered_trackings AS (
             )
           )
         ) AS multipleFinalEvents
-    FROM trackings_with_erros, final_status_codes
+    FROM trackings_with_errors, final_status_codes
     WHERE ( state = 'DONE' AND businessState = 'DONE')
       AND processingMode IN ('DRY', '')
       AND productType = '890'
