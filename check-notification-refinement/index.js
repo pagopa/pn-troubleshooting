@@ -106,7 +106,7 @@ async function queryTimelineItems(dynamoDBClient, iun) {
 
 function classifyTimeline(iun, items) {
     const matches = items.filter(
-        item => item.category === 'NOTIFICATION_VIEWED' || item.category === 'REFINEMENT'
+        item => item.category === 'NOTIFICATION_VIEWED' || item.category === 'REFINEMENT' || item.category === 'NOTIFICATION_CANCELLED'
     );
     if (matches.length === 0) {
         return { category: 'Unrefined' };
