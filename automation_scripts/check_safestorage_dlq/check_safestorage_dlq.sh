@@ -215,7 +215,8 @@ process_queue(){
     RESULTSDIR="$ANALYSIS_SCRIPT_DIR/results"
 
     [ "$ENV" == "prod-interop" ] && ACCOUNT_VALUE="interop" || ACCOUNT_VALUE="send"
-    node index.js --account $ACCOUNT_VALUE --envName "$ENV_NAME" --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
+    [ "$TARGET_QUEUE" == "pn-ss-transformation-raster-queue-DLQ" ] && ACCOUNT_PARAM="" || ACCOUNT_PARAM="--account $ACCOUNT_VALUE"
+    node index.js $ACCOUNT_PARAM --envName "$ENV_NAME" --dumpFile "$ORIGINAL_DUMP" --queueName "$TARGET_QUEUE"
 
     # Get the most recent analysis output file
     SAFE_TO_DELETE=$(find "$RESULTSDIR" -type f -name "safe_to_delete_$TARGET_QUEUE*" -newermt "@$SCRIPT_START_TIME" -exec ls -t1 {} + | head -1)
