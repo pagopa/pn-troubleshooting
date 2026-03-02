@@ -23,6 +23,7 @@ const DOCUMENT_TYPES = {
             'PN_ADDRESSES_NORMALIZED',
             'PN_LOGS_ARCHIVE_AUDIT2Y',
             'PN_LOGS_ARCHIVE_AUDIT5Y',
+            'INTEROP_LEGAL_FACTS',
             'PN_LOGS_ARCHIVE_AUDIT10Y'
     ],
     TIMELINE_CHECK: ['PN_AAR', 'PN_LEGAL_FACTS']
@@ -76,16 +77,18 @@ Description:
         Analyzes SS DLQ events queue and checks related documents for events that can be safely removed.
 
 Parameters:
+        --account, -a     Required. Must be 'send' or 'interop'
         --envName, -e     Required. Environment to check (dev|uat|test|prod|hotfix)
         --dumpFile, -f    Required. Path to the SQS dump file
         --queueName, -q   Required. Name of the DLQ to analyze (${Object.keys(QUEUE_CONFIGS).join('|')})
         --help, -h        Display this help message
 
 Example:
-        node index.js --envName dev --dumpFile ./dump.json --queueName pn-ss-main-bucket-events-queue-DLQ`;
+        node index.js --account <'send'|'interop'> --envName dev --dumpFile ./dump.json --queueName pn-ss-main-bucket-events-queue-DLQ`;
         
     const args = parseArgs({
             options: {
+                    account: { type: "string", short: "a", default: "send" },
                     envName: { type: "string", short: "e" },
                     dumpFile: { type: "string", short: "f" },
                     queueName: { type: "string", short: "q" },
@@ -470,7 +473,7 @@ async function checkTimeline(awsClient, fileKey) {
 
 async function main() {
         const args = validateArgs();
-        const { envName, dumpFile, queueName } = args.values;
+        const { account, envName, dumpFile, queueName } = args.values;
         const queueConfig = QUEUE_CONFIGS[queueName];
     
         const stats = {
@@ -484,9 +487,11 @@ async function main() {
         if (queueName === 'pn-safestore_to_deliverypush-DLQ') {
                 stats.docCreationRequestFailed = 0;
         }
-    
-        const confinfoClient = new AwsClientsWrapper('confinfo', envName);
-        const coreClient = new AwsClientsWrapper('core', envName);
+   
+        const confinfoProfile = account == 'interop' ? 'interop' : 'confinfo' 
+        const coreProfile = envName == 'interop' ? 'interop' : 'core' 
+        const confinfoClient = new AwsClientsWrapper(confinfoProfile, envName);
+        const coreClient = new AwsClientsWrapper(coreProfile, envName);
        
         await Promise.all([
                 initializeAwsClients(confinfoClient),
