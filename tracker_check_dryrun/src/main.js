@@ -554,7 +554,7 @@ export async function main() {
         comparisonReport
       );
     }
-    appendCSVRow(reportFilePath, header, records[i]);
+    appendCSVRow(reportFilePath, header, records[i], i === 0);
   }
   console.log(`\nFile di report salvato in ${reportFilePath}`);
 }
