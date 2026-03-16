@@ -66,8 +66,8 @@ function appendIunToFile(fileName, iun) {
     appendFileSync(fileName, iun + "\n");
 }
 
-function appendIunTtlToCsv(fileName, iun, ttl) {
-    appendFileSync(fileName, `${iun},${ttl}\n`);
+function appendIunTtlToCsv(fileName, iun, ttl, timelineCategory) {
+    appendFileSync(fileName, `${iun},${ttl},${timelineCategory}\n`);
 }
 
 function printSummary(stats, outputFiles) {
@@ -112,10 +112,10 @@ function classifyTimeline(iun, items) {
         return { category: 'Unrefined' };
     }
     if (matches.length === 1) {
-        return { category: 'Refined', timestamp: matches[0].timestamp };
+        return { category: 'Refined', timestamp: matches[0].timestamp, timelineCategory: matches[0].category };
     }
     const sorted = matches.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    return { category: 'Refined', timestamp: sorted[0].timestamp };
+    return { category: 'Refined', timestamp: sorted[0].timestamp, timelineCategory: sorted[0].category };
 }
 
 async function main() {
@@ -146,7 +146,7 @@ async function main() {
     const awsClient = new AwsClientsWrapper('core', envName);
     await initializeAwsClients(awsClient);
 
-    appendFileSync(outputFiles.refined120minus, "iun,ttl\n");
+    appendFileSync(outputFiles.refined120minus, "iun,ttl,timelineCategory\n");
 
     let progress = 0;
     for (const iun of iuns) {
@@ -173,7 +173,7 @@ async function main() {
                 stats.refined120plus++;
             } else {
                 const ttlDate = new Date(refinedDate.getTime() + 120 * 24 * 60 * 60 * 1000);
-                appendIunTtlToCsv(outputFiles.refined120minus, iun, ttlDate.toISOString());
+                appendIunTtlToCsv(outputFiles.refined120minus, iun, ttlDate.toISOString(), classification.timelineCategory);
                 stats.refined120minus++;
             }
         }
