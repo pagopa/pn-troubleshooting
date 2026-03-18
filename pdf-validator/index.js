@@ -106,18 +106,21 @@ async function main() {
     const obj = JSON.parse(data)
     const iun = obj.iun
     const attachments = obj.attachments
-    let validationResult = { isValid: '', pageCount: 0 }
+    let validationResult = { isValid: 'ok', pageCounts: [] }
     for (const fileKey of attachments) {
       try {
         const response = await awsClient._getObjectCommand(bucketName, fileKey);
         await saveFileFromBuffer(response.Body, `${outputFilesFolder}/${fileKey}`)
-        validationResult = await validatePdf(`${outputFilesFolder}/${fileKey}`);
-        if (validationResult.isValid !== 'ok')
+        const result = await validatePdf(`${outputFilesFolder}/${fileKey}`);
+        validationResult.pageCounts.push(result.pageCount)
+        if (result.isValid !== 'ok') {
+          validationResult.isValid = result.isValid
           break
+        }
       } catch (error) {
         if(error.Code == 'NoSuchKey') {
           console.log(`FileKey ${error.Key} not found`)
-          validationResult = { isValid: 'notfound', pageCount: 0 }
+          validationResult = { isValid: 'notfound', pageCounts: [...validationResult.pageCounts, 0] }
           break
         }
         else {
@@ -125,7 +128,7 @@ async function main() {
         }
       }
     }
-    appendDataToFile(outputResultFolder, `${validationResult.isValid}.csv`, `${iun},${attachments.join("~")},${validationResult.isValid},${validationResult.pageCount}`)
+    appendDataToFile(outputResultFolder, `${validationResult.isValid}.csv`, `${iun},${attachments.join("~")},${validationResult.isValid},${validationResult.pageCounts.join("~")}`)
   }
 }
 
