@@ -7,7 +7,7 @@ const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
 const CHANNEL_TYPES = ['email', 'pec', 'cartaceo', 'sms'];
 const ANALOG_STATUS_REQUEST = [
     "RECRS006", "RECRN006", "RECAG004", "RECRI005", "RECRSI005",
-    "RECRS013", "RECRN013", "RECAG013", "PN999"
+    "RECRS013", "RECRN013", "RECAG013", , "PN998", "PN999"
 ];
 
 let toRemoveFilename, problemFoundFilename, toKeepFilename, errorFilename;
@@ -220,9 +220,7 @@ async function main() {
         try {
             const body = typeof fileData.Body === 'string' ? JSON.parse(fileData.Body) : fileData.Body;
             if (body.paperProgressStatusDto && body.paperProgressStatusDto.statusCode?.startsWith("CON020")) {
-                logResult(fileData, 'problemFound', 'CON020 found');
-                stats.problemFound++;
-                continue;
+                fileData._isCon020 = true;
             }
             const requestId = `${body.xpagopaExtchCxId}~${body.requestIdx}`;
             if (!requestIdsMap[requestId]) requestIdsMap[requestId] = [];
@@ -250,6 +248,24 @@ async function main() {
         }
         if (res.Items.length > 0) {
             const metadata = unmarshall(res.Items[0]);
+
+            const nonCon020Rows = [];
+            for (const row of requestIdsMap[requestId]) {
+                if (row._isCon020) {
+                    if (metadata.statusRequest === 'PN998' || metadata.statusRequest === 'PN999') {
+                        logResult(row, 'toRemove');
+                        stats.toRemove++;
+                    } else {
+                        logResult(row, 'problemFound', 'CON020 found');
+                        stats.problemFound++;
+                    }
+                } else {
+                    nonCon020Rows.push(row);
+                }
+            }
+            requestIdsMap[requestId] = nonCon020Rows;
+            if (nonCon020Rows.length === 0) continue;
+
             if (channelType === 'cartaceo') {
                 if (checkStatusRequest(metadata.statusRequest)) {
                     for (const row of requestIdsMap[requestId]) {
@@ -284,8 +300,13 @@ async function main() {
             }
         } else {
             for (const row of requestIdsMap[requestId]) {
-                logResult(row, 'error', `requestId ${requestId} not found`);
-                stats.errors++;
+                if (row._isCon020) {
+                    logResult(row, 'problemFound', 'CON020 found');
+                    stats.problemFound++;
+                } else {
+                    logResult(row, 'error', `requestId ${requestId} not found`);
+                    stats.errors++;
+                }
             }
         }
     }
