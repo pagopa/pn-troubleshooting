@@ -92,7 +92,6 @@ node_modules/
 
 data_extractor/results
 
-backfill_tags/output_*
 
 replace_certificate/backup
 
