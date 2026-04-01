@@ -4,14 +4,24 @@
 set -euo pipefail
 
 # Check for required arguments
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <aws-region> <aws-profile>"
-    echo "Example: $0 eu-south-1 sso_pn-confinfo-prod-ro"
+REGION=""
+PROFILE=""
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -r|--region) REGION="$2"; shift ;;
+        -p|--profile) PROFILE="$2"; shift ;;
+        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+if [ -z "$REGION" ] || [ -z "$PROFILE" ]; then
+    echo "Usage: $0 -r <aws-region> -p <aws-profile>"
+    echo "Example: $0 -r eu-south-1 -p sso_pn-confinfo-prod-ro"
     exit 1
 fi
 
-REGION=$1
-PROFILE=$2
 AWS_PARAMS="--region $REGION --profile $PROFILE"
 
 echo "Fetching AWS Account ID..."
