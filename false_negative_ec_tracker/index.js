@@ -89,22 +89,18 @@ function getTimestamp() {
 }
 
 function appendJsonToFile(fileName, data) {
-    appendFileSync(fileName, JSON.stringify(data) + "
-");
+    appendFileSync(fileName, JSON.stringify(data) + "\n");
 }
 
 function printSummary(stats, channelType) {
-    console.log('
-=== Execution Summary ===');
-    console.log(`
-Total messages processed: ${stats.total}`);
+    console.log('\n=== Execution Summary ===');
+    console.log(`\nTotal messages processed: ${stats.total}`);
     console.log(`To remove (general): ${stats.toRemove}`); // Renamed for clarity
     console.log(`CON020 after PN998/PN999 to remove: ${stats.con020Pn998Pn999ToRemove}`); // New count
     console.log(`Problems found: ${stats.problemFound}`);
     console.log(`Kept: ${stats.toKeep}`);
     console.log(`Errors: ${stats.errors}`);
-    console.log('
-Results written to:');
+    console.log('\nResults written to:');
     console.log(`- To remove (general): ${toRemoveFilename}`); // Renamed for clarity
     console.log(`- CON020 after PN998/PN999 to remove: ${con020Pn998Pn999ToRemoveFilename}`); // New file path
     console.log(`- Problems found: ${problemFoundFilename}`);
@@ -244,8 +240,7 @@ async function main() {
     const requestIds = Object.keys(requestIdsMap);
     for (const requestId of requestIds) {
         progress++;
-        process.stdout.write(`
-Processing requestId ${progress} of ${requestIds.length}`);
+        process.stdout.write(`\nProcessing requestId ${progress} of ${requestIds.length}`);
         let res;
         try {
             res = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", requestId);
@@ -329,13 +324,11 @@ Processing requestId ${progress} of ${requestIds.length}`);
         }
     }
 
-    process.stdout.write('
-');
+    process.stdout.write('\n');
     printSummary(stats, channelType);
 }
 
 main().catch(err => {
-    console.error('
-Unexpected error:', err);
+    console.error('\nUnexpected error:', err);
     process.exit(1);
 });
