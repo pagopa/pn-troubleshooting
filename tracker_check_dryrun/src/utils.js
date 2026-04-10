@@ -40,9 +40,9 @@ export function initCSVFile(filePath, header) {
   fs.writeFileSync(filePath, headerCsv, "utf-8");
 }
 
-export function appendCSVRow(filePath, header, row) {
+export function appendCSVRow(filePath, header, row, writeHeader = false) {
   const rowCsv = stringify([row], {
-    header: false,
+    header: writeHeader,
     columns: header,
     quoted: true,
   });
