@@ -65,7 +65,7 @@ Parametri:
 Esempio:
 
 ```bash
-node index.js --fileName ./20260414_SSDA-812_Estrazione_dati_attestazioni.csv --cxId pn-delivery
+node index.js --fileName 20260414_SSDA-812_Estrazione_dati_attestazioni.csv --cxId pn-ops --contentType application/pdf --documentType PN_CUSTOM_LEGAL_FACTS --status SAVED
 ```
 
 Esempio in mock:

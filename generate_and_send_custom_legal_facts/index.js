@@ -107,7 +107,7 @@ async function main() {
       
       // 4. Successo
       const successFilePath = `${dirPath}/result.json`;
-      fs.writeFileSync(successFilePath, JSON.stringify({ iun, key }));
+      fs.appendFileSync(successFilePath, JSON.stringify({ iun, attachments: [key] }) + "\n");
       console.log(`[SUCCESSO] Documento caricato correttamente in safe storage. Dettagli salvati in: ${successFilePath}`);
     } catch (error) {
       console.error(`[ERRORE] Fallimento per IUN ${iun}: ${error.message}`);
