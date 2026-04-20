@@ -46,6 +46,11 @@ check_feedback_from_requestId/*.jsonl
 ss-manage-retention/.env
 **/.env
 
+### PYTHON ###
+
+prepare_blocked_analisys/result
+prepare_bloked_analisys/venv
+
 ### Rstudio ###
 .Rproj.user
 

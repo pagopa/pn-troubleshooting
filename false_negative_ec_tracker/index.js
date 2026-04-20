@@ -7,10 +7,11 @@ const VALID_ENVIRONMENTS = ['dev', 'uat', 'test', 'prod', 'hotfix'];
 const CHANNEL_TYPES = ['email', 'pec', 'cartaceo', 'sms'];
 const ANALOG_STATUS_REQUEST = [
     "RECRS006", "RECRN006", "RECAG004", "RECRI005", "RECRSI005",
-    "RECRS013", "RECRN013", "RECAG013", "PN999"
+    "RECRS013", "RECRN013", "RECAG013", "PN998", "PN999"
 ];
 
 let toRemoveFilename, problemFoundFilename, toKeepFilename, errorFilename;
+let con020Pn998Pn999ToRemoveFilename; // New variable for the dedicated file
 
 function printUsage() {
     const usage = `
@@ -94,12 +95,14 @@ function appendJsonToFile(fileName, data) {
 function printSummary(stats, channelType) {
     console.log('\n=== Execution Summary ===');
     console.log(`\nTotal messages processed: ${stats.total}`);
-    console.log(`To remove: ${stats.toRemove}`);
+    console.log(`To remove (general): ${stats.toRemove}`); // Renamed for clarity
+    console.log(`CON020 after PN998/PN999 to remove: ${stats.con020Pn998Pn999ToRemove}`); // New count
     console.log(`Problems found: ${stats.problemFound}`);
     console.log(`Kept: ${stats.toKeep}`);
     console.log(`Errors: ${stats.errors}`);
     console.log('\nResults written to:');
-    console.log(`- To remove: ${toRemoveFilename}`);
+    console.log(`- To remove (general): ${toRemoveFilename}`); // Renamed for clarity
+    console.log(`- CON020 after PN998/PN999 to remove: ${con020Pn998Pn999ToRemoveFilename}`); // New file path
     console.log(`- Problems found: ${problemFoundFilename}`);
     console.log(`- Kept: ${toKeepFilename}`);
     console.log(`- Errors: ${errorFilename}`);
@@ -199,10 +202,12 @@ async function main() {
     problemFoundFilename = `results/problem_found_${channelType}_${timestamp}.json`;
     toKeepFilename = `results/to_keep_${channelType}_${timestamp}.json`;
     errorFilename = `results/error_${channelType}_${timestamp}.json`;
+    con020Pn998Pn999ToRemoveFilename = `results/con020_pn998_pn999_to_remove_${channelType}_${timestamp}.json`; // New dedicated filename
 
     const stats = {
         total: 0,
-        toRemove: 0,
+        toRemove: 0, // General toRemove count
+        con020Pn998Pn999ToRemove: 0, // New counter for specific CON020 cases
         problemFound: 0,
         toKeep: 0,
         errors: 0
@@ -220,9 +225,7 @@ async function main() {
         try {
             const body = typeof fileData.Body === 'string' ? JSON.parse(fileData.Body) : fileData.Body;
             if (body.paperProgressStatusDto && body.paperProgressStatusDto.statusCode?.startsWith("CON020")) {
-                logResult(fileData, 'problemFound', 'CON020 found');
-                stats.problemFound++;
-                continue;
+                fileData._isCon020 = true;
             }
             const requestId = `${body.xpagopaExtchCxId}~${body.requestIdx}`;
             if (!requestIdsMap[requestId]) requestIdsMap[requestId] = [];
@@ -237,7 +240,7 @@ async function main() {
     const requestIds = Object.keys(requestIdsMap);
     for (const requestId of requestIds) {
         progress++;
-        process.stdout.write(`\rProcessing requestId ${progress} of ${requestIds.length}`);
+        process.stdout.write(`\nProcessing requestId ${progress} of ${requestIds.length}`);
         let res;
         try {
             res = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", requestId);
@@ -250,11 +253,37 @@ async function main() {
         }
         if (res.Items.length > 0) {
             const metadata = unmarshall(res.Items[0]);
+
+            const nonCon020Rows = [];
+            for (const row of requestIdsMap[requestId]) {
+                if (row._isCon020) {
+                    if (metadata.statusRequest === 'PN998' || metadata.statusRequest === 'PN999') {
+                        // Log these specific CON020 events to a dedicated file
+                        const clonedMessage = JSON.parse(JSON.stringify(row));
+                        if (typeof clonedMessage.Body === 'string') {
+                            try {
+                                clonedMessage.Body = JSON.parse(clonedMessage.Body);
+                            } catch {}
+                        }
+                        appendJsonToFile(con020Pn998Pn999ToRemoveFilename, { ...clonedMessage, ...extra });
+                        stats.con020Pn998Pn999ToRemove++; // Increment dedicated counter
+                        // Do NOT increment general stats.toRemove
+                    } else {
+                        logResult(row, 'problemFound', 'CON020 found');
+                        stats.problemFound++;
+                    }
+                } else {
+                    nonCon020Rows.push(row);
+                }
+            }
+            requestIdsMap[requestId] = nonCon020Rows;
+            if (nonCon020Rows.length === 0) continue;
+
             if (channelType === 'cartaceo') {
                 if (checkStatusRequest(metadata.statusRequest)) {
                     for (const row of requestIdsMap[requestId]) {
                         logResult(row, 'toRemove');
-                        stats.toRemove++;
+                        stats.toRemove++; // General toRemove
                     }
                 } else {
                     for (const row of requestIdsMap[requestId]) {
@@ -272,7 +301,7 @@ async function main() {
                             stats.problemFound++;
                         } else {
                             logResult(row, 'toRemove');
-                            stats.toRemove++;
+                            stats.toRemove++; // General toRemove
                         }
                     }
                 } else {
@@ -284,8 +313,13 @@ async function main() {
             }
         } else {
             for (const row of requestIdsMap[requestId]) {
-                logResult(row, 'error', `requestId ${requestId} not found`);
-                stats.errors++;
+                if (row._isCon020) {
+                    logResult(row, 'problemFound', 'CON020 found');
+                    stats.problemFound++;
+                } else {
+                    logResult(row, 'error', `requestId ${requestId} not found`);
+                    stats.errors++;
+                }
             }
         }
     }

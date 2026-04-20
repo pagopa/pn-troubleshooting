@@ -6,7 +6,7 @@ const { AwsClientsWrapper } = require("pn-common");
 
 function appendDataToFile(folderName, fileName, data){
   if(!fs.existsSync(`${folderName}/${fileName}`))
-    fs.appendFileSync(`${folderName}/${fileName}`, "iun,attachments" + "\n")
+    fs.appendFileSync(`${folderName}/${fileName}`, "iun,attachments,isValid,pageCount" + "\n")
   fs.appendFileSync(`${folderName}/${fileName}`, data + "\n")
 }
 
@@ -64,12 +64,12 @@ async function validatePdf(pdfPath) {
   try {
     const pdfBuffer = await fspdf.readFile(pdfPath);
     const pdfDoc = await PDFDocument.load(pdfBuffer);
-    pdfDoc.getPageCount()
-    console.log(`Documento ${pdfPath.split('/')[1]} valido.`);
-    return 'ok'
+    const pageCount = pdfDoc.getPageCount()
+    console.log(`Documento ${pdfPath.split('/')[1]} valido. Numero di pagine: ${pageCount}`);
+    return { isValid: 'ok', pageCount: pageCount }
   } catch (error) {
     console.log(`ERROR: Documento ${pdfPath.split('/')[1]} non valido.`);
-    return 'ko'
+    return { isValid: 'ko', pageCount: 0 }
   }
 }
 
@@ -106,18 +106,21 @@ async function main() {
     const obj = JSON.parse(data)
     const iun = obj.iun
     const attachments = obj.attachments
-    let isValid = ''
+    let validationResult = { isValid: 'ok', pageCounts: [] }
     for (const fileKey of attachments) {
       try {
         const response = await awsClient._getObjectCommand(bucketName, fileKey);
         await saveFileFromBuffer(response.Body, `${outputFilesFolder}/${fileKey}`)
-        isValid = await validatePdf(`${outputFilesFolder}/${fileKey}`);
-        if (isValid !== 'ok')
+        const result = await validatePdf(`${outputFilesFolder}/${fileKey}`);
+        validationResult.pageCounts.push(result.pageCount)
+        if (result.isValid !== 'ok') {
+          validationResult.isValid = result.isValid
           break
+        }
       } catch (error) {
         if(error.Code == 'NoSuchKey') {
           console.log(`FileKey ${error.Key} not found`)
-          isValid = 'notfound'
+          validationResult = { isValid: 'notfound', pageCounts: [...validationResult.pageCounts, 0] }
           break
         }
         else {
@@ -125,7 +128,7 @@ async function main() {
         }
       }
     }
-    appendDataToFile(outputResultFolder, `${isValid}.csv`, `${iun},${attachments.join("~")}`)
+    appendDataToFile(outputResultFolder, `${validationResult.isValid}.csv`, `${iun},${attachments.join("~")},${validationResult.isValid},${validationResult.pageCounts.join("~")}`)
   }
 }
 

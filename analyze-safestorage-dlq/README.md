@@ -84,17 +84,18 @@ aws sso login --profile sso_pn-confinfo-<env>
 ### Esecuzione
 
 ```bash
-node index.js --envName <env> --dumpFile <path> --queueName <queue>
+node index.js [--account <interop|send>] --envName <env> --dumpFile <path> --queueName <queue>
 ```
 
 oppure
 
 ```bash
-node index.js -e <env> -f <path> -q <queue>
+node index.js [-a <interop|send>] -e <env> -f <path> -q <queue>
 ```
 
 Dove:
 
+* `<account>` permette di switchare tra gli account AWS di SEND e Interoperabilità
 * `<env>` è l'ambiente di destinazione, deve essere uno tra: dev, uat, test, prod, hotfix
 * `<path>` è il percorso al file JSON contenente i messaggi DLQ da analizzare
 * `<queue>` è il nome della coda DLQ da analizzare, deve essere uno tra:
@@ -109,28 +110,29 @@ Esempi:
 Per analizzare messaggi dalla `pn-ss-main-bucket-events-queue-DLQ`:
 
 ```bash
-node index.js -e dev -f ./dump.json -q pn-ss-main-bucket-events-queue-DLQ
+node index.js [-a <interop|send>] -e dev -f ./dump.json -q pn-ss-main-bucket-events-queue-DLQ
 ```
 
 Per analizzare messaggi dalla `pn-ss-staging-bucket-events-queue-DLQ`:
 
 ```bash
-node index.js -e dev -f ./dump.json -q pn-ss-staging-bucket-events-queue-DLQ
+node index.js [-a <interop|send>] -e dev -f ./dump.json -q pn-ss-staging-bucket-events-queue-DLQ
 ```
 
 Per analizzare messaggi dalla `pn-ss-transformation-sign-and-timemark-queue-DLQ`:
 
 ```bash
-node index.js -e dev -f ./dump.json -q pn-ss-transformation-sign-and-timemark-queue-DLQ
+node index.js [-a <interop|send>] -e dev -f ./dump.json -q pn-ss-transformation-sign-and-timemark-queue-DLQ
 ```
 
 Per analizzare messaggi dalla `pn-safestore_to_deliverypush-DLQ`:
 
 ```bash
-node index.js -e dev -f ./dump.json -q pn-safestore_to_deliverypush-DLQ
+node index.js [-a <interop|send>] -e dev -f ./dump.json -q pn-safestore_to_deliverypush-DLQ
 ```
 
 Per analizzare messaggi dalla `pn-ss-transformation-sign-queue-DLQ`:
 
 ```bash
-node index.js -e dev -f ./dump.json -q pn-ss-transformation-sign-queue-DLQ
+node index.js [-a <interop|send>] -e dev -f ./dump.json -q pn-ss-transformation-sign-queue-DLQ
+

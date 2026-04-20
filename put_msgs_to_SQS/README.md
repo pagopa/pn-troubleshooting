@@ -50,11 +50,12 @@ Dove:
 
 ### Parametri
 
-- --accountType, -a:Obbligatorio. Account dove si trova la tabella (core|confinfo)
-- --envName, -e:    Obbligatorio. Ambiente di destinazione (dev|uat|test|prod|hotfix)
-- --queueName, -q:   Obbligatorio. Coda SQS dove caricare i messaggi
-- --inputFile, -f:  Obbligatorio. Percorso al file contenente i messaggi 
-- --help, -h:       Visualizza il messaggio di aiuto
+- --accountType, -a:   Obbligatorio. Account dove si trova la tabella (core|confinfo)
+- --envName, -e:       Obbligatorio. Ambiente di destinazione (dev|uat|test|prod|hotfix)
+- --queueName, -q:     Obbligatorio. Coda SQS dove caricare i messaggi
+- --inputFile, -f:     Obbligatorio. Percorso al file contenente i messaggi 
+- --singleMessage, -s: Abilita l'inserimento di un singolo messaggio alla volta. Default = false
+- --help, -h:          Visualizza il messaggio di aiuto
 
 ### File di Output
 
@@ -62,8 +63,14 @@ Lo script genera un file in caso di impossibilità di caricamento messaggio cart
 
 - `msg_not_resubmitted_<nome_coda>.json`: contiene i riferimenti ai messaggi non caricati in coda
 
-### Esempio
+### Esempio 1: Inserimento di messaggi a blocchi di 10
 
 ```bash
 node index.js --accountType core --envName hotfix --queueName pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json
 ```
+
+### Esempio 2: Inserimento di un singolo messaggio alla volta
+```bash
+node index.js --accountType core --envName hotfix --queueName pn-national_registry_gateway_inputs-DLQ --inputFile ./input.json --singleMessage
+```
+
