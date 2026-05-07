@@ -40,12 +40,7 @@ trackings_with_errors AS (
 		errors.flowThrow AS errorflowThrow,
 		errors.type AS errorType,
 		errors.created AS errorCreatedTimestamp,
-		-- TODO: errors.details_additionalDetails AS errorAdditionalDetails,
-		if(
-            element_at(filter(latest_trackings.events, e -> e.statusCode = 'P000'), 1).dryRun,
-            'DRY',
-            'RUN'
-        ) AS processingMode
+		errors.details_additionalDetails AS errorAdditionalDetails
     FROM latest_trackings
     LEFT JOIN errors 
       ON latest_trackings.trackingId = errors.trackingId
@@ -123,7 +118,6 @@ SELECT
 	errorCategory,
 	errorMessage,
 	errorCause,
-	-- TODO: errorAdditionalDetails
 	errorEventId,
 	errorEventStatusCode,
 	errorflowThrow,
