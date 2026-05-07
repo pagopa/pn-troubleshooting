@@ -1,4 +1,4 @@
--- Query per estrarre gli errori delle spedizoini in RUN, filtrando per recapitista unificato
+-- Query per estrarre gli errori delle spedizoini in RUN
 
 WITH trackings AS (
 	SELECT *,

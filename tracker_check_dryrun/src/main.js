@@ -99,7 +99,7 @@ async function fetchTimeline(iun) {
   }
 }
 
-async function fetchDryRunOutputs(attemptId) {
+async function fetchDryRunOutputs(attemptId, pcRetryMax) {
   let response = {};
   let outItems = [];
   let index = 0;
@@ -121,7 +121,7 @@ async function fetchDryRunOutputs(attemptId) {
       console.error("❌ Errore nella query:", err);
     }
     index++;
-  } while (response.Count > 0);
+  } while (response.Count > 0 || index < pcRetryMax);
 
   return outItems.sort((a, b) => new Date(a.created) - new Date(b.created));
 }
@@ -400,7 +400,7 @@ function compareEvents(timelineElements, dryRunElements) {
   return report;
 }
 
-async function processAttemptId(iun, attemptId) {
+async function processAttemptId(iun, attemptId, trackingId) {
   const timelineElements = (await fetchTimeline(iun)).filter(
     (el) =>
       excludedStatusCodesTimeline.includes(el.details?.deliveryDetailCode) ===
@@ -408,7 +408,11 @@ async function processAttemptId(iun, attemptId) {
       el.details?.sendRequestId ===
         attemptId.replaceAll("PREPARE_ANALOG_DOMICILE", "SEND_ANALOG_DOMICILE")
   );
-  const dryRunElements = (await fetchDryRunOutputs(attemptId)).filter(
+
+  const pcRetryNumber = trackingId.split(".").find((part) => part.startsWith("PCRETRY_"));
+  const pcRetryMax = pcRetryNumber ? parseInt(pcRetryNumber.split("_")[1], 10) + 1 : 1;
+
+  const dryRunElements = (await fetchDryRunOutputs(attemptId, pcRetryMax)).filter(
     (el) => excludedStatusCodesDryRun.includes(el.statusDetail) === false
   );
 
@@ -425,15 +429,18 @@ const header = [
   "IUN",
   "attemptId",
   "trackingId",
-  "registeredLetterCode",
-  "lastStatusCode",
-  "finalStatusCode",
+  "trackingCreatedTimestamp",
   "productType",
-  "finalEventBuilderTimestamp",
-  "state",
-  "deliveryFailureCause",
   "unifiedDeliveryDriver",
+  "registeredLetterCode",
+  "processingMode",
+  "lastStatusCode",
+  "finalEventBuilderTimestamp",
+  "refinementState",
+  "businessState",
+  "deliveryFailureCause",
   "ocrEnabled",
+  "multipleFinalEvents",
   "errorCategory",
   "errorMessage",
   "errorCause",
@@ -442,12 +449,11 @@ const header = [
   "errorflowThrow",
   "errorType",
   "errorCreatedTimestamp",
-  "multipleFinalEvents",
   "matchDryRunTimeline",
   "timelineFeedback",
   "dryRunFeedback",
   "timelineElements",
-  "dryRunElements",
+  "dryRunElements"
 ];
 
 export async function main() {
@@ -475,7 +481,7 @@ export async function main() {
     // Mantieni in memoria solo l'ultimo attemptId processato
     if (attemptId !== lastAttemptId) {
       lastAttemptId = attemptId;
-      lastProcessedData = await processAttemptId(row.IUN, attemptId);
+      lastProcessedData = await processAttemptId(row.IUN, attemptId, row.trackingId);
     }
     const { timelineElements, dryRunElements, comparisonReport } = lastProcessedData;
 
@@ -499,17 +505,6 @@ export async function main() {
       .map((el) => el.statusDetail)[0]  || "NO";
     row.timelineElements = timelineElements.length;
     row.dryRunElements = dryRunElements.length;
-
-    // Controllo quanti eventi ho ricevuto con stato finale
-    if ((!row.multipleFinalEvents || row.multipleFinalEvents === "") && row.errorType !== "") {
-      const tracking = await fetchTracking(row.trackingId);
-      const finalEvents = tracking.events
-        .filter((ev) => finalStatusCodes.includes(ev.statusCode))
-        .filter((ev, index, self) => 
-          index === self.findIndex((e) => e.id === ev.id)
-        );
-      row.multipleFinalEvents = finalEvents.length;
-    }
 
     // Aggiorno la errorCategory se mancante
     if (row.errorType !== "" && row.errorCategory === "") {

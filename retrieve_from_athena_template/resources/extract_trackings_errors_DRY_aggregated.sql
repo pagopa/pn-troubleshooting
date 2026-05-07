@@ -1,4 +1,4 @@
--- Query per estrarre gli errori delle spedizoini in DRY
+-- Query per estrarre gli errori aggregati delle spedizoini in DRY
 
 WITH trackings AS (
 	SELECT *,
