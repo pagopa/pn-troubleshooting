@@ -460,16 +460,12 @@ export async function main() {
   let lastAttemptId = null;
   let lastProcessedData = null;
   const records = await readAllCSVFile(inputFile);
-  initCSVFile(reportFilePath, header);
 
-  // Rimuovo il file di report precedente
-  if (fs.existsSync(reportFilePath)) {
-    fs.unlinkSync(reportFilePath);
-  }
   // Creo la cartella di output se non esiste
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir);
   }
+  initCSVFile(reportFilePath, header);
 
   console.log(records.length, "records to process");
   for (let i = 0; i < records.length; i++) {
@@ -549,7 +545,7 @@ export async function main() {
         comparisonReport
       );
     }
-    appendCSVRow(reportFilePath, header, records[i], i === 0);
+    appendCSVRow(reportFilePath, header, records[i]);
   }
   console.log(`\nFile di report salvato in ${reportFilePath}`);
 }
