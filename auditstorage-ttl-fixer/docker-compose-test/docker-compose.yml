@@ -3,7 +3,7 @@ version: '3.8' # Specifica la versione di Docker Compose
 services:
   localstack:
     container_name: localstack-dynamodb # Un nome facile da riconoscere per il tuo container
-    image: localstack/localstack        # L'immagine ufficiale di LocalStack
+    image: localstack/localstack@sha256:a3517e7b7c14780b755a0b1160b2770e2968ca2f4fbb355877b2b303f6d65033        # L'immagine ufficiale di LocalStack
     ports:
       - "4566:4566"                     # Porta principale di LocalStack
     environment:
