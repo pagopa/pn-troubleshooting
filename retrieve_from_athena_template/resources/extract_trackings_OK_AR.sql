@@ -1,7 +1,7 @@
--- Query per estrarre i tracking con gli errori associati per il prodotto 890 in DRY
+-- Query per estrarre i tracking con gli errori associati per tutti i prodotti in DRY
 
 WITH trackings AS (
-	SELECT *,
+  SELECT *,
 		ROW_NUMBER() OVER (
 			PARTITION BY trackingId
 			ORDER BY updatedAt DESC
@@ -97,7 +97,6 @@ filtered_trackings AS (
     FROM trackings_with_errors, final_status_codes
     WHERE ( state = 'DONE' AND businessState = 'DONE')
       AND processingMode IN ('DRY', '')
-      AND productType = '890'
 )
 SELECT
   regexp_extract(trackingId, 'IUN_([^.]+)', 1) AS IUN,

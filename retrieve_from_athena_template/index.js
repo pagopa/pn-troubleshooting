@@ -228,39 +228,15 @@ async function main() {
       console.log(`=== Starting extraction for range: ${range.startDate} to ${range.endDate} ===\n`);
       
       const queries = [
-        'extract_trackings_OK_890_DRY.sql',
-        'extract_trackings_OK_AR_DRY.sql',
+        'extract_trackings_OK_DRY.sql',
         'extract_trackings_errors_DRY.sql',
-        'extract_trackings_errors_DRY_aggregated.sql',
-        'extract_trackings_errors_RUN.sql',
-        'extract_trackings_errors_RUN_aggregated.sql',
+        'extract_trackings_errors_RUN.sql'
       ];
       
       for (const queryFile of queries) {
         const queryName = queryFile.replace('.sql', '');
         const outputPath = `${outputResultFolder}/${queryName}_${range.startDate}_to_${range.endDate}.csv`;
         await executeQueryAndSave(awsClient, queryFile, queryCondition, outputPath, database, workgroup, catalog);
-      }
-      
-      // Execute extract_unifiedDeliveryDriver query
-      console.log(`\n=== Extracting unified delivery drivers ===`);
-      const driversOutputPath = `${outputResultFolder}/extract_unifiedDeliveryDriver_${range.startDate}_to_${range.endDate}.csv`;
-      await executeQueryAndSave(awsClient, 'extract_unifiedDeliveryDriver.sql', queryCondition, driversOutputPath, database, workgroup, catalog);
-      
-      // Parse delivery drivers from CSV
-      const deliveryDrivers = await parseDeliveryDriversFromCsv(driversOutputPath);
-      console.log(`\nFound ${deliveryDrivers.length} delivery drivers:`, deliveryDrivers);
-      
-      // Execute extract_trackings_errors_view_recapitisti.sql for each delivery driver
-      console.log(`\n=== Executing RUN queries for each delivery driver ===`);
-      for (const driver of deliveryDrivers) {
-        console.log(`\n--- Processing delivery driver: ${driver} ---`);
-        const placeholders = {
-          ...queryCondition,
-          "<QUERY_CONDITION_Q2>": `'${driver}'`
-        };
-        const runOutputPath = `${outputResultFolder}/extract_trackings_errors_view_recapitisti_${driver}_${range.startDate}_to_${range.endDate}.csv`;
-        await executeQueryAndSave(awsClient, 'extract_trackings_errors_view_recapitisti.sql', placeholders, runOutputPath, database, workgroup, catalog);
       }
       
       console.log(`\n=== Extraction completed! ===`);
