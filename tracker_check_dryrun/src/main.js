@@ -78,9 +78,10 @@ const dynamoClient = new DynamoDBClient({ region, credentials });
  * Il risultato è ordinato per timestamp crescente.
  *
  * @param {string} iun       - Identificativo unico notifica
+ * @param {string|null} attempt - Numero di tentativo (es. "0"); null = nessun filtro
  * @param {string|null} recIndex - Indice destinatario (es. "1"); null = nessun filtro
  */
-async function fetchTimeline(iun, recIndex) {
+async function fetchTimeline(iun, attempt, recIndex) {
   try {
     const command = new QueryCommand({
       TableName: "pn-Timelines",
@@ -97,13 +98,14 @@ async function fetchTimeline(iun, recIndex) {
       .map((item) => unmarshall(item))
       .filter(
         (el) =>
-          (el.timelineElementId.startsWith("SEND_ANALOG_PROGRESS") ||
-          el.timelineElementId.startsWith("SEND_ANALOG_FEEDBACK") ||
-          el.timelineElementId.startsWith(
-            "SEND_SIMPLE_REGISTERED_LETTER_PROGRESS"
-          )) &&
-          // Se recIndex è specificato, filtra per RECINDEX_N nel timelineElementId
-          (recIndex == null || el.timelineElementId.includes(`RECINDEX_${recIndex}`))
+          (
+            (el.timelineElementId.startsWith("SEND_ANALOG_PROGRESS") && el.timelineElementId.includes(`ATTEMPT_${attempt}`)) ||
+            (el.timelineElementId.startsWith("SEND_ANALOG_FEEDBACK") && el.timelineElementId.includes(`ATTEMPT_${attempt}`)) ||
+            el.timelineElementId.startsWith(
+              "SEND_SIMPLE_REGISTERED_LETTER_PROGRESS"
+            )) &&
+            // Se recIndex è specificato, filtra per RECINDEX_N nel timelineElementId
+            (recIndex == null || el.timelineElementId.includes(`RECINDEX_${recIndex}`))
       )
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   } catch (err) {
@@ -455,7 +457,10 @@ async function processAttemptId(iun, attemptId, trackingId) {
   const recIndexPart = parts.find((p) => p.startsWith("RECINDEX_"));
   const recIndex = recIndexPart ? recIndexPart.slice(9) : null;
 
-  const timelineElements = (await fetchTimeline(iun, recIndex)).filter(
+  const attemptPart = parts.find((p) => p.startsWith("ATTEMPT_"));
+  const attempt = attemptPart ? attemptPart.slice(8) : null;
+
+  const timelineElements = (await fetchTimeline(iun, attempt, recIndex)).filter(
     (el) => excludedStatusCodesTimeline.includes(el.details?.deliveryDetailCode) === false
   );
 
@@ -534,7 +539,7 @@ function resolveMatchDryRunTimeline(comparisonReport, timelineElements, dryRunEl
  *    tentativo non ha prodotto output, probabilmente a causa di un retry anticipato.
  *
  * 7. "" (stringa vuota) → causa non ancora classificata
- *
+*
  * @param {object} row           - Riga CSV corrente (deve avere matchDryRunTimeline, trackingCreatedTimestamp, attemptId)
  * @param {object[]} dryRunElements - Output dry-run già filtrati per excludedStatusCodesDryRun
  */
