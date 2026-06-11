@@ -29,7 +29,7 @@ function prepareDocumentContent(row, isMock) {
     };
   }
   return {
-    "declarationDate": row.send_analog_feedback_ts_local_it,
+    "declarationDate": row.send_analog_progress_ts_local_it,
     "iun": row.iun,
     "senderDenomination": row.descrizione_ente,
     "registeredLetterCode": row.codiceoggetto,
