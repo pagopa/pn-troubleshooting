@@ -1,0 +1,15 @@
+{
+  "name": "ecs-services-scaling",
+  "version": "1.0.0",
+  "description": "List desired, min and max tasks for all ECS services across all ECS clusters.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-application-auto-scaling": "^3.0.0",
+    "@aws-sdk/client-ecs": "^3.0.0",
+    "@aws-sdk/credential-provider-ini": "^3.0.0",
+    "exceljs": "^4.4.0"
+  }
+}

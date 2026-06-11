@@ -94,6 +94,9 @@ async function main() {
         appendJsonToFile(`result/${envName}-${now}`, `${tableName}`, JSON.stringify(i))
       }
     }
+    else {
+      console.log(`Item with key ${keyValue} not found`)
+    }
     i = i + 1;
   }
 }

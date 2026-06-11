@@ -57,7 +57,7 @@ async function main() {
   _checkingParameters(args, values)
   const awsClient = new AwsClientsWrapper( account, envName );
   awsClient._initDynamoDB()
-  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n')
+  const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter(line => line.trim() !== '');
   let items = []
   for(let i = 0; i < fileRows.length; i++) {
     items.push({
@@ -69,6 +69,7 @@ async function main() {
   for (let i = 0; i < items.length; i += 25) {
     const batch = items.slice(i, i + 25);
     await awsClient._batchWriteItem(tableName, batch)
+    console.log(`Batch from ${i} to ${i + batch.length} inserted successfully.`)
   }
 }
 
