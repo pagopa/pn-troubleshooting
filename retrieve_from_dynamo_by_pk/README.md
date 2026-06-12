@@ -27,7 +27,7 @@ aws sso login --profile sso_pn-core-<env>
 
 ### Esecuzione
 ```bash
-node index.js --envName <env-name> --account <account> --fileName <file-name> --tableName <table-name> --keyName <key-name> [--prefix <prefix> --suffix <suffix>]
+node index.js --envName <env-name> --account <account> --fileName <file-name> --tableName <table-name> --keyName <key-name> [--prefix <prefix> --suffix <suffix> --outputFormat <'json' | 'marshall'>]
 
 ```
 Dove:
@@ -38,3 +38,4 @@ Dove:
 - `<key-name>` nome della pk della tabella dynamo
 - `<prefix>` prefisso da inserire al valore della pk da ricercare
 - `<suffix>` suffisso da inserire al valore della pk da ricercare
+- `<outputFormat>` Permette di scegliere se ottenere un output in formato nativo di DynamoDB (tipizzato) o JSON. Qualsiasi valore diverso da 'marshall' o 'json' verrà ignorato in favore del valore di default. Default: JSON.
