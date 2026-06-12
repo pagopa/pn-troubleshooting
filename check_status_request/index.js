@@ -71,7 +71,6 @@ async function main() {
       requestIdWithPcRetry = requestId + '.PCRETRY_' + idx;
       while (true) {
         const testRequestIdWithPcRetry = requestId + '.PCRETRY_' + idx;
-        console.log(`Checking requestId: pn-cons-000~${testRequestIdWithPcRetry}`)
         let result = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", 'pn-cons-000~' + testRequestIdWithPcRetry)
         if (result.Items.length == 0) {
           appendJsonToFile("notfound.json", testRequestIdWithPcRetry)
