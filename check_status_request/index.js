@@ -65,19 +65,20 @@ async function main() {
   let requestIdWithPcRetry = null
   for (let i = 0; i < fileRows.length; i++) {
     const requestId = fileRows[i].trim()
+    let requestIdWithPcRetry = null
     if (latest) {
       let idx = 0;
       requestIdWithPcRetry = requestId + '.PCRETRY_' + idx;
       while (true) {
         const testRequestIdWithPcRetry = requestId + '.PCRETRY_' + idx;
-        result = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", 'pn-cons-000~' + requestIdWithPcRetry)
+        let result = await awsClient._queryRequest("pn-EcRichiesteMetadati", "requestId", 'pn-cons-000~' + testRequestIdWithPcRetry)
         if (result.Items.length == 0) {
           appendJsonToFile("notfound.json", testRequestIdWithPcRetry)
           break
         }
         metadata = unmarshall(result.Items[0])
         idx = idx + 1
-        requestIdWithPcRetry = testRequestIdWithPcRetry
+        requestIdWithPcRetry = testRequestIdWithPcRetry 
       }
     }
     else {
