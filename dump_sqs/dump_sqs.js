@@ -87,6 +87,8 @@ async function dumpSQS() {
   
   console.log("Using DLQ Name: " + queueName)
   console.log("Using Format: " + format)
+
+  visibilityTimeout = parseInt(visibilityTimeout)
   
   var elementsElaborated = []
 
