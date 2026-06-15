@@ -37,10 +37,9 @@ const excludedStatusCodesDryRun = [
   "CON011",
   "CON012",
   "CON016",
-  "CON020",
 ];
 
-const excludedStatusCodesTimeline = ["CON020"];
+const excludedStatusCodesTimeline = [];
 
 const finalStatusCodes = [
   "RECRN006",
@@ -70,7 +69,19 @@ const credentials = awsProfile ? fromSSO({ profile: awsProfile }) : undefined;
 
 const dynamoClient = new DynamoDBClient({ region, credentials });
 
-async function fetchTimeline(iun) {
+/**
+ * Recupera dalla tabella pn-Timelines tutti gli elementi di tipo:
+ *   - SEND_ANALOG_PROGRESS
+ *   - SEND_ANALOG_FEEDBACK
+ *   - SEND_SIMPLE_REGISTERED_LETTER_PROGRESS
+ * filtrati per IUN e, se specificato, per RECINDEX (destinatario).
+ * Il risultato è ordinato per timestamp crescente.
+ *
+ * @param {string} iun       - Identificativo unico notifica
+ * @param {string|null} attempt - Numero di tentativo (es. "0"); null = nessun filtro
+ * @param {string|null} recIndex - Indice destinatario (es. "1"); null = nessun filtro
+ */
+async function fetchTimeline(iun, attempt, recIndex) {
   try {
     const command = new QueryCommand({
       TableName: "pn-Timelines",
@@ -87,11 +98,14 @@ async function fetchTimeline(iun) {
       .map((item) => unmarshall(item))
       .filter(
         (el) =>
-          el.timelineElementId.startsWith("SEND_ANALOG_PROGRESS") ||
-          el.timelineElementId.startsWith("SEND_ANALOG_FEEDBACK") ||
-          el.timelineElementId.startsWith(
-            "SEND_SIMPLE_REGISTERED_LETTER_PROGRESS"
-          )
+          (
+            (el.timelineElementId.startsWith("SEND_ANALOG_PROGRESS") && el.timelineElementId.includes(`ATTEMPT_${attempt}`)) ||
+            (el.timelineElementId.startsWith("SEND_ANALOG_FEEDBACK") && el.timelineElementId.includes(`ATTEMPT_${attempt}`)) ||
+            el.timelineElementId.startsWith(
+              "SEND_SIMPLE_REGISTERED_LETTER_PROGRESS"
+            )) &&
+            // Se recIndex è specificato, filtra per RECINDEX_N nel timelineElementId
+            (recIndex == null || el.timelineElementId.includes(`RECINDEX_${recIndex}`))
       )
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   } catch (err) {
@@ -99,7 +113,16 @@ async function fetchTimeline(iun) {
   }
 }
 
-async function fetchDryRunOutputs(attemptId) {
+/**
+ * Recupera dalla tabella pn-PaperTrackerDryRunOutputs tutti gli output del dry-run
+ * per un determinato attemptId, iterando da PCRETRY_0 fino a pcRetryMax-1
+ * (o finché l'ultimo risultato ha ancora elementi).
+ * Il risultato è ordinato per data di creazione crescente.
+ *
+ * @param {string} attemptId  - Parte del trackingId senza il suffisso PCRETRY (es. PREPARE_ANALOG_DOMICILE.IUN_xxx.RECINDEX_0.ATTEMPT_0)
+ * @param {number} pcRetryMax - Numero minimo di PCRETRY da interrogare (es. 1 = solo PCRETRY_0)
+ */
+async function fetchDryRunOutputs(attemptId, pcRetryMax) {
   let response = {};
   let outItems = [];
   let index = 0;
@@ -121,46 +144,39 @@ async function fetchDryRunOutputs(attemptId) {
       console.error("❌ Errore nella query:", err);
     }
     index++;
-  } while (response.Count > 0);
+  } while (response.Count > 0 || index < pcRetryMax);
 
   return outItems.sort((a, b) => new Date(a.created) - new Date(b.created));
 }
 
-async function fetchTrackingsError(trackingId, created) {
+/**
+ * Recupera dalla tabella pn-PaperTrackingsErrors tutti gli errori/warning
+ * associati a un determinato trackingId (es. PREPARE_ANALOG_DOMICILE.IUN_xxx.RECINDEX_0.ATTEMPT_0.PCRETRY_0).
+ *
+ * @param {string} trackingId - Chiave primaria completa incluso suffisso PCRETRY
+ */
+async function fetchAllTrackingsErrors(trackingId) {
   try {
     const command = new QueryCommand({
       TableName: "pn-PaperTrackingsErrors",
-      KeyConditionExpression: "trackingId = :trackingId AND created = :created",
-      ExpressionAttributeValues: {
-        ":trackingId": { S: trackingId },
-        ":created": { S: created },
-      },
-    });
-
-    const response = await dynamoClient.send(command);
-    return response.Count === 0 ? null : unmarshall(response.Items[0]);
-  } catch (err) {
-    console.error("❌ Errore nella query:", err);
-  }
-}
-
-async function fetchTracking(trackingId) {
-  try {
-    const command = new QueryCommand({
-      TableName: "pn-PaperTrackings",
       KeyConditionExpression: "trackingId = :trackingId",
       ExpressionAttributeValues: {
         ":trackingId": { S: trackingId },
       },
     });
-
     const response = await dynamoClient.send(command);
-    return response.Count === 0 ? null : unmarshall(response.Items[0]);
+    return (response.Items ?? []).map((item) => unmarshall(item));
   } catch (err) {
     console.error("❌ Errore nella query:", err);
+    return [];
   }
 }
 
+/**
+ * Confronta gli array di allegati tra timeline e dry-run.
+ * Verifica che abbiano lo stesso numero di elementi e che per ciascuno
+ * coincidano: nome file (estratto dall'URI), documentType e date.
+ */
 function compareAttachments(tlAttachments, drAttachments) {
   const tlHas = !!tlAttachments?.length;
   const drHas = !!drAttachments?.length;
@@ -191,6 +207,16 @@ function compareAttachments(tlAttachments, drAttachments) {
   return true;
 }
 
+/**
+ * Confronta un singolo elemento di timeline con un elemento dry-run.
+ * Verifica: data, allegati, statusCode, deliveryFailureCause, deliveryDetailCode, discoveredAddress.
+ *
+ * Casi speciali:
+ *  - RECRI004C: il confronto sullo statusCode è sempre positivo (la timeline riporta KO, il dry-run OK)
+ *  - SEND_SIMPLE_REGISTERED_LETTER_PROGRESS: nessun confronto su statusCode
+ *
+ * @returns {{ status: "MATCH" } | { status: "MISMATCH", differences: object }}
+ */
 function compareSingleEvent(tl, dr) {
   const dateMatch =
     new Date(tl.details?.notificationDate).getTime() ===
@@ -205,12 +231,19 @@ function compareSingleEvent(tl, dr) {
   let discoveredAddressMatch = true;
 
   if (tl.category === "SEND_ANALOG_FEEDBACK") {
-    const expectedStatus = tl.details?.responseStatus === "OK" ? "OK" : "KO";
-    statusMatch = dr.statusCode === expectedStatus;
+    if (tl.details?.deliveryDetailCode === "RECRI004C") {
+      statusMatch = true;
+    } else {
+      const expectedStatus = tl.details?.responseStatus === "OK" ? "OK" : "KO";
+      statusMatch = dr.statusCode === expectedStatus;
+    }
 
     discoveredAddressMatch =
       (tl.details?.newAddress == null && dr.discoveredAddress == null) ||
       (tl.details?.newAddress != null && dr.discoveredAddress != null);
+  } else if (tl.category === "SEND_SIMPLE_REGISTERED_LETTER_PROGRESS") {
+    // Nothing to compare
+    statusMatch = true;
   } else {
     statusMatch = dr.statusCode === "PROGRESS";
   }
@@ -259,6 +292,14 @@ function compareSingleEvent(tl, dr) {
   return { status: "MISMATCH", differences };
 }
 
+/**
+ * Confronta l'intera lista di eventi timeline con gli elementi dry-run.
+ * Per ogni evento timeline cerca il miglior match in dryrun (MATCH > MISMATCH).
+ * Gli elementi dry-run già usati in un MATCH vengono rimossi per evitare doppi abbinamenti.
+ * Gli elementi dry-run rimasti a fine giro vengono marcati come NOT_FOUND.
+ *
+ * @returns {{ summary: object, details: object[] }}
+ */
 function compareEvents(timelineElements, dryRunElements) {
   const timeline = [...timelineElements];
   const dryrun = [...dryRunElements];
@@ -400,15 +441,33 @@ function compareEvents(timelineElements, dryRunElements) {
   return report;
 }
 
-async function processAttemptId(iun, attemptId) {
-  const timelineElements = (await fetchTimeline(iun)).filter(
-    (el) =>
-      excludedStatusCodesTimeline.includes(el.details?.deliveryDetailCode) ===
-        false &&
-      el.details?.sendRequestId ===
-        attemptId.replaceAll("PREPARE_ANALOG_DOMICILE", "SEND_ANALOG_DOMICILE")
+/**
+ * Orchestratore per un singolo trackingId:
+ *  1. Estrae recIndex e pcRetryMax dal trackingId
+ *  2. Recupera gli elementi di timeline (filtrati per recIndex)
+ *  3. Recupera gli output dry-run (da PCRETRY_0 fino a pcRetryMax)
+ *  4. Esegue il confronto e restituisce il report
+ *
+ * @param {string} iun        - IUN della notifica
+ * @param {string} attemptId  - trackingId senza suffisso PCRETRY
+ * @param {string} trackingId - trackingId completo (usato per estrarre recIndex e pcRetryMax)
+ */
+async function processAttemptId(iun, attemptId, trackingId) {
+  const parts = trackingId.split(".");
+  const recIndexPart = parts.find((p) => p.startsWith("RECINDEX_"));
+  const recIndex = recIndexPart ? recIndexPart.slice(9) : null;
+
+  const attemptPart = parts.find((p) => p.startsWith("ATTEMPT_"));
+  const attempt = attemptPart ? attemptPart.slice(8) : null;
+
+  const timelineElements = (await fetchTimeline(iun, attempt, recIndex)).filter(
+    (el) => excludedStatusCodesTimeline.includes(el.details?.deliveryDetailCode) === false
   );
-  const dryRunElements = (await fetchDryRunOutputs(attemptId)).filter(
+
+  const pcRetryNumber = parts.find((part) => part.startsWith("PCRETRY_"));
+  const pcRetryMax = pcRetryNumber ? parseInt(pcRetryNumber.split("_")[1], 10) + 1 : 1;
+
+  const dryRunElements = (await fetchDryRunOutputs(attemptId, pcRetryMax)).filter(
     (el) => excludedStatusCodesDryRun.includes(el.statusDetail) === false
   );
 
@@ -417,77 +476,176 @@ async function processAttemptId(iun, attemptId) {
   return {
     timelineElements,
     dryRunElements,
-    comparisonReport,
+    comparisonReport
   };
 }
 
+/**
+ * Parsa un trackingId nel formato:
+ *   PREPARE_ANALOG_DOMICILE.IUN_<IUN>.RECINDEX_<N>.ATTEMPT_<N>.PCRETRY_<N>
+ * ed estrae:
+ *  - iun: valore del segmento IUN_ (senza prefisso)
+ *  - attemptId: tutto prima del segmento PCRETRY_ (usato come chiave per dry-run ed errori)
+ */
+function parseTrackingId(trackingId) {
+  const parts = trackingId.split(".");
+  const pcRetryIndex = parts.findIndex((p) => p.startsWith("PCRETRY_"));
+  const attemptId = pcRetryIndex !== -1 ? parts.slice(0, pcRetryIndex).join(".") : trackingId;
+  const iunPart = parts.find((p) => p.startsWith("IUN_"));
+  const iun = iunPart ? iunPart.slice(4) : "";
+  return { iun, attemptId };
+}
+
+/**
+ * Calcola il valore della colonna matchDryRunTimeline:
+ *  - "YES"               → tutti gli eventi coincidono
+ *  - "NO_DRYRUN_EVENTS"  → nessun output dry-run trovato
+ *  - "NO_TIMELINE_EVENTS"→ nessun evento timeline trovato
+ *  - "NO"               → discrepanze rilevate
+ */
+function resolveMatchDryRunTimeline(comparisonReport, timelineElements, dryRunElements) {
+  if (comparisonReport.summary.allMatched) return "YES";
+  if (dryRunElements.length === 0) return "NO_DRYRUN_EVENTS";
+  if (timelineElements.length === 0) return "NO_TIMELINE_EVENTS";
+  return "NO";
+}
+
+/**
+ * Waterfall di categorizzazione dell'errore per righe con matchDryRunTimeline="NO".
+ *
+ * Ordine di priorità:
+ *
+ * 1. Se matchDryRunTimeline !== "NO" → nessuna categoria (stringa vuota)
+ *
+ * 2. BUG_17784
+ *    Il tracking è stato creato prima del 23/12/2025: il bug PN-17784 può aver
+ *    causato la discrepanza. La data è il cutoff del deploy del fix.
+ *
+ * 3. ERROR_ON_LAST_PCRETRY
+ *    La tabella pn-PaperTrackingsErrors contiene almeno un record di tipo ERROR
+ *    per l'ultimo PCRETRY disponibile (si scende da MAX_PCRETRY a 0 fermandosi
+ *    al primo PCRETRY che ha errori).
+ *
+ * 4. TIMELINE_DUPLICATED_EVENT
+ *    pn-PaperTrackingsErrors contiene un WARNING con category=DUPLICATED_EVENT:
+ *    SQS ha consegnato un evento duplicato che ha corrotto la timeline.
+ *
+ * 5. EVENT_AFTER_FINAL_EVENT
+ *    pn-PaperTrackingsErrors contiene un WARNING con category=INCONSISTENT_STATE:
+ *    è arrivato un evento successivo al codice finale, che non doveva essere processato.
+ *
+ * 6. MISSING_PCRETRY_0_DRYRUN
+ *    Sono presenti output dry-run ma nessuno appartiene a PCRETRY_0: il primo
+ *    tentativo non ha prodotto output, probabilmente a causa di un retry anticipato.
+ *
+ * 7. "" (stringa vuota) → causa non ancora classificata
+*
+ * @param {object} row           - Riga CSV corrente (deve avere matchDryRunTimeline, trackingCreatedTimestamp, attemptId)
+ * @param {object[]} dryRunElements - Output dry-run già filtrati per excludedStatusCodesDryRun
+ */
+async function resolveCategoria(row, dryRunElements) {
+  // 1. Solo le righe con matchDryRunTimeline=NO richiedono categorizzazione
+  if (row.matchDryRunTimeline !== "NO") return "";
+
+  // 2. BUG_17784: tracking antecedente al deploy del fix
+  if (
+    row.trackingCreatedTimestamp &&
+    new Date(row.trackingCreatedTimestamp) < new Date("2025-12-23T00:00:00Z")
+  ) {
+    return "BUG_17784";
+  }
+
+  // 3-5. Cerca errori/warning in pn-PaperTrackingsErrors partendo dall'ultimo PCRETRY
+  //      e scendendo fino a PCRETRY_0; si ferma al primo PCRETRY che ha record.
+  const MAX_PCRETRY = 1;
+  let errors = [];
+  for (let i = MAX_PCRETRY; i >= 0; i--) {
+    errors.push(...await fetchAllTrackingsErrors(`${row.attemptId}.PCRETRY_${i}`));
+    if (errors.length > 0) break;
+  }
+
+  // 3. ERROR_ON_LAST_PCRETRY: almeno un record di tipo ERROR
+  if (errors.some((e) => e.type === "ERROR")) {
+    return "ERROR_ON_LAST_PCRETRY";
+  }
+
+  // 4-5. Warning: esamina la category per distinguere il tipo di anomalia
+  for (const e of errors) {
+    if (e.type === "WARNING") {
+      if (e.category === "DUPLICATED_EVENT") return "TIMELINE_DUPLICATED_EVENT";
+      if (e.category === "INCONSISTENT_STATE") return "EVENT_AFTER_FINAL_EVENT";
+    }
+  }
+
+  // 6. MISSING_PCRETRY_0_DRYRUN: ci sono dry-run outputs ma nessuno per PCRETRY_0
+  const hasPcRetry0 = dryRunElements.some((el) =>
+    el.trackingId?.endsWith(".PCRETRY_0")
+  );
+  if (!hasPcRetry0 && dryRunElements.length > 0) {
+    return "MISSING_PCRETRY_0_DRYRUN";
+  }
+
+  // 7. Causa non classificata
+  return "";
+}
+
 const header = [
-  "IUN",
-  "attemptId",
   "trackingId",
-  "registeredLetterCode",
-  "lastStatusCode",
-  "finalStatusCode",
+  "trackingCreatedTimestamp",
   "productType",
-  "finalEventBuilderTimestamp",
-  "state",
-  "deliveryFailureCause",
   "unifiedDeliveryDriver",
+  "processingMode",
+  "lastStatusCode",
+  "refinementState",
+  "businessState",
   "ocrEnabled",
-  "errorCategory",
-  "errorMessage",
-  "errorCause",
-  "errorEventId",
-  "errorEventStatusCode",
-  "errorflowThrow",
-  "errorType",
-  "errorCreatedTimestamp",
   "multipleFinalEvents",
   "matchDryRunTimeline",
   "timelineFeedback",
   "dryRunFeedback",
   "timelineElements",
   "dryRunElements",
+  "categoria"
 ];
 
 export async function main() {
-  let lastAttemptId = null;
   let lastProcessedData = null;
   const records = await readAllCSVFile(inputFile);
-  initCSVFile(reportFilePath, header);
 
-  // Rimuovo il file di report precedente
-  if (fs.existsSync(reportFilePath)) {
-    fs.unlinkSync(reportFilePath);
-  }
   // Creo la cartella di output se non esiste
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir);
   }
+  initCSVFile(reportFilePath, header);
 
   console.log(records.length, "records to process");
   for (let i = 0; i < records.length; i++) {
     showProgress(i + 1, records.length, "Elaborazione CSV ");
 
     const row = records[i];
-    const attemptId = row.attemptId;
+    const { iun, attemptId } = parseTrackingId(row.trackingId);
+    row.IUN = iun;
+    row.attemptId = attemptId;
 
-    // Mantieni in memoria solo l'ultimo attemptId processato
-    if (attemptId !== lastAttemptId) {
-      lastAttemptId = attemptId;
-      lastProcessedData = await processAttemptId(row.IUN, attemptId);
-    }
-    const { timelineElements, dryRunElements, comparisonReport } = lastProcessedData;
+    lastProcessedData = await processAttemptId(row.IUN, attemptId, row.trackingId);
 
-    if (comparisonReport.summary.allMatched) {
-      row.matchDryRunTimeline = "YES";
-    } else {
-      if (dryRunElements.length === 0) {
-        row.matchDryRunTimeline = "NO_DRYRUN_EVENTS";
-      } else if (timelineElements.length === 0) {
-        row.matchDryRunTimeline = "NO_TIMELINE_EVENTS";
-      } else {
-        row.matchDryRunTimeline = "NO";
+    let { timelineElements, dryRunElements, comparisonReport } = lastProcessedData;
+
+    row.matchDryRunTimeline = resolveMatchDryRunTimeline(comparisonReport, timelineElements, dryRunElements);
+
+    row.categoria = await resolveCategoria(row, dryRunElements);
+
+    // Fallback: se nessuna categoria trovata, riprova con pcRetryMax=2 per includere PCRETRY_1
+    if (row.categoria === "" && row.matchDryRunTimeline === "NO") {
+      const dryRunElementsV2 = (await fetchDryRunOutputs(attemptId, 2)).filter(
+        (el) => !excludedStatusCodesDryRun.includes(el.statusDetail)
+      );
+      if (dryRunElementsV2.length > dryRunElements.length) {
+        const comparisonV2 = compareEvents(timelineElements, dryRunElementsV2);
+        dryRunElements = dryRunElementsV2;
+        comparisonReport = comparisonV2;
+        row.matchDryRunTimeline = resolveMatchDryRunTimeline(comparisonV2, timelineElements, dryRunElementsV2);
+        row.categoria = await resolveCategoria(row, dryRunElements);
       }
     }
 
@@ -499,42 +657,6 @@ export async function main() {
       .map((el) => el.statusDetail)[0]  || "NO";
     row.timelineElements = timelineElements.length;
     row.dryRunElements = dryRunElements.length;
-
-    // Controllo quanti eventi ho ricevuto con stato finale
-    if ((!row.multipleFinalEvents || row.multipleFinalEvents === "") && row.errorType !== "") {
-      const tracking = await fetchTracking(row.trackingId);
-      const finalEvents = tracking.events
-        .filter((ev) => finalStatusCodes.includes(ev.statusCode))
-        .filter((ev, index, self) => 
-          index === self.findIndex((e) => e.id === ev.id)
-        );
-      row.multipleFinalEvents = finalEvents.length;
-    }
-
-    // Aggiorno la errorCategory se mancante
-    if (row.errorType !== "" && row.errorCategory === "") {
-      const trackingError = await fetchTrackingsError(
-        row.trackingId,
-        row.errorCreatedTimestamp
-      );
-      if (!trackingError) {
-        console.error(
-          "Unable to find tracking error for ",
-          row.trackingId,
-          row.errorCreatedTimestamp
-        );
-      } else {
-        row.errorCategory = trackingError.category;
-        row.errorMessage = trackingError.details?.message;
-        row.errorCause = trackingError.details?.cause;
-      }
-    }
-
-    // Aggiorno la registeredLetterCode se mancante
-    if (row.registeredLetterCode === "") {
-      row.registeredLetterCode =
-        dryRunElements[dryRunElements.length - 1]?.registeredLetterCode || "";
-    }
 
     if (saveJson) {
       if (!fs.existsSync(`${outDir}/${row.IUN}`)) {

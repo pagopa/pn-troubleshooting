@@ -171,6 +171,28 @@ function _checkingParameters(args, values){
   })
 }
 
+async function executeQueryAndSave(awsClient, queryFile, placeholders, outputFilePath, database, workgroup, catalog) {
+  console.log(`\nExecuting query: ${queryFile}`);
+  const modifiedQuery = applyPlaceholders(`resources/${queryFile}`, placeholders);
+  const queryExecutionId = await executeQuery(awsClient, modifiedQuery, database, workgroup, catalog);
+  if (!queryExecutionId) {
+    console.warn(`No result for query ${queryFile}, skipping.`);
+    return null;
+  }
+  await retrieveAndSaveCsv(queryExecutionId, awsClient, outputFilePath);
+  return queryExecutionId;
+}
+
+async function parseDeliveryDriversFromCsv(csvFilePath) {
+  const content = fs.readFileSync(csvFilePath, 'utf8');
+  const lines = content.split('\n').filter(line => line.trim());
+  // Skip header and extract delivery drivers
+  const drivers = lines.slice(1)
+    .map(line => line.replace(/"/g, '').trim())
+    .filter(driver => driver);
+  return drivers;
+}
+
 async function main() {
 
   const args = [
@@ -194,26 +216,32 @@ async function main() {
   _initFolder([outputResultFolder])
   const awsClient = envName ? new AwsClientsWrapper( 'core', envName ) : new AwsClientsWrapper();
   awsClient._initAthena();
+  
+  const database = "cdc_analytics_database";
+  const workgroup = "cdc_analytics_workgroup";
+  const catalog = "AwsDataCatalog";
+  const range = getRangeTime();
+  const queryCondition = generatePartitionConditionWithBetween(range.startDate, range.endDate);
+
   switch(true){
     case query === "extract_trackings":
-      const database = "cdc_analytics_database";
-      const workgroup = "cdc_analytics_workgroup";
-      const catalog = "AwsDataCatalog";
-      const range = getRangeTime();
-      const queryCondition = generatePartitionConditionWithBetween(range.startDate, range.endDate);
-      const modifiedQuery = applyPlaceholders(`resources/${query}.sql`, queryCondition);
-      const outputFilePath = `${outputResultFolder}/${query}_result_${range.startDate}_to_${range.endDate}.csv`;
+      console.log(`=== Starting extraction for range: ${range.startDate} to ${range.endDate} ===\n`);
       
-      console.log("Executing query:", query);
-      const queryExecutionId = await executeQuery(awsClient, modifiedQuery, database, workgroup, catalog);
-      if (!queryExecutionId) {
-        console.warn(`No result for query ${query}, skipping.`);
-        return;
+      const queries = [
+        'extract_trackings_OK_DRY.sql',
+        'extract_trackings_errors_DRY.sql',
+        'extract_trackings_errors_RUN.sql'
+      ];
+      
+      for (const queryFile of queries) {
+        const queryName = queryFile.replace('.sql', '');
+        const outputPath = `${outputResultFolder}/${queryName}_${range.startDate}_to_${range.endDate}.csv`;
+        await executeQueryAndSave(awsClient, queryFile, queryCondition, outputPath, database, workgroup, catalog);
       }
-      await retrieveAndSaveCsv(queryExecutionId, awsClient, outputFilePath);
-      break
+      
+      console.log(`\n=== Extraction completed! ===`);
+      break;
   }
-
     
 }
 
