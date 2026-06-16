@@ -38,10 +38,18 @@ class AwsClientsWrapper {
   }
 
   async _getTableList(profile){
-    const input = {};
-    const command = new ListTablesCommand(input);
-    const response = await this._client[profile].send(command);
-    return response.TableNames
+    const tableNames = [];
+    let exclusiveStartTableName = undefined;
+    do {
+      const input = exclusiveStartTableName ? { ExclusiveStartTableName: exclusiveStartTableName } : {};
+      const command = new ListTablesCommand(input);
+      const response = await this._client[profile].send(command);
+      if (response.TableNames) {
+        tableNames.push(...response.TableNames);
+      }
+      exclusiveStartTableName = response.LastEvaluatedTableName;
+    } while (exclusiveStartTableName);
+    return tableNames;
   }
 
 }

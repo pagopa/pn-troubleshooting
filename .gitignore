@@ -45,6 +45,7 @@ check_feedback_from_requestId/*.jsonl
 !check_feedback_from_requestId/package-lock.json
 ss-manage-retention/.env
 **/.env
+backfill_tags/output_*
 
 ### PYTHON ###
 
@@ -90,6 +91,7 @@ build/
 node_modules/
 
 data_extractor/results
+
 
 replace_certificate/backup
 
