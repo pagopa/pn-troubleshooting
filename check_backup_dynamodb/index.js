@@ -44,8 +44,9 @@ function printElaboration(elements, flag) {  //true= added; false= removed
 }
 
 async function _checkingTableDifferences(profile, fileName, tables){
-  if(idx = tables.indexOf('terraform-lock')) {
-    tables.splice(idx)
+  const idx = tables.indexOf('terraform-lock');
+  if (idx !== -1) {
+    tables.splice(idx, 1)
   }
   console.log("In '" + profile + "' sono state effettuate le seguenti modifiche:")
   const data = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' });
@@ -99,13 +100,13 @@ async function main() {
   _checkingParameters(args, values)
   const awsClient = new AwsClientsWrapper( envName );
   const tables = await awsClient._fetchDynamoDbTables();
-  files.forEach(async fileName => {
+  for (const fileName of files) {
     let account = 'core'
     if(fileName.indexOf('confinfo') > 0) {
       account = 'confinfo';
     }
     await _checkingTableDifferences(account, folderPath + '/' + fileName, tables[account]);
-  });
+  }
 }
 
 main();
