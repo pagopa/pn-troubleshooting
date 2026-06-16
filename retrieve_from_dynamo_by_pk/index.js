@@ -4,27 +4,33 @@ const { AwsClientsWrapper } = require("pn-common");
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { appendJsonToFile } = require('pn-common/libs/utils');
 
-function normalizeResult(items) {
+function normalizeResult(items, outputFormat) {
   const tmp = []
-  for(const value of items) {
-    tmp.push(unmarshall(value))
+  if (outputFormat === 'marshall') {
+    for (const value of items) {
+      tmp.push(value)
+    }
+  } else {
+    for (const value of items) {
+      tmp.push(unmarshall(value))
+    }
   }
   return tmp
 }
-function _checkingParameters(args, values){
-  const usage = "Usage: node index.js --envName <env-name> --account <account> --fileName <file-name> --tableName <tableName> --keyName <keyName> [--prefix <prefix> --suffix <suffix>]"
+function _checkingParameters(args, values) {
+  const usage = "Usage: node index.js --envName <env-name> --account <account> --fileName <file-name> --tableName <tableName> --keyName <keyName> [--prefix <prefix> --suffix <suffix> --outputFormat <json | marshall>]"
   //CHECKING PARAMETER
   args.forEach(el => {
-    if(el.mandatory && !values.values[el.name]){
+    if (el.mandatory && !values.values[el.name]) {
       console.log("Param " + el.name + " is not defined")
       console.log(usage)
       process.exit(1)
     }
   })
-  args.filter(el=> {
+  args.filter(el => {
     return el.subcommand.length > 0
   }).forEach(el => {
-    if(values.values[el.name]) {
+    if (values.values[el.name]) {
       el.subcommand.forEach(val => {
         if (!values.values[val]) {
           console.log("SubParam " + val + " is not defined")
@@ -45,15 +51,16 @@ async function main() {
     { name: "tableName", mandatory: true, subcommand: [] },
     { name: "keyName", mandatory: true, subcommand: [] },
     { name: "prefix", mandatory: false, subcommand: [] },
-    { name: "suffix", mandatory: false, subcommand: [] }
+    { name: "suffix", mandatory: false, subcommand: [] },
+    { name: "outputFormat", mandatory: false, subcommand: [] }
   ]
   const values = {
-    values: { envName, account, fileName, tableName, keyName, prefix, suffix },
+    values: { envName, account, fileName, tableName, keyName, prefix, suffix, outputFormat },
   } = parseArgs({
     options: {
       envName: {
         type: "string", short: "e", default: undefined
-      }, 
+      },
       account: {
         type: "string", short: "e", default: undefined
       },
@@ -72,27 +79,33 @@ async function main() {
       suffix: {
         type: "string", short: "s", default: ''
       },
+      outputFormat: {
+        type: "string", short: "o", default: 'json'
+      },
     },
-  });  
+  });
 
   _checkingParameters(args, values)
-  const awsClient = new AwsClientsWrapper( account, envName );
+  const awsClient = new AwsClientsWrapper(account, envName);
   awsClient._initDynamoDB()
   const now = new Date().toISOString()
   const pks = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
-  .split('\n')
-  .map(x => x.replace(/\r/g, '').trim())
-  .filter(x => x !== '');
+    .split('\n')
+    .map(x => x.replace(/\r/g, '').trim())
+    .filter(x => x !== '');
   let i = 1;
-  for(const pk of pks) {
+  for (const pk of pks) {
     const keyValue = `${prefix}${pk}${suffix}`
     console.log(`Searching for item ${i}: ${keyValue}`)
     const result = await awsClient._queryRequest(tableName, keyName, keyValue)
-    if(result.Items.length > 0) {
-      const items = normalizeResult(result.Items)
-      for(const i of items){
+    if (result.Items.length > 0) {
+      const items = normalizeResult(result.Items,outputFormat)
+      for (const i of items) {
         appendJsonToFile(`result/${envName}-${now}`, `${tableName}`, JSON.stringify(i))
       }
+    }
+    else {
+      console.log(`Item with key ${keyValue} not found`)
     }
     i = i + 1;
   }
