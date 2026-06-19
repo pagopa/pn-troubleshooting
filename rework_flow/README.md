@@ -42,8 +42,6 @@ Avviare tunneling SSM tramite una EC2 dell'account AWS Core e dell'account AWS C
 
 Aggiornare o creare il file .env con il valore ALB_BASE_URL e ALB_CONFIDENTIAL_URL in base alla porta locale impostata, ad es. 
 ALB_BASE_URL=http://localhost:8080
-ALB_CONFIDENTIAL_URL=http://localhost:8081
-
 ### Esecuzione
 ```bash
 node index.js --envName <envName> --fileName <fileName> [--dryrun]
