@@ -163,7 +163,7 @@ function _recordBlocker(requestId, iun, reason) {
   console.log(`  [BLOCKED] ${reason}`)
 }
 
-function _generateReport() {
+function _generateReport(envName) {
   const successRate = report.totalProcessed > 0
     ? ((report.totalSuccessful / report.totalProcessed) * 100).toFixed(2)
     : '0.00'
@@ -194,7 +194,11 @@ function _generateReport() {
   console.log('\n' + '='.repeat(80))
   
   // Save detailed report to file
-  const reportFile = `report_${Date.now()}.json`
+  const now = new Date()
+  const timestamp = now.toISOString().slice(0, 16).replace('T', '_').replace(':', '-')
+  const resultDir = 'results'
+  const reportFile = `${resultDir}/${timestamp}_${envName}_report.json`
+  fs.mkdirSync(resultDir, { recursive: true })
   fs.writeFileSync(reportFile, JSON.stringify(report, null, 2))
   console.log(`Detailed report saved to: ${reportFile}\n`)
   
@@ -364,7 +368,7 @@ async function main() {
     logStatus(`  ✓ SUCCESS - All checks passed${!dryrun ? ' - API call executed' : ' (DRY RUN)'}`)
   }
   
-  _generateReport()
+  _generateReport(envName)
 }
 
 
