@@ -7,7 +7,6 @@ const { AwsClientsWrapper } = require("pn-common");
 const { _getIunFromRequestId, _getAttemptFromRequestId, _parseCSV } = require("pn-common/libs/utils");
 
 const rilevantTimelineElements = [
-  "NOTIFICATION_CANCELLED",
   "NOTIFICATION_TIMELINE_REWORKED",
   "NOTIFICATION_VIEWED",
   "REFINEMENT",
@@ -56,10 +55,10 @@ function _checkingParameters(args, values) {
 async function checkAttachments(awsClient, bucketName, iun) {
   const notifications = (await awsClient.core._queryRequest("pn-Notifications", 'iun', iun)).Items[0];
   const notifData = unmarshall(notifications)
-  
+
   // Collect all documents to check
   const allDocuments = []
-  
+
   // Documents from main attachments
   if (notifData.documents) {
     for (const doc of notifData.documents) {
@@ -70,7 +69,7 @@ async function checkAttachments(awsClient, bucketName, iun) {
       })
     }
   }
-  
+
   // Documents from recipients payments
   if (notifData.recipients) {
     for (const recipient of notifData.recipients) {
@@ -84,7 +83,7 @@ async function checkAttachments(awsClient, bucketName, iun) {
               title: 'PagoPa Form'
             })
           }
-          
+
           // Check for f24.metadataAttachment
           if (payment.f24 && payment.f24.metadataAttachment && payment.f24.metadataAttachment.ref) {
             allDocuments.push({
@@ -97,7 +96,7 @@ async function checkAttachments(awsClient, bucketName, iun) {
       }
     }
   }
-  
+
   // Check all documents
   for (const doc of allDocuments) {
     let docExists = false
@@ -108,10 +107,10 @@ async function checkAttachments(awsClient, bucketName, iun) {
       // Document not found in S3
       docExists = false
     }
-    
+
     const ssDocumenti = await awsClient.confinfo._queryRequest("pn-SsDocumenti", 'documentKey', doc.key)
     const docState = ssDocumenti.Items.length > 0 ? unmarshall(ssDocumenti.Items[0]).documentState == 'attached' : false
-    
+
     if (!docExists || !docState || docState !== 'attached') {
       logStatus(`    ✗ Document [${doc.type}] ${doc.key}: S3=${docExists} SafeStorage=${docState}`)
     }
@@ -175,11 +174,11 @@ function _generateReport(envName) {
   console.log(`Successful: ${report.totalSuccessful}`)
   console.log(`Blocked: ${report.totalBlocked}`)
   console.log(`Success rate: ${successRate}%`)
-  
+
   console.log('\n' + '-'.repeat(80))
   console.log('BLOCKERS SUMMARY')
   console.log('-'.repeat(80))
-  
+
   const blockersSorted = Object.entries(report.blockers).sort((a, b) => b[1].count - a[1].count)
   for (const [reason, data] of blockersSorted) {
     console.log(`\n[${data.count}] ${reason}`)
@@ -190,9 +189,9 @@ function _generateReport(envName) {
       console.log(`  ... and ${data.requestIds.length - 3} more`)
     }
   }
-  
+
   console.log('\n' + '='.repeat(80))
-  
+
   // Save detailed report to file
   const now = new Date()
   const timestamp = now.toISOString().slice(0, 16).replace('T', '_').replace(':', '-')
@@ -201,7 +200,7 @@ function _generateReport(envName) {
   fs.mkdirSync(resultDir, { recursive: true })
   fs.writeFileSync(reportFile, JSON.stringify(report, null, 2))
   console.log(`Detailed report saved to: ${reportFile}\n`)
-  
+
   return report
 }
 
@@ -239,40 +238,37 @@ async function main() {
   awsClient.core._initDynamoDB()
   //find bucket with safestorage name contains
   const listBuckets = await awsClient.confinfo._getBucketList();
-  const bucketName = listBuckets.Buckets.filter((x) => x.Name.indexOf("safestorage")>0 && x.Name.indexOf("staging")<0)[0].Name;
+  const bucketName = listBuckets.Buckets.filter((x) => x.Name.indexOf("safestorage") > 0 && x.Name.indexOf("staging") < 0)[0].Name;
   console.log(`Using bucket ${bucketName} for checking attachments`)
   console.log('Reading from file...')
   const inputs = await _parseCSV(fileName, ',')
   console.log(`Found ${inputs.length} requests to process\n`)
-  
+
   for (const input of inputs) {
     report.totalProcessed++
     const progress = `[${report.totalProcessed}/${inputs.length}]`
     console.log(`\n${progress} Processing requestId: ${input.requestId}`)
-    
+
     const iun = _getIunFromRequestId(input.requestId)
-    
+
+    const recIndexMatch = input.requestId.match(/RECINDEX_(\d+)/)
+    const attemptMatch = input.requestId.match(/ATTEMPT_(\d+)/)
+
+    const recIndex = recIndexMatch ? recIndexMatch[1] : '0'
+    const attemptId = attemptMatch ? `ATTEMPT_${attemptMatch[1]}` : 'ATTEMPT_0'
+
     logCheck(`Querying timeline elements for IUN ${iun}...`)
     const result = await awsClient.core._queryRequest("pn-Timelines", 'iun', iun)
-    
+
     if (result.Items.length == 0) {
       logStatus(`  ✗ Timeline query returned 0 items`)
       _recordBlocker(input.requestId, iun, 'NO_TIMELINE_ELEMENTS_FOUND')
       continue
     }
     logCheckComplete(`Querying timeline elements for IUN ${iun}... (found ${result.Items.length} items)`)
-    
+
     let timelineElements = result.Items.map(x => unmarshall(x))
-    logCheck(`Filtering for relevant timeline elements...`)
-    timelineElements = timelineElements.filter(x => rilevantTimelineElements.some(el => x.timelineElementId.includes(el)))
-    
-    if (timelineElements.length === 0) {
-      logStatus(`  ✗ No relevant timeline elements found`)
-      _recordBlocker(input.requestId, iun, 'NO_RELEVANT_TIMELINE_ELEMENTS')
-      continue
-    }
-    logCheckComplete(`Filtering for relevant timeline elements... (found ${timelineElements.length})`)
-    
+
     logCheck(`Checking for NOTIFICATION_CANCELLED...`)
     if (timelineElements.some(x => x.timelineElementId.includes('NOTIFICATION_CANCELLED'))) {
       logStatus(`  ✗ Found NOTIFICATION_CANCELLED`)
@@ -280,13 +276,33 @@ async function main() {
       continue
     }
     logCheckComplete(`Checking for NOTIFICATION_CANCELLED... (passed)`)
-    
+
+    logCheck(`Checking for NOTIFICATION_VIEWED...`)
+    if (timelineElements.some(x => x.timelineElementId.includes('NOTIFICATION_VIEWED') && x.timelineElementId.includes(attemptId) && x.timelineElementId.includes(`RECINDEX_${recIndex}`))) {
+      logStatus(`  ✗ Found NOTIFICATION_VIEWED`)
+      _recordBlocker(input.requestId, iun, 'NOTIFICATION_VIEWED')
+      continue
+    }
+    logCheckComplete(`Checking for NOTIFICATION_VIEWED... (passed)`)
+
+    logCheck(`Filtering for relevant timeline elements...`)
+    timelineElements = timelineElements.filter(x => rilevantTimelineElements.some(el => x.timelineElementId.includes(el)))
+
+    if (timelineElements.length === 0) {
+      logStatus(`  ✗ No relevant timeline elements found`)
+      _recordBlocker(input.requestId, iun, 'NO_RELEVANT_TIMELINE_ELEMENTS')
+      continue
+    }
+    logCheckComplete(`Filtering for relevant timeline elements... (found ${timelineElements.length})`)
+
     logCheck(`Checking for NOTIFICATION_TIMELINE_REWORKED...`)
-    if (timelineElements.some(x => x.timelineElementId.includes('NOTIFICATION_TIMELINE_REWORKED'))) {
-      const reworkDate = new Date(timelineElements.find(el => el.timelineElementId.includes('NOTIFICATION_TIMELINE_REWORKED')).createdAt)
-      timelineElements = timelineElements.filter(x => {
-        return new Date(x.createdAt) > reworkDate
-      })
+    const reworkElements = timelineElements.filter(x => x.timelineElementId.includes('NOTIFICATION_TIMELINE_REWORKED') && x.timelineElementId.includes(attemptId) && x.timelineElementId.includes(`RECINDEX_${recIndex}`));
+    if (reworkElements.length > 0) {
+      for (const reworkElement of reworkElements) {
+        for (const relatedElementId of reworkElement.details.relatedTimelineElements) {
+          timelineElements = timelineElements.filter(x => x.timelineElementId !== relatedElementId)
+        }
+      }
       if (timelineElements.length === 0) {
         logStatus(`  ✗ No elements found after timeline rework`)
         _recordBlocker(input.requestId, iun, 'NO_ELEMENTS_AFTER_TIMELINE_REWORKED')
@@ -296,23 +312,15 @@ async function main() {
     } else {
       logCheckComplete(`Checking for NOTIFICATION_TIMELINE_REWORKED... (not found)`)
     }
-    
-    logCheck(`Checking for NOTIFICATION_VIEWED...`)
-    if (timelineElements.some(x => x.timelineElementId.includes('NOTIFICATION_VIEWED'))) {
-      logStatus(`  ✗ Found NOTIFICATION_VIEWED`)
-      _recordBlocker(input.requestId, iun, 'NOTIFICATION_VIEWED')
-      continue
-    }
-    logCheckComplete(`Checking for NOTIFICATION_VIEWED... (passed)`)
-    
+
     logCheck(`Verifying timeline elements...`)
-    if (timelineElements.some(x => !x.timelineElementId.includes('REFINEMENT') && !x.timelineElementId.includes('ANALOG_WORKFLOW_RECIPIENT_DECEASED'))) {
+    if (timelineElements.some(x => (!(x.timelineElementId.includes('REFINEMENT') && x.timelineElementId.includes(`RECINDEX_${recIndex}`) && !(x.timelineElementId.includes('ANALOG_WORKFLOW_RECIPIENT_DECEASED') && x.timelineElementId.includes(attemptId) && x.timelineElementId.includes(`RECINDEX_${recIndex}`)))))) { 
       logStatus(`  ✗ Found unexpected timeline elements`)
-      _recordBlocker(input.requestId, iun, 'HAS_OTHER_TIMELINE_ELEMENTS')
+      _recordBlocker(input.requestId, iun, 'REFINEMENT_FEEDBACK_NOT_FOUND')
       continue
     }
     logCheckComplete(`Verifying timeline elements... (passed)`)
-    
+
     logCheck(`Checking attempt version...`)
     if (input.requestId.includes("ATTEMPT_1")) {
       const firstAttempt = input.requestId.replace("ATTEMPT_1", "ATTEMPT_0")
@@ -326,18 +334,11 @@ async function main() {
     } else {
       logCheckComplete(`Checking attempt version... (skipped - ATTEMPT_0)`)
     }
-    
+
     logCheck(`Validating attachments...`)
     const hasDocuments = await checkAttachments(awsClient, bucketName, iun)
     logCheckComplete(`Validating attachments... (passed)`)
-    
-    // Extract recIndex and attemptId from requestId
-    // Format: ...RECINDEX_0...ATTEMPT_1...
-    const recIndexMatch = input.requestId.match(/RECINDEX_(\d+)/)
-    const attemptMatch = input.requestId.match(/ATTEMPT_(\d+)/)
-    const recIndex = recIndexMatch ? recIndexMatch[1] : '0'
-    const attemptId = attemptMatch ? `ATTEMPT_${attemptMatch[1]}` : 'ATTEMPT_0'
-    
+
     // If not dryrun, execute restart-attempt API call
     if (!dryrun) {
       try {
@@ -357,7 +358,7 @@ async function main() {
         continue
       }
     }
-    
+
     report.totalSuccessful++
     report.successfulRequests.push({
       requestId: input.requestId,
@@ -367,7 +368,7 @@ async function main() {
     })
     logStatus(`  ✓ SUCCESS - All checks passed${!dryrun ? ' - API call executed' : ' (DRY RUN)'}`)
   }
-  
+
   _generateReport(envName)
 }
 
