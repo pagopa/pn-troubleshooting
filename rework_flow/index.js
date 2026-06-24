@@ -10,7 +10,9 @@ const rilevantTimelineElements = [
   "NOTIFICATION_TIMELINE_REWORKED",
   "NOTIFICATION_VIEWED",
   "REFINEMENT",
-  "ANALOG_WORKFLOW_RECIPIENT_DECEASED"
+  "ANALOG_WORKFLOW_RECIPIENT_DECEASED",
+  "SCHEDULE_REFINEMENT"
+  //aggiungi creation notifi viewed
 ]
 
 // Dynamic logging utilities
@@ -55,7 +57,7 @@ function _checkingParameters(args, values) {
 async function checkAttachments(awsClient, bucketName, iun) {
   const notifications = (await awsClient.core._queryRequest("pn-Notifications", 'iun', iun)).Items[0];
   const notifData = unmarshall(notifications)
-
+  let returnValue = true
   // Collect all documents to check
   const allDocuments = []
 
@@ -97,24 +99,21 @@ async function checkAttachments(awsClient, bucketName, iun) {
     }
   }
 
-  // Check all documents
   for (const doc of allDocuments) {
     let docExists = false
-    try {
-      const result = await awsClient.confinfo._getObjectCommand(bucketName, doc.key)
-      docExists = result.DeleteMarker ? false : true
-    } catch (error) {
-      // Document not found in S3
-      docExists = false
-    }
-
+    let deleteMarker = false
+    const result = await awsClient.confinfo._listObjectVersions(bucketName, doc.key)
+    docExists = result.Versions && result.Versions.find(version => version.Key === doc.key) ? true : false
+    deleteMarker = result.DeleteMarkers && result.DeleteMarkers.find(marker => marker.Key === doc.key && marker.IsLatest) ? true : false
     const ssDocumenti = await awsClient.confinfo._queryRequest("pn-SsDocumenti", 'documentKey', doc.key)
-    const docState = ssDocumenti.Items.length > 0 ? unmarshall(ssDocumenti.Items[0]).documentState == 'attached' : false
+    const docState = ssDocumenti.Items.length > 0 ? unmarshall(ssDocumenti.Items[0]).documentState : null
+    logStatus(`   ✗ Document [${doc.type}] ${doc.key}: S3Bucket=${docExists} DeleteMarker=${deleteMarker} SafeStorageState=${docState} `)
 
     if (!docExists || !docState || docState !== 'attached') {
-      logStatus(`    ✗ Document [${doc.type}] ${doc.key}: S3=${docExists} SafeStorage=${docState}`)
+      returnValue = false
     }
   }
+  return returnValue
 }
 
 async function _hasFoundEvents(awsClient, requestId) {
@@ -278,7 +277,7 @@ async function main() {
     logCheckComplete(`Checking for NOTIFICATION_CANCELLED... (passed)`)
 
     logCheck(`Checking for NOTIFICATION_VIEWED...`)
-    if (timelineElements.some(x => x.timelineElementId.includes('NOTIFICATION_VIEWED') && x.timelineElementId.includes(attemptId) && x.timelineElementId.includes(`RECINDEX_${recIndex}`))) {
+    if (timelineElements.some(x => x.timelineElementId.includes('NOTIFICATION_VIEWED') && x.timelineElementId.includes(`RECINDEX_${recIndex}`))) {
       logStatus(`  ✗ Found NOTIFICATION_VIEWED`)
       _recordBlocker(input.requestId, iun, 'NOTIFICATION_VIEWED')
       continue
@@ -286,12 +285,10 @@ async function main() {
     logCheckComplete(`Checking for NOTIFICATION_VIEWED... (passed)`)
 
     logCheck(`Filtering for relevant timeline elements...`)
-    timelineElements = timelineElements.filter(x => rilevantTimelineElements.some(el => x.timelineElementId.includes(el)))
+    timelineElements = timelineElements.filter(x => rilevantTimelineElements.some(el => x.category == el))
 
     if (timelineElements.length === 0) {
       logStatus(`  ✗ No relevant timeline elements found`)
-      _recordBlocker(input.requestId, iun, 'NO_RELEVANT_TIMELINE_ELEMENTS')
-      continue
     }
     logCheckComplete(`Filtering for relevant timeline elements... (found ${timelineElements.length})`)
 
@@ -314,7 +311,10 @@ async function main() {
     }
 
     logCheck(`Verifying timeline elements...`)
-    if (timelineElements.some(x => (!(x.timelineElementId.includes('REFINEMENT') && x.timelineElementId.includes(`RECINDEX_${recIndex}`) && !(x.timelineElementId.includes('ANALOG_WORKFLOW_RECIPIENT_DECEASED') && x.timelineElementId.includes(attemptId) && x.timelineElementId.includes(`RECINDEX_${recIndex}`)))))) { 
+    //se non c'è un refinement con recindex e non c'è un deceased con recindex, allora blocco
+    const hasRefinement = timelineElements.some(x => x.category === 'REFINEMENT' && x.timelineElementId.includes(`RECINDEX_${recIndex}`))
+    const hasDeceased = timelineElements.some(x => x.category === 'ANALOG_WORKFLOW_RECIPIENT_DECEASED' && x.timelineElementId.includes(`RECINDEX_${recIndex}`))
+    if (!hasRefinement && !hasDeceased) {
       logStatus(`  ✗ Found unexpected timeline elements`)
       _recordBlocker(input.requestId, iun, 'REFINEMENT_FEEDBACK_NOT_FOUND')
       continue
@@ -335,8 +335,13 @@ async function main() {
       logCheckComplete(`Checking attempt version... (skipped - ATTEMPT_0)`)
     }
 
-    logCheck(`Validating attachments...`)
+    logCheck(`Validating attachments...\n`)
     const hasDocuments = await checkAttachments(awsClient, bucketName, iun)
+    if (!hasDocuments) {
+      logStatus(`  ✗ Attachment validation failed`)
+      _recordBlocker(input.requestId, iun, 'ATTACHMENT_VALIDATION_FAILED')
+      continue
+    }
     logCheckComplete(`Validating attachments... (passed)`)
 
     // If not dryrun, execute restart-attempt API call
