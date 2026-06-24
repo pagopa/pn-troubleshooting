@@ -249,6 +249,11 @@ async function main() {
     console.log(`\n${progress} Processing requestId: ${input.requestId}`)
 
     const iun = _getIunFromRequestId(input.requestId)
+    if (!/^PN-\d+$/.test(input.task)) {
+      logStatus(`  ✗ Invalid task format: ${input.task}`)
+      _recordBlocker(input.requestId, iun, 'INVALID_TASK_FORMAT')
+      continue
+    }
 
     const recIndexMatch = input.requestId.match(/RECINDEX_(\d+)/)
     const attemptMatch = input.requestId.match(/ATTEMPT_(\d+)/)
