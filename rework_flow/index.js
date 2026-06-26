@@ -300,11 +300,13 @@ async function main() {
     logCheck(`Checking for NOTIFICATION_TIMELINE_REWORKED...`)
     const reworkElements = timelineElements.filter(x => x.timelineElementId.includes('NOTIFICATION_TIMELINE_REWORKED') && x.timelineElementId.includes(attemptId) && x.timelineElementId.includes(`RECINDEX_${recIndex}`));
     if (reworkElements.length > 0) {
-      for (const reworkElement of reworkElements) {
-        for (const relatedElementId of reworkElement.details.relatedTimelineElements) {
-          timelineElements = timelineElements.filter(x => x.timelineElementId !== relatedElementId)
-        }
-      }
+      const invalidatedRelatedElements = new Set(
+        reworkElements.flatMap(reworkElement =>
+          (reworkElement.details?.invalidatedTimelineAndStatusHistory || [])
+            .flatMap(invalidatedElementId => invalidatedElementId.relatedTimelineElements || [])
+        )
+      )
+      timelineElements = timelineElements.filter(x => !invalidatedRelatedElements.has(x.timelineElementId))
       if (timelineElements.length === 0) {
         logStatus(`  ✗ No elements found after timeline rework`)
         _recordBlocker(input.requestId, iun, 'NO_ELEMENTS_AFTER_TIMELINE_REWORKED')
