@@ -115,7 +115,7 @@ async function main() {
   let i = 0;
   let hasNext = true;
   while (hasNext) {
-    const response = await awsClient._receiveMessages(queueUrl, maxNumberOfMessages, visibilityTimeout);
+    const response = await awsClient._receiveMessages(queueUrl, maxNumberOfMessages, parseInt(visibilityTimeout));
     const messages = response.Messages;
     if (messages && messages.length > 0) {
       i = messages.length + i
