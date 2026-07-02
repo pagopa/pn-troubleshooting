@@ -55,10 +55,9 @@ fi
 
 # Itera su ogni ID dal file pending_fruizione_filtered.json e fai la chiamata curl
 echo "Eseguendo chiamate CURL per ogni ID presente in pending_fruizione_filtered.json..."
-> pending_fruizione_selfcareid.json
-echo '{ "tenants": [' > pending_fruizione_selfcareid.json
+RAW_SELFCAREID="pending_fruizione_selfcareid_raw.json"
+> "$RAW_SELFCAREID"
 
-FIRST=true
 for ID in $(jq -r '.results[].id' pending_fruizione_filtered.json); do
   echo "Processando ID: $ID"
   RESPONSE=$(curl -s "https://selfcare.interop.pagopa.it/1.0/backend-for-frontend/tenants/$ID" \
@@ -74,16 +73,17 @@ for ID in $(jq -r '.results[].id' pending_fruizione_filtered.json); do
     --header 'Sec-Fetch-Site: same-origin' \
     --header 'TE: trailers')
 
-  if [[ "$FIRST" == true ]]; then
-    echo "$RESPONSE" >> pending_fruizione_selfcareid.json
-    FIRST=false
+  # Scarta risposte vuote o non-JSON per evitare virgole spurie nel file finale
+  if [[ -n "$RESPONSE" ]] && echo "$RESPONSE" | jq -e . > /dev/null 2>&1; then
+    echo "$RESPONSE" >> "$RAW_SELFCAREID"
   else
-    echo ", $RESPONSE" >> pending_fruizione_selfcareid.json
+    echo "WARN: risposta vuota o non valida per tenant $ID, ignorata."
   fi
 done
 
-# Chiude il JSON
-echo '] }' >> pending_fruizione_selfcareid.json
+# Costruisce l'array JSON dallo stream di risposte (robusto: niente virgole manuali)
+jq -s '{ tenants: . }' "$RAW_SELFCAREID" > pending_fruizione_selfcareid.json
+rm -f "$RAW_SELFCAREID"
 
 echo "Generato il file pending_fruizione_selfcareid.json con le risposte delle chiamate."
 
@@ -119,35 +119,32 @@ echo "Inserisci il valore per Ocp-Apim-Subscription-Key:"
 read -s SUBSCRIPTION_KEY
 
 # Creazione del file pending_selfcare_result.json con la chiamata API
-TEMP_FILE="pending_selfcare_result_temp.json"
-> "$TEMP_FILE"
-echo '{ "results": [' > "$TEMP_FILE"
+RAW_SELFCARE="pending_selfcare_result_raw.json"
+> "$RAW_SELFCARE"
 
-FIRST=true
 jq -c '.results[]' pending_fruizione_filtered.json | while read -r item; do
   SELFCARE_ID=$(echo "$item" | jq -r '.selfcareId')
+
+  if [[ -z "$SELFCARE_ID" || "$SELFCARE_ID" == "null" ]]; then
+    echo "WARN: selfcareId mancante per un ente, richiesta saltata."
+    continue
+  fi
 
   echo "Eseguendo richiesta per selfcareId: $SELFCARE_ID..."
   RESPONSE=$(curl -s --location "https://api.selfcare.pagopa.it/external/internal/v1/institutions/$SELFCARE_ID" \
     --header "Ocp-Apim-Subscription-Key: $SUBSCRIPTION_KEY")
 
-  if ! echo "$RESPONSE" | jq empty > /dev/null 2>&1; then
-    echo "Errore: La risposta per selfcareId $SELFCARE_ID non è un JSON valido."
-    echo "Risposta ricevuta: $RESPONSE"
-    exit 1
-  fi
-
-  if [[ "$FIRST" == true ]]; then
-    echo "$RESPONSE" >> "$TEMP_FILE"
-    FIRST=false
+  # Scarta risposte vuote o non-JSON (es. ente non trovato): evitano virgole spurie
+  if [[ -n "$RESPONSE" ]] && echo "$RESPONSE" | jq -e . > /dev/null 2>&1; then
+    echo "$RESPONSE" >> "$RAW_SELFCARE"
   else
-    echo ", $RESPONSE" >> "$TEMP_FILE"
+    echo "WARN: risposta vuota o non valida per selfcareId $SELFCARE_ID, ignorata."
   fi
 done
 
-# Chiude il JSON
-echo '] }' >> "$TEMP_FILE"
-mv "$TEMP_FILE" "pending_selfcare_result.json"
+# Costruisce l'array JSON dallo stream di risposte (robusto: niente virgole manuali)
+jq -s '{ results: . }' "$RAW_SELFCARE" > pending_selfcare_result.json
+rm -f "$RAW_SELFCARE"
 
 if [[ -f "pending_selfcare_result.json" && -s "pending_selfcare_result.json" ]]; then
   echo "File pending_selfcare_result.json generato con successo."
@@ -167,8 +164,8 @@ jq -c '.results[]' pending_fruizione_filtered.json | while IFS= read -r item; do
   NAME=$(echo "$item" | jq -r '.name')
   SELFCARE_ID=$(echo "$item" | jq -r '.selfcareId')
 
-  ONBOARDING=$(jq --arg selfcareId "$SELFCARE_ID" -c '.results[] | select(.id == $selfcareId) | .onboarding' pending_selfcare_result.json)
- 
+  ONBOARDING=$(jq --arg selfcareId "$SELFCARE_ID" -c '[ .results[] | select(.id == $selfcareId) | .onboarding // empty ] | add // []' pending_selfcare_result.json)
+
  # Nel caso l'ente abbia SEND e PDND attivi possiamo marcare come "ok"
   HAS_PN=$(echo "$ONBOARDING" | jq -r '.[] | select(.productId == "prod-pn" and .status == "ACTIVE") | .productId' | wc -l)
   HAS_PDND=$(echo "$ONBOARDING" | jq -r '.[] | select(.productId == "prod-interop" and .status == "ACTIVE") | .productId' | wc -l)

@@ -288,23 +288,38 @@ def check_dynamodb_paper_request_error(timeline_element_ids, profile_name=None):
     
     result_map = {}
     table_name = 'pn-PaperRequestError'
-    
+    # Alcuni record vengono salvati con il requestId prefissato da 'NRG_ADDRESS_'
+    # (es. NRG_ADDRESS_PREPARE_ANALOG_DOMICILE.IUN_...). In questi casi l'elemento
+    # e' comunque presente in pn-PaperRequestError e NON deve essere segnalato come
+    # anomalia: si tratta di un falso positivo.
+    nrg_address_prefix = 'NRG_ADDRESS_'
+
+    def request_id_exists(request_id):
+        """Verifica su pn-PaperRequestError se esiste un record con quel requestId."""
+        response = dynamodb.query(
+            TableName=table_name,
+            KeyConditionExpression='requestId = :rid',
+            ExpressionAttributeValues={
+                ':rid': {'S': request_id}
+            },
+            Limit=1,
+            Select='COUNT'
+        )
+        return response.get('Count', 0) > 0
+
     # Query per ogni timeline_element_id individualmente
     for idx, timeline_id in enumerate(timeline_element_ids):
         try:
-            # Cerca esattamente il requestId usando query (funziona solo con partition key)
-            response = dynamodb.query(
-                TableName=table_name,
-                KeyConditionExpression='requestId = :rid',
-                ExpressionAttributeValues={
-                    ':rid': {'S': timeline_id}
-                },
-                Limit=1,
-                Select='COUNT'
-            )
-            
-            # Se Count > 0, il record esiste
-            result_map[timeline_id] = response.get('Count', 0) > 0
+            # Cerca esattamente il requestId (la query funziona solo con la partition key)
+            found = request_id_exists(timeline_id)
+
+            # Fallback anti falsi-positivi: verifica anche la variante con prefisso
+            # NRG_ADDRESS_, usata quando il record e' salvato con tale prefisso.
+            if not found:
+                found = request_id_exists(nrg_address_prefix + timeline_id)
+
+            # Se trovato (con o senza prefisso), il record esiste
+            result_map[timeline_id] = found
             
             # Mostra progresso ogni 100 verifiche con esempio di query
             if (idx + 1) % 100 == 0:
