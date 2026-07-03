@@ -124,6 +124,11 @@ Lo script produce due tipi di output:
 
 Il file `prepare_analog_domicile_latest.json` contiene solo i casi problematici (hasResult=false e NON in PaperRequestError):
 
+> **Nota sui falsi positivi:** la verifica su `pn-PaperRequestError` cerca il
+> `requestId` uguale al `timelineElementId` e, se non lo trova, ripete la ricerca
+> con il prefisso `NRG_ADDRESS_` (es. `NRG_ADDRESS_PREPARE_ANALOG_DOMICILE.IUN_...`).
+> Se il record esiste in una delle due forme, il caso NON viene segnalato.
+
 ```json
 {
   "analysis": [
