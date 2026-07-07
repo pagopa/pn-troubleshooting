@@ -1130,25 +1130,29 @@ def main():
         followup_start_time = start_time
         followup_end_time = now
         
-        # Salva i risultati in JSON nella directory result o S3
-        if data_list:
-            json_file = save_results_to_json(
-                data_list, 
-                result_dir, 
-                args.database,
-                output_location,
-                followup_start_time,
-                followup_end_time,
-                args.full_analysis,
-                args.profile, 
-                args.workgroup,
-                prepare_end_time=end_time,
-                s3_bucket=args.s3_result_bucket,
-                table=args.table
-            )
-            print(f"\nRisultati salvati: {json_file}")
-        else:
-            print(f"\nNessun nuovo risultato da salvare")
+        # Salva i risultati in JSON nella directory result o S3.
+        # NB: chiamiamo save_results_to_json anche quando non ci sono nuove PREPARE
+        # (data_list vuota), perche' e' al suo interno che i casi gia' aperti
+        # vengono ricaricati e riverificati (follow-up, PaperRequestError,
+        # NOTIFICATION_VIEWED) e vengono aggiornati statistics.json/latest.json.
+        if not data_list:
+            print(f"\nNessuna nuova PREPARE nella finestra: riverifico solo i casi gia' aperti")
+
+        json_file = save_results_to_json(
+            data_list,
+            result_dir,
+            args.database,
+            output_location,
+            followup_start_time,
+            followup_end_time,
+            args.full_analysis,
+            args.profile,
+            args.workgroup,
+            prepare_end_time=end_time,
+            s3_bucket=args.s3_result_bucket,
+            table=args.table
+        )
+        print(f"\nRisultati salvati: {json_file}")
         
         print(f"\nI risultati completi CSV sono salvati in: {output_location}{query_execution_id}.csv")
         

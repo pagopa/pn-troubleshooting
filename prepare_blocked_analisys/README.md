@@ -107,6 +107,10 @@ Lo script utilizza `statistics.json` per esecuzioni incrementali senza gap:
 - Gli eventi follow-up vengono sempre cercati da `start-time` fino a `now` (ora corrente)
 - Questo assicura che vengano catturati anche eventi arrivati dopo l'end-time delle PREPARE
 
+### Riverifica dei casi gia' aperti
+- Ad ogni esecuzione i casi ancora aperti (letti da `prepare_analog_domicile_latest.json`) vengono **sempre riverificati** contro follow-up, `pn-PaperRequestError` e `NOTIFICATION_VIEWED`, **anche quando nella finestra non ci sono nuove PREPARE**.
+- Di conseguenza `statistics.json` e `prepare_analog_domicile_latest.json` vengono aggiornati (e `last_update` avanzato) ad ogni giro, garantendo che i casi aperti possano chiudersi anche in giornate senza nuove PREPARE.
+
 ### Timeout e Lambda
 - **Timeout**: 14 minuti (840 secondi) per compatibilità Lambda (max 15 minuti)
 - **Checkpoint**: Se raggiunto il timeout, salva i progressi e riprende al prossimo giro
