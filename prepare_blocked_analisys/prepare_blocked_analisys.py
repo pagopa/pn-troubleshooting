@@ -462,16 +462,22 @@ def download_followup_events(start_time, end_time, database, output_location, pr
         return {}
 
 
-def download_notification_viewed_events(start_time, end_time, database, output_location, profile_name=None, workgroup='primary', table='pn_timelines_json_view'):
+def download_notification_viewed_events(candidate_iuns, start_time, end_time, database, output_location, profile_name=None, workgroup='primary', table='pn_timelines_json_view'):
     """
-    Scarica tutti gli eventi NOTIFICATION_VIEWED nell'intervallo temporale
-    specificato (stessa finestra della verifica follow-up).
+    Scarica gli eventi NOTIFICATION_VIEWED, nella finestra temporale indicata,
+    limitatamente agli IUN candidati (le PREPARE senza follow-up da verificare).
 
     Il modello e' quello incrementale/giornaliero: la Lambda gira ogni giorno e
     ripassa sia i nuovi candidati sia i casi ancora aperti; un caso si chiude
     quando il relativo NOTIFICATION_VIEWED ricade nella finestra corrente.
 
+    A differenza del follow-up SEND/COMPLETELY_UNREACHABLE, qui filtriamo la query
+    per `iun IN (candidati)`: i candidati sono gia' noti prima della query, quindi
+    scarichiamo solo i VIEWED che ci interessano (query piu' leggera e conteggi
+    significativi).
+
     Args:
+        candidate_iuns: lista/insieme di IUN candidati da verificare
         start_time: Tempo di inizio assoluto
         end_time: Tempo di fine assoluto
         database: Il database Athena da utilizzare
@@ -483,6 +489,10 @@ def download_notification_viewed_events(start_time, end_time, database, output_l
     Returns:
         dict: Dizionario {iun: viewed_timestamp_iso} (il piu' recente per IUN)
     """
+    candidate_iuns = [i for i in set(candidate_iuns) if i]
+    if not candidate_iuns:
+        return {}
+
     # Crea la sessione con il profilo specificato
     if profile_name:
         session = boto3.Session(profile_name=profile_name)
@@ -507,16 +517,18 @@ def download_notification_viewed_events(start_time, end_time, database, output_l
 
     partition_condition = " OR ".join(partition_filter)
 
+    iun_in_list = "', '".join(candidate_iuns)
     query = f"""
     SELECT iun, timestamp
     FROM {table}
     WHERE category = 'NOTIFICATION_VIEWED'
+        AND iun IN ('{iun_in_list}')
         AND ({partition_condition})
         AND timestamp >= '{start_time_iso}'
         AND timestamp < '{end_time_iso}'
     """
 
-    print(f"\nEsecuzione query per scaricare gli eventi NOTIFICATION_VIEWED...")
+    print(f"\nEsecuzione query NOTIFICATION_VIEWED per {len(candidate_iuns)} IUN candidati...")
     print(f"Intervallo: [{start_time.strftime('%Y-%m-%d %H:%M:%S')}, {end_time.strftime('%Y-%m-%d %H:%M:%S')}]")
     print(f"\nQuery NOTIFICATION_VIEWED:\n{query}\n")
 
@@ -582,7 +594,7 @@ def download_notification_viewed_events(start_time, end_time, database, output_l
             else:
                 break
 
-        print(f"Scaricati {len(viewed_map)} IUN con eventi NOTIFICATION_VIEWED")
+        print(f"Trovati {len(viewed_map)} IUN candidati con NOTIFICATION_VIEWED nella finestra")
         return viewed_map
 
     except Exception as e:
@@ -742,9 +754,10 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
     # Stessa finestra della verifica follow-up (modello incrementale giornaliero):
     # se nella finestra corrente compare un NOTIFICATION_VIEWED per un candidato
     # (nuovo o gia' aperto) con timestamp >= PREPARE, il caso non e' bloccato.
-    print(f"\nVerifica NOTIFICATION_VIEWED (successivo alla PREPARE) per {len(viewed_candidates)} IUN candidati...")
+    print(f"\nVerifica NOTIFICATION_VIEWED (successivo alla PREPARE) per {len(viewed_candidates)} IUN candidati (PREPARE senza follow-up)...")
+    candidate_iuns = [c_iun for c_iun, _ in viewed_candidates]
     viewed_map = download_notification_viewed_events(
-        start_time, end_time, database, output_location, profile_name, workgroup, table
+        candidate_iuns, start_time, end_time, database, output_location, profile_name, workgroup, table
     )
     viewed_iuns = set()
     for cand_iun, prepare_ts in viewed_candidates:
@@ -753,6 +766,7 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
         if v_ts and prepare_ts and v_ts >= prepare_ts:
             viewed_iuns.add(cand_iun)
     notification_viewed_count = len(viewed_iuns)
+    print(f"Casi candidati chiusi da NOTIFICATION_VIEWED (VIEWED >= PREPARE): {notification_viewed_count} su {len(viewed_candidates)}")
     
     # Filtra solo i campi richiesti e aggiungi i risultati della verifica
     filtered_results = []
