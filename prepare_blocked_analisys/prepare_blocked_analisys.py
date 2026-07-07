@@ -462,6 +462,134 @@ def download_followup_events(start_time, end_time, database, output_location, pr
         return {}
 
 
+def download_notification_viewed_events(start_time, end_time, database, output_location, profile_name=None, workgroup='primary', table='pn_timelines_json_view'):
+    """
+    Scarica tutti gli eventi NOTIFICATION_VIEWED nell'intervallo temporale
+    specificato (stessa finestra della verifica follow-up).
+
+    Il modello e' quello incrementale/giornaliero: la Lambda gira ogni giorno e
+    ripassa sia i nuovi candidati sia i casi ancora aperti; un caso si chiude
+    quando il relativo NOTIFICATION_VIEWED ricade nella finestra corrente.
+
+    Args:
+        start_time: Tempo di inizio assoluto
+        end_time: Tempo di fine assoluto
+        database: Il database Athena da utilizzare
+        output_location: Il percorso S3 per i risultati Athena
+        profile_name: Il profilo AWS da utilizzare (opzionale)
+        workgroup: Il workgroup Athena da utilizzare
+        table: La tabella/view Athena da interrogare
+
+    Returns:
+        dict: Dizionario {iun: viewed_timestamp_iso} (il piu' recente per IUN)
+    """
+    # Crea la sessione con il profilo specificato
+    if profile_name:
+        session = boto3.Session(profile_name=profile_name)
+        athena_client = session.client('athena')
+    else:
+        athena_client = boto3.client('athena')
+
+    # Formatta per la query ISO 8601
+    start_time_iso = start_time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+    end_time_iso = end_time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+    # Calcola le partizioni da includere (tutti i giorni dall'inizio alla fine)
+    partition_filter = []
+    current_date = start_time.date()
+    end_date = end_time.date()
+    while current_date <= end_date:
+        year = current_date.strftime('%Y')
+        month = current_date.strftime('%m')
+        day = current_date.strftime('%d')
+        partition_filter.append(f"(p_year = '{year}' AND p_month = '{month}' AND p_day = '{day}')")
+        current_date += timedelta(days=1)
+
+    partition_condition = " OR ".join(partition_filter)
+
+    query = f"""
+    SELECT iun, timestamp
+    FROM {table}
+    WHERE category = 'NOTIFICATION_VIEWED'
+        AND ({partition_condition})
+        AND timestamp >= '{start_time_iso}'
+        AND timestamp < '{end_time_iso}'
+    """
+
+    print(f"\nEsecuzione query per scaricare gli eventi NOTIFICATION_VIEWED...")
+    print(f"Intervallo: [{start_time.strftime('%Y-%m-%d %H:%M:%S')}, {end_time.strftime('%Y-%m-%d %H:%M:%S')}]")
+    print(f"\nQuery NOTIFICATION_VIEWED:\n{query}\n")
+
+    viewed_map = {}
+    try:
+        query_params = {
+            'QueryString': query,
+            'QueryExecutionContext': {'Database': database},
+            'WorkGroup': workgroup
+        }
+
+        if output_location:
+            query_params['ResultConfiguration'] = {'OutputLocation': output_location}
+
+        response = athena_client.start_query_execution(**query_params)
+        query_execution_id = response['QueryExecutionId']
+
+        # Attende il completamento
+        while True:
+            query_status = athena_client.get_query_execution(
+                QueryExecutionId=query_execution_id
+            )
+            status = query_status['QueryExecution']['Status']['State']
+
+            if status == 'SUCCEEDED':
+                break
+            elif status in ['FAILED', 'CANCELLED']:
+                error_message = query_status['QueryExecution']['Status'].get('StateChangeReason', 'Unknown error')
+                print(f"Query NOTIFICATION_VIEWED fallita: {error_message}")
+                return {}
+
+            time.sleep(2)
+
+        print("Query completata, recupero risultati...")
+
+        # Recupera i risultati con paginazione
+        next_token = None
+        while True:
+            if next_token:
+                response = athena_client.get_query_results(
+                    QueryExecutionId=query_execution_id,
+                    NextToken=next_token
+                )
+            else:
+                response = athena_client.get_query_results(
+                    QueryExecutionId=query_execution_id
+                )
+
+            rows = response['ResultSet']['Rows']
+            start_index = 1 if next_token is None else 0
+
+            for row in rows[start_index:]:
+                iun = row['Data'][0].get('VarCharValue', '')
+                viewed_ts = row['Data'][1].get('VarCharValue', '')
+                if not iun or not viewed_ts:
+                    continue
+                # Mantiene il VIEWED piu' recente per ogni IUN
+                if iun not in viewed_map or viewed_ts > viewed_map[iun]:
+                    viewed_map[iun] = viewed_ts
+
+            if 'NextToken' in response:
+                next_token = response['NextToken']
+            else:
+                break
+
+        print(f"Scaricati {len(viewed_map)} IUN con eventi NOTIFICATION_VIEWED")
+        return viewed_map
+
+    except Exception as e:
+        print(f"Errore durante il download degli eventi NOTIFICATION_VIEWED: {e}")
+        return {}
+
+
 def save_results_to_json(data_list, output_dir, database, output_location, followup_start_time, followup_end_time, full_analysis=False, profile_name=None, workgroup='primary', prepare_end_time=None, s3_bucket=None, table='pn_timelines_json_view'):
     """
     Salva i risultati in un file JSON nella directory specificata o su S3.
@@ -591,22 +719,40 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
     
     # Raccogli tutti i timelineElementId per cui hasResult = false
     timeline_ids_to_check = []
+    viewed_candidates = []
     for iun, row in iun_to_data.items():
         timeline_id = row.get('timelineElementId', '')
-        
+
         if iun in result_map:
             has_result, _ = result_map[iun]
         else:
             has_result = False
-        
+
         if not has_result and timeline_id:
             timeline_ids_to_check.append(timeline_id)
-    
+            viewed_candidates.append((iun, row.get('timestamp', '')))
+
     # Verifica su DynamoDB pn-PaperRequestError
     print(f"\nVerifica su DynamoDB pn-PaperRequestError per {len(timeline_ids_to_check)} timelineElementId...")
     dynamodb_map = check_dynamodb_paper_request_error(timeline_ids_to_check, profile_name)
     total_found_in_dynamodb = sum(1 for v in dynamodb_map.values() if v)
     print(f"Trovati {total_found_in_dynamodb} elementi in pn-PaperRequestError")
+
+    # Verifica su timeline: NOTIFICATION_VIEWED successivo alla PREPARE.
+    # Stessa finestra della verifica follow-up (modello incrementale giornaliero):
+    # se nella finestra corrente compare un NOTIFICATION_VIEWED per un candidato
+    # (nuovo o gia' aperto) con timestamp >= PREPARE, il caso non e' bloccato.
+    print(f"\nVerifica NOTIFICATION_VIEWED (successivo alla PREPARE) per {len(viewed_candidates)} IUN candidati...")
+    viewed_map = download_notification_viewed_events(
+        start_time, end_time, database, output_location, profile_name, workgroup, table
+    )
+    viewed_iuns = set()
+    for cand_iun, prepare_ts in viewed_candidates:
+        v_ts = viewed_map.get(cand_iun)
+        # Confronto lessicografico valido: entrambi ISO 8601 UTC con suffisso 'Z'
+        if v_ts and prepare_ts and v_ts >= prepare_ts:
+            viewed_iuns.add(cand_iun)
+    notification_viewed_count = len(viewed_iuns)
     
     # Filtra solo i campi richiesti e aggiungi i risultati della verifica
     filtered_results = []
@@ -628,8 +774,9 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
         is_problematic = False
         if not has_result:
             is_in_paper_error = dynamodb_map.get(timeline_id, False)
-            is_problematic = not is_in_paper_error
-        
+            is_viewed = iun in viewed_iuns
+            is_problematic = (not is_in_paper_error) and (not is_viewed)
+
         if full_analysis:
             # Modalità full analysis: stampa tutto
             filtered_row = {
@@ -643,6 +790,7 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
                 filtered_row['hasResultType'] = result_type
             else:
                 filtered_row['isInPaperRequestError'] = dynamodb_map.get(timeline_id, False)
+                filtered_row['isNotificationViewed'] = iun in viewed_iuns
             
             filtered_results.append(filtered_row)
             
@@ -652,14 +800,15 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
                 if iun not in existing_data:
                     new_cases_count += 1
         else:
-            # Modalità standard: filtra solo i casi con hasResult=false e isInPaperRequestError=false
+            # Modalità standard: filtra solo i casi con hasResult=false, isInPaperRequestError=false e non visualizzati
             if is_problematic:
                 filtered_row = {
                     'timestamp': ts,
                     'iun': iun,
                     'timelineElementId': timeline_id,
                     'hasResult': False,
-                    'isInPaperRequestError': False
+                    'isInPaperRequestError': False,
+                    'isNotificationViewed': False
                 }
                 filtered_results.append(filtered_row)
                 problematic_cases.append(filtered_row)
@@ -721,14 +870,15 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
     last_update_timestamp = prepare_end_time.strftime('%Y-%m-%d %H:%M:%S') if prepare_end_time else datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     
     # Calcola total_results come somma di verifica
-    total_results = send_count + completely_unreachable_count + total_found_in_dynamodb
-    
+    total_results = send_count + completely_unreachable_count + total_found_in_dynamodb + notification_viewed_count
+
     current_stats = {
         'timestamp': last_update_timestamp,
         'total_iun_analyzed': len(all_iuns_to_check),
         'iun_with_send_analog': send_count,
         'iun_with_completely_unreachable': completely_unreachable_count,
         'found_in_paper_request_error': total_found_in_dynamodb,
+        'notification_viewed_after_prepare': notification_viewed_count,
         'total_results': total_results,
         'resolved_cases': resolved_count,
         'new_cases': new_cases_count,
