@@ -5,11 +5,12 @@ async function restartAttempt(iun, attemptId, recIndex, reason, task) {
     };
     let data = {
         "attemptId": attemptId,
-        "recIndex": recIndex,
+        "recIndex": `RECINDEX_${recIndex}`,
         "reason": reason,
         "task": task
     };
 
+    console.log(url, headers, data);
     let response = await fetch(url, {
         method: 'PUT',
         headers: headers,
