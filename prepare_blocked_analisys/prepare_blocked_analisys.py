@@ -11,7 +11,7 @@ import time
 import json
 import os
 import signal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 
@@ -882,7 +882,7 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
     
     # Aggiungi le statistiche correnti (sempre basate sui casi problematici)
     # Usa prepare_end_time come timestamp (rappresenta fino a quando abbiamo analizzato)
-    last_update_timestamp = prepare_end_time.strftime('%Y-%m-%d %H:%M:%S') if prepare_end_time else datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    last_update_timestamp = prepare_end_time.strftime('%Y-%m-%d %H:%M:%S') if prepare_end_time else datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     
     # Calcola total_results come somma di verifica
     total_results = send_count + completely_unreachable_count + total_found_in_dynamodb + notification_viewed_count
@@ -1013,8 +1013,8 @@ def main():
     signal.alarm(args.timeout)
     
     try:
-        # Calcola gli intervalli temporali
-        now = datetime.utcnow()
+        # Calcola gli intervalli temporali (UTC naive, coerente con i valori da strptime)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         
         # Percorso file statistiche (locale o S3)
         script_dir = Path(__file__).parent
