@@ -981,6 +981,12 @@ def main():
         default=None
     )
     parser.add_argument(
+        '--lookback-hours',
+        type=int,
+        help='Ore di look-back applicate SOLO in modalita\' incrementale: start_time = last_update - lookback (overlap per recuperare PREPARE arrivate in ritardo). Default: 24',
+        default=24
+    )
+    parser.add_argument(
         '--full-analysis',
         action='store_true',
         help='Stampa tutti i risultati, non solo i casi con hasResult=false e isInPaperRequestError=false',
@@ -1046,9 +1052,13 @@ def main():
             start_time = datetime.strptime(args.start_time, '%Y-%m-%d %H:%M:%S')
             print(f"Usando start_time manuale: {start_time}")
         elif last_update:
-            # Riprende da last_update (esecuzione incrementale)
-            start_time = last_update
-            print(f"Esecuzione incrementale: start_time = last_update")
+            # Riprende da last_update con un look-back per creare una finestra
+            # sovrapposta: evita di perdere PREPARE arrivate in ritardo (ingestion
+            # lag) con timestamp in un range gia' marcato come processato.
+            # La riverifica e' idempotente per IUN, quindi l'overlap e' sicuro.
+            lookback = max(0, args.lookback_hours)
+            start_time = last_update - timedelta(hours=lookback)
+            print(f"Esecuzione incrementale: start_time = last_update - {lookback}h di look-back")
         else:
             # Prima esecuzione o statistics.json non trovato
             start_time = now - timedelta(hours=24)
