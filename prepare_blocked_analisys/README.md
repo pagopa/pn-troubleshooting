@@ -1,7 +1,7 @@
 # Query PREPARE_ANALOG_DOMICILE su Athena
 
 Script Python per interrogare Athena ed analizzare tutte le `PREPARE_ANALOG_DOMICILE` in un intervallo temporale specifico. L'intervallo e' automatizzato in base al valore last_update nel file statistics.json, se non presente analizza le ultime 24 ore. (volendo si puo' forzare cambiando l'orario nel file json delle statistiche).
-Lo script cerca tutte PREPARE in un intervallo (es. -24 ore, -1 ora) e SEND_ANALOG/COMPLETELY_UNREACHABLE  (es. -24 ore, 0 ore), se a seguito di una PREPARE non e' presente alcun evento SEND_ANALOG/COMPLETELY_UNREACHABLE allora cerca la requestID nella tabella pn-PaperReqeust-error. Se anche questa ricerca fallisce verifica se sulla timeline esiste un `NOTIFICATION_VIEWED` **successivo** alla PREPARE: in tal caso il caso NON e' bloccato (il destinatario ha visualizzato la notifica) e viene chiuso/ignorato. Solo se tutte queste verifiche falliscono marca il requestID/IUN come da attenzionare.
+Lo script cerca tutte PREPARE in un intervallo (es. -24 ore, -1 ora) e SEND_ANALOG/COMPLETELY_UNREACHABLE  (es. -24 ore, 0 ore), se a seguito di una PREPARE non e' presente alcun evento SEND_ANALOG/COMPLETELY_UNREACHABLE allora cerca la requestID nella tabella pn-PaperRequestError. Se anche questa ricerca fallisce verifica se sulla timeline esiste un `NOTIFICATION_VIEWED` **successivo** alla PREPARE: in tal caso il caso NON e' bloccato (il destinatario ha visualizzato la notifica) e viene chiuso/ignorato. Solo se tutte queste verifiche falliscono marca il requestID/IUN come da attenzionare.
 
 ## Requisiti
 
