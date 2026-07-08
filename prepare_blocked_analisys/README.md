@@ -46,6 +46,7 @@ python query_prepare_analog_domicile.py \
 - `--workgroup`: **(Opzionale)** Workgroup Athena da utilizzare (default: `primary`)
 - `--start-time`: **(Opzionale)** Ora di inizio assoluta nel formato `YYYY-MM-DD HH:MM:SS`. Se non specificato, usa `last_update` da statistics.json o default -24h
 - `--end-time`: **(Opzionale)** Ora di fine assoluta nel formato `YYYY-MM-DD HH:MM:SS` (default: now - 1 ora)
+- `--lookback-hours`: **(Opzionale)** Ore di look-back applicate **solo in modalità incrementale**: `start_time = last_update - lookback`. Crea una finestra sovrapposta per recuperare PREPARE arrivate in ritardo nel datalake (ingestion lag) con timestamp in un range già processato. Non ha effetto se si passa `--start-time`. Default: `24`
 - `--full-analysis`: **(Opzionale)** Flag per attivare la modalità full analysis che stampa tutti i risultati, non solo i casi con hasResult=false e isInPaperRequestError=false
 - `--timeout`: **(Opzionale)** Timeout in secondi per l'esecuzione (default: 840 = 14 minuti per mettere script in una Lambda)
 - `--s3-result-bucket`: **(Opzionale)** Bucket S3 dove salvare i file JSON di risultato (es: `s3://bucket-name/path/`). Se non specificato, salva in locale nella cartella `result/`
@@ -95,13 +96,19 @@ In questo caso i file `prepare_analog_domicile_latest.json` e `statistics.json` 
 ### Esecuzione Incrementale (Automatica)
 Lo script utilizza `statistics.json` per esecuzioni incrementali senza gap:
 - **Prima esecuzione**: Analizza `[-24h, now-1h]`
-- **Esecuzioni successive**: Riprende da `last_update` salvato in `statistics.json`
-- **Esempio**: Se `last_update = 2024-12-17 10:00:00`, la prossima esecuzione analizzerà `[2024-12-17 10:00:00, now-1h]`
+- **Esecuzioni successive**: Riprende da `last_update - lookback` salvato in `statistics.json` (look-back di default 24h)
+- **Esempio**: Se `last_update = 2024-12-17 10:00:00` e look-back = 24h, la prossima esecuzione analizzerà `[2024-12-16 10:00:00, now-1h]`
+
+### Look-back / overlap (recupero dati in ritardo)
+- Ogni esecuzione incrementale parte da `last_update - lookback` (default 24h, parametro `--lookback-hours`), creando una **finestra sovrapposta** con il run precedente.
+- Serve a recuperare le PREPARE che arrivano in ritardo nel datalake (ingestion lag CDC) con `timestamp` in un range già marcato come processato: senza overlap, avanzando `last_update`, verrebbero **perse definitivamente** (comportamento "strictly-once").
+- L'overlap è **idempotente**: i casi sono deduplicati per IUN (le PREPARE risolte non vengono riaperte né ricontate, i casi già aperti vengono solo riverificati), quindi rielaborare la finestra sovrapposta non produce doppioni.
+- Con `--start-time` esplicito il look-back **non** viene applicato.
 
 ### Query PREPARE_ANALOG_DOMICILE
-- **Default automatico**: `[last_update, now-1h]` (se esiste statistics.json) oppure `[-24h, now-1h]` (prima esecuzione)
-- **Manuale**: `--start-time` e `--end-time` per sovrascrivere il comportamento automatico
-- Cerca i PREPARE in una finestra temporale incrementale senza sovrapposizioni
+- **Default automatico**: `[last_update - lookback, now-1h]` (se esiste statistics.json) oppure `[-24h, now-1h]` (prima esecuzione)
+- **Manuale**: `--start-time` e `--end-time` per sovrascrivere il comportamento automatico (il look-back non viene applicato con `--start-time`)
+- Cerca i PREPARE in una finestra temporale incrementale con overlap di look-back (nessun gap)
 
 ### Query Follow-up (SEND/COMPLETELY_UNREACHABLE)
 - Gli eventi follow-up vengono sempre cercati da `start-time` fino a `now` (ora corrente)
