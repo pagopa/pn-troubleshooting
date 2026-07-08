@@ -517,15 +517,17 @@ def download_notification_viewed_events(candidate_iuns, start_time, end_time, da
 
     partition_condition = " OR ".join(partition_filter)
 
-    iun_in_list = "', '".join(candidate_iuns)
+    # Escape di eventuali apici singoli negli IUN (raddoppio, sintassi Presto/Athena)
+    iun_in_list = "', '".join(i.replace("'", "''") for i in candidate_iuns)
     query = f"""
-    SELECT iun, timestamp
+    SELECT iun, MAX(timestamp) AS last_viewed
     FROM {table}
     WHERE category = 'NOTIFICATION_VIEWED'
         AND iun IN ('{iun_in_list}')
         AND ({partition_condition})
         AND timestamp >= '{start_time_iso}'
         AND timestamp < '{end_time_iso}'
+    GROUP BY iun
     """
 
     print(f"\nEsecuzione query NOTIFICATION_VIEWED per {len(candidate_iuns)} IUN candidati...")
@@ -585,9 +587,8 @@ def download_notification_viewed_events(candidate_iuns, start_time, end_time, da
                 viewed_ts = row['Data'][1].get('VarCharValue', '')
                 if not iun or not viewed_ts:
                     continue
-                # Mantiene il VIEWED piu' recente per ogni IUN
-                if iun not in viewed_map or viewed_ts > viewed_map[iun]:
-                    viewed_map[iun] = viewed_ts
+                # Athena restituisce gia' il MAX(timestamp) per IUN (GROUP BY iun)
+                viewed_map[iun] = viewed_ts
 
             if 'NextToken' in response:
                 next_token = response['NextToken']
