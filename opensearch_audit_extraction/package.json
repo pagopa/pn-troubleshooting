@@ -1,0 +1,15 @@
+{
+	"name": "opensearch-audit-extraction",
+	"version": "1.0.0",
+	"description": "Estrazione KPI audit da OpenSearch con output Excel",
+	"main": "index.js",
+	"scripts": {
+		"start": "node index.js",
+		"check": "node --check index.js"
+	},
+	"license": "ISC",
+	"dependencies": {
+		"dotenv": "^16.4.7",
+		"exceljs": "^4.4.0"
+	}
+}
