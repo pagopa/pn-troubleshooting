@@ -11,7 +11,7 @@ import time
 import json
 import os
 import signal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 
@@ -288,23 +288,38 @@ def check_dynamodb_paper_request_error(timeline_element_ids, profile_name=None):
     
     result_map = {}
     table_name = 'pn-PaperRequestError'
-    
+    # Alcuni record vengono salvati con il requestId prefissato da 'NRG_ADDRESS_'
+    # (es. NRG_ADDRESS_PREPARE_ANALOG_DOMICILE.IUN_...). In questi casi l'elemento
+    # e' comunque presente in pn-PaperRequestError e NON deve essere segnalato come
+    # anomalia: si tratta di un falso positivo.
+    nrg_address_prefix = 'NRG_ADDRESS_'
+
+    def request_id_exists(request_id):
+        """Verifica su pn-PaperRequestError se esiste un record con quel requestId."""
+        response = dynamodb.query(
+            TableName=table_name,
+            KeyConditionExpression='requestId = :rid',
+            ExpressionAttributeValues={
+                ':rid': {'S': request_id}
+            },
+            Limit=1,
+            Select='COUNT'
+        )
+        return response.get('Count', 0) > 0
+
     # Query per ogni timeline_element_id individualmente
     for idx, timeline_id in enumerate(timeline_element_ids):
         try:
-            # Cerca esattamente il requestId usando query (funziona solo con partition key)
-            response = dynamodb.query(
-                TableName=table_name,
-                KeyConditionExpression='requestId = :rid',
-                ExpressionAttributeValues={
-                    ':rid': {'S': timeline_id}
-                },
-                Limit=1,
-                Select='COUNT'
-            )
-            
-            # Se Count > 0, il record esiste
-            result_map[timeline_id] = response.get('Count', 0) > 0
+            # Cerca esattamente il requestId (la query funziona solo con la partition key)
+            found = request_id_exists(timeline_id)
+
+            # Fallback anti falsi-positivi: verifica anche la variante con prefisso
+            # NRG_ADDRESS_, usata quando il record e' salvato con tale prefisso.
+            if not found:
+                found = request_id_exists(nrg_address_prefix + timeline_id)
+
+            # Se trovato (con o senza prefisso), il record esiste
+            result_map[timeline_id] = found
             
             # Mostra progresso ogni 100 verifiche con esempio di query
             if (idx + 1) % 100 == 0:
@@ -447,6 +462,147 @@ def download_followup_events(start_time, end_time, database, output_location, pr
         return {}
 
 
+def download_notification_viewed_events(candidate_iuns, start_time, end_time, database, output_location, profile_name=None, workgroup='primary', table='pn_timelines_json_view'):
+    """
+    Scarica gli eventi NOTIFICATION_VIEWED, nella finestra temporale indicata,
+    limitatamente agli IUN candidati (le PREPARE senza follow-up da verificare).
+
+    Il modello e' quello incrementale/giornaliero: la Lambda gira ogni giorno e
+    ripassa sia i nuovi candidati sia i casi ancora aperti; un caso si chiude
+    quando il relativo NOTIFICATION_VIEWED ricade nella finestra corrente.
+
+    A differenza del follow-up SEND/COMPLETELY_UNREACHABLE, qui filtriamo la query
+    per `iun IN (candidati)`: i candidati sono gia' noti prima della query, quindi
+    scarichiamo solo i VIEWED che ci interessano (query piu' leggera e conteggi
+    significativi).
+
+    Args:
+        candidate_iuns: lista/insieme di IUN candidati da verificare
+        start_time: Tempo di inizio assoluto
+        end_time: Tempo di fine assoluto
+        database: Il database Athena da utilizzare
+        output_location: Il percorso S3 per i risultati Athena
+        profile_name: Il profilo AWS da utilizzare (opzionale)
+        workgroup: Il workgroup Athena da utilizzare
+        table: La tabella/view Athena da interrogare
+
+    Returns:
+        dict: Dizionario {iun: viewed_timestamp_iso} (il piu' recente per IUN)
+    """
+    candidate_iuns = [i for i in set(candidate_iuns) if i]
+    if not candidate_iuns:
+        return {}
+
+    # Crea la sessione con il profilo specificato
+    if profile_name:
+        session = boto3.Session(profile_name=profile_name)
+        athena_client = session.client('athena')
+    else:
+        athena_client = boto3.client('athena')
+
+    # Formatta per la query ISO 8601
+    start_time_iso = start_time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+    end_time_iso = end_time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+    # Calcola le partizioni da includere (tutti i giorni dall'inizio alla fine)
+    partition_filter = []
+    current_date = start_time.date()
+    end_date = end_time.date()
+    while current_date <= end_date:
+        year = current_date.strftime('%Y')
+        month = current_date.strftime('%m')
+        day = current_date.strftime('%d')
+        partition_filter.append(f"(p_year = '{year}' AND p_month = '{month}' AND p_day = '{day}')")
+        current_date += timedelta(days=1)
+
+    partition_condition = " OR ".join(partition_filter)
+
+    # Escape di eventuali apici singoli negli IUN (raddoppio, sintassi Presto/Athena)
+    iun_in_list = "', '".join(i.replace("'", "''") for i in candidate_iuns)
+    query = f"""
+    SELECT iun, MAX(timestamp) AS last_viewed
+    FROM {table}
+    WHERE category = 'NOTIFICATION_VIEWED'
+        AND iun IN ('{iun_in_list}')
+        AND ({partition_condition})
+        AND timestamp >= '{start_time_iso}'
+        AND timestamp < '{end_time_iso}'
+    GROUP BY iun
+    """
+
+    print(f"\nEsecuzione query NOTIFICATION_VIEWED per {len(candidate_iuns)} IUN candidati...")
+    print(f"Intervallo: [{start_time.strftime('%Y-%m-%d %H:%M:%S')}, {end_time.strftime('%Y-%m-%d %H:%M:%S')}]")
+    print(f"\nQuery NOTIFICATION_VIEWED:\n{query}\n")
+
+    viewed_map = {}
+    try:
+        query_params = {
+            'QueryString': query,
+            'QueryExecutionContext': {'Database': database},
+            'WorkGroup': workgroup
+        }
+
+        if output_location:
+            query_params['ResultConfiguration'] = {'OutputLocation': output_location}
+
+        response = athena_client.start_query_execution(**query_params)
+        query_execution_id = response['QueryExecutionId']
+
+        # Attende il completamento
+        while True:
+            query_status = athena_client.get_query_execution(
+                QueryExecutionId=query_execution_id
+            )
+            status = query_status['QueryExecution']['Status']['State']
+
+            if status == 'SUCCEEDED':
+                break
+            elif status in ['FAILED', 'CANCELLED']:
+                error_message = query_status['QueryExecution']['Status'].get('StateChangeReason', 'Unknown error')
+                print(f"Query NOTIFICATION_VIEWED fallita: {error_message}")
+                return {}
+
+            time.sleep(2)
+
+        print("Query completata, recupero risultati...")
+
+        # Recupera i risultati con paginazione
+        next_token = None
+        while True:
+            if next_token:
+                response = athena_client.get_query_results(
+                    QueryExecutionId=query_execution_id,
+                    NextToken=next_token
+                )
+            else:
+                response = athena_client.get_query_results(
+                    QueryExecutionId=query_execution_id
+                )
+
+            rows = response['ResultSet']['Rows']
+            start_index = 1 if next_token is None else 0
+
+            for row in rows[start_index:]:
+                iun = row['Data'][0].get('VarCharValue', '')
+                viewed_ts = row['Data'][1].get('VarCharValue', '')
+                if not iun or not viewed_ts:
+                    continue
+                # Athena restituisce gia' il MAX(timestamp) per IUN (GROUP BY iun)
+                viewed_map[iun] = viewed_ts
+
+            if 'NextToken' in response:
+                next_token = response['NextToken']
+            else:
+                break
+
+        print(f"Trovati {len(viewed_map)} IUN candidati con NOTIFICATION_VIEWED nella finestra")
+        return viewed_map
+
+    except Exception as e:
+        print(f"Errore durante il download degli eventi NOTIFICATION_VIEWED: {e}")
+        return {}
+
+
 def save_results_to_json(data_list, output_dir, database, output_location, followup_start_time, followup_end_time, full_analysis=False, profile_name=None, workgroup='primary', prepare_end_time=None, s3_bucket=None, table='pn_timelines_json_view'):
     """
     Salva i risultati in un file JSON nella directory specificata o su S3.
@@ -576,22 +732,42 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
     
     # Raccogli tutti i timelineElementId per cui hasResult = false
     timeline_ids_to_check = []
+    viewed_candidates = []
     for iun, row in iun_to_data.items():
         timeline_id = row.get('timelineElementId', '')
-        
+
         if iun in result_map:
             has_result, _ = result_map[iun]
         else:
             has_result = False
-        
+
         if not has_result and timeline_id:
             timeline_ids_to_check.append(timeline_id)
-    
+            viewed_candidates.append((iun, row.get('timestamp', '')))
+
     # Verifica su DynamoDB pn-PaperRequestError
     print(f"\nVerifica su DynamoDB pn-PaperRequestError per {len(timeline_ids_to_check)} timelineElementId...")
     dynamodb_map = check_dynamodb_paper_request_error(timeline_ids_to_check, profile_name)
     total_found_in_dynamodb = sum(1 for v in dynamodb_map.values() if v)
     print(f"Trovati {total_found_in_dynamodb} elementi in pn-PaperRequestError")
+
+    # Verifica su timeline: NOTIFICATION_VIEWED successivo alla PREPARE.
+    # Stessa finestra della verifica follow-up (modello incrementale giornaliero):
+    # se nella finestra corrente compare un NOTIFICATION_VIEWED per un candidato
+    # (nuovo o gia' aperto) con timestamp >= PREPARE, il caso non e' bloccato.
+    print(f"\nVerifica NOTIFICATION_VIEWED (successivo alla PREPARE) per {len(viewed_candidates)} IUN candidati (PREPARE senza follow-up)...")
+    candidate_iuns = [c_iun for c_iun, _ in viewed_candidates]
+    viewed_map = download_notification_viewed_events(
+        candidate_iuns, start_time, end_time, database, output_location, profile_name, workgroup, table
+    )
+    viewed_iuns = set()
+    for cand_iun, prepare_ts in viewed_candidates:
+        v_ts = viewed_map.get(cand_iun)
+        # Confronto lessicografico valido: entrambi ISO 8601 UTC con suffisso 'Z'
+        if v_ts and prepare_ts and v_ts >= prepare_ts:
+            viewed_iuns.add(cand_iun)
+    notification_viewed_count = len(viewed_iuns)
+    print(f"Casi candidati chiusi da NOTIFICATION_VIEWED (VIEWED >= PREPARE): {notification_viewed_count} su {len(viewed_candidates)}")
     
     # Filtra solo i campi richiesti e aggiungi i risultati della verifica
     filtered_results = []
@@ -613,8 +789,9 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
         is_problematic = False
         if not has_result:
             is_in_paper_error = dynamodb_map.get(timeline_id, False)
-            is_problematic = not is_in_paper_error
-        
+            is_viewed = iun in viewed_iuns
+            is_problematic = (not is_in_paper_error) and (not is_viewed)
+
         if full_analysis:
             # Modalità full analysis: stampa tutto
             filtered_row = {
@@ -628,6 +805,7 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
                 filtered_row['hasResultType'] = result_type
             else:
                 filtered_row['isInPaperRequestError'] = dynamodb_map.get(timeline_id, False)
+                filtered_row['isNotificationViewed'] = iun in viewed_iuns
             
             filtered_results.append(filtered_row)
             
@@ -637,14 +815,15 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
                 if iun not in existing_data:
                     new_cases_count += 1
         else:
-            # Modalità standard: filtra solo i casi con hasResult=false e isInPaperRequestError=false
+            # Modalità standard: filtra solo i casi con hasResult=false, isInPaperRequestError=false e non visualizzati
             if is_problematic:
                 filtered_row = {
                     'timestamp': ts,
                     'iun': iun,
                     'timelineElementId': timeline_id,
                     'hasResult': False,
-                    'isInPaperRequestError': False
+                    'isInPaperRequestError': False,
+                    'isNotificationViewed': False
                 }
                 filtered_results.append(filtered_row)
                 problematic_cases.append(filtered_row)
@@ -703,17 +882,18 @@ def save_results_to_json(data_list, output_dir, database, output_location, follo
     
     # Aggiungi le statistiche correnti (sempre basate sui casi problematici)
     # Usa prepare_end_time come timestamp (rappresenta fino a quando abbiamo analizzato)
-    last_update_timestamp = prepare_end_time.strftime('%Y-%m-%d %H:%M:%S') if prepare_end_time else datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    last_update_timestamp = prepare_end_time.strftime('%Y-%m-%d %H:%M:%S') if prepare_end_time else datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     
     # Calcola total_results come somma di verifica
-    total_results = send_count + completely_unreachable_count + total_found_in_dynamodb
-    
+    total_results = send_count + completely_unreachable_count + total_found_in_dynamodb + notification_viewed_count
+
     current_stats = {
         'timestamp': last_update_timestamp,
         'total_iun_analyzed': len(all_iuns_to_check),
         'iun_with_send_analog': send_count,
         'iun_with_completely_unreachable': completely_unreachable_count,
         'found_in_paper_request_error': total_found_in_dynamodb,
+        'notification_viewed_after_prepare': notification_viewed_count,
         'total_results': total_results,
         'resolved_cases': resolved_count,
         'new_cases': new_cases_count,
@@ -802,6 +982,12 @@ def main():
         default=None
     )
     parser.add_argument(
+        '--lookback-hours',
+        type=int,
+        help='Ore di look-back applicate SOLO in modalita\' incrementale: start_time = last_update - lookback (overlap per recuperare PREPARE arrivate in ritardo). Default: 24',
+        default=24
+    )
+    parser.add_argument(
         '--full-analysis',
         action='store_true',
         help='Stampa tutti i risultati, non solo i casi con hasResult=false e isInPaperRequestError=false',
@@ -827,8 +1013,8 @@ def main():
     signal.alarm(args.timeout)
     
     try:
-        # Calcola gli intervalli temporali
-        now = datetime.utcnow()
+        # Calcola gli intervalli temporali (UTC naive, coerente con i valori da strptime)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         
         # Percorso file statistiche (locale o S3)
         script_dir = Path(__file__).parent
@@ -867,9 +1053,13 @@ def main():
             start_time = datetime.strptime(args.start_time, '%Y-%m-%d %H:%M:%S')
             print(f"Usando start_time manuale: {start_time}")
         elif last_update:
-            # Riprende da last_update (esecuzione incrementale)
-            start_time = last_update
-            print(f"Esecuzione incrementale: start_time = last_update")
+            # Riprende da last_update con un look-back per creare una finestra
+            # sovrapposta: evita di perdere PREPARE arrivate in ritardo (ingestion
+            # lag) con timestamp in un range gia' marcato come processato.
+            # La riverifica e' idempotente per IUN, quindi l'overlap e' sicuro.
+            lookback = max(0, args.lookback_hours)
+            start_time = last_update - timedelta(hours=lookback)
+            print(f"Esecuzione incrementale: start_time = last_update - {lookback}h di look-back")
         else:
             # Prima esecuzione o statistics.json non trovato
             start_time = now - timedelta(hours=24)
@@ -965,25 +1155,29 @@ def main():
         followup_start_time = start_time
         followup_end_time = now
         
-        # Salva i risultati in JSON nella directory result o S3
-        if data_list:
-            json_file = save_results_to_json(
-                data_list, 
-                result_dir, 
-                args.database,
-                output_location,
-                followup_start_time,
-                followup_end_time,
-                args.full_analysis,
-                args.profile, 
-                args.workgroup,
-                prepare_end_time=end_time,
-                s3_bucket=args.s3_result_bucket,
-                table=args.table
-            )
-            print(f"\nRisultati salvati: {json_file}")
-        else:
-            print(f"\nNessun nuovo risultato da salvare")
+        # Salva i risultati in JSON nella directory result o S3.
+        # NB: chiamiamo save_results_to_json anche quando non ci sono nuove PREPARE
+        # (data_list vuota), perche' e' al suo interno che i casi gia' aperti
+        # vengono ricaricati e riverificati (follow-up, PaperRequestError,
+        # NOTIFICATION_VIEWED) e vengono aggiornati statistics.json/latest.json.
+        if not data_list:
+            print(f"\nNessuna nuova PREPARE nella finestra: riverifico solo i casi gia' aperti")
+
+        json_file = save_results_to_json(
+            data_list,
+            result_dir,
+            args.database,
+            output_location,
+            followup_start_time,
+            followup_end_time,
+            args.full_analysis,
+            args.profile,
+            args.workgroup,
+            prepare_end_time=end_time,
+            s3_bucket=args.s3_result_bucket,
+            table=args.table
+        )
+        print(f"\nRisultati salvati: {json_file}")
         
         print(f"\nI risultati completi CSV sono salvati in: {output_location}{query_execution_id}.csv")
         

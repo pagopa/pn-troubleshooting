@@ -1,7 +1,7 @@
 # Query PREPARE_ANALOG_DOMICILE su Athena
 
 Script Python per interrogare Athena ed analizzare tutte le `PREPARE_ANALOG_DOMICILE` in un intervallo temporale specifico. L'intervallo e' automatizzato in base al valore last_update nel file statistics.json, se non presente analizza le ultime 24 ore. (volendo si puo' forzare cambiando l'orario nel file json delle statistiche).
-Lo script cerca tutte PREPARE in un intervallo (es. -24 ore, -1 ora) e SEND_ANALOG/COMPLETELY_UNREACHABLE  (es. -24 ore, 0 ore), se a seguito di una PREPARE non e' presente alcun evento SEND_ANALOG/COMPLETELY_UNREACHABLE allora cerca la requestID nella tabella pn-PaperReqeust-error. Se anche questa ricerca fallisce marca il requestID/IUN come da attenzionare.
+Lo script cerca tutte PREPARE in un intervallo (es. -24 ore, -1 ora) e SEND_ANALOG/COMPLETELY_UNREACHABLE  (es. -24 ore, 0 ore), se a seguito di una PREPARE non e' presente alcun evento SEND_ANALOG/COMPLETELY_UNREACHABLE allora cerca la requestID nella tabella pn-PaperRequestError. Se anche questa ricerca fallisce verifica se sulla timeline esiste un `NOTIFICATION_VIEWED` **successivo** alla PREPARE: in tal caso il caso NON e' bloccato (il destinatario ha visualizzato la notifica) e viene chiuso/ignorato. Solo se tutte queste verifiche falliscono marca il requestID/IUN come da attenzionare.
 
 ## Requisiti
 
@@ -46,6 +46,7 @@ python query_prepare_analog_domicile.py \
 - `--workgroup`: **(Opzionale)** Workgroup Athena da utilizzare (default: `primary`)
 - `--start-time`: **(Opzionale)** Ora di inizio assoluta nel formato `YYYY-MM-DD HH:MM:SS`. Se non specificato, usa `last_update` da statistics.json o default -24h
 - `--end-time`: **(Opzionale)** Ora di fine assoluta nel formato `YYYY-MM-DD HH:MM:SS` (default: now - 1 ora)
+- `--lookback-hours`: **(Opzionale)** Ore di look-back applicate **solo in modalità incrementale**: `start_time = last_update - lookback`. Crea una finestra sovrapposta per recuperare PREPARE arrivate in ritardo nel datalake (ingestion lag) con timestamp in un range già processato. Non ha effetto se si passa `--start-time`. Default: `24`
 - `--full-analysis`: **(Opzionale)** Flag per attivare la modalità full analysis che stampa tutti i risultati, non solo i casi con hasResult=false e isInPaperRequestError=false
 - `--timeout`: **(Opzionale)** Timeout in secondi per l'esecuzione (default: 840 = 14 minuti per mettere script in una Lambda)
 - `--s3-result-bucket`: **(Opzionale)** Bucket S3 dove salvare i file JSON di risultato (es: `s3://bucket-name/path/`). Se non specificato, salva in locale nella cartella `result/`
@@ -95,17 +96,27 @@ In questo caso i file `prepare_analog_domicile_latest.json` e `statistics.json` 
 ### Esecuzione Incrementale (Automatica)
 Lo script utilizza `statistics.json` per esecuzioni incrementali senza gap:
 - **Prima esecuzione**: Analizza `[-24h, now-1h]`
-- **Esecuzioni successive**: Riprende da `last_update` salvato in `statistics.json`
-- **Esempio**: Se `last_update = 2024-12-17 10:00:00`, la prossima esecuzione analizzerà `[2024-12-17 10:00:00, now-1h]`
+- **Esecuzioni successive**: Riprende da `last_update - lookback` salvato in `statistics.json` (look-back di default 24h)
+- **Esempio**: Se `last_update = 2024-12-17 10:00:00` e look-back = 24h, la prossima esecuzione analizzerà `[2024-12-16 10:00:00, now-1h]`
+
+### Look-back / overlap (recupero dati in ritardo)
+- Ogni esecuzione incrementale parte da `last_update - lookback` (default 24h, parametro `--lookback-hours`), creando una **finestra sovrapposta** con il run precedente.
+- Serve a recuperare le PREPARE che arrivano in ritardo nel datalake (ingestion lag CDC) con `timestamp` in un range già marcato come processato: senza overlap, avanzando `last_update`, verrebbero **perse definitivamente** (comportamento "strictly-once").
+- L'overlap è **idempotente**: i casi sono deduplicati per IUN (le PREPARE risolte non vengono riaperte né ricontate, i casi già aperti vengono solo riverificati), quindi rielaborare la finestra sovrapposta non produce doppioni.
+- Con `--start-time` esplicito il look-back **non** viene applicato.
 
 ### Query PREPARE_ANALOG_DOMICILE
-- **Default automatico**: `[last_update, now-1h]` (se esiste statistics.json) oppure `[-24h, now-1h]` (prima esecuzione)
-- **Manuale**: `--start-time` e `--end-time` per sovrascrivere il comportamento automatico
-- Cerca i PREPARE in una finestra temporale incrementale senza sovrapposizioni
+- **Default automatico**: `[last_update - lookback, now-1h]` (se esiste statistics.json) oppure `[-24h, now-1h]` (prima esecuzione)
+- **Manuale**: `--start-time` e `--end-time` per sovrascrivere il comportamento automatico (il look-back non viene applicato con `--start-time`)
+- Cerca i PREPARE in una finestra temporale incrementale con overlap di look-back (nessun gap)
 
 ### Query Follow-up (SEND/COMPLETELY_UNREACHABLE)
 - Gli eventi follow-up vengono sempre cercati da `start-time` fino a `now` (ora corrente)
 - Questo assicura che vengano catturati anche eventi arrivati dopo l'end-time delle PREPARE
+
+### Riverifica dei casi gia' aperti
+- Ad ogni esecuzione i casi ancora aperti (letti da `prepare_analog_domicile_latest.json`) vengono **sempre riverificati** contro follow-up, `pn-PaperRequestError` e `NOTIFICATION_VIEWED`, **anche quando nella finestra non ci sono nuove PREPARE**.
+- Di conseguenza `statistics.json` e `prepare_analog_domicile_latest.json` vengono aggiornati (e `last_update` avanzato) ad ogni giro, garantendo che i casi aperti possano chiudersi anche in giornate senza nuove PREPARE.
 
 ### Timeout e Lambda
 - **Timeout**: 14 minuti (840 secondi) per compatibilità Lambda (max 15 minuti)
@@ -122,7 +133,20 @@ Lo script produce due tipi di output:
 
 ### Struttura del file JSON
 
-Il file `prepare_analog_domicile_latest.json` contiene solo i casi problematici (hasResult=false e NON in PaperRequestError):
+Il file `prepare_analog_domicile_latest.json` contiene solo i casi problematici (hasResult=false, NON in PaperRequestError e senza NOTIFICATION_VIEWED successivo alla PREPARE):
+
+> **Nota sui falsi positivi:** la verifica su `pn-PaperRequestError` cerca il
+> `requestId` uguale al `timelineElementId` e, se non lo trova, ripete la ricerca
+> con il prefisso `NRG_ADDRESS_` (es. `NRG_ADDRESS_PREPARE_ANALOG_DOMICILE.IUN_...`).
+> Se il record esiste in una delle due forme, il caso NON viene segnalato.
+>
+> **Nota su NOTIFICATION_VIEWED:** se nella **finestra analizzata** (la stessa
+> della verifica follow-up SEND/COMPLETELY_UNREACHABLE) compare un evento
+> `NOTIFICATION_VIEWED` con timestamp **successivo** alla PREPARE, il caso NON
+> viene segnalato (chiuso se era gia' aperto, non aperto se nuovo). Coerentemente
+> col modello incrementale, la Lambda ripassa ogni giorno sia i nuovi candidati
+> sia i casi ancora aperti: un caso si chiude nel giorno in cui il relativo
+> `NOTIFICATION_VIEWED` ricade nella finestra.
 
 ```json
 {
@@ -132,7 +156,8 @@ Il file `prepare_analog_domicile_latest.json` contiene solo i casi problematici 
       "iun": "LQGW-YUXK-ZKLV-202512-H-1",
       "timelineElementId": "PREPARE_ANALOG_DOMICILE.IUN_...",
       "hasResult": false,
-      "isInPaperRequestError": false
+      "isInPaperRequestError": false,
+      "isNotificationViewed": false
     }
   ]
 }
@@ -157,6 +182,7 @@ Il file `statistics.json` (locale in `result/` oppure su S3) mantiene uno storic
       "iun_with_send_analog": 159709,
       "iun_with_completely_unreachable": 13778,
       "found_in_paper_request_error": 313,
+      "notification_viewed_after_prepare": 0,
       "total_results": 173800,
       "resolved_cases": 0,
       "new_cases": 0,
@@ -173,10 +199,11 @@ Il file `statistics.json` (locale in `result/` oppure su S3) mantiene uno storic
 - `iun_with_send_analog`: IUN che hanno ricevuto SEND_ANALOG_DOMICILE
 - `iun_with_completely_unreachable`: IUN che hanno ricevuto COMPLETELY_UNREACHABLE
 - `found_in_paper_request_error`: Numero di requestId trovati nella tabella DynamoDB PaperRequestError (informativo)
-- `total_results`: Somma di verifica (send_analog + completely_unreachable + paper_error = total_analyzed)
+- `notification_viewed_after_prepare`: IUN candidati con un `NOTIFICATION_VIEWED` successivo alla PREPARE (esclusi dai casi bloccati)
+- `total_results`: Somma di verifica (send_analog + completely_unreachable + paper_error + notification_viewed)
 - `resolved_cases`: Casi problematici risolti dall'ultima esecuzione
 - `new_cases`: Nuovi casi problematici trovati
-- `total_open_cases`: Totale casi problematici ancora aperti (hasResult=false E NON in PaperRequestError)
+- `total_open_cases`: Totale casi problematici ancora aperti (hasResult=false, NON in PaperRequestError e senza NOTIFICATION_VIEWED successivo alla PREPARE)
 - `previous_open_cases`: Casi problematici dell'esecuzione precedente
 
 **Comportamento timeout:**
