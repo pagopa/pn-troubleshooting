@@ -15,7 +15,7 @@
     "@aws-sdk/client-s3": "^3.321.1",
     "@aws-sdk/credential-provider-ini": "^3.321.1",
     "cucumber-html-reporter": "7.1.0",
-    "fast-xml-parser": "^4.2.5",
+    "fast-xml-parser": "^5.0.0",
     "jq.node": "^2.4.0"
   }
 }

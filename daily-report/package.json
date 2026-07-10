@@ -9,7 +9,7 @@
     "@aws-sdk/client-cloudwatch": "^3.750.0",
     "@aws-sdk/client-sqs": "^3.379.1",
     "@aws-sdk/credential-provider-ini": "^3.321.1",
-    "fast-xml-parser": "^4.2.2",
+    "fast-xml-parser": "^5.0.0",
     "vlc-player": "^2.0.0"
   }
 }
