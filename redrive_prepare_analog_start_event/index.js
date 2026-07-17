@@ -55,8 +55,7 @@ function _prepareQueueData(requestId){
     "correlationId": null,
     "isAddressRetry":false,
     "attempt":0,
-    "clientId":"",
-    "isF24Flow": false
+    "clientId":""
   }
   return data
 }
@@ -124,7 +123,7 @@ async function main() {
   const awsClient = new AwsClientsWrapper( envName );
   
   console.log('Preparing data...')
-  const queueUrl = await awsClient._getQueueUrl('pn-paper_channel_requests');
+  const queueUrl = await awsClient._getQueueUrl('pn-paper-normalize-address');
 
   console.log('Reading from file...')
 
