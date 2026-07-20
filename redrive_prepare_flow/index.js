@@ -43,9 +43,7 @@ function _prepareQueueData(requestId){
     "attempt":0,
     "clientId":""
   }
-  if (envName == 'uat') {
-    data['isF24Flow'] = false
-  }
+
   console.log(data)
   return data
 }
@@ -145,7 +143,7 @@ async function main() {
   const awsClient = new AwsClientsWrapper( envName );
   
   console.log('Preparing data...')
-  const queueUrl = await awsClient._getQueueUrl('pn-paper_channel_requests');
+  const queueUrl = await awsClient._getQueueUrl('pn-paper-normalize-address');
 
   console.log('Reading from file...')
   const fileRows = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter( x => x != "")
