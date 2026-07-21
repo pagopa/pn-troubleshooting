@@ -6,7 +6,8 @@ Automazione per verificare e approvare fruizioni e finalita SEND tramite PDND Co
 
 Creare `.env` partendo da `.env.example`. La chiave della client assertion deve rimanere fuori
 dal repository. La chiave DPoP viene generata in memoria a ogni avvio e usata soltanto per il
-voucher della sessione corrente.
+voucher della sessione corrente. La configurazione PDND (`BASE_URL`, `SERVICE_ID`, `ISSUER`,
+`PRODUCER_ID` e `KID`) e obbligatoria e non ha valori incorporati nel codice.
 
 Dry-run, senza approvazioni:
 
@@ -26,7 +27,8 @@ La durata totale viene stampata nei log e restituita nel campo `durationMs`.
 
 - Handler: `lambda.handler`
 - Timeout consigliato: 5 minuti
-- Variabili: `ENV=prod`, `PRIVATE_KEY_SECRET_ID`, `SELFCARE_APIKEY_SECRET_ID`
+- Variabili: `ENV`, `BASE_URL`, `SERVICE_ID`, `ISSUER`, `PRODUCER_ID`, `KID`,
+  `PRIVATE_KEY_SECRET_ID`, `SELFCARE_APIKEY_SECRET_ID`
 - IAM: `secretsmanager:GetSecretValue` limitato ai due secret
 
 Dry-run Lambda:

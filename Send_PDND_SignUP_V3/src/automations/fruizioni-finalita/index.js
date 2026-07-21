@@ -6,36 +6,29 @@ import { getPrivateKey, getSelfcareApiKey } from '../../shared/secrets.js';
 import { getSelfcareInstitution } from '../../shared/self-care.js';
 import { formatDuration } from '../../shared/time.js';
 
-const ENVIRONMENTS = {
-    prod: {
-        baseUrl: 'interop.pagopa.it',
-        serviceId: 'cfc8a94d-001a-4ab6-bb5c-2509b2a68af1',
-        issuer: '0203fdcf-644d-40d3-8b0e-f780bbf4bcc1',
-        producerId: '4a4149af-172e-4950-9cc8-63ccc9a6d865',
-        kid: 'MBZ2A_albOEL9j5I4AzyVsFVPVPvaLKpTYRXAOXon6o',
-    },
-    uat: {
-        baseUrl: 'uat.interop.pagopa.it',
-        serviceId: '51799439-8575-48d4-8e95-906926ab8e47',
-        issuer: 'abb90dee-56fa-4fb0-8875-e8f6b7ade4cb',
-        producerId: '84871fd4-2fd7-46ab-9d22-f6b452f4b3c5',
-        kid: '3jn5y7WHAyHYBogmPzZgyXlZlfmthzm9NgJFiMfaeU4',
-    },
-};
+const SUPPORTED_ENVIRONMENTS = new Set(['prod', 'uat']);
+
+function requireEnvironmentVariable(name) {
+    const value = process.env[name]?.trim();
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+}
 
 function getConfiguration(dryRun) {
-    const env = process.env.ENV;
-    if (!ENVIRONMENTS[env]) {
-        throw new Error(`ENV must be one of: ${Object.keys(ENVIRONMENTS).join(', ')}`);
+    const env = requireEnvironmentVariable('ENV');
+    if (!SUPPORTED_ENVIRONMENTS.has(env)) {
+        throw new Error(`ENV must be one of: ${[...SUPPORTED_ENVIRONMENTS].join(', ')}`);
     }
 
     return {
         env,
-        baseUrl: process.env.BASE_URL || ENVIRONMENTS[env].baseUrl,
-        serviceId: process.env.SERVICE_ID || ENVIRONMENTS[env].serviceId,
-        issuer: process.env.ISSUER || ENVIRONMENTS[env].issuer,
-        producerId: process.env.PRODUCER_ID || ENVIRONMENTS[env].producerId,
-        kid: process.env.KID || ENVIRONMENTS[env].kid,
+        baseUrl: requireEnvironmentVariable('BASE_URL'),
+        serviceId: requireEnvironmentVariable('SERVICE_ID'),
+        issuer: requireEnvironmentVariable('ISSUER'),
+        producerId: requireEnvironmentVariable('PRODUCER_ID'),
+        kid: requireEnvironmentVariable('KID'),
         maxDailyCalls: Number(process.env.MAX_DAILY_CALLS || 30000),
         dryRun,
     };

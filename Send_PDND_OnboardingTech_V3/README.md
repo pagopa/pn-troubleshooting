@@ -13,7 +13,9 @@ Piu finalita o API key dello stesso ente producono comunque una sola riga.
 ## Esecuzione locale
 
 Creare `.env` partendo da `.env.example`. La chiave della client assertion deve rimanere fuori
-dal repository. La chiave DPoP viene generata in memoria per ogni esecuzione.
+dal repository. La chiave DPoP viene generata in memoria per ogni esecuzione. La configurazione
+PDND (`BASE_URL`, `SERVICE_ID`, `ISSUER` e `KID`) e obbligatoria e non ha valori incorporati nel
+codice.
 
 ```bash
 node index.js
@@ -34,7 +36,8 @@ il risultato contiene anche `durationMs`.
 
 - Handler: `lambda.handler`
 - Timeout consigliato: 12 minuti
-- Variabili: `ENV=prod`, `PRIVATE_KEY_SECRET_ID`, `AWS_REGION=eu-south-1`
+- Variabili: `ENV`, `BASE_URL`, `SERVICE_ID`, `ISSUER`, `KID`, `PRIVATE_KEY_SECRET_ID`,
+  `AWS_REGION`
 - IAM: `secretsmanager:GetSecretValue` sul secret della client assertion
 - IAM: `dynamodb:Scan` su `pn-OnboardInstitutions` e `pn-apiKey`
 
