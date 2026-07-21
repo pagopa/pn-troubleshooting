@@ -2,6 +2,10 @@
 
 Automazione per verificare e approvare fruizioni e finalita SEND tramite PDND Core v3 e Selfcare.
 
+Per i tenant IPA di tipo UO, l'automazione usa gli Open Data IPA per risalire all'ente apicale e
+risolve la UO tramite `taxCode` e `subunitCode`. La subscription key Selfcare deve appartenere al
+prodotto `prod-pn`; l'approvazione richiede il solo onboarding `prod-pn` in stato `ACTIVE`.
+
 ## Esecuzione locale
 
 Creare `.env` partendo da `.env.example`. La chiave della client assertion deve rimanere fuori

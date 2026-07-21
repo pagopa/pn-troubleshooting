@@ -8,6 +8,13 @@ let nextSelfcareRequestAt = 0;
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+export class SelfcareInstitutionNotFoundError extends Error {
+    constructor(origin, originId) {
+        super(`no institutions found for origin=${origin}, originId=${originId}`);
+        this.name = 'SelfcareInstitutionNotFoundError';
+    }
+}
+
 async function waitForSelfcareRequestSlot() {
     const now = Date.now();
     const requestAt = Math.max(now, nextSelfcareRequestAt);
@@ -93,6 +100,29 @@ async function getSelfcareInstitutions(params, selfcareApiKey) {
     return data.institutions;
 }
 
+export function selectSelfcareUnit(institutions, subunitCode) {
+    const normalizedSubunitCode = subunitCode.toUpperCase();
+    const matches = institutions.filter(institution =>
+        [institution.subunitCode, institution.originId]
+            .filter(Boolean)
+            .some(value => value.toUpperCase() === normalizedSubunitCode)
+    );
+    if (matches.length !== 1 || !matches[0].id) {
+        throw new Error(`unable to identify Selfcare UO for subunitCode=${subunitCode}`);
+    }
+    return matches[0];
+}
+
+export async function getSelfcareInstitutionForUnit(
+    taxCode,
+    subunitCode,
+    selfcareApiKey
+) {
+    const params = new URLSearchParams({ taxCode, subunitCode });
+    const institutions = await getSelfcareInstitutions(params, selfcareApiKey);
+    return selectSelfcareUnit(institutions, subunitCode);
+}
+
 function isExactInstitution(institution, origin, originId) {
     const normalizedOrigin = origin.toUpperCase();
     const normalizedOriginId = originId.toUpperCase();
@@ -164,7 +194,7 @@ async function resolveSelfcareInstitutionId(origin, originId, description, selfc
             return institution.id;
         }
     }
-    throw new Error(`no institutions found for origin=${origin}, originId=${originId}`);
+    throw new SelfcareInstitutionNotFoundError(origin, originId);
 }
 
 export async function getSelfcareInstitution(origin, originId, selfcareApiKey, description) {

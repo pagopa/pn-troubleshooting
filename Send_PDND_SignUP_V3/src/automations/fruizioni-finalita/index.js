@@ -1,9 +1,17 @@
 import { getAccessToken } from '../../shared/auth.js';
 import { generateDpopPrivateKey } from '../../shared/dpop.js';
 import { generateAssertionJwt } from '../../shared/generate-assertion.js';
+import { getIpaUoApexInstitution } from '../../shared/ipa.js';
 import { PdndCoreV3Client } from '../../shared/pdnd-core-v3.js';
-import { getPrivateKey, getSelfcareApiKey } from '../../shared/secrets.js';
-import { getSelfcareInstitution } from '../../shared/self-care.js';
+import {
+    getPrivateKey,
+    getSelfcareApiKey,
+} from '../../shared/secrets.js';
+import {
+    getSelfcareInstitution,
+    getSelfcareInstitutionForUnit,
+    SelfcareInstitutionNotFoundError,
+} from '../../shared/self-care.js';
 import { formatDuration } from '../../shared/time.js';
 
 const SUPPORTED_ENVIRONMENTS = new Set(['prod', 'uat']);
@@ -34,7 +42,7 @@ function getConfiguration(dryRun) {
     };
 }
 
-function checkOnboarding(institution, products) {
+export function checkOnboarding(institution, products) {
     if (!Array.isArray(institution?.onboarding)) {
         return false;
     }
@@ -70,6 +78,32 @@ function printItems(title, items, formatter) {
     }
 }
 
+export function formatTenant(item) {
+    return `consumerId=${item.consumerId || 'N/D'} | tenant=${item.tenantName || 'N/D'} ` +
+        `| tenantKind=${item.tenantKind || 'N/D'}`;
+}
+
+export function isMissingSelfcareUnit(tenant, error) {
+    return tenant?.subUnitType === 'UO' && error instanceof SelfcareInstitutionNotFoundError;
+}
+
+export async function resolveApexInstitution(tenant, {
+    ipaLookup = getIpaUoApexInstitution,
+} = {}) {
+    const origin = tenant?.externalId?.origin?.toUpperCase();
+    const originId = tenant?.externalId?.value;
+    if (origin === 'IPA') {
+        return ipaLookup(originId);
+    }
+    if (origin === 'SELC' && originId) {
+        return {
+            taxCode: originId,
+            description: tenant.name,
+        };
+    }
+    throw new Error(`unable to resolve apex institution for origin=${origin || 'N/D'}`);
+}
+
 function printExecutionReport(report, dryRun) {
     console.log(`\n==================== ${dryRun ? 'DRY-RUN' : 'EXECUTION'} REPORT V3 ====================`);
     if (report.pendingAgreementsSummary) {
@@ -80,21 +114,29 @@ function printExecutionReport(report, dryRun) {
         console.log(`- Fuori dal SEND ordinario, da verificare manualmente: ${summary.toReviewTotal}`);
     }
     printItems('ACCORDI PENDING DA VERIFICARE MANUALMENTE', report.agreementsToReview,
-        item => `${item.id} | consumerId=${item.consumerId} | tenant=${item.tenantName} ` +
-            `| tenantKind=${item.tenantKind} | eService=${item.eserviceName} [${item.eserviceId}]` +
+        item => `${item.id} | ${formatTenant(item)} | eService=${item.eserviceName} [${item.eserviceId}]` +
             (item.metadataError ? ` | nota=${item.metadataError}` : ''));
     printItems('FRUIZIONI ATTIVATE', report.agreementsActivated,
-        item => `${item.id} | consumerId=${item.consumerId} | institution=${item.institution}`);
+        item => `${item.id} | ${formatTenant(item)} | institution=${item.institution}`);
     printItems('FINALITA ATTIVATE', report.purposesActivated,
-        item => `${item.id} | title=${item.title} | description=${item.description}`);
+        item => `${item.id} | ${formatTenant(item)} | title=${item.title} | description=${item.description}` +
+            (item.metadataError ? ` | nota=${item.metadataError}` : ''));
     printItems('FRUIZIONI NON ATTIVATE', report.agreementsNotActivated,
-        item => `${item.id} | consumerId=${item.consumerId} | motivo=${item.reason}`);
+        item => `${item.id} | ${formatTenant(item)} | motivo=${item.reason}`);
     printItems('FINALITA NON ATTIVATE', report.purposesNotActivated,
-        item => `${item.id} | title=${item.title} | motivo=${item.reason}`);
+        item => `${item.id} | ${formatTenant(item)} | title=${item.title} | motivo=${item.reason}` +
+            (item.metadataError ? ` | nota=${item.metadataError}` : ''));
     console.log('\n================================================================');
 }
 
-async function processPendingAgreements(client, configuration, selfcareApiKey, report) {
+async function getTenantCached(client, tenantCache, consumerId) {
+    if (!tenantCache.has(consumerId)) {
+        tenantCache.set(consumerId, client.getTenant(consumerId));
+    }
+    return tenantCache.get(consumerId);
+}
+
+async function processPendingAgreements(client, configuration, selfcareApiKey, report, tenantCache) {
     const producerAgreements = await client.getAllProducerPendingAgreements(configuration.producerId);
     const agreements = await client.getAllPendingAgreements(
         configuration.serviceId,
@@ -118,7 +160,7 @@ async function processPendingAgreements(client, configuration, selfcareApiKey, r
         let eservice;
         let metadataError;
         try {
-            tenant = await client.getTenant(agreement.consumerId);
+            tenant = await getTenantCached(client, tenantCache, agreement.consumerId);
             if (!eserviceCache.has(agreement.eserviceId)) {
                 eserviceCache.set(agreement.eserviceId, await client.getEService(agreement.eserviceId));
             }
@@ -138,21 +180,39 @@ async function processPendingAgreements(client, configuration, selfcareApiKey, r
     }
 
     for (const agreement of agreements) {
+        let tenant;
         try {
-            const tenant = await client.getTenant(agreement.consumerId);
+            tenant = await getTenantCached(client, tenantCache, agreement.consumerId);
             if (!tenant?.externalId) {
                 throw new Error('tenant data not available');
             }
 
             console.log(`Selfcare lookup externalId origin=${tenant.externalId.origin}, value=${tenant.externalId.value}`);
-            const institution = await getSelfcareInstitution(
-                tenant.externalId.origin,
-                tenant.externalId.value,
-                selfcareApiKey,
-                tenant.name
-            );
-            if (!checkOnboarding(institution, ['prod-pn', 'prod-interop'])) {
-                throw new Error('required onboarding products are not ACTIVE');
+            let institution;
+            try {
+                institution = await getSelfcareInstitution(
+                    tenant.externalId.origin,
+                    tenant.externalId.value,
+                    selfcareApiKey,
+                    tenant.name
+                );
+            } catch (error) {
+                if (!isMissingSelfcareUnit(tenant, error)) {
+                    throw error;
+                }
+                const apexInstitution = await resolveApexInstitution(tenant);
+                console.log(
+                    `Resolved IPA UO ${tenant.externalId.value} to apex institution ` +
+                    `${apexInstitution.description} [${apexInstitution.taxCode}]`
+                );
+                institution = await getSelfcareInstitutionForUnit(
+                    apexInstitution.taxCode,
+                    tenant.externalId.value,
+                    selfcareApiKey
+                );
+            }
+            if (!checkOnboarding(institution, ['prod-pn'])) {
+                throw new Error('required prod-pn onboarding is not ACTIVE');
             }
 
             const institutionLabel = `${institution.id} - ${institution.description} [${institution.taxCode}]`;
@@ -164,6 +224,8 @@ async function processPendingAgreements(client, configuration, selfcareApiKey, r
             report.agreementsActivated.push({
                 id: agreement.id,
                 consumerId: agreement.consumerId,
+                tenantName: tenant?.name || 'N/D',
+                tenantKind: tenant?.kind || 'N/D',
                 institution: institutionLabel,
             });
         } catch (error) {
@@ -171,17 +233,31 @@ async function processPendingAgreements(client, configuration, selfcareApiKey, r
             report.agreementsNotActivated.push({
                 id: agreement.id,
                 consumerId: agreement.consumerId,
+                tenantName: tenant?.name || 'N/D',
+                tenantKind: tenant?.kind || 'N/D',
                 reason: error.message,
             });
         }
     }
 }
 
-async function processWaitingPurposes(client, configuration, report) {
+async function processWaitingPurposes(client, configuration, report, tenantCache) {
     const purposes = await client.getAllWaitingPurposes(configuration.serviceId);
     console.log(`Recuperate ${purposes.length} finalita in attesa.`);
 
     for (const purpose of purposes) {
+        let tenant;
+        let metadataError;
+        if (purpose.consumerId) {
+            try {
+                tenant = await getTenantCached(client, tenantCache, purpose.consumerId);
+            } catch (error) {
+                metadataError = `metadati tenant non disponibili: ${error.message}`;
+            }
+        } else {
+            metadataError = 'consumerId non disponibile nella finalita';
+        }
+
         try {
             if (!checkPurpose(purpose, configuration.maxDailyCalls)) {
                 throw new Error(`dailyCalls supera il massimo ${configuration.maxDailyCalls}`);
@@ -194,15 +270,23 @@ async function processWaitingPurposes(client, configuration, report) {
             }
             report.purposesActivated.push({
                 id: purpose.id,
+                consumerId: purpose.consumerId,
+                tenantName: tenant?.name || 'N/D',
+                tenantKind: tenant?.kind || 'N/D',
                 title: purpose.title,
                 description: purpose.description,
+                metadataError,
             });
         } catch (error) {
             console.warn(`Skip purpose ${purpose.id}: ${error.message}`);
             report.purposesNotActivated.push({
                 id: purpose.id,
+                consumerId: purpose.consumerId,
+                tenantName: tenant?.name || 'N/D',
+                tenantKind: tenant?.kind || 'N/D',
                 title: purpose.title,
                 reason: error.message,
+                metadataError,
             });
         }
     }
@@ -237,15 +321,16 @@ async function executeFruizioniFinalita({ dryRun = false } = {}) {
         dpopPrivateKey,
     });
     const report = createExecutionReport();
+    const tenantCache = new Map();
 
     try {
-        await processPendingAgreements(client, configuration, selfcareApiKey, report);
+        await processPendingAgreements(client, configuration, selfcareApiKey, report, tenantCache);
     } catch (error) {
         console.error(`Impossibile recuperare o processare gli accordi pendenti: ${error.message}`);
     }
 
     try {
-        await processWaitingPurposes(client, configuration, report);
+        await processWaitingPurposes(client, configuration, report, tenantCache);
     } catch (error) {
         console.error(`Impossibile recuperare o processare le finalita in attesa: ${error.message}`);
     } finally {
