@@ -220,7 +220,6 @@ async function executeOnboardingTecnico() {
 
     console.log('\n================ ONBOARDING TECNICO REPORT ================');
     console.log(`Enti PN analizzati: ${report.summary.onboardInstitutions}`);
-    console.log(`API key ENABLED con pdnd=true: ${report.summary.enabledPdndApiKeys}`);
     console.log(`Finalita SEND ACTIVE dei tenant candidati: ${report.summary.activePurposes}`);
     console.log(`Tenant IPA con finalita attiva: ${report.summary.activePurposeTenants}`);
     console.log(`Enti con onboarding tecnico: ${report.summary.technicalOnboardingInstitutions}`);

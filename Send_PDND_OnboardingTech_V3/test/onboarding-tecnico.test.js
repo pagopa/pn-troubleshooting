@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import test from 'node:test';
@@ -59,11 +59,15 @@ test('Lambda report uses a unique private temporary file', async () => {
             isLambda: true,
             temporaryDirectory: testDirectory,
         });
-        const reportStat = await stat(reportPath);
-
-        assert.ok(reportPath.startsWith(`${testDirectory}${sep}`));
-        assert.equal(reportStat.mode & 0o777, 0o600);
-        assert.equal(await readFile(reportPath, 'utf8'), 'report-content');
+        const reportFile = await open(reportPath, 'r');
+        try {
+            const reportStat = await reportFile.stat();
+            assert.ok(reportPath.startsWith(`${testDirectory}${sep}`));
+            assert.equal(reportStat.mode & 0o777, 0o600);
+            assert.equal(await reportFile.readFile({ encoding: 'utf8' }), 'report-content');
+        } finally {
+            await reportFile.close();
+        }
     } finally {
         await rm(testDirectory, { recursive: true, force: true });
     }
