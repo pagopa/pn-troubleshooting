@@ -107,6 +107,17 @@ legal_conservation_error_extractor/result
 *.csv
 *.txt
 
+### SEND PDND automations V3 ###
+Send_PDND_*_V3/.env*
+!Send_PDND_*_V3/.env.example
+Send_PDND_*_V3/dist/
+Send_PDND_*_V3/reports/
+Send_PDND_*_V3/**/*.log
+Send_PDND_*_V3/**/*.pem
+Send_PDND_*_V3/**/*.key
+Send_PDND_*_V3/**/*.p12
+Send_PDND_*_V3/**/*.pfx
+
 ### Automation Scripts ###
 automation_scripts/**/output
 automation_scripts/**/*.log
