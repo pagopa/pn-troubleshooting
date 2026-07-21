@@ -1,6 +1,6 @@
 import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb';
 
-async function scanAll(client, input) {
+async function scanAll(client, input, resourceLabel) {
     const items = [];
     let exclusiveStartKey;
     let pageNumber = 0;
@@ -13,7 +13,7 @@ async function scanAll(client, input) {
         items.push(...(response.Items || []));
         exclusiveStartKey = response.LastEvaluatedKey;
         pageNumber += 1;
-        console.log(`DynamoDB scan: pagina ${pageNumber}, elementi accumulati ${items.length}`);
+        console.log(`DynamoDB scan ${resourceLabel}: pagina ${pageNumber}, elementi accumulati ${items.length}`);
     } while (exclusiveStartKey);
 
     return items;
@@ -31,7 +31,7 @@ export async function getOnboardInstitutions({
             '#description': 'description',
             '#ipaCode': 'ipaCode',
         },
-    });
+    }, 'enti');
 
     return items.map(item => ({
         id: item.id?.S,
@@ -58,7 +58,7 @@ export async function getEnabledPdndApiKeys({
             ':enabled': { S: 'ENABLED' },
             ':true': { BOOL: true },
         },
-    });
+    }, 'API key');
 
     return items.map(item => ({
         id: item.id?.S,

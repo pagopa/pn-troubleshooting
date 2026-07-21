@@ -1,5 +1,6 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { getAccessToken } from '../../shared/auth.js';
 import { getEnabledPdndApiKeys, getOnboardInstitutions } from '../../shared/dynamodb.js';
 import { generateDpopPrivateKey } from '../../shared/dpop.js';
@@ -23,9 +24,7 @@ function getConfiguration() {
     if (!SUPPORTED_ENVIRONMENTS.has(env)) {
         throw new Error(`ENV must be one of: ${[...SUPPORTED_ENVIRONMENTS].join(', ')}`);
     }
-    const defaultOutputPath = process.env.AWS_LAMBDA_FUNCTION_NAME
-        ? '/tmp/out-onBoardingTech.csv'
-        : resolve('reports/out-onBoardingTech.csv');
+    const isLambda = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
 
     return {
         env,
@@ -33,7 +32,10 @@ function getConfiguration() {
         serviceId: requireEnvironmentVariable('SERVICE_ID'),
         issuer: requireEnvironmentVariable('ISSUER'),
         kid: requireEnvironmentVariable('KID'),
-        outputPath: resolve(process.env.ONBOARDING_REPORT_PATH || defaultOutputPath),
+        isLambda,
+        outputPath: isLambda
+            ? undefined
+            : resolve(process.env.ONBOARDING_REPORT_PATH || 'reports/out-onBoardingTech.csv'),
     };
 }
 
@@ -144,6 +146,30 @@ export function createCsv(rows) {
     return `${lines.join('\n')}\n`;
 }
 
+export async function writeOnboardingReport(csv, {
+    isLambda,
+    outputPath,
+    temporaryDirectory = tmpdir(),
+}) {
+    if (isLambda) {
+        const reportDirectory = await mkdtemp(join(temporaryDirectory, 'send-pdnd-onboarding-'));
+        const reportPath = join(reportDirectory, 'out-onBoardingTech.csv');
+        await writeFile(reportPath, csv, {
+            encoding: 'utf8',
+            flag: 'wx',
+            mode: 0o600,
+        });
+        return reportPath;
+    }
+
+    if (!outputPath) {
+        throw new Error('ONBOARDING_REPORT_PATH is required outside Lambda');
+    }
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, csv, { encoding: 'utf8', mode: 0o600 });
+    return outputPath;
+}
+
 async function executeOnboardingTecnico() {
     const configuration = getConfiguration();
     console.log(`ENV: ${configuration.env}`);
@@ -190,23 +216,22 @@ async function executeOnboardingTecnico() {
     console.log(`Finalita SEND attive dei tenant candidati: ${purposes.length}`);
 
     const report = buildOnboardingReport({ institutions, apiKeys, purposes, tenants });
-    await mkdir(dirname(configuration.outputPath), { recursive: true });
-    await writeFile(configuration.outputPath, createCsv(report.rows), 'utf8');
+    const reportPath = await writeOnboardingReport(createCsv(report.rows), configuration);
 
     console.log('\n================ ONBOARDING TECNICO REPORT ================');
     console.log(`Enti PN analizzati: ${report.summary.onboardInstitutions}`);
-    console.log('API key ENABLED con pdnd=true: [REDACTED]');
+    console.log(`API key ENABLED con pdnd=true: ${report.summary.enabledPdndApiKeys}`);
     console.log(`Finalita SEND ACTIVE dei tenant candidati: ${report.summary.activePurposes}`);
     console.log(`Tenant IPA con finalita attiva: ${report.summary.activePurposeTenants}`);
     console.log(`Enti con onboarding tecnico: ${report.summary.technicalOnboardingInstitutions}`);
     console.log(`Finalita senza tenant IPA risolvibile: ${report.summary.purposesWithoutTenant}`);
-    console.log(`CSV: ${configuration.outputPath}`);
+    console.log(`CSV: ${reportPath}`);
     console.log('============================================================');
 
     return {
         automation: 'onboarding-tecnico',
         generatedAt: new Date().toISOString(),
-        reportPath: configuration.outputPath,
+        reportPath,
         summary: report.summary,
     };
 }

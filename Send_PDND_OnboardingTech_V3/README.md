@@ -47,8 +47,9 @@ Evento Lambda:
 {}
 ```
 
-In Lambda il CSV viene scritto in `/tmp/out-onBoardingTech.csv`. La risposta contiene conteggio,
-path e durata; un eventuale invio o caricamento persistente del file andra aggiunto separatamente.
+In Lambda il CSV viene creato con permessi `0600` in una directory casuale sotto `/tmp`. La
+risposta contiene conteggio, path e durata; un eventuale invio o caricamento persistente del file
+andra aggiunto separatamente.
 
 Il secret puo contenere direttamente il PEM oppure:
 
