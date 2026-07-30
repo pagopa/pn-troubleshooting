@@ -122,3 +122,7 @@ Send_PDND_*_V3/**/*.pfx
 automation_scripts/**/output
 automation_scripts/**/*.log
 automation_scripts/**/*.pid
+
+### Temporary CICD IAM user tagging ###
+/temporary_cicd_iam_user_tagging/output/
+!/temporary_cicd_iam_user_tagging/requirements.txt
