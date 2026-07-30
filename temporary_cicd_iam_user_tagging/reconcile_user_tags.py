@@ -335,10 +335,10 @@ def main() -> int:
         )
         report_path = write_report(report)
         print(report["notice"], file=sys.stderr)
-        print(json.dumps(report, indent=2))
-        print(f"\nReport salvato in: {report_path}", file=sys.stderr)
 
         if not args.apply:
+            print(json.dumps(report, indent=2))
+            print(f"\nReport salvato in: {report_path}", file=sys.stderr)
             print(
                 "\nANALYSIS MODE completata: nessuna modifica applicata. "
                 "Usare --apply per eseguire il piano.",
@@ -352,12 +352,16 @@ def main() -> int:
             report["status"] = "FAILED"
             report["error"] = str(error)
             write_report(report, report_path)
+            print(json.dumps(report, indent=2))
+            print(f"\nReport FAILED salvato in: {report_path}", file=sys.stderr)
             raise
 
         report["status"] = "COMPLETED"
         report["tagsSet"] = tags_set
         report["tagsRemoved"] = tags_removed
         write_report(report, report_path)
+        print(json.dumps(report, indent=2))
+        print(f"\nReport salvato in: {report_path}", file=sys.stderr)
         print(
             f"\nApplicazione completata: {tags_set} tag impostati, "
             f"{tags_removed} tag rimossi.",

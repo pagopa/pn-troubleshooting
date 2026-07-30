@@ -111,5 +111,12 @@ Lo stato può assumere i seguenti valori:
 - `FAILED`: errore AWS durante l'applicazione; il report contiene anche
   l'errore ricevuto.
 
-Il contenuto viene mostrato anche sul terminale. Al termine lo script stampa
-il percorso completo del file generato.
+In modalità `--analysis`, lo stdout contiene il report
+`ANALYSIS_COMPLETE`. In modalità `--apply`, lo stdout contiene esclusivamente
+il report finale `COMPLETED` oppure `FAILED`; il piano intermedio `PLANNED`
+viene salvato su file prima delle scritture ma non viene inviato su stdout.
+Questo permette a eventuali automazioni di leggere uno stato rappresentativo
+dell'esito effettivo.
+
+I messaggi informativi e il percorso completo del file generato vengono
+scritti su stderr, mantenendo lo stdout utilizzabile come JSON.
