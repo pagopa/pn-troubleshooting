@@ -1,0 +1,16 @@
+{
+  "name": "send-pdnd-signup-v3",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test",
+    "build:lambda": "node scripts/build-lambda.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.848.0",
+    "dotenv": "^17.2.0",
+    "jose": "^6.0.12"
+  }
+}
