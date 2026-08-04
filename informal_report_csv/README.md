@@ -1,6 +1,7 @@
-## Informal CSV Report (US1-US4)
+## Informal CSV Report
 
-Script Node.js per estrarre CSV di report da API GET notifica informale (single IUN o batch da file).
+Script Node.js per estrarre un report in formato CSV per MVP del progetto Comunicazioni Bonarie.
+Il report ( composto da diversi file) viene generato a partire dalla API GET notifica informale (single IUN o batch da file).
 
 ### Prerequisiti
 - Node.js >= 18
