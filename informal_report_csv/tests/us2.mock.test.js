@@ -137,6 +137,7 @@ async function run() {
     const summary = parseCsv(summaryCsv);
     const events = parseCsv(eventsCsv);
     const raw = parseCsv(rawCsv);
+    const rawEvents = raw.rows.map((row) => JSON.parse(row.JSON));
 
     assert.equal(summary.rows.length, 1, 'summary rows attese = 1');
     assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost']);
@@ -162,7 +163,15 @@ async function run() {
     assert.equal(raw.rows[0].IUN, iun);
     assert.equal(raw.rows[0].TIMELINE_ELEMENT_ID, `REQUEST_ACCEPTED.IUN_${iun}`);
     assert.equal(raw.rows[0].BUSINESS_TIMESTAMP, '2026-07-21T16:25:27.584650008Z');
-    assert.ok(raw.rows[0].JSON.includes('REQUEST_ACCEPTED'), 'timeline raw non contiene elemento atteso');
+    assert.match(rawEvents[0].eventId, /^[0-9a-f-]{36}$/i);
+    assert.equal(rawEvents[0].iun, iun);
+    assert.equal(rawEvents[0].newStatus, 'ACCEPTED');
+    assert.equal(rawEvents[0].notificationRequestId, 'abc');
+    assert.deepEqual(rawEvents[0].element, payload.timeline[0]);
+    assert.equal(rawEvents[1].newStatus, 'PROCESSING');
+    assert.deepEqual(rawEvents[1].element, payload.timeline[1]);
+    assert.equal(rawEvents[2].newStatus, 'COMPLETED_REACHED');
+    assert.deepEqual(rawEvents[2].element, payload.timeline[2]);
 
     process.stdout.write('US2 mock test passed\n');
   } finally {

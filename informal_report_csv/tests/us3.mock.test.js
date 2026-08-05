@@ -62,7 +62,13 @@ async function run() {
     iun: okIun,
     documentsAvailable: true,
     notificationStatus: 'COMPLETED_REACHED',
-    notificationStatusHistory: [],
+    notificationStatusHistory: [
+      {
+        status: 'PROCESSING',
+        activeFrom: '2026-07-21T16:34:59.670716450Z',
+        relatedTimelineElements: [`SEND_ANALOG_MESSAGE_PROGRESS.IUN_${okIun}.RECINDEX_0.IDX_1`],
+      },
+    ],
     timeline: [
       {
         elementId: `SEND_ANALOG_MESSAGE_PROGRESS.IUN_${okIun}.RECINDEX_0.IDX_1`,
@@ -133,6 +139,7 @@ async function run() {
     const summary = parseCsv(summaryCsv);
     const events = parseCsv(eventsCsv);
     const raw = parseCsv(rawCsv);
+    const rawEvent = JSON.parse(raw.rows[0].JSON);
     const attachments = parseCsv(attachmentsCsv);
     const errors = parseCsv(errorsCsv);
 
@@ -143,6 +150,10 @@ async function run() {
 
     assert.equal(events.rows.length, 1, 'events deve contenere solo timeline di IUN OK');
     assert.equal(raw.rows.length, 1, 'raw timeline deve contenere solo timeline di IUN OK');
+    assert.match(rawEvent.eventId, /^[0-9a-f-]{36}$/i);
+    assert.equal(rawEvent.iun, okIun);
+    assert.equal(rawEvent.newStatus, 'PROCESSING');
+    assert.deepEqual(rawEvent.element, okPayload.timeline[0]);
 
     assert.equal(attachments.rows.length, 2, 'attachments deve contenere document + timeline attachment');
     const docRow = attachments.rows.find((r) => r.attachmentType === 'DOCUMENT');

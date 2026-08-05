@@ -64,8 +64,23 @@ async function run() {
     return {
       iun,
       notificationStatus: 'COMPLETED_REACHED',
-      notificationStatusHistory: [],
-      timeline: [],
+      notificationStatusHistory: [
+        {
+          status: 'ACCEPTED',
+          activeFrom: '2026-07-21T16:23:52.020346318Z',
+          relatedTimelineElements: [`REQUEST_ACCEPTED.IUN_${iun}`],
+        },
+      ],
+      timeline: [
+        {
+          elementId: `REQUEST_ACCEPTED.IUN_${iun}`,
+          category: 'REQUEST_ACCEPTED',
+          eventTimestamp: '2026-07-21T16:25:27.584650008Z',
+          details: {
+            notificationRequestId: `nr-${iun}`,
+          },
+        },
+      ],
       documents: [],
     };
   }
@@ -130,11 +145,18 @@ async function run() {
     }
 
     const summary = parseCsv(fs.readFileSync(path.join(outDir, 'informal_summary.csv'), 'utf8'));
+    const raw = parseCsv(fs.readFileSync(path.join(outDir, 'informal_timeline_raw.csv'), 'utf8'));
     const errors = parseCsv(fs.readFileSync(path.join(outDir, 'informal_errors.csv'), 'utf8'));
 
     assert.equal(summary.rows.length, 2, 'summary deve contenere i due IUN processati');
     assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost']);
     assert(summary.rows.every((row) => row.analogCost === '0'), 'analogCost deve essere sempre 0');
+    assert.equal(raw.rows.length, 2, 'raw deve contenere un elemento per ogni IUN');
+    const rawEvent = JSON.parse(raw.rows[0].JSON);
+    assert.match(rawEvent.eventId, /^[0-9a-f-]{36}$/i);
+    assert.equal(rawEvent.newStatus, 'ACCEPTED');
+    assert.equal(rawEvent.notificationRequestId, `nr-${iunA}`);
+    assert.equal(rawEvent.element.elementId, `REQUEST_ACCEPTED.IUN_${iunA}`);
     assert.equal(errors.rows.length, 0, 'errors deve essere vuoto dopo retry transient riuscito');
 
     process.stdout.write('US4 mock test passed\n');

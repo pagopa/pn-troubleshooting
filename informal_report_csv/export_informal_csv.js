@@ -4,6 +4,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { randomUUID } = require('node:crypto');
 const dotenv = require('dotenv');
 
 const INFORMAL_ENDPOINT_TEMPLATE = '/informal/delivery/v1/notifications/sent/{iun}?retrieveMessage=true';
@@ -210,6 +211,31 @@ function buildTimelineStatusIndex(detail) {
   return idx;
 }
 
+function buildProgressResponseElement(iun, detail, timelineElement, statusByElement) {
+  const elementId = timelineElement?.elementId ?? '';
+  const progressResponseElement = {
+    eventId: randomUUID(),
+    iun,
+    element: timelineElement,
+  };
+
+  const newStatus = statusByElement.get(elementId);
+  if (newStatus !== undefined) {
+    progressResponseElement.newStatus = newStatus;
+  }
+
+  const notificationRequestId =
+    detail?.notificationRequestId ??
+    timelineElement?.details?.notificationRequestId ??
+    null;
+
+  if (notificationRequestId !== null && notificationRequestId !== undefined && notificationRequestId !== '') {
+    progressResponseElement.notificationRequestId = notificationRequestId;
+  }
+
+  return progressResponseElement;
+}
+
 function buildHeaders(args) {
   const headers = {
     Accept: 'application/json',
@@ -217,7 +243,7 @@ function buildHeaders(args) {
   };
 
   if (args.authToken) {
-    headers.Authorization = `Bearer ${args.authToken}`;
+    headers.Authorization = 'Bearer ' + args.authToken;
   }
 
   return headers;
@@ -375,11 +401,13 @@ function buildEventsRows(iun, detail) {
 
 function buildTimelineRawRows(iun, detail) {
   const timeline = Array.isArray(detail.timeline) ? detail.timeline : [];
+  const statusByElement = buildTimelineStatusIndex(detail);
+
   return timeline.map((element, idx) => ({
     IUN: iun,
     TIMELINE_ELEMENT_ID: element?.elementId ?? idx,
     BUSINESS_TIMESTAMP: element?.eventTimestamp ?? '',
-    JSON: toJsonString(element),
+    JSON: toJsonString(buildProgressResponseElement(iun, detail, element, statusByElement)),
   }));
 }
 
