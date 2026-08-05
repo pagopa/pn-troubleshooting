@@ -5,7 +5,9 @@ const path = require('node:path');
 const dotenv = require('dotenv');
 
 const INFORMAL_ENDPOINT_TEMPLATE = '/informal/delivery/v1/notifications/sent/{iun}?retrieveMessage=true';
-const REPORTS_DIR = path.join(__dirname, 'reports');
+const TMP_DIR = path.join(__dirname, '..', 'tmp');
+const DEFAULT_INPUT_IUNS_FILE = path.join(TMP_DIR, 'inputIuns.txt');
+const REPORTS_DIR = path.join(TMP_DIR, 'e2e', 'reports');
 const REPORT_INDEX = path.join(REPORTS_DIR, 'latest-summary.json');
 
 function requireManualTrigger(argv) {
@@ -16,6 +18,18 @@ function requireManualTrigger(argv) {
   if (process.env.CI === 'true') {
     throw new Error('Test DEV E2E bloccato in CI: non deve essere eseguito automaticamente');
   }
+}
+
+function parseIunsFromFile(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  const content = fs.readFileSync(filePath, 'utf8');
+  return content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith('#'));
 }
 
 function parseIun(argv) {
@@ -29,10 +43,18 @@ function parseIun(argv) {
   }
 
   const fromEnv = process.env.INFORMAL_TEST_IUN;
-  if (!fromEnv) {
-    throw new Error('Specificare --iun <value> oppure env INFORMAL_TEST_IUN');
+  if (fromEnv) {
+    return fromEnv;
   }
-  return fromEnv;
+
+  const fromFile = parseIunsFromFile(DEFAULT_INPUT_IUNS_FILE);
+  if (fromFile.length > 0) {
+    return fromFile[0];
+  }
+
+  throw new Error(
+    `Specificare --iun <value> oppure env INFORMAL_TEST_IUN oppure valorizzare ${DEFAULT_INPUT_IUNS_FILE}`
+  );
 }
 
 function stripWrappingQuotes(value) {
@@ -212,6 +234,8 @@ function writeReport(context, status, details = {}) {
 module.exports = {
   requireManualTrigger,
   parseIun,
+  parseIunsFromFile,
+  DEFAULT_INPUT_IUNS_FILE,
   loadEnv,
   callDev,
   assert,

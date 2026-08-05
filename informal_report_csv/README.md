@@ -74,7 +74,7 @@ node export_informal_csv.js --input-file ./sample_iuns.txt --output-dir ./out
 
 ---
 
-## Test E2E DEV manuali (US1-US4)
+## Test E2E DEV manuali (US1-US5)
 
 Sono disponibili test E2E separati per ogni User Story, con chiamata reale a DEV.
 
@@ -90,14 +90,14 @@ npm run e2e:dev:us1 -- --iun MWYJ-VTHJ-RUMK-202607-T-A
 npm run e2e:dev:us2 -- --iun MWYJ-VTHJ-RUMK-202607-T-A
 npm run e2e:dev:us3 -- --iun MWYJ-VTHJ-RUMK-202607-T-A
 npm run e2e:dev:us4 -- --iun MWYJ-VTHJ-RUMK-202607-T-A
+npm run e2e:dev:us5 -- --iun MWYJ-VTHJ-RUMK-202607-T-A
 npm run e2e:dev:all -- --iun MWYJ-VTHJ-RUMK-202607-T-A
 ```
 
 `e2e:dev:all` è un test end-to-end globale che verifica in un unico run:
 - chiamata DEV valida (seed IUN)
-- esecuzione script in batch con dedup e un IUN invalido
+- esecuzione script in batch usando la lista IUN da `tmp/inputIuns.txt`
 - generazione di tutti i CSV (`summary`, `events`, `timeline_raw`, `attachments`, `errors`)
-- gestione errori per-IUN
 - comportamento coerente con il vincolo 1 RPS (verifica su durata esecuzione batch multi-IUN)
 
 Test mock automatici (senza chiamate reali DEV):
@@ -108,14 +108,16 @@ npm run test:mock
 
 In alternativa puoi impostare `INFORMAL_TEST_IUN` in environment ed evitare `--iun`.
 
+Se non specifichi né `--iun` né `INFORMAL_TEST_IUN`, i test usano automaticamente il primo IUN disponibile in `tmp/inputIuns.txt`.
+
 ### Report E2E generati
 Ogni esecuzione manuale salva:
-- report JSON: `scripts/client/informal_csv_report/e2e/reports/<timestamp>_<us>.json`
-- artefatti output: `scripts/client/informal_csv_report/e2e/reports/<timestamp>_<us>_artifacts/`
+- report JSON: `tmp/e2e/reports/<timestamp>_<us>.json`
+- artefatti output: `tmp/e2e/reports/<timestamp>_<us>_artifacts/`
 
 Gli artefatti includono:
 - response DEV raw/json
 - (US1) CSV generati dallo script in `generated_output/`
 
 Indice ultimi risultati:
-- `scripts/client/informal_csv_report/e2e/reports/latest-summary.json`
+- `tmp/e2e/reports/latest-summary.json`

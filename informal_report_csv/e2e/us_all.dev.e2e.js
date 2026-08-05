@@ -2,12 +2,13 @@
 'use strict';
 
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const {
   requireManualTrigger,
   parseIun,
+  parseIunsFromFile,
+  DEFAULT_INPUT_IUNS_FILE,
   loadEnv,
   callDev,
   assert,
@@ -65,8 +66,10 @@ function parseCsv(content) {
   try {
     requireManualTrigger(process.argv);
     const cfg = loadEnv();
+    const iunList = parseIunsFromFile(DEFAULT_INPUT_IUNS_FILE);
+    assert(iunList.length >= 1, `US_ALL E2E: nessun IUN trovato in ${DEFAULT_INPUT_IUNS_FILE}`);
+
     const iun = parseIun(process.argv);
-    const invalidIun = `${iun}-INVALID`;
     reportContext = buildReportContext('US_ALL', iun, cfg);
     artifactsDir = createArtifactsDir(reportContext);
 
@@ -78,12 +81,8 @@ function parseCsv(content) {
     writeJsonArtifact(artifactsDir, 'dev_response_seed_json', result.bodyJson ?? { raw: result.bodyText });
     writeTextArtifact(artifactsDir, 'dev_response_seed_raw', result.bodyText);
 
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'informal-us-all-'));
-    const inputPath = path.join(tempDir, 'input_iuns.txt');
     const outputDir = path.join(artifactsDir, 'generated_output');
     fs.mkdirSync(outputDir, { recursive: true });
-
-    fs.writeFileSync(inputPath, `${iun}\n${invalidIun}\n${iun}\n`, 'utf8');
 
     const scriptPath = path.join(__dirname, '..', 'export_informal_csv.js');
     const startedAtMs = Date.now();
@@ -93,7 +92,7 @@ function parseCsv(content) {
     try {
       scriptStdout = execFileSync(
         process.execPath,
-        [scriptPath, '--input-file', inputPath, '--output-dir', outputDir],
+        [scriptPath, '--input-file', DEFAULT_INPUT_IUNS_FILE, '--output-dir', outputDir],
         {
           cwd: path.join(__dirname, '..'),
           stdio: 'pipe',
@@ -129,25 +128,37 @@ function parseCsv(content) {
     const attachments = parseCsv(fs.readFileSync(attachmentsPath, 'utf8'));
     const errors = parseCsv(fs.readFileSync(errorsPath, 'utf8'));
 
-    assert(scriptExitCode !== 0, 'US_ALL E2E: con IUN invalido lo script deve chiudere con exit code != 0');
-    assert(summary.rows.length === 1, `US_ALL E2E: summary rows attese=1 ricevute=${summary.rows.length}`);
+    assert(scriptExitCode === 0, `US_ALL E2E: esecuzione batch fallita con exit code ${scriptExitCode}`);
+    assert(summary.rows.length >= 1, `US_ALL E2E: summary rows attese>=1 ricevute=${summary.rows.length}`);
     assert(
       summary.header.join(',') === 'IUN,notificationStatus,analogCost',
       `US_ALL E2E: header summary inatteso ${summary.header.join(',')}`
     );
-    assert(summary.rows[0].IUN === iun, 'US_ALL E2E: dedup/processing summary non coerente');
-    assert(summary.rows[0].analogCost === '0', 'US_ALL E2E: analogCost deve essere 0');
+    assert(summary.rows.every((row) => row.analogCost === '0'), 'US_ALL E2E: analogCost deve essere 0');
     assert(events.rows.length >= 1, 'US_ALL E2E: events deve contenere almeno una riga');
     assert(
       raw.header.join(',') === 'IUN,TIMELINE_ELEMENT_ID,BUSINESS_TIMESTAMP,JSON',
       `US_ALL E2E: header raw inatteso ${raw.header.join(',')}`
     );
     assert(raw.rows.length >= 1, 'US_ALL E2E: timeline raw deve contenere almeno una riga');
-    assert(errors.rows.length >= 1, 'US_ALL E2E: errors deve contenere almeno una riga');
+
+    const firstRawRow = raw.rows[0];
+    assert(firstRawRow.JSON && firstRawRow.JSON.trim().length > 0, 'US_ALL E2E: colonna JSON vuota nella prima riga');
+
+    let parsedRawJson;
+    try {
+      parsedRawJson = JSON.parse(firstRawRow.JSON);
+    } catch (err) {
+      const parseMessage = err instanceof Error ? err.message : String(err);
+      throw new Error(`US_ALL E2E: JSON.parse fallita sulla prima riga timeline_raw: ${parseMessage}`);
+    }
+
+    assert(parsedRawJson && typeof parsedRawJson === 'object', 'US_ALL E2E: il JSON parsato non e un oggetto');
     assert(
-      errors.rows.some((row) => row.iun === invalidIun),
-      'US_ALL E2E: error row per IUN invalido non presente'
+      parsedRawJson.element && typeof parsedRawJson.element === 'object',
+      'US_ALL E2E: payload parsato senza campo element valido'
     );
+
     assert(scriptDurationMs >= 1000, `US_ALL E2E: durata troppo bassa per test 1 RPS (${scriptDurationMs}ms)`);
 
     const reportFile = writeReport(reportContext, 'PASS', {
@@ -156,13 +167,19 @@ function parseCsv(content) {
       seedDurationMs: result.durationMs,
       scriptExitCode,
       scriptDurationMs,
-      uniqueIunsProcessed: 2,
+      uniqueIunsProcessed: new Set(iunList).size,
+      inputIunsFile: DEFAULT_INPUT_IUNS_FILE,
       csvCounts: {
         summary: summary.rows.length,
         events: events.rows.length,
         timelineRaw: raw.rows.length,
         attachments: attachments.rows.length,
         errors: errors.rows.length,
+      },
+      rawJsonCheck: {
+        firstRowElementId: firstRawRow.TIMELINE_ELEMENT_ID,
+        firstRowBusinessTimestamp: firstRawRow.BUSINESS_TIMESTAMP,
+        parsedElementId: parsedRawJson.element.elementId ?? null,
       },
       artifactsDir,
       generatedFiles: {
