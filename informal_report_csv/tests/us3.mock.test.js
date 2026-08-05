@@ -95,6 +95,8 @@ async function run() {
     ],
   };
 
+  const expectedNotificationRequestId = Buffer.from(okIun, 'utf8').toString('base64');
+
   const server = http.createServer((req, res) => {
     if (req.url === `/informal/delivery/v1/notifications/sent/${okIun}?retrieveMessage=true`) {
       res.writeHead(200, { 'content-type': 'application/json' });
@@ -152,6 +154,9 @@ async function run() {
     assert.equal(raw.rows.length, 1, 'raw timeline deve contenere solo timeline di IUN OK');
     assert.match(rawEvent.eventId, /^[0-9a-f-]{36}$/i);
     assert.equal(rawEvent.iun, okIun);
+    assert.equal(rawEvent.notificationRequestId, expectedNotificationRequestId);
+    assert.equal(rawEvent.ttl, 1);
+    assert.equal(rawEvent.eventDescription, `${okPayload.timeline[0].eventTimestamp}_${okPayload.timeline[0].elementId}`);
     assert.equal(rawEvent.newStatus, 'PROCESSING');
     assert.deepEqual(rawEvent.element, okPayload.timeline[0]);
 

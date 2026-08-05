@@ -13,6 +13,7 @@ const PAYMENT_DOWNLOAD_TEMPLATE = '/informal/delivery/v1/notifications/informal/
 const RATE_LIMIT_INTERVAL_MS = 1000;
 const TRANSIENT_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 const MAX_TRANSIENT_RETRIES = 2;
+const RAW_TIMELINE_TTL = 1;
 
 const DISALLOWED_OVERRIDE_FLAGS = new Set([
   '--base-url',
@@ -213,10 +214,14 @@ function buildTimelineStatusIndex(detail) {
 
 function buildProgressResponseElement(iun, detail, timelineElement, statusByElement) {
   const elementId = timelineElement?.elementId ?? '';
+  const eventTimestamp = timelineElement?.eventTimestamp ?? timelineElement?.timestamp ?? '';
+  const notificationRequestId = Buffer.from(String(iun), 'utf8').toString('base64');
   const progressResponseElement = {
     eventId: randomUUID(),
     iun,
     element: timelineElement,
+    notificationRequestId,
+    ttl: RAW_TIMELINE_TTL,
   };
 
   const newStatus = statusByElement.get(elementId);
@@ -224,14 +229,7 @@ function buildProgressResponseElement(iun, detail, timelineElement, statusByElem
     progressResponseElement.newStatus = newStatus;
   }
 
-  const notificationRequestId =
-    detail?.notificationRequestId ??
-    timelineElement?.details?.notificationRequestId ??
-    null;
-
-  if (notificationRequestId !== null && notificationRequestId !== undefined && notificationRequestId !== '') {
-    progressResponseElement.notificationRequestId = notificationRequestId;
-  }
+  progressResponseElement.eventDescription = `${eventTimestamp}_${elementId}`;
 
   return progressResponseElement;
 }

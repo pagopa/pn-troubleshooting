@@ -104,6 +104,8 @@ async function run() {
     ],
   };
 
+  const expectedNotificationRequestId = Buffer.from(iun, 'utf8').toString('base64');
+
   const server = http.createServer((req, res) => {
     if (req.url === `/informal/delivery/v1/notifications/sent/${iun}?retrieveMessage=true`) {
       res.writeHead(200, { 'content-type': 'application/json' });
@@ -163,15 +165,17 @@ async function run() {
     assert.equal(raw.rows[0].IUN, iun);
     assert.equal(raw.rows[0].TIMELINE_ELEMENT_ID, `REQUEST_ACCEPTED.IUN_${iun}`);
     assert.equal(raw.rows[0].BUSINESS_TIMESTAMP, '2026-07-21T16:25:27.584650008Z');
-    assert.match(rawEvents[0].eventId, /^[0-9a-f-]{36}$/i);
-    assert.equal(rawEvents[0].iun, iun);
+    rawEvents.forEach((event, idx) => {
+      assert.match(event.eventId, /^[0-9a-f-]{36}$/i);
+      assert.equal(event.iun, iun);
+      assert.equal(event.notificationRequestId, expectedNotificationRequestId);
+      assert.equal(event.ttl, 1);
+      assert.equal(event.eventDescription, `${payload.timeline[idx].eventTimestamp}_${payload.timeline[idx].elementId}`);
+      assert.deepEqual(event.element, payload.timeline[idx]);
+    });
     assert.equal(rawEvents[0].newStatus, 'ACCEPTED');
-    assert.equal(rawEvents[0].notificationRequestId, 'abc');
-    assert.deepEqual(rawEvents[0].element, payload.timeline[0]);
     assert.equal(rawEvents[1].newStatus, 'PROCESSING');
-    assert.deepEqual(rawEvents[1].element, payload.timeline[1]);
     assert.equal(rawEvents[2].newStatus, 'COMPLETED_REACHED');
-    assert.deepEqual(rawEvents[2].element, payload.timeline[2]);
 
     process.stdout.write('US2 mock test passed\n');
   } finally {

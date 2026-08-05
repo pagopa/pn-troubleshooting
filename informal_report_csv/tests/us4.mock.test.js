@@ -85,6 +85,9 @@ async function run() {
     };
   }
 
+  const expectedNotificationRequestIdA = Buffer.from(iunA, 'utf8').toString('base64');
+  const expectedNotificationRequestIdB = Buffer.from(iunB, 'utf8').toString('base64');
+
   const server = http.createServer((req, res) => {
     requestTimestamps.push(Date.now());
 
@@ -155,8 +158,14 @@ async function run() {
     const rawEvent = JSON.parse(raw.rows[0].JSON);
     assert.match(rawEvent.eventId, /^[0-9a-f-]{36}$/i);
     assert.equal(rawEvent.newStatus, 'ACCEPTED');
-    assert.equal(rawEvent.notificationRequestId, `nr-${iunA}`);
+    assert.equal(rawEvent.notificationRequestId, expectedNotificationRequestIdA);
+    assert.equal(rawEvent.ttl, 1);
+    assert.equal(rawEvent.eventDescription, `${payloadFor(iunA).timeline[0].eventTimestamp}_${payloadFor(iunA).timeline[0].elementId}`);
     assert.equal(rawEvent.element.elementId, `REQUEST_ACCEPTED.IUN_${iunA}`);
+    const rawEventB = JSON.parse(raw.rows[1].JSON);
+    assert.equal(rawEventB.notificationRequestId, expectedNotificationRequestIdB);
+    assert.equal(rawEventB.ttl, 1);
+    assert.equal(rawEventB.eventDescription, `${payloadFor(iunB).timeline[0].eventTimestamp}_${payloadFor(iunB).timeline[0].elementId}`);
     assert.equal(errors.rows.length, 0, 'errors deve essere vuoto dopo retry transient riuscito');
 
     process.stdout.write('US4 mock test passed\n');
