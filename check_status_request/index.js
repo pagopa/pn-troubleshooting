@@ -66,6 +66,7 @@ async function main() {
   for (let i = 0; i < fileRows.length; i++) {
     const requestId = fileRows[i].trim()
     let requestIdWithPcRetry = null
+    let metadata = null
     if (latest) {
       let idx = 0;
       requestIdWithPcRetry = requestId + '.PCRETRY_' + idx;
