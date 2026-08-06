@@ -219,7 +219,7 @@ function buildProgressResponseElement(iun, detail, timelineElement, statusByElem
   const progressResponseElement = {
     eventId: randomUUID(),
     iun,
-    element: timelineElement,
+    informalElement: timelineElement,
     notificationRequestId,
     ttl: RAW_TIMELINE_TTL,
   };

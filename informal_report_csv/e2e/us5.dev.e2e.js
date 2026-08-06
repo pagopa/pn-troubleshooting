@@ -111,8 +111,8 @@ function parseCsv(content) {
 
     assert(parsedJson && typeof parsedJson === 'object', 'US5 E2E: il JSON parsato non e un oggetto');
     assert(
-      parsedJson.element && typeof parsedJson.element === 'object',
-      'US5 E2E: payload parsato senza campo element valido'
+      parsedJson.informalElement && typeof parsedJson.informalElement === 'object',
+      'US5 E2E: payload parsato senza campo informalElement valido'
     );
 
     const reportFile = writeReport(reportContext, 'PASS', {
@@ -122,7 +122,7 @@ function parseCsv(content) {
       timelineRawRows: raw.rows.length,
       firstRowElementId: firstRow.TIMELINE_ELEMENT_ID,
       firstRowBusinessTimestamp: firstRow.BUSINESS_TIMESTAMP,
-      parsedElementId: parsedJson.element.elementId ?? null,
+      parsedElementId: parsedJson.informalElement.elementId ?? null,
       artifactsDir,
       generatedFiles: {
         timelineRawCsvPath,

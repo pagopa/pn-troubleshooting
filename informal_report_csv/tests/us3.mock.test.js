@@ -158,7 +158,7 @@ async function run() {
     assert.equal(rawEvent.ttl, 1);
     assert.equal(rawEvent.eventDescription, `${okPayload.timeline[0].eventTimestamp}_${okPayload.timeline[0].elementId}`);
     assert.equal(rawEvent.newStatus, 'PROCESSING');
-    assert.deepEqual(rawEvent.element, okPayload.timeline[0]);
+    assert.deepEqual(rawEvent.informalElement, okPayload.timeline[0]);
 
     assert.equal(attachments.rows.length, 2, 'attachments deve contenere document + timeline attachment');
     const docRow = attachments.rows.find((r) => r.attachmentType === 'DOCUMENT');

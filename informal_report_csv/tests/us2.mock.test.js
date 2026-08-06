@@ -171,7 +171,7 @@ async function run() {
       assert.equal(event.notificationRequestId, expectedNotificationRequestId);
       assert.equal(event.ttl, 1);
       assert.equal(event.eventDescription, `${payload.timeline[idx].eventTimestamp}_${payload.timeline[idx].elementId}`);
-      assert.deepEqual(event.element, payload.timeline[idx]);
+      assert.deepEqual(event.informalElement, payload.timeline[idx]);
     });
     assert.equal(rawEvents[0].newStatus, 'ACCEPTED');
     assert.equal(rawEvents[1].newStatus, 'PROCESSING');

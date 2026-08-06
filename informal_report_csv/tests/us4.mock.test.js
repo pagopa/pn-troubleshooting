@@ -161,7 +161,7 @@ async function run() {
     assert.equal(rawEvent.notificationRequestId, expectedNotificationRequestIdA);
     assert.equal(rawEvent.ttl, 1);
     assert.equal(rawEvent.eventDescription, `${payloadFor(iunA).timeline[0].eventTimestamp}_${payloadFor(iunA).timeline[0].elementId}`);
-    assert.equal(rawEvent.element.elementId, `REQUEST_ACCEPTED.IUN_${iunA}`);
+    assert.equal(rawEvent.informalElement.elementId, `REQUEST_ACCEPTED.IUN_${iunA}`);
     const rawEventB = JSON.parse(raw.rows[1].JSON);
     assert.equal(rawEventB.notificationRequestId, expectedNotificationRequestIdB);
     assert.equal(rawEventB.ttl, 1);

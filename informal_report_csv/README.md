@@ -55,7 +55,7 @@ Devono essere definiti nel `.env` (tranne il path endpoint che è fisso nel codi
 - `informal_events.csv` su successo (US2)
 - `informal_timeline_raw.csv` su successo (US2) con formato: `IUN,TIMELINE_ELEMENT_ID,BUSINESS_TIMESTAMP,JSON`
   dove `JSON` serializza un oggetto compatibile con `ProgressResponseElementV29`:
-  `eventId`, `notificationRequestId` (Base64 dell'IUN), `ttl`, `eventDescription` (`timestamp_elementId`), `iun`, `newStatus`, `element`
+  `eventId`, `notificationRequestId` (Base64 dell'IUN), `ttl`, `eventDescription` (`timestamp_elementId`), `iun`, `newStatus`, `informalElement`
 - `informal_attachments.csv` su successo (US3, metadata-only)
 - `informal_errors.csv` su errore (anche cumulativo in batch US3)
 

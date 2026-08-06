@@ -155,8 +155,8 @@ function parseCsv(content) {
 
     assert(parsedRawJson && typeof parsedRawJson === 'object', 'US_ALL E2E: il JSON parsato non e un oggetto');
     assert(
-      parsedRawJson.element && typeof parsedRawJson.element === 'object',
-      'US_ALL E2E: payload parsato senza campo element valido'
+      parsedRawJson.informalElement && typeof parsedRawJson.informalElement === 'object',
+      'US_ALL E2E: payload parsato senza campo informalElement valido'
     );
 
     assert(scriptDurationMs >= 1000, `US_ALL E2E: durata troppo bassa per test 1 RPS (${scriptDurationMs}ms)`);
@@ -179,7 +179,7 @@ function parseCsv(content) {
       rawJsonCheck: {
         firstRowElementId: firstRawRow.TIMELINE_ELEMENT_ID,
         firstRowBusinessTimestamp: firstRawRow.BUSINESS_TIMESTAMP,
-        parsedElementId: parsedRawJson.element.elementId ?? null,
+        parsedElementId: parsedRawJson.informalElement.elementId ?? null,
       },
       artifactsDir,
       generatedFiles: {
