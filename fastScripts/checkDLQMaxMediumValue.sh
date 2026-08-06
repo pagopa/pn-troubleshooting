@@ -3,15 +3,8 @@
 # --- CONFIGURAZIONE ---
 # Inserisci qui i nomi delle tue code DLQ (separati da spazio)
 QUEUES=(
-  "pn-ss-transformation-sign-and-timemark-queue-DLQ"
-  "pn-ss-transformation-sign-queue-DLQ"
-  "pn-ss-main-bucket-events-queue-DLQ"
-  "pn-ss-transformation-raster-queue-DLQ"
-  "pn-ec-tracker-sms-errori-queue-DLQ.fifo"
-  "pn-ec-tracker-pec-errori-queue-DLQ.fifo"
-  "pn-ec-tracker-email-errori-queue-DLQ.fifo"
-  "pn-ec-tracker-cartaceo-errori-queue-DLQ.fifo"
-  "pn-ec-tracker-sercq-send-errori-queue-DLQ.fifo"
+  "queue1"
+  "queue2"
 )
 
 START_TIME=$(date -u -d '60 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-60d +%Y-%m-%dT%H:%M:%SZ)
