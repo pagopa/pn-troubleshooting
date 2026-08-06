@@ -1,30 +1,32 @@
 #!/bin/bash
+set -euo pipefail
 
 # --- CONFIGURAZIONE ---
 # Inserisci qui i nomi delle tue code DLQ (separati da spazio)
 QUEUES=(
-  "queue1"
-  "queue2"
+  "pn-ss-transformation-sign-and-timemark-queue-DLQ"
+  "pn-ss-transformation-sign-queue-DLQ"
+  "pn-ss-main-bucket-events-queue-DLQ"
+  "pn-ss-transformation-raster-queue-DLQ"
+  "pn-ec-tracker-sms-errori-queue-DLQ.fifo"
+  "pn-ec-tracker-pec-errori-queue-DLQ.fifo"
+  "pn-ec-tracker-email-errori-queue-DLQ.fifo"
+  "pn-ec-tracker-cartaceo-errori-queue-DLQ.fifo"
+  "pn-ec-tracker-sercq-send-errori-queue-DLQ.fifo"
 )
 
-START_TIME=$(date -u -d '60 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-60d +%Y-%m-%dT%H:%M:%SZ)
-END_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-PERIOD=86400
-PROFILE=$1
-
-echo "======================================================================"
-echo " Analisi Metriche DLQ (Ultimi 60 Giorni)"
-echo "======================================================================"
-printf "%-60s | %-12s | %-12s\n" "Nome Coda DLQ" "Max Messaggi" "Media Messaggi"
-echo "----------------------------------------------------------------------"
-
+if [ $# -ne 1 ]; then
+  echo "usage: $0 <aws-profile>"
+  exit 1
+fi
+PROFILE="$1"
 START_TIME=$(date -u -d '60 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-60d +%Y-%m-%dT%H:%M:%SZ)
 END_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 PERIOD=86400
 
 for QUEUE in "${QUEUES[@]}"; do
   echo "=================================================="
-  echo " ANALISI CODA: $QUEUE"
+  echo "ANALISI CODA: $QUEUE"
   echo "=================================================="
   printf "%-12s | %-15s\n" "Data" "Max del Giorno"
   echo "--------------------------------------------------"
@@ -52,7 +54,7 @@ for QUEUE in "${QUEUES[@]}"; do
 
   # 2. Calcolo dei valori finali aggregati sui 60 giorni
   MAX_ABS=$(echo "$RESPONSE" | jq '[.Datapoints[].Maximum] | max // 0')
-  AVG_MAX=$(echo "$RESPONSE" | jq 'if (.Datapoints | length) > 0 then ([.Datapoints[].Maximum] | add / length) else 0 end' | xargs printf "%.2f")
+  AVG_MAX=$(printf "%.2f" "$(echo "$RESPONSE" | jq -r 'if (.Datapoints | length) > 0 then ([.Datapoints[].Maximum] | add / length) else 0 end')")
 
   echo "--------------------------------------------------"
   echo " SUMMARY FINALE (Ultimi 60 giorni):"
