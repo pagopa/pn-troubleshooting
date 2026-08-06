@@ -70,7 +70,7 @@ async function main() {
   const failedRequestIds = [];
 
   console.log('Reading from file...');
-  const parsedCsv = await _parseCSV(fileName, ";");
+  const parsedCsv = await _parseCSV(fileName, ",");
 
   // mkdir directory if not exists
   const dirPath = './generated_documents';

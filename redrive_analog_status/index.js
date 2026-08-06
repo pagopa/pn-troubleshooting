@@ -118,8 +118,10 @@ async function main() {
     parser.push(chunk)
   }
   for(const listPars of parser ) {
-    for(const requestId of listPars ) {
+    for(const params of listPars ) {
+      const [requestId, statusDateTime] = params.split(',');
       console.log("elaborating request id: " + requestId)
+      console.log("elaborating statusDateTime: " + statusDateTime)
       const iun = _getIunFromRequestId(requestId);
       const attempt = _getAttemptFromRequestId(requestId)
       let timelineEvents = await awsCoreClient._queryRequest("pn-Timelines", "iun", iun)
@@ -128,9 +130,8 @@ async function main() {
         const eventsList = unmarshall(metadati.Items[0]).eventsList
         const idxResult = eventsList
           .map((e, idx) => ({ e, idx }))
-          .filter(({ e }) => e.paperProgrStatus.statusCode == statusCode)
+          .filter(({ e }) => e.paperProgrStatus.statusCode == statusCode && e.paperProgrStatus.statusDateTime == statusDateTime)
           .map(({ idx }) => idx);
-
         if(idxResult.length > 0) {
           let messages = []
           let event = null;
