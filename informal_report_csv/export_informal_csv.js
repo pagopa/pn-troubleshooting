@@ -216,10 +216,13 @@ function buildProgressResponseElement(iun, detail, timelineElement, statusByElem
   const elementId = timelineElement?.elementId ?? '';
   const eventTimestamp = timelineElement?.eventTimestamp ?? timelineElement?.timestamp ?? '';
   const notificationRequestId = Buffer.from(String(iun), 'utf8').toString('base64');
+
+  // eslint-disable-next-line no-unused-vars
+  const { InformaltimelineEventCategory: _removed, ...cleanedElement } = timelineElement ?? {};
   const progressResponseElement = {
     eventId: randomUUID(),
     iun,
-    informalElement: timelineElement,
+    informalElement: cleanedElement,
     notificationRequestId,
     ttl: RAW_TIMELINE_TTL,
   };
