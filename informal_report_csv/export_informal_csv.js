@@ -26,7 +26,12 @@ const DISALLOWED_OVERRIDE_FLAGS = new Set([
   '--smtp-user',
   '--smtp-password',
   '--smtp-from',
+  '--mail-provider',
+  '--mail-from',
+  '--aws-region',
 ]);
+
+const VALID_MAIL_PROVIDERS = new Set(['smtp', 'ses']);
 
 // Validazione permissiva (non RFC 5322 completa): sufficiente a scartare input palesemente errati.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -131,20 +136,41 @@ function loadEnvironment(args) {
   args.apiKey = stripWrappingQuotes(process.env.INFORMAL_API_KEY);
   args.authToken = stripWrappingQuotes(process.env.INFORMAL_AUTH_TOKEN);
 
-  args.smtp = loadSmtpConfig();
+  args.mailConfig = loadMailConfig();
 }
 
-function loadSmtpConfig() {
+function normalizeMailProvider(rawValue) {
+  const value = stripWrappingQuotes(rawValue);
+  return value ? value.toLowerCase() : 'smtp';
+}
+
+function loadMailConfig() {
+  const provider = normalizeMailProvider(process.env.MAIL_PROVIDER);
+  const from = stripWrappingQuotes(process.env.MAIL_FROM);
+
+  if (provider === 'ses') {
+    return loadSesConfig(provider, from);
+  }
+
+  return loadSmtpConfig(provider, from);
+}
+
+function loadSmtpConfig(provider, from) {
   const host = stripWrappingQuotes(process.env.SMTP_HOST);
   const rawPort = stripWrappingQuotes(process.env.SMTP_PORT);
   const port = rawPort ? Number(rawPort) : undefined;
   const user = stripWrappingQuotes(process.env.SMTP_USER);
   const password = stripWrappingQuotes(process.env.SMTP_PASSWORD);
-  const from = stripWrappingQuotes(process.env.SMTP_FROM);
   const rawSecure = stripWrappingQuotes(process.env.SMTP_SECURE);
   const secure = rawSecure ? rawSecure.toLowerCase() === 'true' : port === 465;
 
-  return { host, port, user, password, from, secure };
+  return { provider, host, port, user, password, from, secure };
+}
+
+function loadSesConfig(provider, from) {
+  const region = stripWrappingQuotes(process.env.AWS_REGION);
+
+  return { provider, region, from };
 }
 
 function printHelp() {
@@ -161,8 +187,8 @@ Opzioni:
   --mail <indirizzo>     Invia i CSV generati come allegati a questo indirizzo
   --help                 Mostra questo aiuto
 
-Nota: endpoint, credenziali API e configurazione SMTP NON possono essere
-passati via CLI. Devono essere presenti in .env.
+Nota: endpoint, credenziali API e configurazione email (SMTP o SES) NON possono
+essere passati via CLI. Devono essere presenti in .env.
 
 Variabili ambiente obbligatorie:
   INFORMAL_BASE_URL
@@ -171,15 +197,26 @@ Variabili ambiente obbligatorie:
 Variabili ambiente opzionali:
   INFORMAL_AUTH_TOKEN
 
-Variabili ambiente obbligatorie se si usa --mail:
+Variabili ambiente opzionali se si usa --mail:
+  MAIL_PROVIDER          smtp (default) oppure ses
+
+Variabili ambiente obbligatorie se si usa --mail con MAIL_PROVIDER=smtp (default):
   SMTP_HOST
   SMTP_PORT
   SMTP_USER
   SMTP_PASSWORD
-  SMTP_FROM
+  MAIL_FROM
 
-Variabili ambiente opzionali se si usa --mail:
+Variabili ambiente opzionali se si usa --mail con MAIL_PROVIDER=smtp:
   SMTP_SECURE            true/false (default: true se SMTP_PORT=465, altrimenti false)
+
+Variabili ambiente obbligatorie se si usa --mail con MAIL_PROVIDER=ses:
+  AWS_REGION
+  MAIL_FROM
+
+Nota su MAIL_PROVIDER=ses: le credenziali AWS non vanno mai in .env o via CLI.
+Vengono risolte dalla default AWS credential provider chain (es. ruolo IAM di un
+CodeBuild, profilo locale, variabili AWS_* standard dell'ambiente).
 `;
   process.stdout.write(text);
 }
@@ -196,8 +233,22 @@ function ensureRequired(args) {
   }
 
   if (args.mail) {
-    ensureSmtpConfigured(args.smtp);
+    ensureMailConfigured(args.mailConfig);
   }
+}
+
+function ensureMailConfigured(mailConfig) {
+  if (mailConfig.provider === 'ses') {
+    ensureSesConfigured(mailConfig);
+    return;
+  }
+  if (mailConfig.provider === 'smtp') {
+    ensureSmtpConfigured(mailConfig);
+    return;
+  }
+  throw new Error(
+    `MAIL_PROVIDER non valido: "${mailConfig.provider}". Valori supportati: ${Array.from(VALID_MAIL_PROVIDERS).join(', ')}`
+  );
 }
 
 function ensureSmtpConfigured(smtp) {
@@ -206,11 +257,23 @@ function ensureSmtpConfigured(smtp) {
   if (!smtp.port || !Number.isInteger(smtp.port) || smtp.port <= 0) missing.push('SMTP_PORT');
   if (!smtp.user) missing.push('SMTP_USER');
   if (!smtp.password) missing.push('SMTP_PASSWORD');
-  if (!smtp.from) missing.push('SMTP_FROM');
+  if (!smtp.from) missing.push('MAIL_FROM');
 
   if (missing.length > 0) {
     throw new Error(
       `--mail richiede la configurazione SMTP in .env. Variabile/i mancante/i o non valida/e: ${missing.join(', ')}`
+    );
+  }
+}
+
+function ensureSesConfigured(ses) {
+  const missing = [];
+  if (!ses.region) missing.push('AWS_REGION');
+  if (!ses.from) missing.push('MAIL_FROM');
+
+  if (missing.length > 0) {
+    throw new Error(
+      `--mail richiede la configurazione SES in .env. Variabile/i mancante/i o non valida/e: ${missing.join(', ')}`
     );
   }
 }
@@ -626,7 +689,7 @@ async function main() {
 
     try {
       await sendReportEmail({
-        transportConfig: args.smtp,
+        transportConfig: args.mailConfig,
         to: args.mail,
         files: [summaryPath, eventsPath, timelineRawPath, attachmentsPath, errorsPath],
         stats,

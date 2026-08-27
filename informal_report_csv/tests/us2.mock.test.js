@@ -7,6 +7,7 @@ const path = require('node:path');
 const http = require('node:http');
 const { execFile } = require('node:child_process');
 const assert = require('node:assert/strict');
+const { buildChildEnv } = require('./testEnv');
 
 function parseCsv(content) {
   const lines = content.trimEnd().split('\n');
@@ -128,7 +129,7 @@ async function run() {
     const scriptPath = path.join(__dirname, '..', 'export_informal_csv.js');
     await execFileAsync(process.execPath, [scriptPath, '--env-file', envPath, '--iun', iun, '--output-dir', outDir], {
       cwd: path.join(__dirname, '..'),
-      env: process.env,
+      env: buildChildEnv(),
       encoding: 'utf8',
     });
 

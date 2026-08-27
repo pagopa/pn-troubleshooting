@@ -5,7 +5,7 @@
 const path = require('node:path');
 const nodemailer = require('nodemailer');
 
-function createTransporter(transportConfig) {
+function createSmtpTransporter(transportConfig) {
   return nodemailer.createTransport({
     host: transportConfig.host,
     port: transportConfig.port,
@@ -15,6 +15,24 @@ function createTransporter(transportConfig) {
       pass: transportConfig.password,
     },
   });
+}
+
+/**
+ * Crea un transport SES basato sulla default AWS credential provider chain
+ * (es. ruolo IAM del CodeBuild). Nessuna credenziale AWS viene letta o gestita
+ * qui: region a parte, tutto il resto è delegato all'SDK/ambiente.
+ */
+function createSesTransporter(transportConfig) {
+  const { SESv2Client, SendEmailCommand } = require('@aws-sdk/client-sesv2');
+  const sesClient = new SESv2Client({ region: transportConfig.region });
+  return nodemailer.createTransport({ SES: { sesClient, SendEmailCommand } });
+}
+
+function createTransporter(transportConfig) {
+  if (transportConfig.provider === 'ses') {
+    return createSesTransporter(transportConfig);
+  }
+  return createSmtpTransporter(transportConfig);
 }
 
 function buildSubject(stats) {
@@ -45,7 +63,7 @@ function buildAttachments(files) {
 }
 
 /**
- * Invia i CSV generati come allegati via SMTP.
+ * Invia i CSV generati come allegati via SMTP o AWS SES (in base a `transportConfig.provider`).
  * `transporter` è iniettabile per i test; se omesso viene creato da `transportConfig`.
  */
 async function sendReportEmail({ transportConfig, to, files, stats, transporter }) {
