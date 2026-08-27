@@ -7,6 +7,7 @@ const path = require('node:path');
 const http = require('node:http');
 const { execFile } = require('node:child_process');
 const assert = require('node:assert/strict');
+const { buildChildEnv } = require('./testEnv');
 
 function parseCsv(content) {
   const lines = content.trimEnd().split('\n');
@@ -127,7 +128,7 @@ async function run() {
     const result = await execFileAsync(
       process.execPath,
       [scriptPath, '--env-file', envPath, '--input-file', inputPath, '--output-dir', outDir],
-      { cwd: path.join(__dirname, '..'), env: process.env, encoding: 'utf8' }
+      { cwd: path.join(__dirname, '..'), env: buildChildEnv(), encoding: 'utf8' }
     );
 
     assert.ok(result.error, 'con un IUN KO lo script deve terminare con exit code != 0');
