@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const dotenv = require('dotenv');
+const { sendReportEmail } = require('./lib/mailer');
 
 const INFORMAL_ENDPOINT_TEMPLATE = '/informal/delivery/v1/notifications/sent/{iun}?retrieveMessage=true';
 const DOCUMENT_DOWNLOAD_TEMPLATE = '/informal/delivery/v1/notifications/informal/received/{iun}/attachments/documents/{docIdx}';
@@ -20,7 +21,15 @@ const DISALLOWED_OVERRIDE_FLAGS = new Set([
   '--api-key',
   '--auth-token',
   '--endpoint-template',
+  '--smtp-host',
+  '--smtp-port',
+  '--smtp-user',
+  '--smtp-password',
+  '--smtp-from',
 ]);
+
+// Validazione permissiva (non RFC 5322 completa): sufficiente a scartare input palesemente errati.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function parseArgs(argv) {
   const args = {
@@ -69,6 +78,12 @@ function parseArgs(argv) {
           throw new Error('--timeout-ms deve essere un intero positivo');
         }
         break;
+      case '--mail':
+        if (!EMAIL_REGEX.test(next)) {
+          throw new Error(`Indirizzo email non valido per --mail: ${next}`);
+        }
+        args.mail = next;
+        break;
       default:
         throw new Error(`Argomento non supportato: ${token}`);
     }
@@ -115,6 +130,21 @@ function loadEnvironment(args) {
   args.baseUrl = normalizeBaseUrl(process.env.INFORMAL_BASE_URL);
   args.apiKey = stripWrappingQuotes(process.env.INFORMAL_API_KEY);
   args.authToken = stripWrappingQuotes(process.env.INFORMAL_AUTH_TOKEN);
+
+  args.smtp = loadSmtpConfig();
+}
+
+function loadSmtpConfig() {
+  const host = stripWrappingQuotes(process.env.SMTP_HOST);
+  const rawPort = stripWrappingQuotes(process.env.SMTP_PORT);
+  const port = rawPort ? Number(rawPort) : undefined;
+  const user = stripWrappingQuotes(process.env.SMTP_USER);
+  const password = stripWrappingQuotes(process.env.SMTP_PASSWORD);
+  const from = stripWrappingQuotes(process.env.SMTP_FROM);
+  const rawSecure = stripWrappingQuotes(process.env.SMTP_SECURE);
+  const secure = rawSecure ? rawSecure.toLowerCase() === 'true' : port === 465;
+
+  return { host, port, user, password, from, secure };
 }
 
 function printHelp() {
@@ -128,10 +158,11 @@ Opzioni:
   --output-dir <path>    Directory output CSV (default: cwd)
   --env-file <path>      Path file .env (default: scripts/client/informal_csv_report/.env)
   --timeout-ms <ms>      Timeout chiamata API (default: 30000)
+  --mail <indirizzo>     Invia i CSV generati come allegati a questo indirizzo
   --help                 Mostra questo aiuto
 
-Nota: endpoint e credenziali NON possono essere passati via CLI.
-Devono essere presenti in .env.
+Nota: endpoint, credenziali API e configurazione SMTP NON possono essere
+passati via CLI. Devono essere presenti in .env.
 
 Variabili ambiente obbligatorie:
   INFORMAL_BASE_URL
@@ -139,6 +170,16 @@ Variabili ambiente obbligatorie:
 
 Variabili ambiente opzionali:
   INFORMAL_AUTH_TOKEN
+
+Variabili ambiente obbligatorie se si usa --mail:
+  SMTP_HOST
+  SMTP_PORT
+  SMTP_USER
+  SMTP_PASSWORD
+  SMTP_FROM
+
+Variabili ambiente opzionali se si usa --mail:
+  SMTP_SECURE            true/false (default: true se SMTP_PORT=465, altrimenti false)
 `;
   process.stdout.write(text);
 }
@@ -152,6 +193,25 @@ function ensureRequired(args) {
   }
   if (!args.iun && !args.inputFile) {
     throw new Error('Specificare --iun oppure --input-file');
+  }
+
+  if (args.mail) {
+    ensureSmtpConfigured(args.smtp);
+  }
+}
+
+function ensureSmtpConfigured(smtp) {
+  const missing = [];
+  if (!smtp.host) missing.push('SMTP_HOST');
+  if (!smtp.port || !Number.isInteger(smtp.port) || smtp.port <= 0) missing.push('SMTP_PORT');
+  if (!smtp.user) missing.push('SMTP_USER');
+  if (!smtp.password) missing.push('SMTP_PASSWORD');
+  if (!smtp.from) missing.push('SMTP_FROM');
+
+  if (missing.length > 0) {
+    throw new Error(
+      `--mail richiede la configurazione SMTP in .env. Variabile/i mancante/i o non valida/e: ${missing.join(', ')}`
+    );
   }
 }
 
@@ -551,6 +611,33 @@ async function main() {
 
   if (errorRows.length > 0) {
     process.exitCode = 1;
+  }
+
+  if (args.mail) {
+    const stats = {
+      requestedCount: iuns.length,
+      processedCount: summaryRows.length,
+      errorCount: errorRows.length,
+      eventsCount: eventRows.length,
+      timelineRawCount: rawRows.length,
+      attachmentsCount: attachmentRows.length,
+      generatedAt: new Date().toISOString(),
+    };
+
+    try {
+      await sendReportEmail({
+        transportConfig: args.smtp,
+        to: args.mail,
+        files: [summaryPath, eventsPath, timelineRawPath, attachmentsPath, errorsPath],
+        stats,
+      });
+      process.stdout.write(`Report inviato via email a ${args.mail}\n`);
+    } catch (error) {
+      process.stderr.write(
+        `${error.message}. I CSV generati restano disponibili in: ${args.outputDir}\n`
+      );
+      process.exitCode = 1;
+    }
   }
 }
 

@@ -17,6 +17,18 @@ INFORMAL_API_KEY=your-api-key
 INFORMAL_AUTH_TOKEN=your-bearer-token
 ```
 
+### `.env` aggiuntivo se si usa `--mail` (US6)
+
+```env
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your-smtp-user
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM=noreply@example.com
+# opzionale: true/false (default: true se SMTP_PORT=465, altrimenti false)
+SMTP_SECURE=false
+```
+
 ### Endpoint API (fisso nel codice)
 Lo script usa sempre il contratto API seguente (non modificabile):
 
@@ -40,6 +52,8 @@ node export_informal_csv.js --iun MWYJ-VTHJ-RUMK-202607-T-A --output-dir ./out
 - `--output-dir` (opzionale)
 - `--env-file` (opzionale, default `.env` nella cartella script)
 - `--timeout-ms` (opzionale)
+- `--mail <indirizzo>` (opzionale, US6): invia i CSV generati come allegati a questo indirizzo.
+  Richiede la configurazione SMTP in `.env` (vedi sopra).
 
 ### Importante
 Endpoint e credenziali **non sono overrideabili via CLI**:
@@ -47,8 +61,11 @@ Endpoint e credenziali **non sono overrideabili via CLI**:
 - niente `--api-key`
 - niente `--auth-token`
 - niente `--endpoint-template`
+- niente `--smtp-host` / `--smtp-port` / `--smtp-user` / `--smtp-password` / `--smtp-from`
 
 Devono essere definiti nel `.env` (tranne il path endpoint che è fisso nel codice).
+Con `--mail` l'unico dato accettato via CLI è l'indirizzo destinatario: le credenziali
+SMTP restano sempre e solo nel `.env`, in coerenza con il vincolo sopra.
 
 ### Output
 - `informal_summary.csv` su successo con formato: `IUN,notificationStatus,analogCost` (`analogCost` sempre `0`)
@@ -59,12 +76,25 @@ Devono essere definiti nel `.env` (tranne il path endpoint che è fisso nel codi
 - `informal_attachments.csv` su successo (US3, metadata-only)
 - `informal_errors.csv` su errore (anche cumulativo in batch US3)
 
-US1 copre lo slice summary; US2 aggiunge eventi e timeline raw; US3 aggiunge batch IUN + attachments metadata; US4 aggiunge safety operativa (throttling globale 1 RPS + retry transient controllato).
+US1 copre lo slice summary; US2 aggiunge eventi e timeline raw; US3 aggiunge batch IUN + attachments metadata; US4 aggiunge safety operativa (throttling globale 1 RPS + retry transient controllato); US6 aggiunge l'invio via email dei CSV generati.
 
 ### Vincoli operativi US4
 - massimo 1 chiamata API al secondo (globale, incluse eventuali retry)
 - nessuna esecuzione parallela delle chiamate
 - retry automatico solo per errori transient (`408`, `429`, `500`, `502`, `503`, `504`, timeout/rete)
+
+### Invio via email (US6)
+
+```bash
+node export_informal_csv.js --iun MWYJ-VTHJ-RUMK-202607-T-A --output-dir ./out --mail destinatario@example.com
+```
+
+- i 5 CSV vengono sempre generati e scritti su disco **prima** dell'invio
+- vengono allegati sempre tutti e 5 i file, anche se contengono solo l'header
+- se l'invio SMTP fallisce: i CSV restano disponibili in `--output-dir`, viene stampato un
+  errore esplicito su stderr e lo script termina con `exit code 1`
+- se la configurazione SMTP in `.env` è incompleta, lo script fallisce **prima** di
+  iniziare l'export (fail-fast), senza generare alcun file
 
 ### Esecuzione batch (US3)
 
@@ -100,11 +130,15 @@ npm run e2e:dev:all -- --iun MWYJ-VTHJ-RUMK-202607-T-A
 - generazione di tutti i CSV (`summary`, `events`, `timeline_raw`, `attachments`, `errors`)
 - comportamento coerente con il vincolo 1 RPS (verifica su durata esecuzione batch multi-IUN)
 
-Test mock automatici (senza chiamate reali DEV):
+Test mock automatici (senza chiamate reali DEV né SMTP reali):
 
 ```bash
 npm run test:mock
 ```
+
+`test:mock` esegue anche `test:mock:us6`, che copre l'invio email (US6) con un server
+SMTP di test locale (`smtp-server`): invio riuscito con 5 allegati, indirizzo non valido,
+`.env` SMTP incompleto e fallimento di consegna con CSV comunque salvati su disco.
 
 In alternativa puoi impostare `INFORMAL_TEST_IUN` in environment ed evitare `--iun`.
 
