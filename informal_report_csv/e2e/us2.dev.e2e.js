@@ -47,13 +47,11 @@ const {
       encoding: 'utf8',
     });
 
-    const eventsCsvPath = path.join(outputDir, 'informal_events.csv');
     const timelineRawCsvPath = path.join(outputDir, 'informal_timeline_raw.csv');
 
     assert(result.ok, `US2 E2E fallito: HTTP ${result.status}`);
     assert(result.bodyJson && typeof result.bodyJson === 'object', 'US2 E2E: body JSON mancante');
     assert(Array.isArray(result.bodyJson.timeline), 'US2 E2E: timeline non presente');
-    assert(fs.existsSync(eventsCsvPath), 'US2 E2E: informal_events.csv non generato');
     assert(fs.existsSync(timelineRawCsvPath), 'US2 E2E: informal_timeline_raw.csv non generato');
 
     const reportFile = writeReport(reportContext, 'PASS', {
@@ -63,7 +61,6 @@ const {
       timelineLength: result.bodyJson.timeline.length,
       artifactsDir,
       generatedFiles: {
-        eventsCsvPath,
         timelineRawCsvPath,
       },
     });

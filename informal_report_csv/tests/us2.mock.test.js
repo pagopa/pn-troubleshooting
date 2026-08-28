@@ -134,11 +134,9 @@ async function run() {
     });
 
     const summaryCsv = fs.readFileSync(path.join(outDir, 'informal_summary.csv'), 'utf8');
-    const eventsCsv = fs.readFileSync(path.join(outDir, 'informal_events.csv'), 'utf8');
     const rawCsv = fs.readFileSync(path.join(outDir, 'informal_timeline_raw.csv'), 'utf8');
 
     const summary = parseCsv(summaryCsv);
-    const events = parseCsv(eventsCsv);
     const raw = parseCsv(rawCsv);
     const rawEvents = raw.rows.map((row) => JSON.parse(row.JSON));
 
@@ -147,19 +145,6 @@ async function run() {
     assert.equal(summary.rows[0].IUN, iun);
     assert.equal(summary.rows[0].notificationStatus, 'COMPLETED_REACHED');
     assert.equal(summary.rows[0].analogCost, '0');
-
-    assert.equal(events.rows.length, 3, 'event rows attese = 3');
-    const analogRow = events.rows.find((r) => r.eventCategory === 'SEND_ANALOG_MESSAGE');
-    assert.ok(analogRow, 'manca row SEND_ANALOG_MESSAGE');
-    assert.equal(analogRow.analogCost, '227');
-    assert.equal(analogRow.numberOfPages, '2');
-    assert.equal(analogRow.envelopeWeight, '15');
-    assert.equal(analogRow.eventStatus, 'PROCESSING');
-
-    const acceptedRow = events.rows.find((r) => r.eventCategory === 'REQUEST_ACCEPTED');
-    assert.ok(acceptedRow, 'manca row REQUEST_ACCEPTED');
-    assert.equal(acceptedRow.analogCost, '', 'analogCost deve essere vuoto fuori da SEND_ANALOG_MESSAGE');
-    assert.equal(acceptedRow.eventStatus, 'ACCEPTED');
 
     assert.deepEqual(raw.header, ['IUN', 'TIMELINE_ELEMENT_ID', 'BUSINESS_TIMESTAMP', 'JSON']);
     assert.equal(raw.rows.length, 3, 'raw timeline rows attese = 3');

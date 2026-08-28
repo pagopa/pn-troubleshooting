@@ -150,7 +150,6 @@ async function run() {
 
     const summary = parseCsv(fs.readFileSync(path.join(outDir, 'informal_summary.csv'), 'utf8'));
     const raw = parseCsv(fs.readFileSync(path.join(outDir, 'informal_timeline_raw.csv'), 'utf8'));
-    const errors = parseCsv(fs.readFileSync(path.join(outDir, 'informal_errors.csv'), 'utf8'));
 
     assert.equal(summary.rows.length, 2, 'summary deve contenere i due IUN processati');
     assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost']);
@@ -167,7 +166,6 @@ async function run() {
     assert.equal(rawEventB.notificationRequestId, expectedNotificationRequestIdB);
     assert.equal(rawEventB.ttl, 1);
     assert.equal(rawEventB.eventDescription, `${payloadFor(iunB).timeline[0].eventTimestamp}_${payloadFor(iunB).timeline[0].elementId}`);
-    assert.equal(errors.rows.length, 0, 'errors deve essere vuoto dopo retry transient riuscito');
 
     process.stdout.write('US4 mock test passed\n');
   } finally {

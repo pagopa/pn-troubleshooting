@@ -94,15 +94,16 @@ email (SMTP o AWS) restano sempre e solo nel `.env`/ambiente, in coerenza con il
 vincolo sopra.
 
 ### Output
+Lo script genera solo 2 file CSV:
 - `informal_summary.csv` su successo con formato: `IUN,notificationStatus,analogCost` (`analogCost` sempre `0`)
-- `informal_events.csv` su successo (US2)
-- `informal_timeline_raw.csv` su successo (US2) con formato: `IUN,TIMELINE_ELEMENT_ID,BUSINESS_TIMESTAMP,JSON`
+- `informal_timeline_raw.csv` su successo con formato: `IUN,TIMELINE_ELEMENT_ID,BUSINESS_TIMESTAMP,JSON`
   dove `JSON` serializza un oggetto compatibile con `ProgressResponseElementV29`:
   `eventId`, `notificationRequestId` (Base64 dell'IUN), `ttl`, `eventDescription` (`timestamp_elementId`), `iun`, `newStatus`, `informalElement`
-- `informal_attachments.csv` su successo (US3, metadata-only)
-- `informal_errors.csv` su errore (anche cumulativo in batch US3)
 
-US1 copre lo slice summary; US2 aggiunge eventi e timeline raw; US3 aggiunge batch IUN + attachments metadata; US4 aggiunge safety operativa (throttling globale 1 RPS + retry transient controllato); US6 aggiunge l'invio via email dei CSV generati (SMTP); US7 aggiunge AWS SES come provider di invio alternativo.
+In caso di errore su uno o più IUN, lo script stampa il dettaglio su stderr (IUN, tipo e messaggio
+errore) e termina con `exit code 1`; non viene generato alcun file CSV dedicato agli errori.
+
+US1 copre lo slice summary; US2 aggiunge la timeline raw; US4 aggiunge safety operativa (throttling globale 1 RPS + retry transient controllato); US6 aggiunge l'invio via email dei CSV generati (SMTP); US7 aggiunge AWS SES come provider di invio alternativo. L'output è stato successivamente limitato ai soli `informal_summary.csv` e `informal_timeline_raw.csv`: gli altri report (eventi, allegati, errori) generati in precedenza non vengono più prodotti.
 
 ### Vincoli operativi US4
 - massimo 1 chiamata API al secondo (globale, incluse eventuali retry)
@@ -122,8 +123,8 @@ node export_informal_csv.js --iun MWYJ-VTHJ-RUMK-202607-T-A --output-dir ./out -
 Il comando CLI è identico per entrambi i provider: la scelta avviene esclusivamente
 tramite `MAIL_PROVIDER` in `.env`.
 
-- i 5 CSV vengono sempre generati e scritti su disco **prima** dell'invio
-- vengono allegati sempre tutti e 5 i file, anche se contengono solo l'header
+- i 2 CSV vengono sempre generati e scritti su disco **prima** dell'invio
+- vengono allegati sempre entrambi i file, anche se contengono solo l'header
 - se l'invio (SMTP o SES) fallisce: i CSV restano disponibili in `--output-dir`, viene stampato un
   errore esplicito su stderr e lo script termina con `exit code 1`
 - se la configurazione email in `.env` è incompleta (SMTP o SES, in base a `MAIL_PROVIDER`),
@@ -160,7 +161,7 @@ npm run e2e:dev:all -- --iun MWYJ-VTHJ-RUMK-202607-T-A
 `e2e:dev:all` è un test end-to-end globale che verifica in un unico run:
 - chiamata DEV valida (seed IUN)
 - esecuzione script in batch usando la lista IUN da `tmp/inputIuns.txt`
-- generazione di tutti i CSV (`summary`, `events`, `timeline_raw`, `attachments`, `errors`)
+- generazione dei CSV (`summary`, `timeline_raw`)
 - comportamento coerente con il vincolo 1 RPS (verifica su durata esecuzione batch multi-IUN)
 
 Test mock automatici (senza chiamate reali DEV, SMTP né AWS SES):
@@ -170,7 +171,7 @@ npm run test:mock
 ```
 
 `test:mock` esegue anche `test:mock:us6` e `test:mock:us7`, che coprono l'invio email:
-US6 con un server SMTP di test locale (`smtp-server`) — invio riuscito con 5 allegati,
+US6 con un server SMTP di test locale (`smtp-server`) — invio riuscito con 2 allegati,
 indirizzo non valido, `.env` SMTP incompleto e fallimento di consegna con CSV comunque
 salvati su disco; US7 con lo stesso set di casi ma per il provider AWS SES, simulato
 tramite un server HTTP locale che intercetta le chiamate SESv2 (nessuna chiamata AWS
