@@ -111,22 +111,13 @@ function parseCsv(content) {
     writeTextArtifact(artifactsDir, 'script_stderr', scriptStderr);
 
     const summaryPath = path.join(outputDir, 'informal_summary.csv');
-    const eventsPath = path.join(outputDir, 'informal_events.csv');
     const rawPath = path.join(outputDir, 'informal_timeline_raw.csv');
-    const attachmentsPath = path.join(outputDir, 'informal_attachments.csv');
-    const errorsPath = path.join(outputDir, 'informal_errors.csv');
 
     assert(fs.existsSync(summaryPath), 'US_ALL E2E: informal_summary.csv non generato');
-    assert(fs.existsSync(eventsPath), 'US_ALL E2E: informal_events.csv non generato');
     assert(fs.existsSync(rawPath), 'US_ALL E2E: informal_timeline_raw.csv non generato');
-    assert(fs.existsSync(attachmentsPath), 'US_ALL E2E: informal_attachments.csv non generato');
-    assert(fs.existsSync(errorsPath), 'US_ALL E2E: informal_errors.csv non generato');
 
     const summary = parseCsv(fs.readFileSync(summaryPath, 'utf8'));
-    const events = parseCsv(fs.readFileSync(eventsPath, 'utf8'));
     const raw = parseCsv(fs.readFileSync(rawPath, 'utf8'));
-    const attachments = parseCsv(fs.readFileSync(attachmentsPath, 'utf8'));
-    const errors = parseCsv(fs.readFileSync(errorsPath, 'utf8'));
 
     assert(scriptExitCode === 0, `US_ALL E2E: esecuzione batch fallita con exit code ${scriptExitCode}`);
     assert(summary.rows.length >= 1, `US_ALL E2E: summary rows attese>=1 ricevute=${summary.rows.length}`);
@@ -135,7 +126,6 @@ function parseCsv(content) {
       `US_ALL E2E: header summary inatteso ${summary.header.join(',')}`
     );
     assert(summary.rows.every((row) => row.analogCost === '0'), 'US_ALL E2E: analogCost deve essere 0');
-    assert(events.rows.length >= 1, 'US_ALL E2E: events deve contenere almeno una riga');
     assert(
       raw.header.join(',') === 'IUN,TIMELINE_ELEMENT_ID,BUSINESS_TIMESTAMP,JSON',
       `US_ALL E2E: header raw inatteso ${raw.header.join(',')}`
@@ -171,10 +161,7 @@ function parseCsv(content) {
       inputIunsFile: DEFAULT_INPUT_IUNS_FILE,
       csvCounts: {
         summary: summary.rows.length,
-        events: events.rows.length,
         timelineRaw: raw.rows.length,
-        attachments: attachments.rows.length,
-        errors: errors.rows.length,
       },
       rawJsonCheck: {
         firstRowElementId: firstRawRow.TIMELINE_ELEMENT_ID,
@@ -184,10 +171,7 @@ function parseCsv(content) {
       artifactsDir,
       generatedFiles: {
         summaryPath,
-        eventsPath,
         rawPath,
-        attachmentsPath,
-        errorsPath,
       },
     });
 

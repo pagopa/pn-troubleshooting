@@ -48,7 +48,6 @@ const {
     });
 
     const summaryCsvPath = path.join(outputDir, 'informal_summary.csv');
-    const errorsCsvPath = path.join(outputDir, 'informal_errors.csv');
 
     assert(result.ok, `US1 E2E fallito: HTTP ${result.status}`);
     assert(result.bodyJson && typeof result.bodyJson === 'object', 'US1 E2E: body JSON mancante');
@@ -65,7 +64,6 @@ const {
       artifactsDir,
       generatedFiles: {
         summaryCsvPath,
-        errorsCsvPath: fs.existsSync(errorsCsvPath) ? errorsCsvPath : null,
       },
     });
 

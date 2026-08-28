@@ -48,10 +48,7 @@ function buildBody(stats) {
     '',
     'Righe per file:',
     `- informal_summary.csv: ${stats.processedCount}`,
-    `- informal_events.csv: ${stats.eventsCount}`,
     `- informal_timeline_raw.csv: ${stats.timelineRawCount}`,
-    `- informal_attachments.csv: ${stats.attachmentsCount}`,
-    `- informal_errors.csv: ${stats.errorCount}`,
   ].join('\n');
 }
 

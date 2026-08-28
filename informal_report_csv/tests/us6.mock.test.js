@@ -120,10 +120,7 @@ async function testSuccessSendsAllAttachments(scriptPath) {
   const message = received[0];
   const expectedFiles = [
     'informal_summary.csv',
-    'informal_events.csv',
     'informal_timeline_raw.csv',
-    'informal_attachments.csv',
-    'informal_errors.csv',
   ];
   for (const filename of expectedFiles) {
     assert.match(message, new RegExp(`filename="?${filename}"?`), `allegato mancante: ${filename}`);
@@ -195,10 +192,7 @@ async function testSmtpFailureKeepsFilesOnDisk(scriptPath) {
 
   const expectedFiles = [
     'informal_summary.csv',
-    'informal_events.csv',
     'informal_timeline_raw.csv',
-    'informal_attachments.csv',
-    'informal_errors.csv',
   ];
   for (const filename of expectedFiles) {
     assert(fs.existsSync(path.join(outDir, filename)), `file atteso su disco anche con invio fallito: ${filename}`);

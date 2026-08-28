@@ -132,26 +132,20 @@ async function run() {
     );
 
     assert.ok(result.error, 'con un IUN KO lo script deve terminare con exit code != 0');
+    assert.match(result.stderr, new RegExp(`IUN=${koIun}.*HTTP_404`), 'stderr deve segnalare l\'errore HTTP_404 per il IUN KO');
 
     const summaryCsv = fs.readFileSync(path.join(outDir, 'informal_summary.csv'), 'utf8');
-    const eventsCsv = fs.readFileSync(path.join(outDir, 'informal_events.csv'), 'utf8');
     const rawCsv = fs.readFileSync(path.join(outDir, 'informal_timeline_raw.csv'), 'utf8');
-    const attachmentsCsv = fs.readFileSync(path.join(outDir, 'informal_attachments.csv'), 'utf8');
-    const errorsCsv = fs.readFileSync(path.join(outDir, 'informal_errors.csv'), 'utf8');
 
     const summary = parseCsv(summaryCsv);
-    const events = parseCsv(eventsCsv);
     const raw = parseCsv(rawCsv);
     const rawEvent = JSON.parse(raw.rows[0].JSON);
-    const attachments = parseCsv(attachmentsCsv);
-    const errors = parseCsv(errorsCsv);
 
     assert.equal(summary.rows.length, 1, 'summary deve contenere solo IUN OK deduplicato');
     assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost']);
     assert.equal(summary.rows[0].IUN, okIun);
     assert.equal(summary.rows[0].analogCost, '0');
 
-    assert.equal(events.rows.length, 1, 'events deve contenere solo timeline di IUN OK');
     assert.equal(raw.rows.length, 1, 'raw timeline deve contenere solo timeline di IUN OK');
     assert.match(rawEvent.eventId, /^[0-9a-f-]{36}$/i);
     assert.equal(rawEvent.iun, okIun);
@@ -160,18 +154,6 @@ async function run() {
     assert.equal(rawEvent.eventDescription, `${okPayload.timeline[0].eventTimestamp}_${okPayload.timeline[0].elementId}`);
     assert.equal(rawEvent.newStatus, 'PROCESSING');
     assert.deepEqual(rawEvent.informalElement, okPayload.timeline[0]);
-
-    assert.equal(attachments.rows.length, 2, 'attachments deve contenere document + timeline attachment');
-    const docRow = attachments.rows.find((r) => r.attachmentType === 'DOCUMENT');
-    const attRow = attachments.rows.find((r) => r.attachmentType === 'ATTACHMENT');
-    assert.ok(docRow, 'manca riga DOCUMENT');
-    assert.ok(attRow, 'manca riga ATTACHMENT');
-    assert.equal(docRow.iun, okIun);
-    assert.equal(attRow.iun, okIun);
-
-    assert.equal(errors.rows.length, 1, 'errori deve contenere solo IUN KO');
-    assert.equal(errors.rows[0].iun, koIun);
-    assert.equal(errors.rows[0].errorType, 'HTTP_404');
 
     process.stdout.write('US3 mock test passed\n');
   } finally {

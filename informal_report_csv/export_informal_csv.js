@@ -9,8 +9,6 @@ const dotenv = require('dotenv');
 const { sendReportEmail } = require('./lib/mailer');
 
 const INFORMAL_ENDPOINT_TEMPLATE = '/informal/delivery/v1/notifications/sent/{iun}?retrieveMessage=true';
-const DOCUMENT_DOWNLOAD_TEMPLATE = '/informal/delivery/v1/notifications/informal/received/{iun}/attachments/documents/{docIdx}';
-const PAYMENT_DOWNLOAD_TEMPLATE = '/informal/delivery/v1/notifications/informal/received/{iun}/attachments/payment/{attachmentName}';
 const RATE_LIMIT_INTERVAL_MS = 1000;
 const TRANSIENT_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 const MAX_TRANSIENT_RETRIES = 2;
@@ -496,33 +494,6 @@ function buildSummaryRow(iun, detail, retrievedAt) {
   };
 }
 
-function buildEventsRows(iun, detail) {
-  const rows = [];
-  const timeline = Array.isArray(detail.timeline) ? detail.timeline : [];
-  const statusByElement = buildTimelineStatusIndex(detail);
-
-  timeline.forEach((element, idx) => {
-    const details = element?.details ?? {};
-    const recIndex = details?.recIndex;
-    const isAnalogSend = element?.category === 'SEND_ANALOG_MESSAGE';
-
-    rows.push({
-      iun,
-      eventIdx: idx,
-      eventCategory: element?.category ?? '',
-      eventTimestamp: element?.eventTimestamp ?? element?.timestamp ?? '',
-      eventStatus: statusByElement.get(element?.elementId) ?? '',
-      recIndex: typeof recIndex === 'number' ? recIndex : '',
-      analogCost: isAnalogSend && details?.analogCost !== undefined ? details.analogCost : '',
-      numberOfPages: isAnalogSend && details?.numberOfPages !== undefined ? details.numberOfPages : '',
-      envelopeWeight: isAnalogSend && details?.envelopeWeight !== undefined ? details.envelopeWeight : '',
-      detailsJson: toJsonString(details),
-    });
-  });
-
-  return rows;
-}
-
 function buildTimelineRawRows(iun, detail) {
   const timeline = Array.isArray(detail.timeline) ? detail.timeline : [];
   const statusByElement = buildTimelineStatusIndex(detail);
@@ -533,64 +504,6 @@ function buildTimelineRawRows(iun, detail) {
     BUSINESS_TIMESTAMP: element?.eventTimestamp ?? '',
     JSON: toJsonString(buildProgressResponseElement(iun, detail, element, statusByElement)),
   }));
-}
-
-function buildDocumentDownloadApi(iun, docIdx) {
-  return DOCUMENT_DOWNLOAD_TEMPLATE
-    .replace('{iun}', encodeURIComponent(iun))
-    .replace('{docIdx}', encodeURIComponent(String(docIdx)));
-}
-
-function buildPaymentDownloadApi(iun, attachmentName) {
-  return PAYMENT_DOWNLOAD_TEMPLATE
-    .replace('{iun}', encodeURIComponent(iun))
-    .replace('{attachmentName}', encodeURIComponent(String(attachmentName)));
-}
-
-function buildAttachmentsRows(iun, detail) {
-  const rows = [];
-
-  const documents = Array.isArray(detail.documents) ? detail.documents : [];
-  documents.forEach((doc, idx) => {
-    const docIdx = doc?.docIdx ?? idx;
-    const attachmentName = doc?.ref?.key ?? doc?.documentType ?? `document-${docIdx}`;
-    const isAvailable = Boolean(doc?.ref?.key || doc?.url || detail?.documentsAvailable === true);
-
-    rows.push({
-      iun,
-      recipientIdx: '',
-      attachmentType: 'DOCUMENT',
-      attachmentIdx: docIdx,
-      attachmentName,
-      isAvailable,
-      downloadApi: buildDocumentDownloadApi(iun, docIdx),
-    });
-  });
-
-  const timeline = Array.isArray(detail.timeline) ? detail.timeline : [];
-  timeline.forEach((element) => {
-    const details = element?.details ?? {};
-    const recIndex = typeof details?.recIndex === 'number' ? details.recIndex : '';
-    const attachments = Array.isArray(details?.attachments) ? details.attachments : [];
-
-    attachments.forEach((attachment, idx) => {
-      const attachmentIdx = attachment?.id ?? idx;
-      const attachmentName = attachment?.documentType ?? attachment?.id ?? `attachment-${idx}`;
-      const isAvailable = Boolean(attachment?.url);
-
-      rows.push({
-        iun,
-        recipientIdx: recIndex,
-        attachmentType: 'ATTACHMENT',
-        attachmentIdx,
-        attachmentName,
-        isAvailable,
-        downloadApi: buildPaymentDownloadApi(iun, attachmentName),
-      });
-    });
-  });
-
-  return rows;
 }
 
 function buildErrorRow(iun, error, retrievedAt) {
@@ -616,15 +529,10 @@ async function main() {
   ensureOutputDir(args.outputDir);
 
   const summaryPath = path.join(args.outputDir, 'informal_summary.csv');
-  const eventsPath = path.join(args.outputDir, 'informal_events.csv');
   const timelineRawPath = path.join(args.outputDir, 'informal_timeline_raw.csv');
-  const attachmentsPath = path.join(args.outputDir, 'informal_attachments.csv');
-  const errorsPath = path.join(args.outputDir, 'informal_errors.csv');
 
   const summaryRows = [];
-  const eventRows = [];
   const rawRows = [];
-  const attachmentRows = [];
   const errorRows = [];
   const rateLimiterState = { nextAllowedAtMs: 0 };
 
@@ -638,9 +546,7 @@ async function main() {
       const detail = await fetchInformalDetail(args, iun, rateLimiterState);
 
       summaryRows.push(buildSummaryRow(iun, detail, retrievedAt));
-      eventRows.push(...buildEventsRows(iun, detail));
       rawRows.push(...buildTimelineRawRows(iun, detail));
-      attachmentRows.push(...buildAttachmentsRows(iun, detail));
     } catch (error) {
       const errorRow = buildErrorRow(iun, error, retrievedAt);
       errorRows.push(errorRow);
@@ -653,24 +559,10 @@ async function main() {
     ['IUN', 'notificationStatus', 'analogCost'],
     summaryRows
   );
-  writeCsv(
-    eventsPath,
-    ['iun', 'eventIdx', 'eventCategory', 'eventTimestamp', 'eventStatus', 'recIndex', 'analogCost', 'numberOfPages', 'envelopeWeight', 'detailsJson'],
-    eventRows
-  );
   writeCsv(timelineRawPath, ['IUN', 'TIMELINE_ELEMENT_ID', 'BUSINESS_TIMESTAMP', 'JSON'], rawRows);
-  writeCsv(
-    attachmentsPath,
-    ['iun', 'recipientIdx', 'attachmentType', 'attachmentIdx', 'attachmentName', 'isAvailable', 'downloadApi'],
-    attachmentRows
-  );
-  writeCsv(errorsPath, ['iun', 'errorType', 'errorMessage', 'retrievedAt'], errorRows);
 
   process.stdout.write(`Creato file: ${summaryPath}\n`);
-  process.stdout.write(`Creato file: ${eventsPath}\n`);
   process.stdout.write(`Creato file: ${timelineRawPath}\n`);
-  process.stdout.write(`Creato file: ${attachmentsPath}\n`);
-  process.stdout.write(`Creato file: ${errorsPath}\n`);
 
   if (errorRows.length > 0) {
     process.exitCode = 1;
@@ -681,9 +573,7 @@ async function main() {
       requestedCount: iuns.length,
       processedCount: summaryRows.length,
       errorCount: errorRows.length,
-      eventsCount: eventRows.length,
       timelineRawCount: rawRows.length,
-      attachmentsCount: attachmentRows.length,
       generatedAt: new Date().toISOString(),
     };
 
@@ -691,7 +581,7 @@ async function main() {
       await sendReportEmail({
         transportConfig: args.mailConfig,
         to: args.mail,
-        files: [summaryPath, eventsPath, timelineRawPath, attachmentsPath, errorsPath],
+        files: [summaryPath, timelineRawPath],
         stats,
       });
       process.stdout.write(`Report inviato via email a ${args.mail}\n`);
