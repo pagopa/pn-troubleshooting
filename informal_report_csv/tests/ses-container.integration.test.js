@@ -199,7 +199,7 @@ async function testContainerReachableSendSucceeds(scriptPath) {
   );
 
   assert.equal(result.error, null, `lo script non deve fallire quando il container SES è raggiungibile: ${result.stderr}`);
-  assert.match(result.stdout, new RegExp(`Report inviato via email a ${to.replace(/[.+]/g, '\\$&')}`));
+  assert.match(result.stdout, new RegExp(`Report inviato via email a ${to.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
 
   const expectedFiles = [
     'informal_summary.csv',
