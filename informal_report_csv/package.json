@@ -1,0 +1,32 @@
+{
+  "name": "informal-csv-report",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CLI Node.js per export CSV notifiche informali",
+  "scripts": {
+    "start": "node export_informal_csv.js",
+    "check": "node --check export_informal_csv.js",
+    "test:mock:us2": "node tests/us2.mock.test.js",
+    "test:mock:us3": "node tests/us3.mock.test.js",
+    "test:mock:us4": "node tests/us4.mock.test.js",
+    "test:mock:us6": "node tests/us6.mock.test.js",
+    "test:mock:us7": "node tests/us7.mock.test.js",
+    "test:mock": "npm run test:mock:us2 && npm run test:mock:us3 && npm run test:mock:us4 && npm run test:mock:us6 && npm run test:mock:us7",
+    "test:container:ses": "node tests/ses-container.integration.test.js --run-container-e2e",
+    "check:e2e": "node --check e2e/devE2eCommon.js && node --check e2e/us1.dev.e2e.js && node --check e2e/us2.dev.e2e.js && node --check e2e/us3.dev.e2e.js && node --check e2e/us4.dev.e2e.js && node --check e2e/us5.dev.e2e.js && node --check e2e/us_all.dev.e2e.js",
+    "e2e:dev:us1": "node e2e/us1.dev.e2e.js --run-dev-e2e",
+    "e2e:dev:us2": "node e2e/us2.dev.e2e.js --run-dev-e2e",
+    "e2e:dev:us3": "node e2e/us3.dev.e2e.js --run-dev-e2e",
+    "e2e:dev:us4": "node e2e/us4.dev.e2e.js --run-dev-e2e",
+    "e2e:dev:us5": "node e2e/us5.dev.e2e.js --run-dev-e2e",
+    "e2e:dev:all": "node e2e/us_all.dev.e2e.js --run-dev-e2e"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1119.0",
+    "dotenv": "^16.4.5",
+    "nodemailer": "^9.0.5"
+  },
+  "devDependencies": {
+    "smtp-server": "^3.19.3"
+  }
+}
