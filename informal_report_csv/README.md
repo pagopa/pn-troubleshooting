@@ -176,6 +176,37 @@ salvati su disco; US7 con lo stesso set di casi ma per il provider AWS SES, simu
 tramite un server HTTP locale che intercetta le chiamate SESv2 (nessuna chiamata AWS
 reale, nessuna credenziale AWS reale coinvolta).
 
+### Test di connettività SES in container Docker
+
+`test:mock:us7` valida la logica di invio con un fake HTTP scritto ad hoc (permissivo
+per costruzione: risponde sempre 200 e non replica il comportamento reale del wire
+protocol SESv2). Per verificare la connettività reale verso un servizio SES-compatibile
+— endpoint raggiungibile, formato richieste/risposte, gestione allegati — è disponibile
+un test di integrazione separato che usa il container Docker
+[`aws-ses-v2-local`](https://github.com/domdomegg/aws-ses-v2-local):
+
+```bash
+npm run test:container:ses
+```
+
+Non è incluso in `npm run test:mock` (richiede Docker attivo e il pull dell'immagine
+`dasprid/aws-ses-v2-local`, quindi non è adatto a un'esecuzione rapida/CI-safe come gli
+altri test mock) e va lanciato esplicitamente. Copre:
+
+- invio riuscito con il container raggiungibile: verifica sia lato script (CSV su
+  disco, messaggio di conferma) sia lato container, leggendo `GET /store` per
+  controllare destinatario, oggetto e nomi dei 5 allegati ricevuti realmente;
+- perdita di connettività reale: il container viene arrestato a metà test e una
+  successiva invocazione dello script deve fallire in modo controllato (exit code 1,
+  messaggio di errore, CSV comunque salvati su disco) — a differenza del caso "porta
+  mai aperta" già coperto da US7, qui si simula un servizio che era effettivamente
+  raggiungibile e smette di esserlo.
+
+**Perché `aws-ses-v2-local` e non LocalStack:** LocalStack richiede oggi una
+registrazione/account anche per il tier gratuito e il supporto SESv2 potrebbe essere
+limitato al piano Pro; `aws-ses-v2-local` è open source, senza registrazione, ed è
+pensato specificamente per l'API SESv2 usata da `lib/mailer.js`.
+
 In alternativa puoi impostare `INFORMAL_TEST_IUN` in environment ed evitare `--iun`.
 
 Se non specifichi né `--iun` né `INFORMAL_TEST_IUN`, i test usano automaticamente il primo IUN disponibile in `tmp/inputIuns.txt`.
