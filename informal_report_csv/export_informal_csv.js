@@ -38,6 +38,7 @@ function parseArgs(argv) {
   const args = {
     outputDir: process.cwd(),
     timeoutMs: 30000,
+    rateLimitMs: RATE_LIMIT_INTERVAL_MS,
     envFile: path.join(__dirname, '.env'),
   };
 
@@ -79,6 +80,12 @@ function parseArgs(argv) {
         args.timeoutMs = Number(next);
         if (!Number.isFinite(args.timeoutMs) || args.timeoutMs <= 0) {
           throw new Error('--timeout-ms deve essere un intero positivo');
+        }
+        break;
+      case '--rate-limit-ms':
+        args.rateLimitMs = Number(next);
+        if (!Number.isInteger(args.rateLimitMs) || args.rateLimitMs <= 0) {
+          throw new Error('--rate-limit-ms deve essere un intero positivo');
         }
         break;
       case '--mail':
@@ -182,6 +189,7 @@ Opzioni:
   --output-dir <path>    Directory output CSV (default: cwd)
   --env-file <path>      Path file .env (default: scripts/client/informal_csv_report/.env)
   --timeout-ms <ms>      Timeout chiamata API (default: 30000)
+  --rate-limit-ms <ms>   Intervallo minimo tra chiamate API (default: 1000)
   --mail <indirizzo>     Invia i CSV generati come allegati a questo indirizzo
   --help                 Mostra questo aiuto
 
@@ -437,7 +445,7 @@ async function fetchInformalDetail(args, iun, rateLimiterState) {
       throw error;
     } finally {
       clearTimeout(timeout);
-      rateLimiterState.nextAllowedAtMs = Date.now() + RATE_LIMIT_INTERVAL_MS;
+      rateLimiterState.nextAllowedAtMs = Date.now() + args.rateLimitMs;
     }
   }
 

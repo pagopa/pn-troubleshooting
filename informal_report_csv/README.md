@@ -76,6 +76,7 @@ node export_informal_csv.js --iun MWYJ-VTHJ-RUMK-202607-T-A --output-dir ./out
 - `--output-dir` (opzionale)
 - `--env-file` (opzionale, default `.env` nella cartella script)
 - `--timeout-ms` (opzionale)
+- `--rate-limit-ms` (opzionale, default `1000`): intervallo minimo in millisecondi tra due chiamate API consecutive.
 - `--mail <indirizzo>` (opzionale, US6/US7): invia i CSV generati come allegati a questo indirizzo.
   Richiede la configurazione email (SMTP o SES, in base a `MAIL_PROVIDER`) in `.env` (vedi sopra).
 
