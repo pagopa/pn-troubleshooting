@@ -204,17 +204,25 @@ function writeReport(context, status, details = {}) {
     ...details,
   };
 
+
+
+
+
+
+
   fs.writeFileSync(reportFile, JSON.stringify(report, null, 2), 'utf8');
 
   let summary = [];
-  if (fs.existsSync(REPORT_INDEX)) {
-    try {
-      const prev = JSON.parse(fs.readFileSync(REPORT_INDEX, 'utf8'));
-      if (Array.isArray(prev)) summary = prev;
-    } catch {
-      summary = [];
-    }
+  try {
+  const prev = JSON.parse(fs.readFileSync(REPORT_INDEX, 'utf8'));
+  if (Array.isArray(prev)) summary = prev;
+} catch (err) {
+  if (err.code !== 'ENOENT') {
+    // file esiste ma non è leggibile/parsabile per un altro motivo: logga se vuoi, ma non bloccare il test
   }
+  summary = [];
+}
+
 
   summary.push({
     testName: context.testName,
