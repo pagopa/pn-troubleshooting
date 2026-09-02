@@ -91,3 +91,5 @@ The final structured summary includes the input counters, successful publication
 cd pn-resume-post-payment
 npm test
 ```
+
+The unit suite uses in-memory mocks and dependency injection for SQS, AWS credentials, commands and filesystem access. It does not require operational CSV files, AWS credentials, an SSO session, LocalStack or application services. The test command enforces minimum coverage thresholds of 95% for lines, statements and functions, and 85% for branches.

@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "nyc --reporter=text mocha 'test/**/*.test.js' --recursive --timeout=3000",
+    "test": "nyc --check-coverage --lines 95 --statements 95 --functions 95 --branches 85 --reporter=text mocha 'test/**/*.test.js' --recursive --timeout=3000",
     "coverage": "nyc report --reporter=lcov"
   },
   "license": "ISC",

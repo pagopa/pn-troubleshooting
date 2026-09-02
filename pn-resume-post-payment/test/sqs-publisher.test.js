@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const sinon = require("sinon");
+const { SendMessageCommand } = require("@aws-sdk/client-sqs");
 const {
   buildMessagePayload,
   publishRecords,
@@ -50,6 +51,29 @@ describe("SQS publisher", () => {
       recIndex: 0,
       resumeType: "FIRST_ATTEMPT",
       messageId: "message-1",
+    });
+  });
+
+  it("constructs the AWS SDK SendMessageCommand by default", async () => {
+    const sqsClient = { send: sinon.stub().resolves({ MessageId: "message-1" }) };
+
+    await publishRecords({
+      records: [{ iun: "IUN_1", recIndex: 4 }],
+      resumeType: "SIMPLE_REGISTERED_LETTER",
+      queueUrl: "https://sqs.example/queue",
+      sqsClient,
+      logger: createLogger(),
+    });
+
+    const command = sqsClient.send.firstCall.args[0];
+    expect(command).to.be.instanceOf(SendMessageCommand);
+    expect(command.input).to.deep.equal({
+      QueueUrl: "https://sqs.example/queue",
+      MessageBody: JSON.stringify({
+        iun: "IUN_1",
+        recIndex: 4,
+        resumeType: "SIMPLE_REGISTERED_LETTER",
+      }),
     });
   });
 

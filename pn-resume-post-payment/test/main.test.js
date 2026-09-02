@@ -66,6 +66,28 @@ describe("prepareExecution", () => {
     expect(clientFactory.called).to.equal(false);
   });
 
+  it("does not construct the client when the CSV is not readable", async () => {
+    const clientFactory = sinon.stub();
+    const permissionError = new Error("permission denied");
+    permissionError.code = "EACCES";
+    let error;
+
+    try {
+      await prepareExecution({
+        args: ["FIRST_ATTEMPT"],
+        env,
+        access: async () => { throw permissionError; },
+        clientFactory,
+      });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error.message).to.include("does not exist or is not readable");
+    expect(error.cause).to.equal(permissionError);
+    expect(clientFactory.called).to.equal(false);
+  });
+
   it("rejects invalid configuration before accessing the CSV", async () => {
     const access = sinon.stub();
 
@@ -187,6 +209,50 @@ describe("prepareExecution", () => {
       failedPublications: 0,
       malformedRows: 1,
       exitCode: 0,
+    });
+  });
+
+  it("publishes only valid unique pairs and keeps recipients of the same IUN", async () => {
+    const send = sinon.stub()
+      .onFirstCall().resolves({ MessageId: "message-1" })
+      .onSecondCall().resolves({ MessageId: "message-2" });
+    const logger = { log: sinon.stub(), error: sinon.stub() };
+
+    const result = await main({
+      args: ["FIRST_ATTEMPT"],
+      env,
+      access: sinon.stub().resolves(),
+      readFile: sinon.stub().resolves([
+        "iun,recIndex",
+        " IUN_1 ,0",
+        "IUN_1,0",
+        "IUN_1,1",
+        "MALFORMED,decimal",
+      ].join("\n")),
+      clientFactory: sinon.stub().returns({ send }),
+    }, logger);
+
+    expect(send.callCount).to.equal(2);
+    expect(send.getCalls().map((call) => JSON.parse(call.args[0].input.MessageBody)))
+      .to.deep.equal([
+        { iun: "IUN_1", recIndex: 0, resumeType: "FIRST_ATTEMPT" },
+        { iun: "IUN_1", recIndex: 1, resumeType: "FIRST_ATTEMPT" },
+      ]);
+    expect(result.summary).to.include({
+      totalRows: 4,
+      validRows: 3,
+      duplicateRows: 1,
+      malformedRows: 1,
+      publishableRecords: 2,
+      publishedMessages: 2,
+      failedPublications: 0,
+      exitCode: 0,
+    });
+    expect(logger.error.callCount).to.equal(1);
+    expect(JSON.parse(logger.error.firstCall.args[0])).to.deep.equal({
+      event: "RESUME_POST_PAYMENT_MALFORMED_ROW",
+      line: 5,
+      error: "REC_INDEX_NOT_INTEGER",
     });
   });
 });
