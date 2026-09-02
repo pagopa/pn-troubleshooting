@@ -81,7 +81,9 @@ SQS_ENDPOINT_URL=http://localhost:4566 \
 node pn-resume-post-payment/index.js FIRST_ATTEMPT
 ```
 
-The command exits with code `0` when preliminary validation succeeds. Missing or invalid arguments, AWS configuration, or input files produce exit code `1`. Publication-related exit codes will be introduced with WI-US 3.3.
+Each valid and unique record is published sequentially through `SendMessageCommand`. A publication is successful only when SQS returns a non-empty `MessageId`. A failure is logged and does not prevent subsequent records from being processed.
+
+The final structured summary includes the input counters, successful publications, failed publications and exit code. The command exits with code `0` when every publishable record is confirmed by SQS. Preliminary validation errors or one or more publication failures produce exit code `1`. Malformed or duplicate rows alone do not produce a non-zero exit code.
 
 ## Tests
 

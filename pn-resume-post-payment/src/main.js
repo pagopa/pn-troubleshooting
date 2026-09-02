@@ -1,6 +1,7 @@
 const path = require("path");
 const { createSqsClient } = require("./aws-client");
 const { readCsvFile } = require("./csv-reader");
+const { publishRecords } = require("./sqs-publisher");
 const {
   assertReadableFile,
   resolveAwsEnvironment,
@@ -32,7 +33,7 @@ async function prepareExecution({
   };
 }
 
-async function main(options, logger = console) {
+async function main(options, logger = console, publisher = publishRecords) {
   const execution = await prepareExecution(options);
   execution.csv.malformedRows.forEach(({ line, error }) => {
     logger.error(JSON.stringify({
@@ -42,14 +43,27 @@ async function main(options, logger = console) {
     }));
   });
 
-  logger.log(JSON.stringify({
-    event: "RESUME_POST_PAYMENT_SCRIPT_READY",
+  const publication = await publisher({
+    records: execution.csv.records,
     resumeType: execution.resumeType,
-    csvPath: execution.csvPath,
-    counters: execution.csv.counters,
-  }));
+    queueUrl: execution.queueUrl,
+    sqsClient: execution.sqsClient,
+    logger,
+  });
 
-  return { exitCode: 0, execution };
+  const exitCode = publication.failedPublications > 0 ? 1 : 0;
+  const summary = {
+    event: "RESUME_POST_PAYMENT_SUMMARY",
+    csvPath: execution.csvPath,
+    resumeType: execution.resumeType,
+    ...execution.csv.counters,
+    ...publication,
+    exitCode,
+  };
+
+  logger.log(JSON.stringify(summary));
+
+  return { exitCode, execution, summary };
 }
 
 module.exports = {

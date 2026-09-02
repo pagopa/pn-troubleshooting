@@ -99,13 +99,17 @@ describe("prepareExecution", () => {
 
   it("logs malformed rows without their values", async () => {
     const logger = { log: sinon.stub(), error: sinon.stub() };
+    const publisher = sinon.stub().resolves({
+      publishedMessages: 1,
+      failedPublications: 0,
+    });
     const result = await main({
       args: ["FIRST_ATTEMPT"],
       env,
       access: sinon.stub().resolves(),
       readFile: sinon.stub().resolves("iun,recIndex\nSECRET_IUN,invalid\nIUN_2,0\n"),
       clientFactory: sinon.stub().returns({}),
-    }, logger);
+    }, logger, publisher);
 
     expect(result.exitCode).to.equal(0);
     expect(JSON.parse(logger.error.firstCall.args[0])).to.deep.equal({
@@ -114,12 +118,75 @@ describe("prepareExecution", () => {
       error: "REC_INDEX_NOT_INTEGER",
     });
     expect(logger.error.firstCall.args[0]).not.to.include("SECRET_IUN");
-    expect(JSON.parse(logger.log.firstCall.args[0]).counters).to.deep.equal({
+    expect(JSON.parse(logger.log.firstCall.args[0])).to.include({
+      event: "RESUME_POST_PAYMENT_SUMMARY",
       totalRows: 2,
       validRows: 1,
       duplicateRows: 0,
       malformedRows: 1,
       publishableRecords: 1,
+      publishedMessages: 1,
+      failedPublications: 0,
+      exitCode: 0,
+    });
+  });
+
+  it("returns a non-zero exit code and a coherent summary after a publication failure", async () => {
+    const logger = { log: sinon.stub(), error: sinon.stub() };
+    const publisher = sinon.stub().resolves({
+      publishedMessages: 1,
+      failedPublications: 1,
+    });
+
+    const result = await main({
+      args: ["SECOND_ATTEMPT"],
+      env,
+      access: sinon.stub().resolves(),
+      readFile: sinon.stub().resolves("iun,recIndex\nIUN_1,0\nIUN_2,1\n"),
+      clientFactory: sinon.stub().returns({}),
+    }, logger, publisher);
+
+    expect(result.exitCode).to.equal(1);
+    expect(result.summary).to.include({
+      event: "RESUME_POST_PAYMENT_SUMMARY",
+      resumeType: "SECOND_ATTEMPT",
+      totalRows: 2,
+      validRows: 2,
+      duplicateRows: 0,
+      malformedRows: 0,
+      publishableRecords: 2,
+      publishedMessages: 1,
+      failedPublications: 1,
+      exitCode: 1,
+    });
+    expect(result.summary.publishableRecords).to.equal(
+      result.summary.publishedMessages + result.summary.failedPublications
+    );
+  });
+
+  it("succeeds without publishing when the CSV contains only malformed rows", async () => {
+    const logger = { log: sinon.stub(), error: sinon.stub() };
+    const publisher = sinon.stub().resolves({
+      publishedMessages: 0,
+      failedPublications: 0,
+    });
+
+    const result = await main({
+      args: ["SIMPLE_REGISTERED_LETTER"],
+      env,
+      access: sinon.stub().resolves(),
+      readFile: sinon.stub().resolves("iun,recIndex\nIUN_1,invalid\n"),
+      clientFactory: sinon.stub().returns({}),
+    }, logger, publisher);
+
+    expect(publisher.firstCall.args[0].records).to.deep.equal([]);
+    expect(result.exitCode).to.equal(0);
+    expect(result.summary).to.include({
+      publishableRecords: 0,
+      publishedMessages: 0,
+      failedPublications: 0,
+      malformedRows: 1,
+      exitCode: 0,
     });
   });
 });
