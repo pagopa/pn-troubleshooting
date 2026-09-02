@@ -89,6 +89,8 @@ build/
 
 ### Node.js ###
 node_modules/
+**/.nyc_output/
+**/coverage/
 
 data_extractor/results
 

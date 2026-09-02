@@ -31,6 +31,14 @@ The corresponding file must exist and be readable under `csv/`:
 
 Operational CSV files are ignored by Git. Only `csv/example.csv`, containing fictitious data, is versioned.
 
+The required header is exactly:
+
+```csv
+iun,recIndex
+```
+
+The script reads and validates the complete file before preparing any SQS publication. Empty rows are ignored. Invalid rows are reported by line number and error code, while valid records are normalized and deduplicated by `iun + recIndex`.
+
 ## AWS configuration
 
 AWS configuration is read exclusively from environment variables. AWS configuration options are not accepted on the command line.
