@@ -89,6 +89,8 @@ build/
 
 ### Node.js ###
 node_modules/
+**/.nyc_output/
+**/coverage/
 
 data_extractor/results
 
@@ -105,6 +107,7 @@ legal_conservation_error_extractor/result
 
 ### Miscellaneous ###
 *.csv
+!pn-resume-post-payment/csv/example.csv
 *.txt
 
 ### SEND PDND automations V3 ###
