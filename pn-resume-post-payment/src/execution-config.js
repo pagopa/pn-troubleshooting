@@ -8,14 +8,9 @@ const RESUME_TYPE_FILES = Object.freeze({
   SIMPLE_REGISTERED_LETTER: "SIMPLE_REGISTERED_LETTER.csv",
 });
 
-function resolveResumeType(args) {
-  if (args.length !== 1) {
+function resolveResumeType(resumeType) {
+  if (!resumeType) {
     throw new Error("Exactly one resumeType argument is required");
-  }
-
-  const [resumeType] = args;
-  if (resumeType.startsWith("-")) {
-    throw new Error("CLI options are not supported");
   }
   if (!Object.hasOwn(RESUME_TYPE_FILES, resumeType)) {
     throw new Error(`Unsupported resumeType: ${resumeType}`);
@@ -28,26 +23,65 @@ function resolveCsvPath(resumeType, scriptDirectory = path.resolve(__dirname, ".
   return path.join(scriptDirectory, "csv", RESUME_TYPE_FILES[resumeType]);
 }
 
-function resolveAwsEnvironment(env) {
-  const region = env.AWS_REGION || env.AWS_DEFAULT_REGION;
+function resolveExecutionArguments(args) {
+  const values = {};
+  const positionalArguments = [];
+  const optionNames = new Set(["--region", "--queue-url", "--profile", "--endpoint"]);
+
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (!argument.startsWith("--")) {
+      positionalArguments.push(argument);
+      continue;
+    }
+    if (!optionNames.has(argument)) {
+      throw new Error(`Unsupported CLI option: ${argument}`);
+    }
+    if (values[argument]) {
+      throw new Error(`CLI option must be specified only once: ${argument}`);
+    }
+
+    const value = args[index + 1];
+    if (!value || value.startsWith("--")) {
+      throw new Error(`CLI option requires a value: ${argument}`);
+    }
+    values[argument] = value;
+    index += 1;
+  }
+
+  if (positionalArguments.length !== 1) {
+    throw new Error("Exactly one resumeType argument is required");
+  }
+
+  return resolveAwsConfiguration({
+    resumeType: positionalArguments[0],
+    region: values["--region"],
+    queueUrl: values["--queue-url"],
+    profile: values["--profile"],
+    endpoint: values["--endpoint"],
+  });
+}
+
+function resolveAwsConfiguration({ resumeType, region, queueUrl, profile, endpoint }) {
+  resolveResumeType(resumeType);
   if (!region || !/^[a-z]{2,4}(?:-[a-z0-9]+)+-\d+$/.test(region)) {
-    throw new Error("AWS_REGION or AWS_DEFAULT_REGION is required and must be valid");
+    throw new Error("--region is required and must be valid");
   }
 
-  const queueUrl = env.PN_RESUME_POST_PAYMENT_QUEUE_URL;
   if (!isHttpUrl(queueUrl)) {
-    throw new Error("PN_RESUME_POST_PAYMENT_QUEUE_URL is required and must be a valid HTTP(S) URL");
+    throw new Error("--queue-url is required and must be a valid HTTP(S) URL");
   }
 
-  if (env.SQS_ENDPOINT_URL && !isHttpUrl(env.SQS_ENDPOINT_URL)) {
-    throw new Error("SQS_ENDPOINT_URL must be a valid HTTP(S) URL");
+  if (endpoint && !isHttpUrl(endpoint)) {
+    throw new Error("--endpoint must be a valid HTTP(S) URL");
   }
 
   return {
+    resumeType,
     region,
     queueUrl,
-    profile: env.AWS_PROFILE,
-    endpoint: env.SQS_ENDPOINT_URL,
+    profile,
+    endpoint,
   };
 }
 
@@ -75,7 +109,8 @@ function isHttpUrl(value) {
 module.exports = {
   RESUME_TYPE_FILES,
   assertReadableFile,
-  resolveAwsEnvironment,
+  resolveAwsConfiguration,
   resolveCsvPath,
+  resolveExecutionArguments,
   resolveResumeType,
 };

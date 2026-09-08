@@ -4,32 +4,29 @@ const { readCsvFile } = require("./csv-reader");
 const { publishRecords } = require("./sqs-publisher");
 const {
   assertReadableFile,
-  resolveAwsEnvironment,
   resolveCsvPath,
-  resolveResumeType,
+  resolveExecutionArguments,
 } = require("./execution-config");
 
 async function prepareExecution({
   args,
-  env,
   scriptDirectory = path.resolve(__dirname, ".."),
   access,
   readFile,
   clientFactory = createSqsClient,
 }) {
-  const resumeType = resolveResumeType(args);
-  const awsEnvironment = resolveAwsEnvironment(env);
-  const csvPath = resolveCsvPath(resumeType, scriptDirectory);
+  const awsConfiguration = resolveExecutionArguments(args);
+  const csvPath = resolveCsvPath(awsConfiguration.resumeType, scriptDirectory);
 
   await assertReadableFile(csvPath, access);
   const csv = await readCsvFile(csvPath, readFile);
 
   return {
-    resumeType,
+    resumeType: awsConfiguration.resumeType,
     csvPath,
     csv,
-    queueUrl: awsEnvironment.queueUrl,
-    sqsClient: clientFactory(awsEnvironment),
+    queueUrl: awsConfiguration.queueUrl,
+    sqsClient: clientFactory(awsConfiguration),
   };
 }
 

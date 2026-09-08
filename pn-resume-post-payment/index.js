@@ -2,12 +2,11 @@ const { main } = require("./src/main");
 
 async function run({
   args = process.argv.slice(2),
-  env = process.env,
   logger = console,
   mainFunction = main,
 } = {}) {
   try {
-    const { exitCode } = await mainFunction({ args, env }, logger);
+    const { exitCode } = await mainFunction({ args }, logger);
     return exitCode;
   } catch (error) {
     logger.error(JSON.stringify({

@@ -41,17 +41,16 @@ The script reads and validates the complete file before preparing any SQS public
 
 ## AWS configuration
 
-AWS configuration is read exclusively from environment variables. AWS configuration options are not accepted on the command line.
+AWS configuration is supplied exclusively as command-line options and is validated before the CSV is accessed.
 
-| Variable | Required | Purpose |
+| Option | Required | Purpose |
 | --- | --- | --- |
-| `AWS_PROFILE` | No | Shared AWS configuration or IAM Identity Center/SSO profile |
-| `AWS_REGION` | Yes, unless fallback is set | AWS region; takes precedence over `AWS_DEFAULT_REGION` |
-| `AWS_DEFAULT_REGION` | No | Region fallback |
-| `PN_RESUME_POST_PAYMENT_QUEUE_URL` | Yes | Destination SQS Queue URL |
-| `SQS_ENDPOINT_URL` | No | Alternative SQS endpoint, for example LocalStack |
+| `--profile <name>` | No | Shared AWS configuration or IAM Identity Center/SSO profile |
+| `--region <region>` | Yes | AWS region |
+| `--queue-url <url>` | Yes | Destination SQS Queue URL |
+| `--endpoint <url>` | No | Alternative SQS endpoint, for example LocalStack |
 
-When `AWS_PROFILE` is absent, the AWS SDK default credential provider chain is used.
+When `--profile` is absent, the AWS SDK default credential provider chain is used. Credentials themselves are not script configuration options; configure them with the AWS CLI or a standard AWS SDK credential provider.
 
 Authenticate an SSO profile before execution:
 
@@ -61,13 +60,13 @@ aws sso login --profile sso_pn-core-dev
 
 ## Execution
 
-From the `pn-troubleshooting` repository root, AWS environment:
+From the `pn-troubleshooting` repository root:
 
 ```bash
-AWS_PROFILE=sso_pn-core-dev \
-AWS_REGION=eu-south-1 \
-PN_RESUME_POST_PAYMENT_QUEUE_URL=https://sqs.eu-south-1.amazonaws.com/000000000000/pn-resume-post-payment-queue \
-node pn-resume-post-payment/index.js FIRST_ATTEMPT
+node pn-resume-post-payment/index.js FIRST_ATTEMPT \
+	--profile sso_pn-core-dev \
+	--region eu-south-1 \
+	--queue-url https://sqs.eu-south-1.amazonaws.com/000000000000/pn-resume-post-payment-queue
 ```
 
 LocalStack:
@@ -75,10 +74,10 @@ LocalStack:
 ```bash
 AWS_ACCESS_KEY_ID=test \
 AWS_SECRET_ACCESS_KEY=test \
-AWS_REGION=us-east-1 \
-PN_RESUME_POST_PAYMENT_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/local-resume-post-payment-queue \
-SQS_ENDPOINT_URL=http://localhost:4566 \
-node pn-resume-post-payment/index.js FIRST_ATTEMPT
+node pn-resume-post-payment/index.js FIRST_ATTEMPT \
+	--region us-east-1 \
+	--queue-url http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/local-resume-post-payment-queue \
+	--endpoint http://localhost:4566
 ```
 
 Each valid and unique record is published sequentially through `SendMessageCommand`. A publication is successful only when SQS returns a non-empty `MessageId`. A failure is logged and does not prevent subsequent records from being processed.

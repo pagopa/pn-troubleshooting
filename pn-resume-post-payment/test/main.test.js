@@ -4,10 +4,11 @@ const sinon = require("sinon");
 const { main, prepareExecution } = require("../src/main");
 
 describe("prepareExecution", () => {
-  const env = {
-    AWS_REGION: "eu-south-1",
-    PN_RESUME_POST_PAYMENT_QUEUE_URL: "https://sqs.eu-south-1.amazonaws.com/123/queue",
-  };
+  const args = [
+    "FIRST_ATTEMPT",
+    "--region", "eu-south-1",
+    "--queue-url", "https://sqs.eu-south-1.amazonaws.com/123/queue",
+  ];
 
   it("prepares one resume type independently from the working directory", async () => {
     const access = sinon.stub().resolves();
@@ -17,8 +18,11 @@ describe("prepareExecution", () => {
     const scriptDirectory = path.join("tmp", "pn-resume-post-payment");
 
     const result = await prepareExecution({
-      args: ["FIRST_ATTEMPT"],
-      env,
+      args,
+      env: {
+        AWS_REGION: "invalid",
+        PN_RESUME_POST_PAYMENT_QUEUE_URL: "not-a-url",
+      },
       scriptDirectory,
       access,
       readFile,
@@ -39,7 +43,7 @@ describe("prepareExecution", () => {
           publishableRecords: 1,
         },
       },
-      queueUrl: env.PN_RESUME_POST_PAYMENT_QUEUE_URL,
+      queueUrl: "https://sqs.eu-south-1.amazonaws.com/123/queue",
       sqsClient,
     });
     expect(access.calledOnce).to.equal(true);
@@ -53,8 +57,7 @@ describe("prepareExecution", () => {
 
     try {
       await prepareExecution({
-        args: ["FIRST_ATTEMPT"],
-        env,
+        args,
         access: async () => { throw new Error("missing"); },
         clientFactory,
       });
@@ -74,8 +77,7 @@ describe("prepareExecution", () => {
 
     try {
       await prepareExecution({
-        args: ["FIRST_ATTEMPT"],
-        env,
+        args,
         access: async () => { throw permissionError; },
         clientFactory,
       });
@@ -92,7 +94,7 @@ describe("prepareExecution", () => {
     const access = sinon.stub();
 
     try {
-      await prepareExecution({ args: ["FIRST_ATTEMPT"], env: {}, access });
+      await prepareExecution({ args: ["FIRST_ATTEMPT"], access });
     } catch {
       // Expected preliminary validation failure.
     }
@@ -105,8 +107,7 @@ describe("prepareExecution", () => {
 
     try {
       await prepareExecution({
-        args: ["FIRST_ATTEMPT"],
-        env,
+        args,
         access: sinon.stub().resolves(),
         readFile: sinon.stub().resolves("recIndex,iun\n0,IUN_1\n"),
         clientFactory,
@@ -126,8 +127,7 @@ describe("prepareExecution", () => {
       failedPublications: 0,
     });
     const result = await main({
-      args: ["FIRST_ATTEMPT"],
-      env,
+      args,
       access: sinon.stub().resolves(),
       readFile: sinon.stub().resolves("iun,recIndex\nSECRET_IUN,invalid\nIUN_2,0\n"),
       clientFactory: sinon.stub().returns({}),
@@ -161,8 +161,7 @@ describe("prepareExecution", () => {
     });
 
     const result = await main({
-      args: ["SECOND_ATTEMPT"],
-      env,
+      args: ["SECOND_ATTEMPT", ...args.slice(1)],
       access: sinon.stub().resolves(),
       readFile: sinon.stub().resolves("iun,recIndex\nIUN_1,0\nIUN_2,1\n"),
       clientFactory: sinon.stub().returns({}),
@@ -194,8 +193,7 @@ describe("prepareExecution", () => {
     });
 
     const result = await main({
-      args: ["SIMPLE_REGISTERED_LETTER"],
-      env,
+      args: ["SIMPLE_REGISTERED_LETTER", ...args.slice(1)],
       access: sinon.stub().resolves(),
       readFile: sinon.stub().resolves("iun,recIndex\nIUN_1,invalid\n"),
       clientFactory: sinon.stub().returns({}),
@@ -219,8 +217,7 @@ describe("prepareExecution", () => {
     const logger = { log: sinon.stub(), error: sinon.stub() };
 
     const result = await main({
-      args: ["FIRST_ATTEMPT"],
-      env,
+      args,
       access: sinon.stub().resolves(),
       readFile: sinon.stub().resolves([
         "iun,recIndex",

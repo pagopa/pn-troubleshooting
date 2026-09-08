@@ -8,14 +8,16 @@ describe("CLI entrypoint", () => {
     const logger = { log: sinon.stub(), error: sinon.stub() };
 
     const exitCode = await run({
-      args: ["FIRST_ATTEMPT"],
-      env: { AWS_REGION: "eu-south-1" },
+      args: ["FIRST_ATTEMPT", "--region", "eu-south-1", "--queue-url", "https://sqs.example/queue"],
+      env: { AWS_REGION: "invalid" },
       logger,
       mainFunction,
     });
 
     expect(exitCode).to.equal(0);
-    expect(mainFunction.calledOnce).to.equal(true);
+    expect(mainFunction.calledOnceWithExactly({
+      args: ["FIRST_ATTEMPT", "--region", "eu-south-1", "--queue-url", "https://sqs.example/queue"],
+    }, logger)).to.equal(true);
     expect(logger.error.called).to.equal(false);
   });
 
@@ -23,7 +25,7 @@ describe("CLI entrypoint", () => {
     const mainFunction = sinon.stub().rejects(new Error("Invalid preliminary configuration"));
     const logger = { log: sinon.stub(), error: sinon.stub() };
 
-    const exitCode = await run({ args: [], env: {}, logger, mainFunction });
+    const exitCode = await run({ args: [], logger, mainFunction });
 
     expect(exitCode).to.equal(1);
     expect(JSON.parse(logger.error.firstCall.args[0])).to.deep.equal({
