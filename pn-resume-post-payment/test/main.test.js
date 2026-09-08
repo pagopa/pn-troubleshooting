@@ -5,9 +5,10 @@ const { main, prepareExecution } = require("../src/main");
 
 describe("prepareExecution", () => {
   const args = [
-    "FIRST_ATTEMPT",
+    "--resume-type", "FIRST_ATTEMPT",
     "--region", "eu-south-1",
     "--queue-url", "https://sqs.eu-south-1.amazonaws.com/123/queue",
+    "--profile", "sso_profile",
   ];
 
   it("prepares one resume type independently from the working directory", async () => {
@@ -38,7 +39,6 @@ describe("prepareExecution", () => {
         counters: {
           totalRows: 1,
           validRows: 1,
-          duplicateRows: 0,
           malformedRows: 0,
           publishableRecords: 1,
         },
@@ -94,7 +94,7 @@ describe("prepareExecution", () => {
     const access = sinon.stub();
 
     try {
-      await prepareExecution({ args: ["FIRST_ATTEMPT"], access });
+      await prepareExecution({ args: ["--resume-type", "FIRST_ATTEMPT"], access });
     } catch {
       // Expected preliminary validation failure.
     }
@@ -144,7 +144,6 @@ describe("prepareExecution", () => {
       event: "RESUME_POST_PAYMENT_SUMMARY",
       totalRows: 2,
       validRows: 1,
-      duplicateRows: 0,
       malformedRows: 1,
       publishableRecords: 1,
       publishedMessages: 1,
@@ -161,7 +160,7 @@ describe("prepareExecution", () => {
     });
 
     const result = await main({
-      args: ["SECOND_ATTEMPT", ...args.slice(1)],
+      args: ["--resume-type", "SECOND_ATTEMPT", ...args.slice(2)],
       access: sinon.stub().resolves(),
       readFile: sinon.stub().resolves("iun,recIndex\nIUN_1,0\nIUN_2,1\n"),
       clientFactory: sinon.stub().returns({}),
@@ -173,7 +172,6 @@ describe("prepareExecution", () => {
       resumeType: "SECOND_ATTEMPT",
       totalRows: 2,
       validRows: 2,
-      duplicateRows: 0,
       malformedRows: 0,
       publishableRecords: 2,
       publishedMessages: 1,
@@ -193,7 +191,7 @@ describe("prepareExecution", () => {
     });
 
     const result = await main({
-      args: ["SIMPLE_REGISTERED_LETTER", ...args.slice(1)],
+      args: ["--resume-type", "SIMPLE_REGISTERED_LETTER", ...args.slice(2)],
       access: sinon.stub().resolves(),
       readFile: sinon.stub().resolves("iun,recIndex\nIUN_1,invalid\n"),
       clientFactory: sinon.stub().returns({}),
@@ -210,10 +208,11 @@ describe("prepareExecution", () => {
     });
   });
 
-  it("publishes only valid unique pairs and keeps recipients of the same IUN", async () => {
+  it("publishes all valid pairs, including duplicates", async () => {
     const send = sinon.stub()
       .onFirstCall().resolves({ MessageId: "message-1" })
-      .onSecondCall().resolves({ MessageId: "message-2" });
+      .onSecondCall().resolves({ MessageId: "message-2" })
+      .onThirdCall().resolves({ MessageId: "message-3" });
     const logger = { log: sinon.stub(), error: sinon.stub() };
 
     const result = await main({
@@ -229,19 +228,19 @@ describe("prepareExecution", () => {
       clientFactory: sinon.stub().returns({ send }),
     }, logger);
 
-    expect(send.callCount).to.equal(2);
+    expect(send.callCount).to.equal(3);
     expect(send.getCalls().map((call) => JSON.parse(call.args[0].input.MessageBody)))
       .to.deep.equal([
+        { iun: "IUN_1", recIndex: 0, resumeType: "FIRST_ATTEMPT" },
         { iun: "IUN_1", recIndex: 0, resumeType: "FIRST_ATTEMPT" },
         { iun: "IUN_1", recIndex: 1, resumeType: "FIRST_ATTEMPT" },
       ]);
     expect(result.summary).to.include({
       totalRows: 4,
       validRows: 3,
-      duplicateRows: 1,
       malformedRows: 1,
-      publishableRecords: 2,
-      publishedMessages: 2,
+      publishableRecords: 3,
+      publishedMessages: 3,
       failedPublications: 0,
       exitCode: 0,
     });

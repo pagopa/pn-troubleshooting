@@ -23,9 +23,7 @@ function parseCsvContent(content) {
 
   const records = [];
   const malformedRows = [];
-  const seenRecords = new Set();
   let validRows = 0;
-  let duplicateRows = 0;
 
   for (const { record, info } of dataRows) {
     const validation = validateRecord(record);
@@ -35,19 +33,7 @@ function parseCsvContent(content) {
     }
 
     validRows += 1;
-    const normalizedRecord = validation.record;
-    const deduplicationKey = JSON.stringify([
-      normalizedRecord.iun,
-      normalizedRecord.recIndex,
-    ]);
-
-    if (seenRecords.has(deduplicationKey)) {
-      duplicateRows += 1;
-      continue;
-    }
-
-    seenRecords.add(deduplicationKey);
-    records.push(normalizedRecord);
+    records.push(validation.record);
   }
 
   const malformedRowsCount = malformedRows.length;
@@ -57,7 +43,6 @@ function parseCsvContent(content) {
     counters: {
       totalRows: dataRows.length,
       validRows,
-      duplicateRows,
       malformedRows: malformedRowsCount,
       publishableRecords: records.length,
     },

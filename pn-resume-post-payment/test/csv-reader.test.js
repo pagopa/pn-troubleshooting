@@ -87,8 +87,8 @@ describe("CSV reader", () => {
     });
   });
 
-  describe("deduplication and counters", () => {
-    it("keeps the first normalized pair and distinct recipients", () => {
+  describe("counters", () => {
+    it("keeps all valid records, including duplicate pairs", () => {
       const result = parseCsvContent([
         "iun,recIndex",
         " IUN_1 ,0",
@@ -100,6 +100,7 @@ describe("CSV reader", () => {
 
       expect(result.records).to.deep.equal([
         { iun: "IUN_1", recIndex: 0 },
+        { iun: "IUN_1", recIndex: 0 },
         { iun: "IUN_1", recIndex: 1 },
         { iun: "IUN_2", recIndex: 0 },
       ]);
@@ -109,15 +110,14 @@ describe("CSV reader", () => {
       expect(result.counters).to.deep.equal({
         totalRows: 5,
         validRows: 4,
-        duplicateRows: 1,
         malformedRows: 1,
-        publishableRecords: 3,
+        publishableRecords: 4,
       });
       expect(result.counters.totalRows).to.equal(
         result.counters.validRows + result.counters.malformedRows
       );
       expect(result.counters.publishableRecords).to.equal(
-        result.counters.validRows - result.counters.duplicateRows
+        result.counters.validRows
       );
     });
   });

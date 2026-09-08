@@ -25,15 +25,16 @@ function resolveCsvPath(resumeType, scriptDirectory = path.resolve(__dirname, ".
 
 function resolveExecutionArguments(args) {
   const values = {};
-  const positionalArguments = [];
-  const optionNames = new Set(["--region", "--queue-url", "--profile", "--endpoint"]);
+  const optionNames = new Set([
+    "--resume-type",
+    "--region",
+    "--queue-url",
+    "--profile",
+    "--endpoint",
+  ]);
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
-    if (!argument.startsWith("--")) {
-      positionalArguments.push(argument);
-      continue;
-    }
     if (!optionNames.has(argument)) {
       throw new Error(`Unsupported CLI option: ${argument}`);
     }
@@ -49,12 +50,8 @@ function resolveExecutionArguments(args) {
     index += 1;
   }
 
-  if (positionalArguments.length !== 1) {
-    throw new Error("Exactly one resumeType argument is required");
-  }
-
   return resolveAwsConfiguration({
-    resumeType: positionalArguments[0],
+    resumeType: values["--resume-type"],
     region: values["--region"],
     queueUrl: values["--queue-url"],
     profile: values["--profile"],
@@ -70,6 +67,10 @@ function resolveAwsConfiguration({ resumeType, region, queueUrl, profile, endpoi
 
   if (!isHttpUrl(queueUrl)) {
     throw new Error("--queue-url is required and must be a valid HTTP(S) URL");
+  }
+
+  if (!profile) {
+    throw new Error("--profile is required");
   }
 
   if (endpoint && !isHttpUrl(endpoint)) {
