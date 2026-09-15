@@ -1,0 +1,3 @@
+{%- for codice in codici -%}
+{"key": {"S": "{{codice['codice_tassonomico']}}"}, "PAId": {"S": "default"}, "description": {"M": {"it": {"S": "{{ codice['tipologia_atto']}}: {{ codice['descrizione'] | replace("\r", "") | replace("\n", "")}}"}}}}{{ '\n' }} 
+{%- endfor -%}
