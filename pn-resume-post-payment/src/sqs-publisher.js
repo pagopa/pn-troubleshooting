@@ -1,5 +1,3 @@
-const { SendMessageCommand } = require("@aws-sdk/client-sqs");
-
 function buildMessagePayload(record, resumeType) {
   return {
     iun: record.iun,
@@ -14,7 +12,6 @@ async function publishRecords({
   queueUrl,
   sqsClient,
   logger = console,
-  Command = SendMessageCommand,
 }) {
   let publishedMessages = 0;
   let failedPublications = 0;
@@ -23,10 +20,7 @@ async function publishRecords({
     const payload = buildMessagePayload(record, resumeType);
 
     try {
-      const response = await sqsClient.send(new Command({
-        QueueUrl: queueUrl,
-        MessageBody: JSON.stringify(payload),
-      }));
+      const response = await sqsClient._sendSQSMessage(queueUrl, payload);
 
       if (typeof response.MessageId !== "string" || !response.MessageId.trim()) {
         throw new Error("SQS response does not contain MessageId");

@@ -12,14 +12,14 @@ async function prepareExecution({
   args,
   scriptDirectory = path.resolve(__dirname, ".."),
   access,
-  readFile,
+  parseCsv,
   clientFactory = createSqsClient,
 }) {
   const awsConfiguration = resolveExecutionArguments(args);
   const csvPath = resolveCsvPath(awsConfiguration.resumeType, scriptDirectory);
 
   await assertReadableFile(csvPath, access);
-  const csv = await readCsvFile(csvPath, readFile);
+  const csv = await readCsvFile(csvPath, parseCsv);
 
   return {
     resumeType: awsConfiguration.resumeType,

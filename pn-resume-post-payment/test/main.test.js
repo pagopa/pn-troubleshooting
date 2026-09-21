@@ -6,14 +6,13 @@ const { main, prepareExecution } = require("../src/main");
 describe("prepareExecution", () => {
   const args = [
     "--resume-type", "FIRST_ATTEMPT",
-    "--region", "eu-south-1",
+    "--envName", "dev",
     "--queue-url", "https://sqs.eu-south-1.amazonaws.com/123/queue",
-    "--profile", "sso_profile",
   ];
 
   it("prepares one resume type independently from the working directory", async () => {
     const access = sinon.stub().resolves();
-    const readFile = sinon.stub().resolves("iun,recIndex\nIUN_1,0\n");
+    const parseCsv = sinon.stub().resolves([{ iun: "IUN_1", recIndex: "0" }]);
     const sqsClient = {};
     const clientFactory = sinon.stub().returns(sqsClient);
     const scriptDirectory = path.join("tmp", "pn-resume-post-payment");
@@ -26,7 +25,7 @@ describe("prepareExecution", () => {
       },
       scriptDirectory,
       access,
-      readFile,
+      parseCsv,
       clientFactory,
     });
 
@@ -47,8 +46,12 @@ describe("prepareExecution", () => {
       sqsClient,
     });
     expect(access.calledOnce).to.equal(true);
-    expect(readFile.calledOnce).to.equal(true);
-    expect(clientFactory.calledOnce).to.equal(true);
+    expect(parseCsv.calledOnceWithExactly(result.csvPath, ",")).to.equal(true);
+    expect(clientFactory.calledOnceWithExactly({
+      resumeType: "FIRST_ATTEMPT",
+      envName: "dev",
+      queueUrl: "https://sqs.eu-south-1.amazonaws.com/123/queue",
+    })).to.equal(true);
   });
 
   it("does not construct the client when the CSV is unavailable", async () => {
@@ -109,7 +112,7 @@ describe("prepareExecution", () => {
       await prepareExecution({
         args,
         access: sinon.stub().resolves(),
-        readFile: sinon.stub().resolves("recIndex,iun\n0,IUN_1\n"),
+        parseCsv: sinon.stub().resolves([{ recIndex: "0", iun: "IUN_1" }]),
         clientFactory,
       });
     } catch (caught) {
@@ -129,7 +132,10 @@ describe("prepareExecution", () => {
     const result = await main({
       args,
       access: sinon.stub().resolves(),
-      readFile: sinon.stub().resolves("iun,recIndex\nSECRET_IUN,invalid\nIUN_2,0\n"),
+      parseCsv: sinon.stub().resolves([
+        { iun: "SECRET_IUN", recIndex: "invalid" },
+        { iun: "IUN_2", recIndex: "0" },
+      ]),
       clientFactory: sinon.stub().returns({}),
     }, logger, publisher);
 
@@ -162,7 +168,10 @@ describe("prepareExecution", () => {
     const result = await main({
       args: ["--resume-type", "SECOND_ATTEMPT", ...args.slice(2)],
       access: sinon.stub().resolves(),
-      readFile: sinon.stub().resolves("iun,recIndex\nIUN_1,0\nIUN_2,1\n"),
+      parseCsv: sinon.stub().resolves([
+        { iun: "IUN_1", recIndex: "0" },
+        { iun: "IUN_2", recIndex: "1" },
+      ]),
       clientFactory: sinon.stub().returns({}),
     }, logger, publisher);
 
@@ -193,7 +202,7 @@ describe("prepareExecution", () => {
     const result = await main({
       args: ["--resume-type", "SIMPLE_REGISTERED_LETTER", ...args.slice(2)],
       access: sinon.stub().resolves(),
-      readFile: sinon.stub().resolves("iun,recIndex\nIUN_1,invalid\n"),
+      parseCsv: sinon.stub().resolves([{ iun: "IUN_1", recIndex: "invalid" }]),
       clientFactory: sinon.stub().returns({}),
     }, logger, publisher);
 
@@ -209,7 +218,7 @@ describe("prepareExecution", () => {
   });
 
   it("publishes all valid pairs, including duplicates", async () => {
-    const send = sinon.stub()
+    const sendSqsMessage = sinon.stub()
       .onFirstCall().resolves({ MessageId: "message-1" })
       .onSecondCall().resolves({ MessageId: "message-2" })
       .onThirdCall().resolves({ MessageId: "message-3" });
@@ -218,18 +227,17 @@ describe("prepareExecution", () => {
     const result = await main({
       args,
       access: sinon.stub().resolves(),
-      readFile: sinon.stub().resolves([
-        "iun,recIndex",
-        " IUN_1 ,0",
-        "IUN_1,0",
-        "IUN_1,1",
-        "MALFORMED,decimal",
-      ].join("\n")),
-      clientFactory: sinon.stub().returns({ send }),
+      parseCsv: sinon.stub().resolves([
+        { iun: " IUN_1 ", recIndex: "0" },
+        { iun: "IUN_1", recIndex: "0" },
+        { iun: "IUN_1", recIndex: "1" },
+        { iun: "MALFORMED", recIndex: "decimal" },
+      ]),
+      clientFactory: sinon.stub().returns({ _sendSQSMessage: sendSqsMessage }),
     }, logger);
 
-    expect(send.callCount).to.equal(3);
-    expect(send.getCalls().map((call) => JSON.parse(call.args[0].input.MessageBody)))
+    expect(sendSqsMessage.callCount).to.equal(3);
+    expect(sendSqsMessage.getCalls().map((call) => call.args[1]))
       .to.deep.equal([
         { iun: "IUN_1", recIndex: 0, resumeType: "FIRST_ATTEMPT" },
         { iun: "IUN_1", recIndex: 0, resumeType: "FIRST_ATTEMPT" },

@@ -61,33 +61,19 @@ describe("execution config", () => {
   describe("resolveExecutionArguments", () => {
     const requiredArguments = [
       "--resume-type", "FIRST_ATTEMPT",
-      "--region", "eu-south-1",
+      "--envName", "dev",
       "--queue-url", "https://sqs.eu-south-1.amazonaws.com/123/queue",
-      "--profile", "sso_profile",
     ];
 
     it("accepts required options in any order", () => {
       expect(resolveExecutionArguments([
         "--queue-url", "https://sqs.eu-south-1.amazonaws.com/123/queue",
-        "--region", "eu-south-1",
-        "--profile", "sso_profile",
+        "--envName", "dev",
         "--resume-type", "FIRST_ATTEMPT",
       ])).to.deep.equal({
         resumeType: "FIRST_ATTEMPT",
-        region: "eu-south-1",
+        envName: "dev",
         queueUrl: "https://sqs.eu-south-1.amazonaws.com/123/queue",
-        profile: "sso_profile",
-        endpoint: undefined,
-      });
-    });
-
-    it("accepts the optional endpoint", () => {
-      expect(resolveExecutionArguments([
-        ...requiredArguments,
-        "--endpoint", "http://localhost:4566",
-      ])).to.include({
-        profile: "sso_profile",
-        endpoint: "http://localhost:4566",
       });
     });
 
@@ -103,65 +89,53 @@ describe("execution config", () => {
     it("rejects unknown, duplicate and valueless options", () => {
       expect(() => resolveExecutionArguments([...requiredArguments, "--unknown", "value"]))
         .to.throw("Unsupported CLI option: --unknown");
-      expect(() => resolveExecutionArguments([...requiredArguments, "--region", "us-east-1"]))
-        .to.throw("CLI option must be specified only once: --region");
-      expect(() => resolveExecutionArguments(["--resume-type", "FIRST_ATTEMPT", "--region", "--queue-url", "url"]))
-        .to.throw("CLI option requires a value: --region");
+      expect(() => resolveExecutionArguments([...requiredArguments, "--envName", "uat"]))
+        .to.throw("CLI option must be specified only once: --envName");
+      expect(() => resolveExecutionArguments(["--resume-type", "FIRST_ATTEMPT", "--envName", "--queue-url", "url"]))
+        .to.throw("CLI option requires a value: --envName");
     });
 
     it("rejects invalid required AWS options", () => {
-      expect(() => resolveExecutionArguments(["--resume-type", "FIRST_ATTEMPT", "--profile", "sso_profile", "--queue-url", "https://sqs.example/queue"]))
-        .to.throw("--region is required");
-      expect(() => resolveExecutionArguments(["--resume-type", "FIRST_ATTEMPT", "--profile", "sso_profile", "--region", "invalid", "--queue-url", "https://sqs.example/queue"]))
-        .to.throw("--region is required");
-      expect(() => resolveExecutionArguments(["--resume-type", "FIRST_ATTEMPT", "--profile", "sso_profile", "--region", "eu-south-1"]))
+      expect(() => resolveExecutionArguments(["--resume-type", "FIRST_ATTEMPT", "--queue-url", "https://sqs.example/queue"]))
+        .to.throw("--envName is required");
+      expect(() => resolveExecutionArguments(["--resume-type", "FIRST_ATTEMPT", "--envName", "dev"]))
         .to.throw("--queue-url is required");
-      expect(() => resolveExecutionArguments(["--resume-type", "FIRST_ATTEMPT", "--profile", "sso_profile", "--region", "eu-south-1", "--queue-url", "not-a-url"]))
+      expect(() => resolveExecutionArguments(["--resume-type", "FIRST_ATTEMPT", "--envName", "dev", "--queue-url", "not-a-url"]))
         .to.throw("--queue-url is required");
-      expect(() => resolveExecutionArguments([
-        "--resume-type", "FIRST_ATTEMPT",
-        "--region", "eu-south-1",
-        "--queue-url", "https://sqs.example/queue",
-      ])).to.throw("--profile is required");
     });
 
-    it("rejects an invalid optional endpoint", () => {
-      expect(() => resolveExecutionArguments([...requiredArguments, "--endpoint", "not-a-url"]))
-        .to.throw("--endpoint must be a valid HTTP(S) URL");
+    it("rejects legacy AWS options", () => {
+      ["--profile", "--region", "--endpoint"].forEach((option) => {
+        expect(() => resolveExecutionArguments([...requiredArguments, option, "value"]))
+          .to.throw(`Unsupported CLI option: ${option}`);
+      });
     });
   });
 
   describe("resolveAwsConfiguration", () => {
     const requiredConfiguration = {
       resumeType: "FIRST_ATTEMPT",
-      region: "eu-south-1",
+      envName: "dev",
       queueUrl: "https://sqs.eu-south-1.amazonaws.com/123/queue",
-      profile: "sso_profile",
     };
 
-    it("omits the optional endpoint when absent", () => {
+    it("returns the common wrapper configuration", () => {
       expect(resolveAwsConfiguration(requiredConfiguration)).to.deep.equal({
         resumeType: "FIRST_ATTEMPT",
-        region: "eu-south-1",
+        envName: "dev",
         queueUrl: requiredConfiguration.queueUrl,
-        profile: "sso_profile",
-        endpoint: undefined,
       });
     });
 
-    it("propagates valid configuration without hardcoded defaults", () => {
+    it("propagates another environment", () => {
       expect(resolveAwsConfiguration({
         resumeType: "SECOND_ATTEMPT",
-        profile: "custom-profile",
-        region: "ap-southeast-2",
+        envName: "uat",
         queueUrl: "https://custom.example/123/custom-queue",
-        endpoint: "https://sqs-endpoint.example",
       })).to.deep.equal({
         resumeType: "SECOND_ATTEMPT",
-        profile: "custom-profile",
-        region: "ap-southeast-2",
+        envName: "uat",
         queueUrl: "https://custom.example/123/custom-queue",
-        endpoint: "https://sqs-endpoint.example",
       });
     });
   });

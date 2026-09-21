@@ -1,6 +1,5 @@
 const { expect } = require("chai");
 const sinon = require("sinon");
-const { SendMessageCommand } = require("@aws-sdk/client-sqs");
 const {
   buildMessagePayload,
   publishRecords,
@@ -18,14 +17,11 @@ describe("SQS publisher", () => {
     });
   });
 
-  it("publishes serialized payloads to the configured queue", async () => {
-    const sqsClient = { send: sinon.stub().resolves({ MessageId: "message-1" }) };
+  it("publishes payloads through pn-common to the configured queue", async () => {
+    const sqsClient = {
+      _sendSQSMessage: sinon.stub().resolves({ MessageId: "message-1" }),
+    };
     const logger = createLogger();
-    class FakeCommand {
-      constructor(input) {
-        this.input = input;
-      }
-    }
 
     const result = await publishRecords({
       records: [{ iun: "IUN_1", recIndex: 0 }],
@@ -33,17 +29,16 @@ describe("SQS publisher", () => {
       queueUrl: "https://sqs.example/queue",
       sqsClient,
       logger,
-      Command: FakeCommand,
     });
 
-    expect(sqsClient.send.firstCall.args[0].input).to.deep.equal({
-      QueueUrl: "https://sqs.example/queue",
-      MessageBody: JSON.stringify({
+    expect(sqsClient._sendSQSMessage.calledOnceWithExactly(
+      "https://sqs.example/queue",
+      {
         iun: "IUN_1",
         recIndex: 0,
         resumeType: "FIRST_ATTEMPT",
-      }),
-    });
+      }
+    )).to.equal(true);
     expect(result).to.deep.equal({ publishedMessages: 1, failedPublications: 0 });
     expect(JSON.parse(logger.log.firstCall.args[0])).to.deep.equal({
       event: "RESUME_POST_PAYMENT_PUBLISHED",
@@ -54,32 +49,9 @@ describe("SQS publisher", () => {
     });
   });
 
-  it("constructs the AWS SDK SendMessageCommand by default", async () => {
-    const sqsClient = { send: sinon.stub().resolves({ MessageId: "message-1" }) };
-
-    await publishRecords({
-      records: [{ iun: "IUN_1", recIndex: 4 }],
-      resumeType: "SIMPLE_REGISTERED_LETTER",
-      queueUrl: "https://sqs.example/queue",
-      sqsClient,
-      logger: createLogger(),
-    });
-
-    const command = sqsClient.send.firstCall.args[0];
-    expect(command).to.be.instanceOf(SendMessageCommand);
-    expect(command.input).to.deep.equal({
-      QueueUrl: "https://sqs.example/queue",
-      MessageBody: JSON.stringify({
-        iun: "IUN_1",
-        recIndex: 4,
-        resumeType: "SIMPLE_REGISTERED_LETTER",
-      }),
-    });
-  });
-
   it("continues after exceptions and responses without MessageId", async () => {
     const sqsClient = {
-      send: sinon.stub()
+      _sendSQSMessage: sinon.stub()
         .onFirstCall().rejects(new Error("Access denied"))
         .onSecondCall().resolves({})
         .onThirdCall().resolves({ MessageId: "message-3" }),
@@ -98,7 +70,7 @@ describe("SQS publisher", () => {
       logger,
     });
 
-    expect(sqsClient.send.callCount).to.equal(3);
+    expect(sqsClient._sendSQSMessage.callCount).to.equal(3);
     expect(result).to.deep.equal({ publishedMessages: 1, failedPublications: 2 });
     expect(JSON.parse(logger.error.firstCall.args[0])).to.deep.equal({
       event: "RESUME_POST_PAYMENT_PUBLICATION_FAILED",
@@ -112,7 +84,7 @@ describe("SQS publisher", () => {
   });
 
   it("uses a generic cause for non-Error failures", async () => {
-    const sqsClient = { send: sinon.stub().rejects("failure") };
+    const sqsClient = { _sendSQSMessage: sinon.stub().rejects("failure") };
     const logger = createLogger();
 
     await publishRecords({

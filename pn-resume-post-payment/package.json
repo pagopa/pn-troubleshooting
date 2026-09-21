@@ -14,9 +14,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@aws-sdk/client-sqs": "3.1124.0",
-    "@aws-sdk/credential-provider-ini": "3.973.15",
-    "csv-parse": "^6.1.0"
+    "pn-common": "file:../pn-common"
   },
   "devDependencies": {
     "chai": "^4.5.0",

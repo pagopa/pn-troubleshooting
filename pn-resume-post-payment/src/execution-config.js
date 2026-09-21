@@ -27,10 +27,8 @@ function resolveExecutionArguments(args) {
   const values = {};
   const optionNames = new Set([
     "--resume-type",
-    "--region",
+    "--envName",
     "--queue-url",
-    "--profile",
-    "--endpoint",
   ]);
 
   for (let index = 0; index < args.length; index += 1) {
@@ -52,37 +50,26 @@ function resolveExecutionArguments(args) {
 
   return resolveAwsConfiguration({
     resumeType: values["--resume-type"],
-    region: values["--region"],
+    envName: values["--envName"],
     queueUrl: values["--queue-url"],
-    profile: values["--profile"],
-    endpoint: values["--endpoint"],
   });
 }
 
-function resolveAwsConfiguration({ resumeType, region, queueUrl, profile, endpoint }) {
+function resolveAwsConfiguration({ resumeType, envName, queueUrl }) {
   resolveResumeType(resumeType);
-  if (!region || !/^[a-z]{2,4}(?:-[a-z0-9]+)+-\d+$/.test(region)) {
-    throw new Error("--region is required and must be valid");
+
+  if (!envName) {
+    throw new Error("--envName is required");
   }
 
   if (!isHttpUrl(queueUrl)) {
     throw new Error("--queue-url is required and must be a valid HTTP(S) URL");
   }
 
-  if (!profile) {
-    throw new Error("--profile is required");
-  }
-
-  if (endpoint && !isHttpUrl(endpoint)) {
-    throw new Error("--endpoint must be a valid HTTP(S) URL");
-  }
-
   return {
     resumeType,
-    region,
+    envName,
     queueUrl,
-    profile,
-    endpoint,
   };
 }
 

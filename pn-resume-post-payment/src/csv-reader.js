@@ -1,47 +1,35 @@
-const fs = require("fs/promises");
-const { parse } = require("csv-parse/sync");
+const { _parseCSV } = require("pn-common/libs/utils");
 
 const EXPECTED_HEADER = Object.freeze(["iun", "recIndex"]);
 
-function parseCsvContent(content) {
-  const parsedRows = parse(content, {
-    bom: true,
-    info: true,
-    relax_column_count: true,
-    skip_empty_lines: true,
-  });
-
+function parseCsvRows(parsedRows) {
   if (parsedRows.length === 0) {
     throw new Error("CSV header is missing");
   }
 
-  const [headerRow, ...parsedDataRows] = parsedRows;
-  assertExpectedHeader(headerRow.record);
-  const dataRows = parsedDataRows.filter(({ record }) => (
-    !record.every((value) => value.trim() === "")
-  ));
+  assertExpectedHeader(Object.keys(parsedRows[0]));
 
   const records = [];
   const malformedRows = [];
   let validRows = 0;
 
-  for (const { record, info } of dataRows) {
-    const validation = validateRecord(record);
+  parsedRows.forEach((row, index) => {
+    const validation = validateRecord(EXPECTED_HEADER.map((header) => row[header]));
     if (!validation.valid) {
-      malformedRows.push({ line: info.lines, error: validation.error });
-      continue;
+      malformedRows.push({ line: index + 2, error: validation.error });
+      return;
     }
 
     validRows += 1;
     records.push(validation.record);
-  }
+  });
 
   const malformedRowsCount = malformedRows.length;
   return {
     records,
     malformedRows,
     counters: {
-      totalRows: dataRows.length,
+      totalRows: parsedRows.length,
       validRows,
       malformedRows: malformedRowsCount,
       publishableRecords: records.length,
@@ -49,9 +37,9 @@ function parseCsvContent(content) {
   };
 }
 
-async function readCsvFile(filePath, readFile = fs.readFile) {
-  const content = await readFile(filePath, "utf8");
-  return parseCsvContent(content);
+async function readCsvFile(filePath, parseCsv = _parseCSV) {
+  const parsedRows = await parseCsv(filePath, ",");
+  return parseCsvRows(parsedRows);
 }
 
 function assertExpectedHeader(header) {
@@ -69,8 +57,8 @@ function validateRecord(record) {
   }
 
   const [rawIun, rawRecIndex] = record;
-  const iun = rawIun.trim();
-  const recIndexValue = rawRecIndex.trim();
+  const iun = rawIun?.trim();
+  const recIndexValue = rawRecIndex?.trim();
 
   if (!iun) {
     return invalid("IUN_REQUIRED");
@@ -99,7 +87,7 @@ function invalid(error) {
 
 module.exports = {
   EXPECTED_HEADER,
-  parseCsvContent,
+  parseCsvRows,
   readCsvFile,
   validateRecord,
 };

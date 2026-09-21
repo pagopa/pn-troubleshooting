@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const sinon = require("sinon");
 const {
-  parseCsvContent,
+  parseCsvRows,
   readCsvFile,
   validateRecord,
 } = require("../src/csv-reader");
@@ -9,32 +9,31 @@ const {
 describe("CSV reader", () => {
   describe("header validation", () => {
     it("accepts the exact required header", () => {
-      expect(parseCsvContent("iun,recIndex\n").counters.totalRows).to.equal(0);
+      const result = parseCsvRows([{ iun: "IUN_1", recIndex: "0" }]);
+
+      expect(result.counters.totalRows).to.equal(1);
     });
 
     [
-      ["an empty file", ""],
-      ["different names", "iun,index\n"],
-      ["reversed columns", "recIndex,iun\n"],
-      ["a missing column", "iun\n"],
-      ["an additional column", "iun,recIndex,other\n"],
-      ["spaces in column names", " iun,recIndex\n"],
-    ].forEach(([description, content]) => {
+      ["different names", { iun: "IUN_1", index: "0" }],
+      ["reversed columns", { recIndex: "0", iun: "IUN_1" }],
+      ["a missing column", { iun: "IUN_1" }],
+      ["an additional column", { iun: "IUN_1", recIndex: "0", other: "value" }],
+      ["spaces in column names", { " iun": "IUN_1", recIndex: "0" }],
+    ].forEach(([description, row]) => {
       it(`rejects ${description}`, () => {
-        expect(() => parseCsvContent(content)).to.throw(/CSV header/);
+        expect(() => parseCsvRows([row])).to.throw(/CSV header/);
       });
     });
 
-    it("accepts an UTF-8 BOM before the exact header", () => {
-      const result = parseCsvContent("\ufeffiun,recIndex\nIUN_1,0\n");
-
-      expect(result.records).to.deep.equal([{ iun: "IUN_1", recIndex: 0 }]);
+    it("rejects files without data rows because pn-common exposes no header", () => {
+      expect(() => parseCsvRows([])).to.throw("CSV header is missing");
     });
   });
 
   describe("record validation", () => {
-    it("parses quoted values and normalizes outer spaces", () => {
-      const result = parseCsvContent('iun,recIndex\n" IUN,EXAMPLE "," 2 "\n');
+    it("normalizes outer spaces from parsed values", () => {
+      const result = parseCsvRows([{ iun: " IUN,EXAMPLE ", recIndex: " 2 " }]);
 
       expect(result.records).to.deep.equal([
         { iun: "IUN,EXAMPLE", recIndex: 2 },
@@ -42,23 +41,20 @@ describe("CSV reader", () => {
     });
 
     it("serializes recIndex as a number", () => {
-      const result = parseCsvContent("iun,recIndex\nIUN_1,01\n");
+      const result = parseCsvRows([{ iun: "IUN_1", recIndex: "01" }]);
 
       expect(result.records[0].recIndex).to.equal(1);
       expect(result.records[0].recIndex).to.be.a("number");
     });
 
     it("classifies all required malformed values", () => {
-      const result = parseCsvContent([
-        "iun,recIndex",
-        ",0",
-        "IUN_MISSING_INDEX,",
-        "IUN_TEXT,text",
-        "IUN_DECIMAL,1.5",
-        "IUN_NEGATIVE,-1",
-        "IUN_MISSING_COLUMN",
-        "IUN_EXTRA,0,value",
-      ].join("\n"));
+      const result = parseCsvRows([
+        { iun: "", recIndex: "0" },
+        { iun: "IUN_MISSING_INDEX", recIndex: "" },
+        { iun: "IUN_TEXT", recIndex: "text" },
+        { iun: "IUN_DECIMAL", recIndex: "1.5" },
+        { iun: "IUN_NEGATIVE", recIndex: "-1" },
+      ]);
 
       expect(result.records).to.deep.equal([]);
       expect(result.malformedRows).to.deep.equal([
@@ -67,8 +63,6 @@ describe("CSV reader", () => {
         { line: 4, error: "REC_INDEX_NOT_INTEGER" },
         { line: 5, error: "REC_INDEX_NOT_INTEGER" },
         { line: 6, error: "REC_INDEX_NEGATIVE" },
-        { line: 7, error: "INVALID_COLUMN_COUNT" },
-        { line: 8, error: "INVALID_COLUMN_COUNT" },
       ]);
     });
 
@@ -79,24 +73,23 @@ describe("CSV reader", () => {
       });
     });
 
-    it("ignores empty and whitespace-only rows", () => {
-      const result = parseCsvContent("iun,recIndex\n\n   \nIUN_1,0\n\t\n");
-
-      expect(result.records).to.deep.equal([{ iun: "IUN_1", recIndex: 0 }]);
-      expect(result.counters.totalRows).to.equal(1);
+    it("rejects records with missing parsed columns", () => {
+      expect(validateRecord(["IUN_1"])).to.deep.equal({
+        valid: false,
+        error: "INVALID_COLUMN_COUNT",
+      });
     });
   });
 
   describe("counters", () => {
     it("keeps all valid records, including duplicate pairs", () => {
-      const result = parseCsvContent([
-        "iun,recIndex",
-        " IUN_1 ,0",
-        "IUN_1,0",
-        "IUN_1,1",
-        "IUN_2,0",
-        ",3",
-      ].join("\n"));
+      const result = parseCsvRows([
+        { iun: " IUN_1 ", recIndex: "0" },
+        { iun: "IUN_1", recIndex: "0" },
+        { iun: "IUN_1", recIndex: "1" },
+        { iun: "IUN_2", recIndex: "0" },
+        { iun: "", recIndex: "3" },
+      ]);
 
       expect(result.records).to.deep.equal([
         { iun: "IUN_1", recIndex: 0 },
@@ -122,12 +115,25 @@ describe("CSV reader", () => {
     });
   });
 
-  it("reads the whole file before returning parsed records", async () => {
-    const readFile = sinon.stub().resolves("iun,recIndex\nIUN_1,0\n");
+  it("delegates file parsing to pn-common", async () => {
+    const parseCsv = sinon.stub().resolves([{ iun: "IUN_1", recIndex: "0" }]);
 
-    const result = await readCsvFile("input.csv", readFile);
+    const result = await readCsvFile("input.csv", parseCsv);
 
-    expect(readFile.calledOnceWithExactly("input.csv", "utf8")).to.equal(true);
+    expect(parseCsv.calledOnceWithExactly("input.csv", ",")).to.equal(true);
     expect(result.records).to.deep.equal([{ iun: "IUN_1", recIndex: 0 }]);
+  });
+
+  it("propagates pn-common parser errors", async () => {
+    const parseCsv = sinon.stub().rejects(new Error("Invalid Record Length"));
+
+    let error;
+    try {
+      await readCsvFile("input.csv", parseCsv);
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error.message).to.equal("Invalid Record Length");
   });
 });
