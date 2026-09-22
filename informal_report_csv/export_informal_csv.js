@@ -9,6 +9,12 @@ const dotenv = require('dotenv');
 const { sendReportEmail } = require('./lib/mailer');
 
 const INFORMAL_ENDPOINT_TEMPLATE = '/informal/delivery/v1/notifications/sent/{iun}?retrieveMessage=true';
+// Retrocompatibilità PN-21466: l'evento PREPARE_ANALOG_DELIVERY è stato rinominato
+// PREPARE_ANALOG_MESSAGE. Per allineare l'output alla nuova nomenclatura, ogni evento
+// ricevuto come PREPARE_ANALOG_DELIVERY viene riportato in output come PREPARE_ANALOG_MESSAGE.
+// Gli eventi già PREPARE_ANALOG_MESSAGE restano inalterati.
+const LEGACY_EVENT_RENAME_FROM = 'PREPARE_ANALOG_DELIVERY';
+const LEGACY_EVENT_RENAME_TO = 'PREPARE_ANALOG_MESSAGE';
 const RATE_LIMIT_INTERVAL_MS = 1000;
 const TRANSIENT_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 const MAX_TRANSIENT_RETRIES = 2;
@@ -320,6 +326,34 @@ function computeLatestStatusAt(notificationStatusHistory) {
   return latest;
 }
 
+// Retrocompatibilità PN-21466: rimappa qualsiasi valore testuale che contiene
+// PREPARE_ANALOG_DELIVERY nel corrispondente PREPARE_ANALOG_MESSAGE. Valori già
+// PREPARE_ANALOG_MESSAGE o non pertinenti restano invariati.
+function applyLegacyEventRename(value) {
+  if (typeof value !== 'string' || value.length === 0) return value;
+  return value.replaceAll(LEGACY_EVENT_RENAME_FROM, LEGACY_EVENT_RENAME_TO);
+}
+
+function normalizeLegacyEventValue(value) {
+  if (typeof value === 'string') {
+    return applyLegacyEventRename(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeLegacyEventValue(item));
+  }
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, childValue]) => [key, normalizeLegacyEventValue(childValue)])
+  );
+}
+
+function normalizeLegacyTimelineElement(timelineElement) {
+  return normalizeLegacyEventValue(timelineElement);
+}
+
 function buildTimelineStatusIndex(detail) {
   const idx = new Map();
   if (!Array.isArray(detail.notificationStatusHistory)) {
@@ -333,7 +367,7 @@ function buildTimelineStatusIndex(detail) {
 
     for (const elementId of related) {
       if (typeof elementId === 'string' && elementId.length > 0) {
-        idx.set(elementId, status);
+        idx.set(applyLegacyEventRename(elementId), status);
       }
     }
   }
@@ -342,12 +376,13 @@ function buildTimelineStatusIndex(detail) {
 }
 
 function buildProgressResponseElement(iun, detail, timelineElement, statusByElement) {
-  const elementId = timelineElement?.elementId ?? '';
-  const eventTimestamp = timelineElement?.eventTimestamp ?? timelineElement?.timestamp ?? '';
+  const normalizedElement = normalizeLegacyTimelineElement(timelineElement);
+  const elementId = normalizedElement?.elementId ?? '';
+  const eventTimestamp = normalizedElement?.eventTimestamp ?? normalizedElement?.timestamp ?? '';
   const notificationRequestId = Buffer.from(String(iun), 'utf8').toString('base64');
 
   // eslint-disable-next-line no-unused-vars
-  const { InformaltimelineEventCategory: _removed, ...cleanedElement } = timelineElement ?? {};
+  const { InformaltimelineEventCategory: _removed, ...cleanedElement } = normalizedElement ?? {};
   const progressResponseElement = {
     eventId: randomUUID(),
     iun,
@@ -506,12 +541,16 @@ function buildTimelineRawRows(iun, detail) {
   const timeline = Array.isArray(detail.timeline) ? detail.timeline : [];
   const statusByElement = buildTimelineStatusIndex(detail);
 
-  return timeline.map((element, idx) => ({
-    IUN: iun,
-    TIMELINE_ELEMENT_ID: element?.elementId ?? idx,
-    BUSINESS_TIMESTAMP: element?.eventTimestamp ?? '',
-    JSON: toJsonString(buildProgressResponseElement(iun, detail, element, statusByElement)),
-  }));
+  return timeline.map((element, idx) => {
+    const normalizedElementId =
+      typeof element?.elementId === 'string' ? applyLegacyEventRename(element.elementId) : undefined;
+    return {
+      IUN: iun,
+      TIMELINE_ELEMENT_ID: normalizedElementId ?? idx,
+      BUSINESS_TIMESTAMP: element?.eventTimestamp ?? '',
+      JSON: toJsonString(buildProgressResponseElement(iun, detail, element, statusByElement)),
+    };
+  });
 }
 
 function buildErrorRow(iun, error, retrievedAt) {
