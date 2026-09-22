@@ -43,12 +43,12 @@ CSV parsing is delegated to `_parseCSV` from `pn-common`. The file must contain 
 
 ## AWS configuration
 
-AWS access is managed by `AwsClientsWrapper` from `pn-common`. The script uses the `core` account, derives the profile as `sso_pn-core-<envName>` and uses the `eu-south-1` region.
+AWS access is managed by `AwsClientsWrapper` from `pn-common`. For PN environments, the script uses the `core` account, derives the profile as `sso_pn-core-<envName>` and uses the `eu-south-1` region. The reserved `local` environment uses the default AWS credential chain without SSO.
 
 | Option | Required | Purpose |
 | --- | --- | --- |
 | `--resume-type <type>` | Yes | Resume type: `FIRST_ATTEMPT`, `SECOND_ATTEMPT` or `SIMPLE_REGISTERED_LETTER` |
-| `--envName <environment>` | Yes | PN environment used to derive the `sso_pn-core-<environment>` profile |
+| `--envName <environment>` | Yes | PN environment used to derive the `sso_pn-core-<environment>` profile; use `local` for LocalStack |
 | `--queue-url <url>` | Yes | Destination SQS Queue URL |
 
 `AwsClientsWrapper` checks the SSO session and may start `aws sso login` automatically. The profile can also be authenticated before execution:
@@ -68,7 +68,18 @@ node pn-resume-post-payment/index.js \
 	--queue-url https://sqs.eu-south-1.amazonaws.com/000000000000/pn-resume-post-payment-queue
 ```
 
-Custom AWS profiles, regions and SQS endpoints are not supported because the shared wrapper owns that configuration. Consequently, this script cannot target LocalStack through a CLI endpoint option.
+## LocalStack
+
+Use `--envName local` to avoid the SSO profile. The AWS SDK uses the default credential chain, so it reads `default` when `AWS_PROFILE` is unset. The SQS SDK uses the supplied queue URL as the endpoint.
+
+```bash
+node pn-resume-post-payment/index.js \
+	--resume-type FIRST_ATTEMPT \
+	--envName local \
+	--queue-url http://localhost:4566/000000000000/local-resume-post-payment-queue
+```
+
+For a LocalStack container exposed on the local machine, use `localhost:4566`. A `*.localhost.localstack.cloud` queue URL also requires that its hostname resolve from the host running the script.
 
 Each valid record is published sequentially through `_sendSQSMessage`, including repeated records. A publication is successful only when SQS returns a non-empty `MessageId`. A failure is logged and does not prevent subsequent records from being processed.
 

@@ -22,4 +22,21 @@ describe("AWS client", () => {
     expect(client.envName).to.equal("dev");
     expect(client._initSQS.calledOnceWithExactly()).to.equal(true);
   });
+
+  it("uses the default AWS credential chain for local execution", () => {
+    class FakeAwsClientsWrapper {
+      constructor(...argumentsReceived) {
+        this.argumentsReceived = argumentsReceived;
+        this._initSQS = sinon.stub();
+      }
+    }
+
+    const client = createSqsClient(
+      { envName: "local" },
+      { AwsClientsWrapper: FakeAwsClientsWrapper }
+    );
+
+    expect(client.argumentsReceived).to.deep.equal([]);
+    expect(client._initSQS.calledOnceWithExactly()).to.equal(true);
+  });
 });
