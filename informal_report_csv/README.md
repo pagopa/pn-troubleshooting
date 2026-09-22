@@ -104,6 +104,13 @@ Lo script genera solo 2 file CSV:
 In caso di errore su uno o più IUN, lo script stampa il dettaglio su stderr (IUN, tipo e messaggio
 errore) e termina con `exit code 1`; non viene generato alcun file CSV dedicato agli errori.
 
+### Retrocompatibilità evento PREPARE_ANALOG_MESSAGE (PN-21466)
+L'evento `PREPARE_ANALOG_DELIVERY` è stato rinominato `PREPARE_ANALOG_MESSAGE`. Ogni valore testuale
+nel JSON dell'evento che contiene `PREPARE_ANALOG_DELIVERY` viene riportato in output come
+`PREPARE_ANALOG_MESSAGE`. La rinomina si applica quindi a `category`, `elementId`, `TIMELINE_ELEMENT_ID`,
+`eventDescription`, `informalElement` (anche nei campi annidati) e prima del lookup di `newStatus` su
+`notificationStatusHistory.relatedTimelineElements`. Gli eventi già `PREPARE_ANALOG_MESSAGE` restano inalterati.
+
 US1 copre lo slice summary; US2 aggiunge la timeline raw; US4 aggiunge safety operativa (throttling globale 1 RPS + retry transient controllato); US6 aggiunge l'invio via email dei CSV generati (SMTP); US7 aggiunge AWS SES come provider di invio alternativo. L'output è stato successivamente limitato ai soli `informal_summary.csv` e `informal_timeline_raw.csv`: gli altri report (eventi, allegati, errori) generati in precedenza non vengono più prodotti.
 
 ### Vincoli operativi US4
