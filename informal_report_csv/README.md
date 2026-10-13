@@ -121,13 +121,52 @@ vincolo sopra.
 
 ### Output
 Lo script genera solo 2 file CSV:
-- `informal_summary.csv` su successo con formato: `IUN,notificationStatus,analogCost` (`analogCost` sempre `0`)
+- `informal_summary.csv` su successo con formato: `IUN,notificationStatus,analogCost,lastDeliveredChannel` (`analogCost` sempre `0`)
 - `informal_timeline_raw.csv` su successo con formato: `IUN,TIMELINE_ELEMENT_ID,BUSINESS_TIMESTAMP,JSON`
   dove `JSON` serializza un oggetto compatibile con `ProgressResponseElementV29`:
   `eventId`, `notificationRequestId` (Base64 dell'IUN), `ttl`, `eventDescription` (`timestamp_elementId`), `iun`, `newStatus`, `informalElement`
 
 In caso di errore su uno o più IUN, lo script stampa il dettaglio su stderr (IUN, tipo e messaggio
 errore) e termina con `exit code 1`; non viene generato alcun file CSV dedicato agli errori.
+
+#### Ultimo canale consegnato
+
+`lastDeliveredChannel` indica il canale dell'ultima **consegna riuscita**,
+non dell'ultimo tentativo di invio. Lo script seleziona l'evento `DELIVERED`
+cronologicamente più recente nella timeline, considerando tutti i destinatari
+dello IUN, anche se gli elementi non sono ordinati.
+
+- Canali digitali: `IO`, `PEC`, `SMS`, `EMAIL`, da `details.channel`.
+- Canale cartaceo: `ANALOG_<deliveryType>`. Il prodotto postale viene letto
+  da `details.deliveryType` dell'evento collegato dal `details.sourceElementId`
+  del `DELIVERED`, senza limitare i prodotti al solo `RS`.
+- Nessun `DELIVERED` (anche con feedback `OK` o workflow completato):
+  campo vuoto.
+- Un tentativo fallito successivo non cambia il canale consegnato.
+
+Il confronto usa `eventTimestamp`, con fallback a `timestamp` solo se assente
+o `null`. Sono accettati timestamp ISO con data e ora complete fino ai secondi,
+frazione opzionale e fuso `Z` oppure `+/-HH:MM`; la precisione delle frazioni
+viene conservata. A parità di istante prevale l'ultimo `DELIVERED` nell'ordine
+originale della timeline.
+
+Se un `DELIVERED` ha timestamp non valido, canale mancante/non supportato,
+riferimento ANALOG non risolvibile o prodotto mancante/vuoto, lo IUN viene
+segnalato come errore e non aggiunto ai report; gli altri IUN del batch
+continuano a essere elaborati. Non viene scelto un canale precedente come ripiego.
+
+Esempio: IO con feedback `KO`, seguito da consegna ANALOG con prodotto `RS`:
+
+```csv
+IUN,notificationStatus,analogCost,lastDeliveredChannel
+"TEST-IUN","COMPLETED_REACHED","0","ANALOG_RS"
+```
+
+**Compatibilità:** la nuova colonna è aggiunta in fondo; i consumatori che
+richiedono esattamente tre colonne devono aggiornare lo schema. La timeline
+raw conserva il formato esistente. L'esempio reale disponibile conferma il
+contratto `DELIVERED` per ANALOG; i canali digitali sono verificati con fixture
+sintetiche e andranno confrontati con esempi reali anonimizzati quando disponibili.
 
 US1 copre lo slice summary; US2 aggiunge la timeline raw; US4 aggiunge safety operativa (throttling globale 1 RPS + retry transient controllato); US6 aggiunge l'invio via email dei CSV generati (SMTP); US7 aggiunge AWS SES come provider di invio alternativo. L'output è stato successivamente limitato ai soli `informal_summary.csv` e `informal_timeline_raw.csv`: gli altri report (eventi, allegati, errori) generati in precedenza non vengono più prodotti.
 
@@ -194,6 +233,12 @@ Test mock automatici (senza chiamate reali DEV, SMTP né AWS SES):
 
 ```bash
 npm run test:mock
+```
+
+Per verificare solo il calcolo del canale, senza rete né credenziali:
+
+```bash
+npm run test:unit:channel
 ```
 
 `test:mock` esegue anche `test:mock:us6` e `test:mock:us7`, che coprono l'invio email:
