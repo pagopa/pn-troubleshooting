@@ -8,11 +8,19 @@ const http = require('node:http');
 const { execFile } = require('node:child_process');
 const assert = require('node:assert/strict');
 const { buildChildEnv } = require('./testEnv');
+const { assertCsvAttachment } = require('./mimeAssertions');
 
 const API_PORT = 18098;
 const SES_PORT = 18099;
 const SES_UNREACHABLE_PORT = 18100;
 const AWS_REGION = 'eu-south-1';
+const tempDirs = [];
+
+function createTempDir(prefix) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  tempDirs.push(directory);
+  return directory;
+}
 
 // Credenziali AWS statiche fittizie: servono solo a soddisfare la default
 // credential provider chain dell'SDK durante il test (nessuna chiamata AWS
@@ -36,7 +44,12 @@ function payloadFor(iun) {
     iun,
     notificationStatus: 'COMPLETED_REACHED',
     notificationStatusHistory: [],
-    timeline: [],
+    timeline: [{
+      elementId: `DELIVERED.IUN_${iun}.CHANNEL_PEC`,
+      category: 'DELIVERED',
+      eventTimestamp: '2026-10-06T16:06:50Z',
+      details: { channel: 'PEC', recIndex: 0 },
+    }],
     documents: [],
   };
 }
@@ -110,7 +123,7 @@ function runScript(scriptPath, args, cwd, extraEnv) {
 
 async function testSuccessSendsAllAttachments(scriptPath) {
   const iun = 'TEST-US7-OK';
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'us7-mock-ok-'));
+  const tempDir = createTempDir('us7-mock-ok-');
   const envPath = path.join(tempDir, '.env');
   const outDir = path.join(tempDir, 'out');
 
@@ -144,10 +157,16 @@ async function testSuccessSendsAllAttachments(scriptPath) {
   for (const filename of expectedFiles) {
     assert(fs.existsSync(path.join(outDir, filename)), `file atteso su disco: ${filename}`);
   }
+  const summaryContent = fs.readFileSync(path.join(outDir, 'informal_summary.csv'), 'utf8');
+  assert.equal(summaryContent,
+    `IUN,notificationStatus,analogCost,lastDeliveredChannel\n"${iun}","COMPLETED_REACHED","0","PEC"\n`);
+  for (const filename of expectedFiles) {
+    assertCsvAttachment(rawMime, filename, fs.readFileSync(path.join(outDir, filename), 'utf8'));
+  }
 }
 
 async function testInvalidEmailFailsBeforeExport(scriptPath) {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'us7-mock-badmail-'));
+  const tempDir = createTempDir('us7-mock-badmail-');
   const envPath = path.join(tempDir, '.env');
   const outDir = path.join(tempDir, 'out');
   writeSesEnv(envPath, []);
@@ -164,7 +183,7 @@ async function testInvalidEmailFailsBeforeExport(scriptPath) {
 }
 
 async function testMissingSesEnvFailsFast(scriptPath) {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'us7-mock-noenv-'));
+  const tempDir = createTempDir('us7-mock-noenv-');
   const envPath = path.join(tempDir, '.env');
   const outDir = path.join(tempDir, 'out');
   writeSesEnv(envPath, []);
@@ -184,7 +203,7 @@ async function testMissingSesEnvFailsFast(scriptPath) {
 
 async function testSesFailureKeepsFilesOnDisk(scriptPath) {
   const iun = 'TEST-US7-SESFAIL';
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'us7-mock-sesfail-'));
+  const tempDir = createTempDir('us7-mock-sesfail-');
   const envPath = path.join(tempDir, '.env');
   const outDir = path.join(tempDir, 'out');
 
@@ -236,6 +255,9 @@ async function run() {
     apiServer.close();
     if (sesServerHandle) {
       sesServerHandle.server.close();
+    }
+    for (const directory of tempDirs) {
+      fs.rmSync(directory, { recursive: true, force: true });
     }
   }
 }
