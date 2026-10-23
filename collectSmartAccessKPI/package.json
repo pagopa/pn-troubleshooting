@@ -1,0 +1,15 @@
+{
+  "name": "collectSmartAccessKPI",
+  "version": "1.0.0",
+  "main": "generateCvs.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.1072.0",
+    "exceljs": "^4.4.0"
+  }
+}
