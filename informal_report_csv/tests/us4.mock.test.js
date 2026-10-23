@@ -152,8 +152,8 @@ async function run() {
     const raw = parseCsv(fs.readFileSync(path.join(outDir, 'informal_timeline_raw.csv'), 'utf8'));
 
     assert.equal(summary.rows.length, 2, 'summary deve contenere i due IUN processati');
-    assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost', 'lastDeliveredChannel']);
-    assert(summary.rows.every((row) => row.lastDeliveredChannel === ''), 'nessuna consegna: canale vuoto');
+    assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost', 'lastChannel']);
+    assert(summary.rows.every((row) => row.lastChannel === ''), 'nessun evento canale: valore vuoto');
     assert(summary.rows.every((row) => row.analogCost === '0'), 'analogCost deve essere sempre 0');
     assert.equal(raw.rows.length, 2, 'raw deve contenere un elemento per ogni IUN');
     const rawEvent = JSON.parse(raw.rows[0].JSON);

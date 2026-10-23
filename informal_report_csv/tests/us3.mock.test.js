@@ -151,7 +151,6 @@ async function run() {
     assert.ok(result.error, 'con un IUN KO lo script deve terminare con exit code != 0');
     assert.equal(result.error.code, 1);
     assert.match(result.stderr, new RegExp(`IUN=${koIun}.*HTTP_404`), 'stderr deve segnalare l\'errore HTTP_404 per il IUN KO');
-    assert.match(result.stderr, new RegExp(`IUN=${invalidIun}.*sourceElementId`));
 
     const summaryCsv = fs.readFileSync(path.join(outDir, 'informal_summary.csv'), 'utf8');
     const rawCsv = fs.readFileSync(path.join(outDir, 'informal_timeline_raw.csv'), 'utf8');
@@ -160,15 +159,17 @@ async function run() {
     const raw = parseCsv(rawCsv);
     const rawEvent = JSON.parse(raw.rows[0].JSON);
 
-    assert.equal(summary.rows.length, 2, 'summary deve contenere solo IUN validi deduplicati');
-    assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost', 'lastDeliveredChannel']);
+    assert.equal(summary.rows.length, 3, 'summary deve contenere tutti gli IUN recuperati con successo');
+    assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost', 'lastChannel']);
     assert.equal(summary.rows[0].IUN, okIun);
     assert.equal(summary.rows[0].analogCost, '0');
-    assert.equal(summary.rows[0].lastDeliveredChannel, '');
-    assert.equal(summary.rows[1].IUN, deliveredIun, 'elaborazione prosegue dopo errore di estrazione');
-    assert.equal(summary.rows[1].lastDeliveredChannel, 'IO');
+    assert.equal(summary.rows[0].lastChannel, '');
+    assert.equal(summary.rows[1].IUN, invalidIun);
+    assert.equal(summary.rows[1].lastChannel, '');
+    assert.equal(summary.rows[2].IUN, deliveredIun, 'elaborazione prosegue dopo errore HTTP');
+    assert.equal(summary.rows[2].lastChannel, 'IO');
 
-    assert.equal(raw.rows.length, 2, 'raw timeline deve contenere solo timeline di IUN validi');
+    assert.equal(raw.rows.length, 3, 'raw timeline deve contenere gli IUN recuperati con successo');
     assert.match(rawEvent.eventId, /^[0-9a-f-]{36}$/i);
     assert.equal(rawEvent.iun, okIun);
     assert.equal(rawEvent.notificationRequestId, expectedNotificationRequestId);

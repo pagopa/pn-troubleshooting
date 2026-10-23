@@ -157,11 +157,11 @@ async function run() {
     const rawEvents = raw.rows.map((row) => JSON.parse(row.JSON));
 
     assert.equal(summary.rows.length, 1, 'summary rows attese = 1');
-    assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost', 'lastDeliveredChannel']);
+    assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost', 'lastChannel']);
     assert.equal(summary.rows[0].IUN, iun);
     assert.equal(summary.rows[0].notificationStatus, 'COMPLETED_REACHED');
     assert.equal(summary.rows[0].analogCost, '0');
-    assert.equal(summary.rows[0].lastDeliveredChannel, 'ANALOG_RS');
+    assert.equal(summary.rows[0].lastChannel, 'ANALOG_RS');
 
     assert.deepEqual(raw.header, ['IUN', 'TIMELINE_ELEMENT_ID', 'BUSINESS_TIMESTAMP', 'JSON']);
     assert.equal(raw.rows.length, payload.timeline.length, 'raw deve conservare tutti gli eventi');

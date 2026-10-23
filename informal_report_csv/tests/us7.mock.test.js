@@ -159,7 +159,7 @@ async function testSuccessSendsAllAttachments(scriptPath) {
   }
   const summaryContent = fs.readFileSync(path.join(outDir, 'informal_summary.csv'), 'utf8');
   assert.equal(summaryContent,
-    `IUN,notificationStatus,analogCost,lastDeliveredChannel\n"${iun}","COMPLETED_REACHED","0","PEC"\n`);
+    `IUN,notificationStatus,analogCost,lastChannel\n"${iun}","COMPLETED_REACHED","0","PEC"\n`);
   for (const filename of expectedFiles) {
     assertCsvAttachment(rawMime, filename, fs.readFileSync(path.join(outDir, filename), 'utf8'));
   }
