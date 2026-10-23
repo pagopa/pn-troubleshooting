@@ -58,6 +58,8 @@ function execFileAsync(cmd, args, options) {
 async function run() {
   const okIun = 'TEST-US3-OK';
   const koIun = 'TEST-US3-KO';
+  const invalidIun = 'TEST-US3-INVALID-DELIVERY';
+  const deliveredIun = 'TEST-US3-DELIVERED';
 
   const okPayload = {
     iun: okIun,
@@ -99,6 +101,21 @@ async function run() {
   const expectedNotificationRequestId = Buffer.from(okIun, 'utf8').toString('base64');
 
   const server = http.createServer((req, res) => {
+    if (req.url === `/informal/delivery/v1/notifications/sent/${invalidIun}?retrieveMessage=true` ||
+        req.url === `/informal/delivery/v1/notifications/sent/${deliveredIun}?retrieveMessage=true`) {
+      const invalid = req.url.includes(invalidIun);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({
+        notificationStatus: 'COMPLETED_REACHED',
+        timeline: [{
+          elementId: 'DELIVERED-BATCH',
+          category: 'DELIVERED',
+          eventTimestamp: '2026-10-06T16:06:50Z',
+          details: invalid ? { channel: 'ANALOG', sourceElementId: 'missing' } : { channel: 'IO' },
+        }],
+      }));
+      return;
+    }
     if (req.url === `/informal/delivery/v1/notifications/sent/${okIun}?retrieveMessage=true`) {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify(okPayload));
@@ -121,7 +138,7 @@ async function run() {
   const outDir = path.join(tempDir, 'out');
 
   fs.writeFileSync(envPath, 'INFORMAL_BASE_URL=http://127.0.0.1:18086\nINFORMAL_API_KEY=test-key\n', 'utf8');
-  fs.writeFileSync(inputPath, `${okIun}\n${koIun}\n${okIun}\n\n`, 'utf8');
+  fs.writeFileSync(inputPath, `${okIun}\n${koIun}\n${invalidIun}\n${deliveredIun}\n${okIun}\n\n`, 'utf8');
 
   try {
     const scriptPath = path.join(__dirname, '..', 'export_informal_csv.js');
@@ -132,6 +149,7 @@ async function run() {
     );
 
     assert.ok(result.error, 'con un IUN KO lo script deve terminare con exit code != 0');
+    assert.equal(result.error.code, 1);
     assert.match(result.stderr, new RegExp(`IUN=${koIun}.*HTTP_404`), 'stderr deve segnalare l\'errore HTTP_404 per il IUN KO');
 
     const summaryCsv = fs.readFileSync(path.join(outDir, 'informal_summary.csv'), 'utf8');
@@ -141,12 +159,17 @@ async function run() {
     const raw = parseCsv(rawCsv);
     const rawEvent = JSON.parse(raw.rows[0].JSON);
 
-    assert.equal(summary.rows.length, 1, 'summary deve contenere solo IUN OK deduplicato');
-    assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost']);
+    assert.equal(summary.rows.length, 3, 'summary deve contenere tutti gli IUN recuperati con successo');
+    assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost', 'lastChannel']);
     assert.equal(summary.rows[0].IUN, okIun);
     assert.equal(summary.rows[0].analogCost, '0');
+    assert.equal(summary.rows[0].lastChannel, '');
+    assert.equal(summary.rows[1].IUN, invalidIun);
+    assert.equal(summary.rows[1].lastChannel, '');
+    assert.equal(summary.rows[2].IUN, deliveredIun, 'elaborazione prosegue dopo errore HTTP');
+    assert.equal(summary.rows[2].lastChannel, 'IO');
 
-    assert.equal(raw.rows.length, 1, 'raw timeline deve contenere solo timeline di IUN OK');
+    assert.equal(raw.rows.length, 3, 'raw timeline deve contenere gli IUN recuperati con successo');
     assert.match(rawEvent.eventId, /^[0-9a-f-]{36}$/i);
     assert.equal(rawEvent.iun, okIun);
     assert.equal(rawEvent.notificationRequestId, expectedNotificationRequestId);
@@ -158,6 +181,7 @@ async function run() {
     process.stdout.write('US3 mock test passed\n');
   } finally {
     server.close();
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }
 

@@ -122,7 +122,7 @@ function parseCsv(content) {
     assert(scriptExitCode === 0, `US_ALL E2E: esecuzione batch fallita con exit code ${scriptExitCode}`);
     assert(summary.rows.length >= 1, `US_ALL E2E: summary rows attese>=1 ricevute=${summary.rows.length}`);
     assert(
-      summary.header.join(',') === 'IUN,notificationStatus,analogCost',
+      summary.header.join(',') === 'IUN,notificationStatus,analogCost,lastChannel',
       `US_ALL E2E: header summary inatteso ${summary.header.join(',')}`
     );
     assert(summary.rows.every((row) => row.analogCost === '0'), 'US_ALL E2E: analogCost deve essere 0');

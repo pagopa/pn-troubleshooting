@@ -9,11 +9,19 @@ const { execFile } = require('node:child_process');
 const assert = require('node:assert/strict');
 const { SMTPServer } = require('smtp-server');
 const { buildChildEnv } = require('./testEnv');
+const { assertCsvAttachment } = require('./mimeAssertions');
 
 const API_PORT = 18088;
 const SMTP_PORT = 18089;
 const SMTP_USER = 'test-smtp-user';
 const SMTP_PASSWORD = 'test-smtp-password';
+const tempDirs = [];
+
+function createTempDir(prefix) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  tempDirs.push(directory);
+  return directory;
+}
 
 function execFileAsync(cmd, args, options) {
   return new Promise((resolve) => {
@@ -28,7 +36,12 @@ function payloadFor(iun) {
     iun,
     notificationStatus: 'COMPLETED_REACHED',
     notificationStatusHistory: [],
-    timeline: [],
+    timeline: [{
+      elementId: `DELIVERED.IUN_${iun}.CHANNEL_IO`,
+      category: 'DELIVERED',
+      eventTimestamp: '2026-10-06T16:06:50Z',
+      details: { channel: 'IO', recIndex: 0 },
+    }],
     documents: [],
   };
 }
@@ -92,7 +105,7 @@ function runScript(scriptPath, args, cwd) {
 
 async function testSuccessSendsAllAttachments(scriptPath) {
   const iun = 'TEST-US6-OK';
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'us6-mock-ok-'));
+  const tempDir = createTempDir('us6-mock-ok-');
   const envPath = path.join(tempDir, '.env');
   const outDir = path.join(tempDir, 'out');
 
@@ -129,10 +142,16 @@ async function testSuccessSendsAllAttachments(scriptPath) {
   for (const filename of expectedFiles) {
     assert(fs.existsSync(path.join(outDir, filename)), `file atteso su disco: ${filename}`);
   }
+  const summaryContent = fs.readFileSync(path.join(outDir, 'informal_summary.csv'), 'utf8');
+  assert.equal(summaryContent,
+    `IUN,notificationStatus,analogCost,lastChannel\n"${iun}","COMPLETED_REACHED","0","IO"\n`);
+  for (const filename of expectedFiles) {
+    assertCsvAttachment(message, filename, fs.readFileSync(path.join(outDir, filename), 'utf8'));
+  }
 }
 
 async function testInvalidEmailFailsBeforeExport(scriptPath) {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'us6-mock-badmail-'));
+  const tempDir = createTempDir('us6-mock-badmail-');
   const envPath = path.join(tempDir, '.env');
   const outDir = path.join(tempDir, 'out');
   writeEnv(envPath, []);
@@ -149,7 +168,7 @@ async function testInvalidEmailFailsBeforeExport(scriptPath) {
 }
 
 async function testMissingSmtpEnvFailsFast(scriptPath) {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'us6-mock-noenv-'));
+  const tempDir = createTempDir('us6-mock-noenv-');
   const envPath = path.join(tempDir, '.env');
   const outDir = path.join(tempDir, 'out');
   writeEnv(envPath, []);
@@ -167,7 +186,7 @@ async function testMissingSmtpEnvFailsFast(scriptPath) {
 
 async function testSmtpFailureKeepsFilesOnDisk(scriptPath) {
   const iun = 'TEST-US6-SMTPFAIL';
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'us6-mock-smtpfail-'));
+  const tempDir = createTempDir('us6-mock-smtpfail-');
   const envPath = path.join(tempDir, '.env');
   const outDir = path.join(tempDir, 'out');
 
@@ -221,6 +240,9 @@ async function run() {
     apiServer.close();
     if (smtpServerHandle) {
       smtpServerHandle.server.close();
+    }
+    for (const directory of tempDirs) {
+      fs.rmSync(directory, { recursive: true, force: true });
     }
   }
 }
