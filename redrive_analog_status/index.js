@@ -1,5 +1,5 @@
 const { AwsClientsWrapper } = require("pn-common");
-const { _getIunFromRequestId, _getAttemptFromRequestId } = require("pn-common/libs/utils");
+const { _getIunFromRequestId, _getAttemptFromRequestId, _parseCSV } = require("pn-common/libs/utils");
 const { parseArgs } = require('util');
 const fs = require('fs');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
@@ -18,7 +18,7 @@ function _hasSpecificAttemptAnalogFeedbackEvent(timelineEvents, attempt) {
 }
 
 function _checkingParameters(args, values){
-  const usage = "Usage: index.js --envName <envName> --fileName <fileName> --statusCode <statusCode> [--dryrun]"
+  const usage = "Usage: index.js --envName <envName> --fileName <fileName> [--statusCode <statusCode>] [--dryrun]"
   //CHECKING PARAMETER
   args.forEach(el => {
     if(el.mandatory && !values.values[el.name]){
@@ -40,6 +40,52 @@ function _checkingParameters(args, values){
       })
     }
   })
+}
+
+async function _readRequests(fileName, statusCode) {
+  const content = fs.readFileSync(fileName, 'utf8').replace(/^\uFEFF/, '');
+  const isCsv = /^"?requestid"?\s*;/i.test(content.trimStart());
+  let requests;
+  if (isCsv) {
+    const rows = await _parseCSV(fileName, ';', {
+      bom: true,
+      skip_empty_lines: true,
+      columns: headers => {
+        for (const name of ['requestid', 'fine_recapito_stato_silver', 'fine_recapito_data_silver']) {
+          if (!headers.includes(name)) {
+            throw new Error(`Missing CSV column: ${name}`);
+          }
+        }
+        return headers;
+      }
+    });
+    requests = rows.map(row => ({
+      requestId: row.requestid,
+      statusCode: row.fine_recapito_stato_silver,
+      statusDateTime: row.fine_recapito_data_silver
+    }));
+  } else {
+    if (!statusCode) {
+      throw new Error('--statusCode is required for input without CSV status columns');
+    }
+    requests = content.split(/\r?\n/).filter(line => line.trim() !== '').map((line, index) => {
+      const fields = line.split(',').map(field => field.trim());
+      if (fields.length !== 2) {
+        throw new Error(`Invalid input record ${index + 1}: expected requestId,timestamp`);
+      }
+      return { requestId: fields[0], statusCode, statusDateTime: fields[1] };
+    });
+  }
+  if (requests.length === 0) {
+    throw new Error('Input file contains no requests');
+  }
+  requests.forEach((request, index) => {
+    if (!request.requestId || !request.statusCode || !request.statusDateTime ||
+        !Number.isFinite(Date.parse(request.statusDateTime))) {
+      throw new Error(`Invalid input record ${index + 1}: requestId, statusCode and a valid timestamp are required`);
+    }
+  });
+  return requests;
 }
 
 function _prepareMessage(requestId, event) {
@@ -79,12 +125,10 @@ async function main() {
   const args = [
     { name: "envName", mandatory: true, subcommand: [] },
     { name: "fileName", mandatory: true, subcommand: [] },
-    { name: "statusCode", mandatory: true, subcommand: [] },
+    { name: "statusCode", mandatory: false, subcommand: [] },
     { name: "dryrun", mandatory: false, subcommand: [] }
   ]
-  const values = {
-    values: { envName, fileName, statusCode, dryrun },
-  } = parseArgs({
+  const values = parseArgs({
     options: {
       envName: {
         type: "string", short: "e", default: undefined
@@ -102,15 +146,19 @@ async function main() {
   });  
 
   _checkingParameters(args, values)
+  const { envName, fileName, statusCode, dryrun } = values.values;
+  const requestIds = await _readRequests(fileName, statusCode);
   //INIT AWS
   const awsCoreClient = new AwsClientsWrapper( 'core', envName );
   const awsConfinfoClient = new AwsClientsWrapper( 'confinfo', envName );
   awsCoreClient._initDynamoDB();
   awsCoreClient._initSQS();
   awsConfinfoClient._initDynamoDB();
-  const requestIds = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' }).split('\n').filter(x=> x !== '');
   const queueUrl = await awsCoreClient._getQueueUrl("pn-external_channel_to_paper_channel");
   const date = new Date().toISOString();
+  const counts = { sent: 0, dryrun: 0, noMatch: 0, differentDates: 0, feedback: 0 };
+  let processed = 0;
+  console.log(`[START] env=${envName} requests=${requestIds.length} dryrun=${dryrun} results=results/${envName}_${date}`);
   const chunkSize = 2500;
   const parser = []
   for (let i = 0; i < requestIds.length; i += chunkSize) {
@@ -119,9 +167,8 @@ async function main() {
   }
   for(const listPars of parser ) {
     for(const params of listPars ) {
-      const [requestId, statusDateTime] = params.split(',');
-      console.log("elaborating request id: " + requestId)
-      console.log("elaborating statusDateTime: " + statusDateTime)
+      const { requestId, statusDateTime, statusCode } = params;
+      const logContext = `[${++processed}/${requestIds.length}] requestId=${requestId} status=${statusCode} date=${statusDateTime}`;
       const iun = _getIunFromRequestId(requestId);
       const attempt = _getAttemptFromRequestId(requestId)
       let timelineEvents = await awsCoreClient._queryRequest("pn-Timelines", "iun", iun)
@@ -130,7 +177,7 @@ async function main() {
         const eventsList = unmarshall(metadati.Items[0]).eventsList
         const idxResult = eventsList
           .map((e, idx) => ({ e, idx }))
-          .filter(({ e }) => e.paperProgrStatus.statusCode == statusCode && e.paperProgrStatus.statusDateTime == statusDateTime)
+          .filter(({ e }) => e.paperProgrStatus.statusCode == statusCode && Date.parse(e.paperProgrStatus.statusDateTime) === Date.parse(statusDateTime))
           .map(({ idx }) => idx);
         if(idxResult.length > 0) {
           let messages = []
@@ -138,37 +185,49 @@ async function main() {
           let skip = false;
           for(let i of idxResult) {
             const message = _prepareMessage(requestId, eventsList[i].paperProgrStatus)
-            console.log(message)
             event == null ? event = message : null
             event.analogMail.clientRequestTimeStamp < message.analogMail.clientRequestTimeStamp ? event = message : null
             messages.push(message)
-            skip = messages[0].analogMail.statusDateTime !== eventsList[i].paperProgrStatus.statusDateTime
+            skip = Date.parse(messages[0].analogMail.statusDateTime) !== Date.parse(eventsList[i].paperProgrStatus.statusDateTime)
           }
           if(!dryrun && !skip){
             await awsCoreClient._sendSQSMessage(queueUrl, event, 0);
           }
-          console.log(event)
           const res = {
             [requestId]: messages,
           }
           if(!skip) {
             appendJsonToFile(`${envName}_${date}`, `sentToSQS.json`, JSON.stringify(res))
+            counts[dryrun ? 'dryrun' : 'sent']++;
+            console.log(`${logContext} ${dryrun ? 'DRYRUN would-send' : 'SENT'}`);
           }
           else {
-            console.log(`RequestId ${requestId} contains different ${statusCode} statusDateTime`)
             appendJsonToFile(`${envName}_${date}`, `skipped.json`, JSON.stringify(res))
+            counts.differentDates++;
+            console.log(`${logContext} SKIP different-dates`);
           }
         }
         else {
-          console.log(`No ${statusCode} found for requestID: " + ${requestId}`)
+          appendJsonToFile(`${envName}_${date}`, `skipped.json`, JSON.stringify({ [requestId]: [] }))
+          counts.noMatch++;
+          console.log(`${logContext} SKIP no-matching-event`);
         }
       }
       else {
-        console.log("Found SEND_ANALOG_FEEDBACK for requestID: " + requestId)
         appendJsonToFile(`${envName}_${date}`, `analogFeedback_.json`, requestId)
+        counts.feedback++;
+        console.log(`${logContext} SKIP feedback-already-present`);
       }
     }
   }
+  console.log(`[DONE] total=${processed} sent=${counts.sent} dryrun=${counts.dryrun} skipped=${counts.noMatch + counts.differentDates + counts.feedback} (no-match=${counts.noMatch}, different-dates=${counts.differentDates}, feedback=${counts.feedback})`);
 }
 
-main();
+if (require.main === module) {
+  main().catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { _readRequests };
