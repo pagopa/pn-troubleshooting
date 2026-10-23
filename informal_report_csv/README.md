@@ -10,12 +10,35 @@ Il report ( composto da diversi file) viene generato a partire dalla API GET not
 
 ### `.env` richiesto
 
+La modalità predefinita resta l'API esterna:
+
 ```env
+INFORMAL_API_MODE=external
 INFORMAL_BASE_URL=https://api.dev.notifichedigitali.it
 INFORMAL_API_KEY=your-api-key
 # opzionale
 INFORMAL_AUTH_TOKEN=your-bearer-token
 ```
+
+Per interrogare l'API interna, impostare `INFORMAL_API_MODE=internal` e configurare
+base URL e identità del chiamante richiesti dal contratto interno. In questa modalità
+non sono richieste `INFORMAL_BASE_URL` e `INFORMAL_API_KEY`:
+
+```env
+INFORMAL_API_MODE=internal
+INFORMAL_INTERNAL_BASE_URL=https://delivery.internal.example
+INFORMAL_INTERNAL_UID=your-user-id
+INFORMAL_INTERNAL_CX_TYPE=PA
+INFORMAL_INTERNAL_CX_ID=your-pa-cx-id
+# opzionale; valori separati da virgola
+INFORMAL_INTERNAL_CX_GROUPS=group1,group2
+```
+
+La modalità interna chiama `GET /delivery/v1/notifications/sent/{iun}` e invia
+gli header `x-pagopa-pn-uid`, `x-pagopa-pn-cx-type` e `x-pagopa-pn-cx-id`;
+`x-pagopa-pn-cx-groups` viene inviato solo se configurato. Tali valori sono
+responsabilità del chiamante e devono essere coerenti con l'identità autorizzata
+dall'ambiente interno.
 
 ### `.env` aggiuntivo se si usa `--mail` (US6/US7)
 
@@ -54,9 +77,10 @@ verificata in SES.
 > `MAIL_FROM` nel tuo `.env`.
 
 ### Endpoint API (fisso nel codice)
-Lo script usa sempre il contratto API seguente (non modificabile):
+Il path usato dipende da `INFORMAL_API_MODE` e non è modificabile da CLI:
 
-`/informal/delivery/v1/notifications/sent/{iun}?retrieveMessage=true`
+- `external` (default): `/informal/delivery/v1/notifications/sent/{iun}?retrieveMessage=true`
+- `internal`: `/delivery/v1/notifications/sent/{iun}`
 
 ### Installazione dipendenze
 
@@ -90,6 +114,7 @@ Endpoint e credenziali **non sono overrideabili via CLI**:
 - niente `--mail-provider` / `--mail-from` / `--aws-region`
 
 Devono essere definiti nel `.env` (tranne il path endpoint che è fisso nel codice).
+Le variabili necessarie per l'API dipendono da `INFORMAL_API_MODE` (vedi sopra).
 Con `--mail` l'unico dato accettato via CLI è l'indirizzo destinatario: le credenziali
 email (SMTP o AWS) restano sempre e solo nel `.env`/ambiente, in coerenza con il
 vincolo sopra.

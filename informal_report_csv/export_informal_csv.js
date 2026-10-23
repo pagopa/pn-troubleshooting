@@ -10,10 +10,12 @@ const { sendReportEmail } = require('./lib/mailer');
 const { lastDeliveredChannel } = require('./lib/lastDeliveredChannel');
 
 const INFORMAL_ENDPOINT_TEMPLATE = '/informal/delivery/v1/notifications/sent/{iun}?retrieveMessage=true';
+const INTERNAL_INFORMAL_ENDPOINT_TEMPLATE = '/delivery/v1/notifications/sent/{iun}';
 const RATE_LIMIT_INTERVAL_MS = 1000;
 const TRANSIENT_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 const MAX_TRANSIENT_RETRIES = 2;
 const RAW_TIMELINE_TTL = 1;
+const VALID_API_MODES = new Set(['external', 'internal']);
 
 const DISALLOWED_OVERRIDE_FLAGS = new Set([
   '--base-url',
@@ -141,6 +143,14 @@ function loadEnvironment(args) {
   args.baseUrl = normalizeBaseUrl(process.env.INFORMAL_BASE_URL);
   args.apiKey = stripWrappingQuotes(process.env.INFORMAL_API_KEY);
   args.authToken = stripWrappingQuotes(process.env.INFORMAL_AUTH_TOKEN);
+  args.apiMode = stripWrappingQuotes(process.env.INFORMAL_API_MODE)?.toLowerCase() || 'external';
+  args.internalBaseUrl = normalizeBaseUrl(process.env.INFORMAL_INTERNAL_BASE_URL);
+  args.internalIdentity = {
+    uid: stripWrappingQuotes(process.env.INFORMAL_INTERNAL_UID),
+    cxType: stripWrappingQuotes(process.env.INFORMAL_INTERNAL_CX_TYPE),
+    cxId: stripWrappingQuotes(process.env.INFORMAL_INTERNAL_CX_ID),
+    cxGroups: stripWrappingQuotes(process.env.INFORMAL_INTERNAL_CX_GROUPS),
+  };
 
   args.mailConfig = loadMailConfig();
 }
@@ -197,12 +207,22 @@ Opzioni:
 Nota: endpoint, credenziali API e configurazione email (SMTP o SES) NON possono
 essere passati via CLI. Devono essere presenti in .env.
 
-Variabili ambiente obbligatorie:
+La modalità API si sceglie tramite INFORMAL_API_MODE (external, default, oppure internal).
+Variabili ambiente richieste per INFORMAL_API_MODE=external:
   INFORMAL_BASE_URL
   INFORMAL_API_KEY
 
-Variabili ambiente opzionali:
+Variabili ambiente opzionali per la modalità external:
   INFORMAL_AUTH_TOKEN
+
+Variabili ambiente richieste per INFORMAL_API_MODE=internal:
+  INFORMAL_INTERNAL_BASE_URL
+  INFORMAL_INTERNAL_UID
+  INFORMAL_INTERNAL_CX_TYPE
+  INFORMAL_INTERNAL_CX_ID
+
+Variabile ambiente opzionale per la modalità internal:
+  INFORMAL_INTERNAL_CX_GROUPS (gruppi separati da virgola)
 
 Variabili ambiente opzionali se si usa --mail:
   MAIL_PROVIDER          smtp (default) oppure ses
@@ -229,11 +249,31 @@ CodeBuild, profilo locale, variabili AWS_* standard dell'ambiente).
 }
 
 function ensureRequired(args) {
-  if (!args.baseUrl) {
-    throw new Error('Variabile obbligatoria mancante in .env: INFORMAL_BASE_URL');
+  if (!VALID_API_MODES.has(args.apiMode)) {
+    throw new Error(
+      `INFORMAL_API_MODE non valida: "${args.apiMode}". Valori supportati: ${Array.from(VALID_API_MODES).join(', ')}`
+    );
   }
-  if (!args.apiKey) {
-    throw new Error('Variabile obbligatoria mancante in .env: INFORMAL_API_KEY');
+
+  if (args.apiMode === 'external') {
+    if (!args.baseUrl) {
+      throw new Error('Variabile obbligatoria mancante in .env: INFORMAL_BASE_URL');
+    }
+    if (!args.apiKey) {
+      throw new Error('Variabile obbligatoria mancante in .env: INFORMAL_API_KEY');
+    }
+  } else {
+    if (!args.internalBaseUrl) {
+      throw new Error('Variabile obbligatoria mancante in .env: INFORMAL_INTERNAL_BASE_URL');
+    }
+
+    const missingIdentity = [];
+    if (!args.internalIdentity.uid) missingIdentity.push('INFORMAL_INTERNAL_UID');
+    if (!args.internalIdentity.cxType) missingIdentity.push('INFORMAL_INTERNAL_CX_TYPE');
+    if (!args.internalIdentity.cxId) missingIdentity.push('INFORMAL_INTERNAL_CX_ID');
+    if (missingIdentity.length > 0) {
+      throw new Error(`Variabile/i obbligatoria/e mancante/i in .env: ${missingIdentity.join(', ')}`);
+    }
   }
   if (!args.iun && !args.inputFile) {
     throw new Error('Specificare --iun oppure --input-file');
@@ -368,6 +408,19 @@ function buildProgressResponseElement(iun, detail, timelineElement, statusByElem
 }
 
 function buildHeaders(args) {
+  if (args.apiMode === 'internal') {
+    const headers = {
+      Accept: 'application/json',
+      'x-pagopa-pn-uid': args.internalIdentity.uid,
+      'x-pagopa-pn-cx-type': args.internalIdentity.cxType,
+      'x-pagopa-pn-cx-id': args.internalIdentity.cxId,
+    };
+    if (args.internalIdentity.cxGroups) {
+      headers['x-pagopa-pn-cx-groups'] = args.internalIdentity.cxGroups;
+    }
+    return headers;
+  }
+
   const headers = {
     Accept: 'application/json',
     'x-api-key': args.apiKey,
@@ -405,8 +458,12 @@ async function fetchInformalDetail(args, iun, rateLimiterState) {
     throw new Error('Runtime Node non supporta fetch globale (richiesto Node.js >= 18)');
   }
 
-  const endpoint = INFORMAL_ENDPOINT_TEMPLATE.replace('{iun}', encodeURIComponent(iun));
-  const url = new URL(endpoint, args.baseUrl).toString();
+  const endpointTemplate = args.apiMode === 'internal'
+    ? INTERNAL_INFORMAL_ENDPOINT_TEMPLATE
+    : INFORMAL_ENDPOINT_TEMPLATE;
+  const baseUrl = args.apiMode === 'internal' ? args.internalBaseUrl : args.baseUrl;
+  const endpoint = endpointTemplate.replace('{iun}', encodeURIComponent(iun));
+  const url = new URL(endpoint, baseUrl).toString();
   const headers = buildHeaders(args);
 
   for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt += 1) {
