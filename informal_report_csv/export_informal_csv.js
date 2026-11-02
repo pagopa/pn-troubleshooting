@@ -7,6 +7,7 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const dotenv = require('dotenv');
 const { sendReportEmail } = require('./lib/mailer');
+const { lastChannel } = require('./lib/lastDeliveredChannel');
 
 const INFORMAL_ENDPOINT_TEMPLATE = '/informal/delivery/v1/notifications/sent/{iun}?retrieveMessage=true';
 const INTERNAL_INFORMAL_ENDPOINT_TEMPLATE = '/delivery/v1/notifications/sent/{iun}';
@@ -556,6 +557,7 @@ function buildSummaryRow(iun, detail, retrievedAt) {
     IUN: iun,
     notificationStatus: detail.notificationStatus ?? '',
     analogCost: 0,
+    lastChannel: lastChannel(detail.timeline),
   };
 }
 
@@ -621,7 +623,7 @@ async function main() {
 
   writeCsv(
     summaryPath,
-    ['IUN', 'notificationStatus', 'analogCost'],
+    ['IUN', 'notificationStatus', 'analogCost', 'lastChannel'],
     summaryRows
   );
   writeCsv(timelineRawPath, ['IUN', 'TIMELINE_ELEMENT_ID', 'BUSINESS_TIMESTAMP', 'JSON'], rawRows);
