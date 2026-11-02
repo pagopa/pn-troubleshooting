@@ -102,6 +102,22 @@ async function run() {
         category: 'WORKFLOW_DONE_REACHED',
         details: { recIndex: 0, completionFeedback: 'RECEIVED' },
       },
+      {
+        elementId: `SEND_ANALOG_MESSAGE_FEEDBACK.IUN_${iun}.RECINDEX_0`,
+        eventTimestamp: '2026-07-21T16:39:50Z',
+        category: 'SEND_ANALOG_MESSAGE_FEEDBACK',
+        details: { recIndex: 0, deliveryType: 'RS', responseStatus: 'OK' },
+      },
+      {
+        elementId: `DELIVERED.IUN_${iun}.RECINDEX_0.CHANNEL_ANALOG`,
+        eventTimestamp: '2026-07-21T16:39:50Z',
+        category: 'DELIVERED',
+        details: {
+          recIndex: 0,
+          channel: 'ANALOG',
+          sourceElementId: `SEND_ANALOG_MESSAGE_FEEDBACK.IUN_${iun}.RECINDEX_0`,
+        },
+      },
     ],
   };
 
@@ -141,13 +157,14 @@ async function run() {
     const rawEvents = raw.rows.map((row) => JSON.parse(row.JSON));
 
     assert.equal(summary.rows.length, 1, 'summary rows attese = 1');
-    assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost']);
+    assert.deepEqual(summary.header, ['IUN', 'notificationStatus', 'analogCost', 'lastChannel']);
     assert.equal(summary.rows[0].IUN, iun);
     assert.equal(summary.rows[0].notificationStatus, 'COMPLETED_REACHED');
     assert.equal(summary.rows[0].analogCost, '0');
+    assert.equal(summary.rows[0].lastChannel, 'ANALOG_RS');
 
     assert.deepEqual(raw.header, ['IUN', 'TIMELINE_ELEMENT_ID', 'BUSINESS_TIMESTAMP', 'JSON']);
-    assert.equal(raw.rows.length, 3, 'raw timeline rows attese = 3');
+    assert.equal(raw.rows.length, payload.timeline.length, 'raw deve conservare tutti gli eventi');
     assert.equal(raw.rows[0].IUN, iun);
     assert.equal(raw.rows[0].TIMELINE_ELEMENT_ID, `REQUEST_ACCEPTED.IUN_${iun}`);
     assert.equal(raw.rows[0].BUSINESS_TIMESTAMP, '2026-07-21T16:25:27.584650008Z');
@@ -166,6 +183,7 @@ async function run() {
     process.stdout.write('US2 mock test passed\n');
   } finally {
     server.close();
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }
 

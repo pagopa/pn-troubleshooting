@@ -121,13 +121,44 @@ vincolo sopra.
 
 ### Output
 Lo script genera solo 2 file CSV:
-- `informal_summary.csv` su successo con formato: `IUN,notificationStatus,analogCost` (`analogCost` sempre `0`)
+- `informal_summary.csv` su successo con formato: `IUN,notificationStatus,analogCost,lastChannel` (`analogCost` sempre `0`)
 - `informal_timeline_raw.csv` su successo con formato: `IUN,TIMELINE_ELEMENT_ID,BUSINESS_TIMESTAMP,JSON`
   dove `JSON` serializza un oggetto compatibile con `ProgressResponseElementV29`:
   `eventId`, `notificationRequestId` (Base64 dell'IUN), `ttl`, `eventDescription` (`timestamp_elementId`), `iun`, `newStatus`, `informalElement`
 
 In caso di errore su uno o più IUN, lo script stampa il dettaglio su stderr (IUN, tipo e messaggio
 errore) e termina con `exit code 1`; non viene generato alcun file CSV dedicato agli errori.
+
+#### Ultimo canale nel workflow
+
+`lastChannel` indica l'ultimo canale identificato nella timeline, seguendo
+l'ordine degli elementi restituiti dall'API e ignorando gli eventi che non
+identificano un canale.
+
+- `IO`, `PEC` o `EMAIL` quando l'evento indica rispettivamente `CHANNEL_IO`,
+  `CHANNEL_PEC` o `CHANNEL_EMAIL`.
+- `ANALOG_<deliveryType>` per l'evento `SEND_ANALOG_MESSAGE`, usando
+  `details.deliveryType` (per esempio `ANALOG_RS`).
+- Campo vuoto se la timeline non contiene indicatori di questi canali o se
+  l'ultimo evento analogico non ha un `deliveryType` valido.
+
+Gli eventi di workflow successivi, come `WORKFLOW_DONE_REACHED`, non cambiano
+il canale; l'ordine cronologico dei timestamp non viene usato per riordinare
+la timeline.
+
+Esempio: `CHANNEL_IO` seguito da `SEND_ANALOG_MESSAGE` con prodotto `RS`:
+
+```csv
+IUN,notificationStatus,analogCost,lastChannel
+"TEST-IUN","COMPLETED_REACHED","0","ANALOG_RS"
+```
+
+**Compatibilità:** la colonna `lastDeliveredChannel` è rinominata in
+`lastChannel`; i consumatori che dipendono dall'header devono aggiornare lo
+schema. La timeline raw conserva il formato esistente. L'esempio reale
+disponibile conferma il contratto `DELIVERED` per ANALOG; i canali digitali sono
+verificati con fixture sintetiche e andranno confrontati con esempi reali
+anonimizzati quando disponibili.
 
 US1 copre lo slice summary; US2 aggiunge la timeline raw; US4 aggiunge safety operativa (throttling globale 1 RPS + retry transient controllato); US6 aggiunge l'invio via email dei CSV generati (SMTP); US7 aggiunge AWS SES come provider di invio alternativo. L'output è stato successivamente limitato ai soli `informal_summary.csv` e `informal_timeline_raw.csv`: gli altri report (eventi, allegati, errori) generati in precedenza non vengono più prodotti.
 
@@ -194,6 +225,12 @@ Test mock automatici (senza chiamate reali DEV, SMTP né AWS SES):
 
 ```bash
 npm run test:mock
+```
+
+Per verificare solo il calcolo del canale, senza rete né credenziali:
+
+```bash
+npm run test:unit:channel
 ```
 
 `test:mock` esegue anche `test:mock:us6` e `test:mock:us7`, che coprono l'invio email:
