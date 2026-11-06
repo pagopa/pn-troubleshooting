@@ -1,5 +1,4 @@
 const { parseArgs } = require('util');
-const { v4: uuidv4 } = require('uuid');
 require('dotenv').config()
 const { ApiClient } = require("./libs/api");
 const { _parseCSV, sleep, appendJsonToFile } = require('pn-common/libs/utils');
@@ -32,6 +31,7 @@ function _checkingParameters(values) {
 }
 
 async function main() {
+  const { v4: uuidv4 } = await import('uuid');
   const { values } = parseArgs({
     options: {
       fileName: { type: "string", short: "f" },

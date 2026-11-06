@@ -13,6 +13,8 @@ interroga esclusivamente INAD, ottenendo la risposta sincrona del registro.
 
 ## Installazione
 
+È richiesto Node.js 20 o superiore.
+
 ```bash
 npm install
 ```

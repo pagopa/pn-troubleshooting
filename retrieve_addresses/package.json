@@ -1,4 +1,7 @@
 {
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.462.0",
     "@aws-sdk/client-secrets-manager": "^3.465.0",
