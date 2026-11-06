@@ -4,34 +4,43 @@ const { AwsClientsWrapper } = require("pn-common");
 const { sleep } = require('pn-common/libs/utils');
 
 async function retrieveAndSaveCsv(executionId, awsClient, outputFilePath) {
-  //delete file if exists
-  if (fs.existsSync(outputFilePath)) {
-    fs.unlinkSync(outputFilePath);
-  } 
-  //retrieve results until next token is null
-  let nextToken = null;
-  console.log("Retrieving results batch...");
-  while (true) {
-    const result = await awsClient._getQueryResults(executionId, nextToken);
-    //convert result to csv format and save to file the first contains headers
-    //append headers only the first time
-    if (!nextToken) {
-      const headers = result.ResultSet.ResultSetMetadata.ColumnInfo.map(col => col.Name).join(",");
-      fs.appendFileSync(outputFilePath, headers + "\n");
-    } 
-    else {
-      fs.appendFileSync(outputFilePath, "\n");
+  if (typeof fs.constants.O_NOFOLLOW !== 'number') {
+    throw new Error("Secure output file creation requires O_NOFOLLOW support");
+  }
+  const outputFd = fs.openSync(
+    outputFilePath,
+    fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK,
+    0o600
+  );
+  try {
+    const outputStat = fs.fstatSync(outputFd);
+    if (!outputStat.isFile() || outputStat.nlink !== 1) {
+      throw new Error(`Output path must be a regular, unlinked file: ${outputFilePath}`);
     }
-    const rows = result.ResultSet.Rows.slice(nextToken ? 0 : 1).map(row => {
-      return row.Data.map(data => 
-        data.VarCharValue ? `"${data.VarCharValue}"` : ""
-      ).join(",");
-    });
-    fs.appendFileSync(outputFilePath, rows.join("\n"));
-    nextToken = result.NextToken;
-    if (!nextToken) {
-      break;
+    fs.ftruncateSync(outputFd, 0);
+    let nextToken = null;
+    console.log("Retrieving results batch...");
+    while (true) {
+      const result = await awsClient._getQueryResults(executionId, nextToken);
+      if (!nextToken) {
+        const headers = result.ResultSet.ResultSetMetadata.ColumnInfo.map(col => col.Name).join(",");
+        fs.writeFileSync(outputFd, headers + "\n");
+      } else {
+        fs.writeFileSync(outputFd, "\n");
+      }
+      const rows = result.ResultSet.Rows.slice(nextToken ? 0 : 1).map(row => {
+        return row.Data.map(data =>
+          data.VarCharValue ? `"${data.VarCharValue}"` : ""
+        ).join(",");
+      });
+      fs.writeFileSync(outputFd, rows.join("\n"));
+      nextToken = result.NextToken;
+      if (!nextToken) {
+        break;
+      }
     }
+  } finally {
+    fs.closeSync(outputFd);
   }
   console.log(`Result written to file: ${outputFilePath}`);
 }
