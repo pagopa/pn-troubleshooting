@@ -9,7 +9,7 @@ async function retrieveAndSaveCsv(executionId, awsClient, outputFilePath) {
   }
   const outputFd = fs.openSync(
     outputFilePath,
-    fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_NOFOLLOW,
+    fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK,
     0o600
   );
   try {
